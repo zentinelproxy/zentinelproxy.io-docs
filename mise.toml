@@ -1,0 +1,23 @@
+# Sentinel Documentation - mise configuration
+# Multi-versioned documentation site for Sentinel reverse proxy
+
+[env]
+DOCS_BUILD_DIR = "build"
+DOCS_VERSIONS_DIR = "versions"
+CURRENT_VERSION = "25.12"
+
+[tools]
+mdbook = "0.5.2"
+jq = "latest"
+
+# Default task
+[tasks.default]
+description = "Show available tasks"
+run = "mise tasks"
+
+# Quick aliases
+[tasks.b]
+alias = "build"
+
+[tasks.s]
+alias = "serve"

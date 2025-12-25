@@ -1,0 +1,82 @@
+/* Version Picker Styles */
+.version-picker {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+    margin-right: 1rem;
+}
+
+.version-picker label {
+    margin-right: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--fg);
+}
+
+.version-picker select {
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+    border: 1px solid var(--table-border-color);
+    background-color: var(--bg);
+    color: var(--fg);
+    font-size: 0.85rem;
+    cursor: pointer;
+    min-width: 100px;
+}
+
+.version-picker select:hover {
+    border-color: var(--links);
+}
+
+.version-picker select:focus {
+    outline: none;
+    border-color: var(--links);
+    box-shadow: 0 0 0 2px rgba(var(--links-rgb), 0.2);
+}
+
+/* Version badge */
+.version-badge {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    margin-left: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 3px;
+    background-color: var(--search-mark-bg);
+    color: var(--fg);
+}
+
+.version-badge.latest {
+    background-color: #40a02b;
+    color: white;
+}
+
+.version-badge.outdated {
+    background-color: #df8e1d;
+    color: white;
+}
+
+/* Outdated version warning */
+.outdated-warning {
+    background-color: #fef3cd;
+    border: 1px solid #ffc107;
+    border-radius: 4px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    display: none;
+}
+
+.outdated-warning.show {
+    display: block;
+}
+
+.outdated-warning a {
+    font-weight: 600;
+}
+
+/* Dark theme adjustments */
+.macchiato .outdated-warning,
+.mocha .outdated-warning,
+.frappe .outdated-warning {
+    background-color: rgba(223, 142, 29, 0.15);
+    border-color: #df8e1d;
+}

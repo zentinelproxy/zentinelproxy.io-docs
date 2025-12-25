@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+#MISE description="Create a new documentation version"
+#MISE usage="mise run new-version <version> [--from <source-version>]"
+
+set -e
+
+# Colors for output
+BLUE='\033[0;34m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+cd "$(dirname "$0")/../.." # Navigate to project root
+
+# Parse arguments
+NEW_VERSION=""
+SOURCE_VERSION=""
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --from)
+            SOURCE_VERSION="$2"
+            shift 2
+            ;;
+        *)
+            NEW_VERSION="$1"
+            shift
+            ;;
+    esac
+done
+
+if [ -z "$NEW_VERSION" ]; then
+    echo -e "${RED}Error: Version number required${NC}"
+    echo -e "${YELLOW}Usage: mise run new-version <version> [--from <source-version>]${NC}"
+    echo -e "${YELLOW}Example: mise run new-version 26.01 --from 25.12${NC}"
+    exit 1
+fi
+
+# Get default source version if not specified
+if [ -z "$SOURCE_VERSION" ]; then
+    SOURCE_VERSION=$(jq -r '.default' versions.json)
+    echo -e "${YELLOW}Using current default version as source: ${SOURCE_VERSION}${NC}"
+fi
+
+# Check if source version exists
+if [ ! -d "versions/${SOURCE_VERSION}" ]; then
+    echo -e "${RED}Error: Source version not found: ${SOURCE_VERSION}${NC}"
+    exit 1
+fi
+
+# Check if new version already exists
+if [ -d "versions/${NEW_VERSION}" ]; then
+    echo -e "${RED}Error: Version ${NEW_VERSION} already exists${NC}"
+    exit 1
+fi
+
+echo -e "${BLUE}Creating new documentation version: ${NEW_VERSION}${NC}"
+echo -e "${YELLOW}  Source: ${SOURCE_VERSION}${NC}"
+echo
+
+# Copy source version
+echo -e "${YELLOW}→ Copying documentation from ${SOURCE_VERSION}...${NC}"
+cp -r "versions/${SOURCE_VERSION}" "versions/${NEW_VERSION}"
+
+# Update book.toml
+echo -e "${YELLOW}→ Updating book.toml...${NC}"
+sed -i.bak "s|build-dir = \"../../build/${SOURCE_VERSION}\"|build-dir = \"../../build/${NEW_VERSION}\"|g" "versions/${NEW_VERSION}/book.toml"
+sed -i.bak "s|site-url = \"/${SOURCE_VERSION}/\"|site-url = \"/${NEW_VERSION}/\"|g" "versions/${NEW_VERSION}/book.toml"
+sed -i.bak "s|/versions/${SOURCE_VERSION}/|/versions/${NEW_VERSION}/|g" "versions/${NEW_VERSION}/book.toml"
+rm -f "versions/${NEW_VERSION}/book.toml.bak"
+
+# Update version-picker.js
+echo -e "${YELLOW}→ Updating version picker...${NC}"
+sed -i.bak "s|const CURRENT_VERSION = '${SOURCE_VERSION}'|const CURRENT_VERSION = '${NEW_VERSION}'|g" "versions/${NEW_VERSION}/theme/version-picker.js"
+rm -f "versions/${NEW_VERSION}/theme/version-picker.js.bak"
+
+# Update versions.json
+echo -e "${YELLOW}→ Updating versions.json...${NC}"
+
+# Mark old version as not latest
+jq --arg old "$SOURCE_VERSION" '(.versions[] | select(.path == $old) | .latest) = false | (.versions[] | select(.path == $old) | .title) = $old' versions.json > versions.json.tmp
+
+# Add new version
+jq --arg new "$NEW_VERSION" '.versions = [{"version": $new, "title": ($new + " (Latest)"), "path": $new, "latest": true}] + .versions | .default = $new' versions.json.tmp > versions.json
+
+rm -f versions.json.tmp
+
+echo
+echo -e "${GREEN}╔════════════════════════════════════════╗${NC}"
+echo -e "${GREEN}║   New Version Created!                 ║${NC}"
+echo -e "${GREEN}╚════════════════════════════════════════╝${NC}"
+echo
+echo -e "${BLUE}Version:${NC} ${NEW_VERSION}"
+echo -e "${BLUE}Directory:${NC} versions/${NEW_VERSION}"
+echo
+echo -e "${YELLOW}Next steps:${NC}"
+echo -e "  1. Update documentation in versions/${NEW_VERSION}/src/"
+echo -e "  2. Test with: VERSION=${NEW_VERSION} mise run serve"
+echo -e "  3. Build all versions: mise run build"
+echo -e "  4. Deploy: mise run deploy"
+echo
