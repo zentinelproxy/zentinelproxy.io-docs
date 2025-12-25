@@ -72,19 +72,18 @@ done
 echo -e "${YELLOW}→ Copying versions.json...${NC}"
 cp versions.json "${BUILD_DIR}/versions.json"
 
-# Create root index.html redirect
+# Create root index.html redirect (using relative URL for portability)
 echo -e "${YELLOW}→ Creating root redirect...${NC}"
 cat > "${BUILD_DIR}/index.html" << EOF
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="0; url=/${DEFAULT_VERSION}/">
+    <meta http-equiv="refresh" content="0; url=./${DEFAULT_VERSION}/">
     <title>Sentinel Documentation</title>
-    <link rel="canonical" href="/${DEFAULT_VERSION}/">
 </head>
 <body>
-    <p>Redirecting to <a href="/${DEFAULT_VERSION}/">Sentinel ${DEFAULT_VERSION} Documentation</a>...</p>
+    <p>Redirecting to <a href="./${DEFAULT_VERSION}/">Sentinel ${DEFAULT_VERSION} Documentation</a>...</p>
 </body>
 </html>
 EOF
