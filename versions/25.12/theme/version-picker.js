@@ -3,8 +3,17 @@
     'use strict';
 
     // Configuration - will be updated by build script
-    const VERSIONS_URL = '/versions.json';
     const CURRENT_VERSION = '25.12';
+
+    // Detect base path from current URL
+    function getBasePath() {
+        const path = window.location.pathname;
+        const versionMatch = path.match(/^(.*?)\/\d+\.\d+\//);
+        return versionMatch ? versionMatch[1] : '';
+    }
+
+    const BASE_PATH = getBasePath();
+    const VERSIONS_URL = BASE_PATH + '/versions.json';
 
     // Fetch versions and initialize picker
     async function initVersionPicker() {
@@ -53,14 +62,14 @@
             const selectedVersion = this.value;
             const currentPath = window.location.pathname;
 
-            // Replace version in path
+            // Replace version in path, preserving the base path
             const versionPattern = /\/(\d+\.\d+)\//;
             let newPath;
 
             if (versionPattern.test(currentPath)) {
                 newPath = currentPath.replace(versionPattern, '/' + selectedVersion + '/');
             } else {
-                newPath = '/' + selectedVersion + '/';
+                newPath = BASE_PATH + '/' + selectedVersion + '/';
             }
 
             window.location.href = newPath;
@@ -91,7 +100,7 @@
             warning.className = 'outdated-warning show';
             warning.innerHTML = `
                 <strong>You are viewing documentation for Sentinel ${CURRENT_VERSION}.</strong>
-                The latest version is <a href="/${latestVersion.path}/">${latestVersion.version}</a>.
+                The latest version is <a href="${BASE_PATH}/${latestVersion.path}/">${latestVersion.version}</a>.
             `;
 
             const content = document.querySelector('.content');
