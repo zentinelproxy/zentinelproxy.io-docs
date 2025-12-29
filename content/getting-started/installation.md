@@ -3,11 +3,33 @@ title = "Installation"
 weight = 0
 +++
 
-Sentinel can be installed from pre-built binaries, built from source, or run via Docker.
+Sentinel can be installed via the install script, from pre-built binaries, built from source, or run as an OCI container.
+
+## Install Script (Recommended)
+
+The easiest way to install Sentinel is using the install script, which automatically detects your OS and architecture:
+
+```bash
+curl -fsSL https://getsentinel.raskell.io | sh
+```
+
+The script downloads the appropriate binary and installs it to `~/.local/bin`. You may need to add this to your PATH:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+Add this line to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.) to make it permanent.
+
+### Verify Installation
+
+```bash
+sentinel --version
+```
 
 ## Pre-built Binaries
 
-Download the latest release for your platform from [GitHub Releases](https://github.com/raskell-io/sentinel/releases).
+Alternatively, download binaries manually from [GitHub Releases](https://github.com/raskell-io/sentinel/releases).
 
 ### Linux (amd64)
 
@@ -31,12 +53,6 @@ sudo mv sentinel /usr/local/bin/
 curl -LO https://github.com/raskell-io/sentinel/releases/latest/download/sentinel-darwin-amd64.tar.gz
 tar xzf sentinel-darwin-amd64.tar.gz
 sudo mv sentinel /usr/local/bin/
-```
-
-### Verify Installation
-
-```bash
-sentinel --version
 ```
 
 ## Build from Source
@@ -69,20 +85,33 @@ The binary will be at `target/release/sentinel`.
 sudo cp target/release/sentinel /usr/local/bin/
 ```
 
-## Docker
+## OCI Container
 
-Sentinel provides official Docker images.
+Sentinel provides official OCI container images.
 
 ### Pull the Image
 
 ```bash
+# Using Docker
 docker pull ghcr.io/raskell-io/sentinel:latest
+
+# Using Podman
+podman pull ghcr.io/raskell-io/sentinel:latest
 ```
 
-### Run with Docker
+### Run the Container
 
 ```bash
+# Using Docker
 docker run -d \
+  --name sentinel \
+  -p 8080:8080 \
+  -p 9090:9090 \
+  -v $(pwd)/sentinel.kdl:/etc/sentinel/sentinel.kdl:ro \
+  ghcr.io/raskell-io/sentinel:latest
+
+# Using Podman
+podman run -d \
   --name sentinel \
   -p 8080:8080 \
   -p 9090:9090 \
@@ -90,7 +119,9 @@ docker run -d \
   ghcr.io/raskell-io/sentinel:latest
 ```
 
-### Docker Compose
+### Compose File
+
+Works with both Docker Compose and Podman Compose:
 
 ```yaml
 version: '3.8'
@@ -105,6 +136,16 @@ services:
       - ./sentinel.kdl:/etc/sentinel/sentinel.kdl:ro
       - ./certs:/etc/sentinel/certs:ro
     restart: unless-stopped
+```
+
+Run with:
+
+```bash
+# Docker Compose
+docker compose up -d
+
+# Podman Compose
+podman-compose up -d
 ```
 
 ## Configuration File Location
