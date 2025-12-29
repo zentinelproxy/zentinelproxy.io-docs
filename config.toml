@@ -1,0 +1,38 @@
+# Sentinel Documentation - Zola Configuration
+base_url = "https://sentinel.raskell.io"
+title = "Sentinel Documentation"
+description = "Comprehensive documentation for Sentinel - A security-first reverse proxy built to guard the free web."
+theme = "tanuki"
+compile_sass = true
+build_search_index = true
+generate_feeds = false
+
+[markdown]
+highlight_code = true
+highlight_theme = "css"
+extra_syntaxes_and_themes = []
+smart_punctuation = true
+
+[slugify]
+paths = "on"
+taxonomies = "on"
+anchors = "on"
+
+[search]
+include_title = true
+include_description = true
+include_path = true
+include_content = true
+
+[extra]
+mode = "docs"
+github = "https://github.com/raskell-io/sentinel"
+edit_url = "https://github.com/raskell-io/sentinel.raskell.io-docs/edit/main/content"
+show_theme_toggle = true
+
+# Version picker
+[extra.versions]
+current = "25.12"
+list = [
+    { version = "25.12", url = "/", label = "latest" },
+]

@@ -1,16 +1,12 @@
 # Sentinel Documentation - mise configuration
-# Multi-versioned documentation site for Sentinel reverse proxy
-
-[env]
-DOCS_BUILD_DIR = "build"
-DOCS_VERSIONS_DIR = "versions"
-CURRENT_VERSION = "25.12"
+# Built with Zola and Tanuki theme
 
 [tools]
-mdbook = "0.5.2"
-jq = "latest"
+zola = "0.19.2"
 
-# Default task
+# Sentinel for local serving (optional)
+# Install: curl -fsSL https://getsentinel.raskell.io | sh
+
 [tasks.default]
 description = "Show available tasks"
 run = "mise tasks"
@@ -21,3 +17,39 @@ alias = "build"
 
 [tasks.s]
 alias = "serve"
+
+[tasks.c]
+alias = "clean"
+
+[tasks.build]
+description = "Build documentation site"
+run = """
+#!/usr/bin/env bash
+set -e
+echo "Building Sentinel documentation..."
+zola build
+echo "Build complete! Output in public/"
+"""
+
+[tasks.serve]
+description = "Serve documentation locally with live reload"
+run = """
+#!/usr/bin/env bash
+set -e
+echo "Starting Zola dev server..."
+echo "Visit http://127.0.0.1:1111"
+zola serve --port 1111
+"""
+
+[tasks.clean]
+description = "Clean build artifacts"
+run = "rm -rf public"
+
+[tasks.check]
+description = "Check for broken links"
+run = """
+#!/usr/bin/env bash
+set -e
+echo "Checking documentation..."
+zola check
+"""
