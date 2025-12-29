@@ -1,6 +1,6 @@
 +++
 title = "Basic Configuration"
-weight = 1
+weight = 2
 +++
 
 Sentinel uses [KDL](https://kdl.dev) (KDL Document Language) as its primary configuration format. KDL is a human-friendly document language with a clean syntax that's easy to read and write.

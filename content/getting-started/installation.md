@@ -1,6 +1,6 @@
 +++
 title = "Installation"
-weight = 0
+weight = 1
 +++
 
 Sentinel can be installed via the install script, from pre-built binaries, built from source, or run as an OCI container.

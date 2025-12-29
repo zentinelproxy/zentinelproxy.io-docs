@@ -21,6 +21,9 @@ alias = "serve"
 [tasks.c]
 alias = "clean"
 
+[tasks.u]
+alias = "update-theme"
+
 [tasks.build]
 description = "Build documentation site"
 run = """
@@ -52,4 +55,14 @@ run = """
 set -e
 echo "Checking documentation..."
 zola check
+"""
+
+[tasks.update-theme]
+description = "Update Tanuki theme to latest version"
+run = """
+#!/usr/bin/env bash
+set -e
+echo "Updating Tanuki theme..."
+git submodule update --remote themes/tanuki
+echo "Theme updated to $(cd themes/tanuki && git rev-parse --short HEAD)"
 """

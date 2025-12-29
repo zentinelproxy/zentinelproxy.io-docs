@@ -1,32 +1,27 @@
 +++
 title = "Quick Start"
-weight = 2
+weight = 0
 +++
 
 Get Sentinel up and running in under 5 minutes.
 
 ## 1. Install Sentinel
 
-Download the binary for your platform:
+Run the install script:
 
 ```bash
-# macOS (Apple Silicon)
-curl -LO https://github.com/raskell-io/sentinel/releases/latest/download/sentinel-darwin-arm64.tar.gz
-tar xzf sentinel-darwin-arm64.tar.gz
-
-# macOS (Intel)
-curl -LO https://github.com/raskell-io/sentinel/releases/latest/download/sentinel-darwin-amd64.tar.gz
-tar xzf sentinel-darwin-amd64.tar.gz
-
-# Linux
-curl -LO https://github.com/raskell-io/sentinel/releases/latest/download/sentinel-linux-amd64.tar.gz
-tar xzf sentinel-linux-amd64.tar.gz
+curl -fsSL https://getsentinel.raskell.io | sh
 ```
 
-Move to your PATH:
+Add to your PATH if needed:
 
 ```bash
-sudo mv sentinel /usr/local/bin/
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+Verify it works:
+
+```bash
 sentinel --version
 ```
 

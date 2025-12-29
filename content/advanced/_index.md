@@ -1,6 +1,6 @@
 +++
 title = "Advanced Topics"
-weight = 6
+weight = 7
 sort_by = "weight"
 template = "section.html"
 +++

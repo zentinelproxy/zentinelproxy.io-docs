@@ -1,6 +1,6 @@
 +++
 title = "Deployment"
-weight = 7
+weight = 8
 sort_by = "weight"
 template = "section.html"
 +++
