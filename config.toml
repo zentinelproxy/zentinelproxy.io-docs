@@ -1,5 +1,5 @@
 # Sentinel Documentation - Zola Configuration
-base_url = "https://sentinel.raskell.io"
+base_url = "https://sentinel.raskell.io/docs"
 title = "Sentinel Documentation"
 description = "Comprehensive documentation for Sentinel - A security-first reverse proxy built to guard the free web."
 theme = "tanuki"
