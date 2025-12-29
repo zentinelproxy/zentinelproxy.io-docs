@@ -2,6 +2,7 @@
 title = "Introduction"
 weight = 0
 sort_by = "weight"
+template = "section.html"
 +++
 Welcome to **Sentinel**, a high-performance **reverse proxy** platform built on [Cloudflare's Pingora](https://github.com/cloudflare/pingora) framework. Sentinel extends Pingora's robust foundation with enterprise-grade features designed for modern web infrastructure.
 
