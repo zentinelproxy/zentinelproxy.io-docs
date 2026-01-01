@@ -134,12 +134,13 @@ This documentation will guide you through:
 - **Examples**: Real-world configuration examples
 - **Reference**: API documentation and specifications
 
-## Community and Support
+## Community
 
-- **GitHub Repository**: [github.com/raskell-io/sentinel](https://github.com/raskell-io/sentinel)
-- **Issue Tracker**: Report bugs and request features
-- **Discussions**: Ask questions and share experiences
-- **Contributing**: We welcome contributions! See our [Contributing Guide](./development/contributing.md)
+- 💬 **[Discussions](https://github.com/raskell-io/sentinel/discussions)** — Questions, ideas, show & tell
+- 🐛 **[Issues](https://github.com/raskell-io/sentinel/issues)** — Bug reports and feature requests
+- 📦 **[GitHub](https://github.com/raskell-io/sentinel)** — Source code and releases
+
+Contributions are welcome! See our [Contributing Guide](./development/contributing.md) to get started.
 
 ## Version Information
 

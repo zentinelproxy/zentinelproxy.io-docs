@@ -27,6 +27,7 @@ include_content = true
 [extra]
 mode = "docs"
 github = "https://github.com/raskell-io/sentinel"
+discussions = "https://github.com/raskell-io/sentinel/discussions"
 edit_url = "https://github.com/raskell-io/sentinel.raskell.io-docs/edit/main/content"
 show_theme_toggle = true
 
