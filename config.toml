@@ -36,5 +36,4 @@ show_theme_toggle = true
 current = "26.01"
 list = [
     { version = "26.01", url = "/", label = "latest" },
-    { version = "25.12", url = "/v/25.12/", label = "" },
 ]
