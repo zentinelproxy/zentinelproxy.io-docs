@@ -208,6 +208,143 @@ agent "hybrid-agent" type="custom" {
 | `stream` | Send chunks as they arrive |
 | `hybrid:<bytes>` | Buffer up to threshold, then stream |
 
+## WAF Body Inspection
+
+For WAF agents that need to inspect request bodies, Sentinel provides a dedicated body inspection pipeline with security controls.
+
+### WAF Configuration Block
+
+Configure body inspection globally via the `waf` block:
+
+```kdl
+waf {
+    body-inspection {
+        inspect-request-body true
+        inspect-response-body false
+        max-body-inspection-bytes 1048576   // 1MB
+        content-types "application/json" "application/x-www-form-urlencoded" "text/xml"
+        decompress true
+        max-decompression-ratio 100.0
+    }
+}
+```
+
+### Body Inspection Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `inspect-request-body` | `false` | Enable request body inspection |
+| `inspect-response-body` | `false` | Enable response body inspection |
+| `max-body-inspection-bytes` | `1048576` | Max bytes to buffer for inspection |
+| `content-types` | See below | Content types eligible for inspection |
+| `decompress` | `false` | Decompress bodies before inspection |
+| `max-decompression-ratio` | `100.0` | Max compression ratio (zip bomb protection) |
+
+Default content types for inspection:
+- `application/json`
+- `application/x-www-form-urlencoded`
+- `text/xml`
+- `application/xml`
+- `text/plain`
+
+### Body Decompression
+
+When `decompress` is enabled, Sentinel automatically decompresses request bodies before sending them to WAF agents. This allows WAF rules to inspect the actual content of compressed payloads.
+
+**Supported encodings:**
+- `gzip` - Most common compression
+- `deflate` - Raw deflate compression
+- `br` - Brotli compression
+
+**Security protections:**
+
+| Protection | Default | Description |
+|------------|---------|-------------|
+| Max ratio | 100x | Prevents zip bombs (rejects if decompressed/compressed > ratio) |
+| Max output size | 10MB | Hard limit on decompressed size |
+| Fail mode | Route setting | Uses route's `failure-mode` for decompression errors |
+
+```kdl
+waf {
+    body-inspection {
+        decompress true
+        max-decompression-ratio 50.0    // Stricter limit for sensitive routes
+    }
+}
+```
+
+### Decompression Behavior
+
+| Scenario | fail-open | fail-closed |
+|----------|-----------|-------------|
+| Decompression succeeds | Inspect decompressed body | Inspect decompressed body |
+| Ratio exceeded | Inspect compressed body | Block with 400 |
+| Size exceeded | Inspect compressed body | Block with 400 |
+| Invalid data | Inspect compressed body | Block with 400 |
+
+### Metrics
+
+Decompression operations are tracked via Prometheus metrics:
+
+| Metric | Labels | Description |
+|--------|--------|-------------|
+| `sentinel_decompression_total` | `encoding`, `result` | Total decompression operations |
+| `sentinel_decompression_ratio` | `encoding` | Histogram of compression ratios |
+
+Result labels: `success`, `ratio_exceeded`, `size_exceeded`, `invalid_data`, `io_error`
+
+### Complete WAF Example
+
+```kdl
+waf {
+    body-inspection {
+        inspect-request-body true
+        max-body-inspection-bytes 1048576
+        content-types "application/json" "application/xml" "text/plain"
+        decompress true
+        max-decompression-ratio 100.0
+    }
+}
+
+agents {
+    agent "modsecurity" type="waf" {
+        unix-socket "/var/run/sentinel/modsec.sock"
+        events "request_headers" "request_body"
+        timeout-ms 200
+        failure-mode "closed"
+        request-body-mode "buffer"
+        circuit-breaker {
+            failure-threshold 10
+            timeout-seconds 60
+        }
+        config {
+            rules-path "/etc/modsecurity/crs"
+            paranoia-level 2
+        }
+    }
+}
+
+routes {
+    route "api" {
+        matches { path-prefix "/api/" }
+        upstream "backend"
+        policies {
+            failure-mode "closed"   // Used for decompression errors
+        }
+        filters "waf-filter"
+    }
+}
+
+filters {
+    filter "waf-filter" {
+        type "agent"
+        agent "modsecurity"
+        phase "request"
+        failure-mode "closed"
+    }
+}
+```
+
 ## Agent-Specific Configuration
 
 Pass configuration to agents via the `config` block:

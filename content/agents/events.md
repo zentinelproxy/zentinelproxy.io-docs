@@ -228,11 +228,31 @@ agent "waf" type="waf" {
 - **Size Limits:** Enforce body size restrictions
 - **Malware Scanning:** Check uploaded files
 
+### Body Decompression
+
+When `decompress: true` is set in the WAF `body-inspection` config, Sentinel automatically decompresses request bodies before sending to agents:
+
+```kdl
+waf {
+    body-inspection {
+        inspect-request-body true
+        decompress true
+        max-decompression-ratio 100.0  // Zip bomb protection
+    }
+}
+```
+
+Supported encodings: `gzip`, `deflate`, `br` (Brotli)
+
+The decompression ratio limit protects against zip bombs by rejecting payloads where the decompressed size exceeds the compressed size by more than the configured ratio.
+
 ### Important Notes
 
 - Body inspection adds latency - use only when necessary
 - Set `max-request-body-bytes` to limit memory usage
 - Streaming bodies may arrive in multiple chunks
+- Enable `decompress` to inspect compressed payloads (e.g., gzipped JSON)
+- Use `max-decompression-ratio` to protect against zip bomb attacks
 
 ## Response Headers Event
 
