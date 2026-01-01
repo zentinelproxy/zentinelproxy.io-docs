@@ -1,91 +1,86 @@
-# Sentinel Documentation
+# sentinel.raskell.io-docs
 
-Documentation for [Sentinel](https://github.com/raskell-io/sentinel), a security-first reverse proxy built on Pingora.
+Documentation site for [Sentinel](https://github.com/raskell-io/sentinel).
 
-**Live Site:** https://sentinel.raskell.io
+**Live:** https://sentinel.raskell.io/docs
 
-Built with [Zola](https://www.getzola.org/) and the [Tanuki](https://github.com/raskell-io/tanuki) theme.
+## Quick Start
+
+```bash
+# Install tools
+mise install
+
+# Start dev server
+mise run serve
+```
+
+Visit http://127.0.0.1:1111
+
+## Tasks
+
+| Task | Description |
+|------|-------------|
+| `mise run serve` | Dev server with live reload |
+| `mise run build` | Build for production |
+| `mise run check` | Check for broken links |
+| `mise run clean` | Clean build artifacts |
 
 ## Structure
 
 ```
 sentinel.raskell.io-docs/
-├── content/              # Documentation pages
-│   ├── _index.md         # Introduction
-│   ├── getting-started/  # Getting started guide
-│   ├── concepts/         # Core concepts
-│   ├── configuration/    # Configuration reference
-│   └── ...
-├── themes/tanuki/        # Tanuki theme (submodule)
 ├── config.toml           # Zola configuration
-└── mise.toml             # Task runner configuration
+├── content/
+│   ├── _index.md         # Introduction
+│   ├── getting-started/  # Installation, quick start
+│   ├── concepts/         # Architecture, design
+│   ├── configuration/    # Config reference
+│   ├── agents/           # Agent system docs
+│   ├── operations/       # Production guides
+│   ├── deployment/       # Deployment options
+│   ├── examples/         # Example configs
+│   ├── development/      # Contributing guides
+│   ├── reference/        # API, CLI, metrics
+│   └── appendix/         # Changelog, FAQ, license
+├── syntaxes/             # Custom syntax highlighting
+└── themes/tanuki/        # Documentation theme
 ```
 
-## Getting Started
+## Writing Docs
 
-### Prerequisites
+Create `content/section/page.md`:
 
-- [mise](https://mise.jdx.dev/) - Task runner (installs Zola automatically)
+```markdown
++++
+title = "Page Title"
+weight = 1
++++
 
-### Install Dependencies
-
-```bash
-mise install
+Content in Markdown...
 ```
 
-### Development
-
-Serve with live reload:
-
-```bash
-mise run serve
-# Visit http://127.0.0.1:1111
-```
-
-### Build
-
-```bash
-mise run build
-```
-
-Output in `public/`.
-
-## Available Tasks
-
-| Task | Description |
-|------|-------------|
-| `mise run build` | Build documentation |
-| `mise run serve` | Serve with live reload |
-| `mise run check` | Check for broken links |
-| `mise run clean` | Clean build artifacts |
-
-## Writing Documentation
-
-### Creating Pages
-
-1. Create a `.md` file in the appropriate `content/` subdirectory
-2. Add front matter:
-   ```toml
-   +++
-   title = "Page Title"
-   weight = 1
-   +++
-   ```
-3. Write content in Markdown
-
-### Code Blocks
-
-Use language-specific fences:
+Code blocks with syntax highlighting:
 
 ````markdown
 ```kdl
-route "api" {
-    pattern "/api/*"
-    service_type "api"
+server {
+    listener "0.0.0.0:8080"
 }
 ```
 ````
 
+## Tech Stack
+
+- [Zola](https://www.getzola.org/) — Static site generator
+- [mise](https://mise.jdx.dev/) — Task runner
+- [Tanuki](https://github.com/raskell-io/tanuki) — Documentation theme
+
+## Related
+
+- [sentinel](https://github.com/raskell-io/sentinel) — Main repository
+- [sentinel.raskell.io](https://github.com/raskell-io/sentinel.raskell.io) — Marketing site
+- [Discussions](https://github.com/raskell-io/sentinel/discussions) — Questions and ideas
+
 ## License
 
-[MIT](LICENSE) or [Apache-2.0](LICENSE-APACHE)
+Apache 2.0
