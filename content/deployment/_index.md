@@ -65,4 +65,5 @@ See [Agent Transports](/agents/transports/) for protocol details.
 | [systemd](systemd/) | Production deployment with systemd |
 | [Docker Compose](docker-compose/) | Container-based local/small deployments |
 | [Kubernetes](kubernetes/) | Cloud-native deployment patterns |
+| [Service Mesh](service-mesh/) | Istio, Linkerd, and Consul Connect integration |
 | [Monitoring](monitoring/) | Observability and health checks |
