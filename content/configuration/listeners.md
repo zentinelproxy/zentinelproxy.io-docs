@@ -239,6 +239,119 @@ Override default cipher suite selection. Leave empty to use secure defaults.
 - `TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256`
 - `TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256`
 
+## SNI (Server Name Indication)
+
+Serve different certificates based on the hostname the client requests. This enables hosting multiple domains on a single IP address.
+
+### Basic SNI Configuration
+
+```kdl
+listener "https" {
+    address "0.0.0.0:443"
+    protocol "https"
+    tls {
+        // Default certificate (when no SNI match)
+        cert-file "/etc/sentinel/certs/default.crt"
+        key-file "/etc/sentinel/certs/default.key"
+
+        // Additional certificates for SNI
+        additional-certs {
+            sni-cert {
+                hostnames "example.com" "www.example.com"
+                cert-file "/etc/sentinel/certs/example.crt"
+                key-file "/etc/sentinel/certs/example.key"
+            }
+
+            sni-cert {
+                hostnames "api.example.com"
+                cert-file "/etc/sentinel/certs/api.crt"
+                key-file "/etc/sentinel/certs/api.key"
+            }
+
+            sni-cert {
+                hostnames "*.staging.example.com"
+                cert-file "/etc/sentinel/certs/staging-wildcard.crt"
+                key-file "/etc/sentinel/certs/staging-wildcard.key"
+            }
+        }
+    }
+}
+```
+
+### SNI Hostname Patterns
+
+| Pattern | Matches |
+|---------|---------|
+| `example.com` | Exact match only |
+| `www.example.com` | Exact match only |
+| `*.example.com` | Any single subdomain (e.g., `api.example.com`, `www.example.com`) |
+| `*.*.example.com` | Two subdomain levels |
+
+### SNI Resolution Order
+
+1. Exact hostname match
+2. Wildcard pattern match (most specific wins)
+3. Default certificate
+
+### Multi-Domain Example
+
+```kdl
+listener "https" {
+    address "0.0.0.0:443"
+    protocol "https"
+    tls {
+        // Default for unmatched hostnames
+        cert-file "/etc/sentinel/certs/default.crt"
+        key-file "/etc/sentinel/certs/default.key"
+
+        additional-certs {
+            // Production domains
+            sni-cert {
+                hostnames "myapp.com" "www.myapp.com"
+                cert-file "/etc/sentinel/certs/myapp.crt"
+                key-file "/etc/sentinel/certs/myapp.key"
+            }
+
+            // API subdomain with separate cert
+            sni-cert {
+                hostnames "api.myapp.com"
+                cert-file "/etc/sentinel/certs/api.myapp.crt"
+                key-file "/etc/sentinel/certs/api.myapp.key"
+            }
+
+            // Customer domains
+            sni-cert {
+                hostnames "customer1.myapp.com" "customer1-custom.com"
+                cert-file "/etc/sentinel/certs/customer1.crt"
+                key-file "/etc/sentinel/certs/customer1.key"
+            }
+
+            // Wildcard for all other subdomains
+            sni-cert {
+                hostnames "*.myapp.com"
+                cert-file "/etc/sentinel/certs/wildcard.myapp.crt"
+                key-file "/etc/sentinel/certs/wildcard.myapp.key"
+            }
+        }
+    }
+}
+```
+
+### Certificate Hot Reload
+
+All SNI certificates are reloaded during configuration reload:
+
+```bash
+# Update certificates
+cp new-cert.crt /etc/sentinel/certs/example.crt
+cp new-key.key /etc/sentinel/certs/example.key
+
+# Reload configuration (graceful)
+kill -HUP $(cat /var/run/sentinel.pid)
+```
+
+Connections in progress continue with old certificates. New connections use updated certificates.
+
 ## Multiple Listeners
 
 Run multiple listeners for different purposes:
