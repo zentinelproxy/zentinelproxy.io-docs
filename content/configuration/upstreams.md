@@ -498,6 +498,187 @@ upstreams {
 | `timeouts.read-secs` | `30` |
 | `timeouts.write-secs` | `30` |
 
+## Service Discovery
+
+Instead of static targets, upstreams can discover backends dynamically from external sources.
+
+### DNS Discovery
+
+```kdl
+upstream "api" {
+    discovery "dns" {
+        hostname "api.internal.example.com"
+        port 8080
+        refresh-interval 30
+    }
+}
+```
+
+Resolves A/AAAA records and uses all IPs as targets.
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `hostname` | Required | DNS name to resolve |
+| `port` | Required | Port for all discovered backends |
+| `refresh-interval` | `30` | Seconds between DNS lookups |
+
+### Consul Discovery
+
+```kdl
+upstream "backend" {
+    discovery "consul" {
+        address "http://consul.internal:8500"
+        service "backend-api"
+        datacenter "dc1"
+        only-passing true
+        refresh-interval 10
+        tag "production"
+    }
+}
+```
+
+Discovers backends from Consul's service catalog.
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `address` | Required | Consul HTTP API address |
+| `service` | Required | Service name in Consul |
+| `datacenter` | None | Consul datacenter |
+| `only-passing` | `true` | Only return healthy services |
+| `refresh-interval` | `10` | Seconds between queries |
+| `tag` | None | Filter by service tag |
+
+### Kubernetes Discovery
+
+Discover backends from Kubernetes Endpoints. Supports both in-cluster and kubeconfig authentication.
+
+#### In-Cluster Configuration
+
+When running inside Kubernetes, Sentinel automatically uses the pod's service account:
+
+```kdl
+upstream "k8s-backend" {
+    discovery "kubernetes" {
+        namespace "production"
+        service "api-server"
+        port-name "http"
+        refresh-interval 10
+    }
+}
+```
+
+#### Kubeconfig File
+
+For running outside the cluster or with custom credentials:
+
+```kdl
+upstream "k8s-backend" {
+    discovery "kubernetes" {
+        namespace "default"
+        service "my-service"
+        port-name "http"
+        refresh-interval 10
+        kubeconfig "~/.kube/config"
+    }
+}
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `namespace` | Required | Kubernetes namespace |
+| `service` | Required | Service name |
+| `port-name` | None | Named port to use (uses first port if omitted) |
+| `refresh-interval` | `10` | Seconds between endpoint queries |
+| `kubeconfig` | None | Path to kubeconfig file (uses in-cluster if omitted) |
+
+#### Kubeconfig Authentication Methods
+
+Sentinel supports multiple authentication methods from kubeconfig:
+
+**Token Authentication:**
+```yaml
+users:
+- name: my-user
+  user:
+    token: eyJhbGciOiJSUzI1NiIs...
+```
+
+**Client Certificate:**
+```yaml
+users:
+- name: my-user
+  user:
+    client-certificate-data: LS0tLS1C...
+    client-key-data: LS0tLS1C...
+```
+
+**Exec-based (e.g., AWS EKS):**
+```yaml
+users:
+- name: eks-user
+  user:
+    exec:
+      apiVersion: client.authentication.k8s.io/v1beta1
+      command: aws
+      args:
+        - eks
+        - get-token
+        - --cluster-name
+        - my-cluster
+```
+
+#### Feature Flag
+
+Kubernetes discovery with kubeconfig requires the `kubernetes` feature:
+
+```bash
+cargo build --features kubernetes
+```
+
+### Static Discovery
+
+Explicitly define backends (default behavior when `targets` is used):
+
+```kdl
+upstream "backend" {
+    discovery "static" {
+        backends "10.0.1.1:8080" "10.0.1.2:8080" "10.0.1.3:8080"
+    }
+}
+```
+
+### Discovery with Health Checks
+
+Discovery works with health checks. Unhealthy discovered backends are temporarily removed:
+
+```kdl
+upstream "api" {
+    discovery "dns" {
+        hostname "api.example.com"
+        port 8080
+        refresh-interval 30
+    }
+    health-check {
+        type "http" {
+            path "/health"
+            expected-status 200
+        }
+        interval-secs 10
+        unhealthy-threshold 3
+    }
+}
+```
+
+### Discovery Caching
+
+All discovery methods cache results and fall back to cached backends on failure:
+
+- DNS resolution fails → use last known IPs
+- Consul unavailable → use last known services
+- Kubernetes API error → use last known endpoints
+
+This ensures resilience during control plane outages.
+
 ## Monitoring Upstream Health
 
 Check upstream status via the admin endpoint:
