@@ -3,11 +3,94 @@ title = "Building Agents"
 weight = 3
 +++
 
-This guide walks through building a Sentinel agent from scratch, using the Echo Agent as a reference implementation.
+This guide covers two approaches to building Sentinel agents:
 
-## Quick Start
+1. **SDK (Recommended)** - High-level, ergonomic API with less boilerplate
+2. **Low-level Protocol** - Direct protocol access for maximum control
 
-The fastest way to create a new agent is using `cargo-generate`:
+## Using the SDK (Recommended)
+
+The [Sentinel Agent SDK](https://github.com/raskell-io/sentinel-agent-sdk) provides a high-level API that handles protocol details, connection management, CLI parsing, and logging automatically.
+
+### Add Dependency
+
+```toml
+[dependencies]
+sentinel-agent-sdk = { git = "https://github.com/raskell-io/sentinel-agent-sdk" }
+```
+
+### Implement Your Agent
+
+```rust
+use sentinel_agent_sdk::prelude::*;
+
+struct MyAgent;
+
+#[async_trait]
+impl Agent for MyAgent {
+    async fn on_request(&self, request: &Request) -> Decision {
+        // Block admin paths without token
+        if request.path_starts_with("/admin") && request.header("x-admin-token").is_none() {
+            return Decision::deny().with_body("Admin access required");
+        }
+
+        // Add headers to allowed requests
+        Decision::allow()
+            .add_request_header("X-Processed-By", "my-agent")
+            .add_request_header("X-Client-IP", request.client_ip())
+    }
+
+    async fn on_response(&self, _request: &Request, response: &Response) -> Decision {
+        // Add security headers to HTML responses
+        if response.is_html() {
+            Decision::allow()
+                .add_response_header("X-Frame-Options", "DENY")
+        } else {
+            Decision::allow()
+        }
+    }
+}
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    AgentRunner::new(MyAgent)
+        .with_name("my-agent")
+        .with_socket("/tmp/my-agent.sock")
+        .run()
+        .await
+}
+```
+
+### SDK Features
+
+| Type | Methods |
+|------|---------|
+| `Request` | `method()`, `path()`, `query("key")`, `header("name")`, `client_ip()`, `body_json::<T>()` |
+| `Response` | `status_code()`, `is_success()`, `is_html()`, `header("name")`, `body_json::<T>()` |
+| `Decision` | `allow()`, `block(status)`, `deny()`, `redirect(url)`, `add_request_header()`, `with_tag()` |
+| `AgentRunner` | `with_name()`, `with_socket()`, `with_json_logs()`, `run()` |
+
+### Handling Configuration
+
+Receive configuration from the proxy's KDL config block:
+
+```rust
+#[async_trait]
+impl Agent for MyAgent {
+    async fn on_configure(&self, config: serde_json::Value) -> Result<(), String> {
+        let my_config: MyConfig = serde_json::from_value(config)
+            .map_err(|e| format!("Invalid config: {}", e))?;
+        // Store config...
+        Ok(())
+    }
+}
+```
+
+---
+
+## Using cargo-generate (Low-level)
+
+For more control, use the low-level protocol directly. The fastest way to start is using `cargo-generate`:
 
 ```bash
 # Install cargo-generate

@@ -308,9 +308,48 @@ agents {
 - Each agent focuses on one concern
 - Fail-closed by default
 
+## Custom Logic with Rust SDK
+
+Build custom agents in Rust with the [Sentinel Agent SDK](https://github.com/raskell-io/sentinel-agent-sdk):
+
+```rust
+use sentinel_agent_sdk::prelude::*;
+
+struct TenantAgent;
+
+#[async_trait]
+impl Agent for TenantAgent {
+    async fn on_request(&self, request: &Request) -> Decision {
+        // Add tenant context from subdomain
+        let tenant = request.host()
+            .and_then(|h| h.split('.').next())
+            .unwrap_or("default");
+
+        Decision::allow()
+            .add_request_header("X-Tenant-ID", tenant)
+    }
+
+    async fn on_response(&self, _request: &Request, response: &Response) -> Decision {
+        if response.is_html() {
+            Decision::allow()
+                .add_response_header("X-Content-Type-Options", "nosniff")
+                .add_response_header("X-Frame-Options", "DENY")
+        } else {
+            Decision::allow()
+        }
+    }
+}
+```
+
+**Benefits:**
+- Native performance
+- Type-safe request/response access
+- Fluent decision builder API
+- Built-in CLI and logging
+
 ## Custom Logic with JavaScript
 
-Implement business-specific logic with the JavaScript agent.
+Alternatively, use JavaScript for simpler logic or rapid prototyping:
 
 ```kdl
 agents {
@@ -324,34 +363,20 @@ agents {
 ```javascript
 // /etc/sentinel/scripts/custom.js
 function onRequest(request) {
-    // Add tenant context from subdomain
     const host = request.headers["host"] || "";
     const tenant = host.split(".")[0];
 
     return {
         decision: "allow",
-        addRequestHeaders: {
-            "X-Tenant-ID": tenant
-        }
-    };
-}
-
-function onResponse(request, response) {
-    // Add security headers
-    return {
-        decision: "allow",
-        addResponseHeaders: {
-            "X-Content-Type-Options": "nosniff",
-            "X-Frame-Options": "DENY"
-        }
+        addRequestHeaders: { "X-Tenant-ID": tenant }
     };
 }
 ```
 
 **Benefits:**
-- Full JavaScript flexibility
-- Access to request/response data
+- No compilation needed
 - Hot-reload without proxy restart
+- Familiar syntax for web developers
 
 ## Homelab & Self-Hosted Services
 
@@ -414,7 +439,8 @@ upstreams {
 | Web Application | waf, denylist |
 | AI/LLM APIs | ai-gateway, ratelimit |
 | Microservices | auth, ratelimit |
-| Custom Logic | js, lua, wasm |
+| Custom Logic (Rust) | [SDK](https://github.com/raskell-io/sentinel-agent-sdk) |
+| Custom Logic (Scripting) | js, lua, wasm |
 | Full OWASP CRS | modsec |
 | Homelab | (none needed - just routing) |
 

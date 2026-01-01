@@ -135,12 +135,35 @@ routes {
 }
 ```
 
+## Building Your Own Agent
+
+The easiest way to build a custom agent is with the **Sentinel Agent SDK**:
+
+```rust
+use sentinel_agent_sdk::prelude::*;
+
+struct MyAgent;
+
+#[async_trait]
+impl Agent for MyAgent {
+    async fn on_request(&self, request: &Request) -> Decision {
+        if request.path_starts_with("/admin") {
+            Decision::deny().with_body("Forbidden")
+        } else {
+            Decision::allow()
+        }
+    }
+}
+```
+
+The SDK provides ergonomic wrappers around the protocol, handling connection management, CLI parsing, and logging automatically.
+
 ## Documentation
 
 | Page | Description |
 |------|-------------|
 | [Agent Registry](registry/) | Official and community agents |
 | [Events & Hooks](events/) | Request lifecycle events agents can handle |
-| [Building Agents](building/) | How to create your own agent |
+| [Building Agents](building/) | How to create your own agent (SDK and low-level) |
 | [Transport Protocols](transports/) | Unix sockets and gRPC connectivity |
 | [Protocol Specification](protocol/) | Wire protocol and message formats |
