@@ -23,7 +23,7 @@ KDL documents are made of nodes. Each node has a name and optional values/proper
 
 ```kdl
 // Simple node
-server
+system
 
 // Node with a value
 worker-threads 4
@@ -32,7 +32,7 @@ worker-threads 4
 listener "http" address="0.0.0.0:8080"
 
 // Node with children (block)
-server {
+system {
     worker-threads 4
     max-connections 10000
 }
@@ -79,7 +79,7 @@ optional-field null
    spanning multiple
    lines */
 
-server {
+system {
     worker-threads 4  // Inline comment
 }
 ```
@@ -89,8 +89,8 @@ server {
 A typical Sentinel configuration has these top-level blocks:
 
 ```kdl
-// Server settings
-server {
+// System settings (use "system", not "server")
+system {
     // ...
 }
 
@@ -126,10 +126,23 @@ observability {
 
 // Hierarchical organization (optional)
 namespace "api" {
-    // Scoped: listeners, routes, upstreams, agents, limits
-    // See Namespaces & Services for details
+    limits { /* namespace-scoped limits */ }
+    listeners { /* namespace-scoped listeners */ }
+    upstreams { /* namespace-scoped upstreams */ }
+    routes { /* namespace-scoped routes */ }
+    agents { /* namespace-scoped agents */ }
+
+    // Fine-grained isolation within namespace
+    service "payments" {
+        limits { /* service-scoped limits */ }
+        listener { /* dedicated listener */ }
+        upstreams { /* service-scoped upstreams */ }
+        routes { /* service-scoped routes */ }
+    }
 }
 ```
+
+> **Note:** The `server` block name is deprecated but still supported for backward compatibility. Use `system` for new configurations.
 
 ## Schema Versioning
 
@@ -139,7 +152,7 @@ Sentinel configurations include a schema version for compatibility checking. Thi
 // Declare schema version at the top of your config
 schema-version "1.0"
 
-server {
+system {
     // ...
 }
 ```
@@ -172,7 +185,7 @@ If `schema-version` is not specified, Sentinel assumes the current version. For 
 // Explicit version (recommended for production)
 schema-version "1.0"
 
-server { /* ... */ }
+system { /* ... */ }
 ```
 
 This ensures configuration files remain compatible when upgrading Sentinel, and provides clear error messages if migration is needed.
@@ -185,7 +198,7 @@ This ensures configuration files remain compatible when upgrading Sentinel, and 
 
 schema-version "1.0"
 
-server {
+system {
     worker-threads 0          // 0 = auto-detect CPU cores
     max-connections 10000
     graceful-shutdown-timeout-secs 30
@@ -281,7 +294,7 @@ Sentinel also supports JSON and TOML for programmatic generation:
 
 ```json
 {
-  "server": {
+  "system": {
     "worker_threads": 4,
     "max_connections": 10000
   },
@@ -298,7 +311,7 @@ Sentinel also supports JSON and TOML for programmatic generation:
 ### TOML
 
 ```toml
-[server]
+[system]
 worker_threads = 4
 max_connections = 10000
 
