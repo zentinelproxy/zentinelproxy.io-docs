@@ -27,3 +27,11 @@ jobs:
           name: docs-build
           path: public
           retention-days: 7
+
+      - name: Trigger site deployment
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.DISPATCH_TOKEN }}
+          repository: raskell-io/sentinel.raskell.io
+          event-type: docs-updated
