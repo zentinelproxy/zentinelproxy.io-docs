@@ -123,6 +123,12 @@ limits {
 observability {
     // ...
 }
+
+// Hierarchical organization (optional)
+namespace "api" {
+    // Scoped: listeners, routes, upstreams, agents, limits
+    // See Namespaces & Services for details
+}
 ```
 
 ## Schema Versioning
@@ -384,3 +390,4 @@ Reload behavior:
 - [Server Configuration](../server/) - Server block settings
 - [Listeners](../listeners/) - Network binding and TLS
 - [Routes](../routes/) - Request routing
+- [Namespaces & Services](../namespaces/) - Hierarchical organization
