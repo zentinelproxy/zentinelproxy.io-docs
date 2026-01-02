@@ -118,6 +118,115 @@ Response body size histogram.
 |------|--------|-------------|
 | Histogram | `route` | Response body size in bytes |
 
+## Scoped Metrics
+
+When using [namespaces and services](../../configuration/namespaces/), additional metrics with scope labels are available.
+
+### sentinel_scoped_request_duration_seconds
+
+Request latency with namespace/service labels.
+
+| Type | Labels | Description |
+|------|--------|-------------|
+| Histogram | `namespace`, `service`, `route`, `method` | Request duration in seconds |
+
+**Example queries:**
+```promql
+# P99 latency by namespace
+histogram_quantile(0.99,
+  sum(rate(sentinel_scoped_request_duration_seconds_bucket[5m])) by (le, namespace))
+
+# Compare latency across services
+histogram_quantile(0.95,
+  sum(rate(sentinel_scoped_request_duration_seconds_bucket[5m])) by (le, namespace, service))
+```
+
+### sentinel_scoped_requests_total
+
+Request counter with namespace/service labels.
+
+| Type | Labels | Description |
+|------|--------|-------------|
+| Counter | `namespace`, `service`, `route`, `method`, `status` | Total requests |
+
+**Example queries:**
+```promql
+# Request rate by namespace
+sum(rate(sentinel_scoped_requests_total[5m])) by (namespace)
+
+# Error rate by service
+sum(rate(sentinel_scoped_requests_total{status=~"5.."}[5m])) by (namespace, service)
+  / sum(rate(sentinel_scoped_requests_total[5m])) by (namespace, service)
+
+# Top 10 busiest services
+topk(10, sum(rate(sentinel_scoped_requests_total[5m])) by (namespace, service))
+```
+
+### sentinel_scoped_active_requests
+
+Active requests gauge with namespace/service labels.
+
+| Type | Labels | Description |
+|------|--------|-------------|
+| Gauge | `namespace`, `service` | In-flight requests per scope |
+
+### sentinel_scoped_upstream_attempts_total
+
+Upstream attempts with scope labels.
+
+| Type | Labels | Description |
+|------|--------|-------------|
+| Counter | `namespace`, `service`, `upstream`, `route` | Connection attempts |
+
+### sentinel_scoped_upstream_failures_total
+
+Upstream failures with scope labels.
+
+| Type | Labels | Description |
+|------|--------|-------------|
+| Counter | `namespace`, `service`, `upstream`, `route`, `reason` | Connection failures |
+
+**Example queries:**
+```promql
+# Failure rate by namespace
+sum(rate(sentinel_scoped_upstream_failures_total[5m])) by (namespace)
+  / sum(rate(sentinel_scoped_upstream_attempts_total[5m])) by (namespace)
+```
+
+### sentinel_scoped_rate_limit_hits_total
+
+Rate limit hits with scope labels.
+
+| Type | Labels | Description |
+|------|--------|-------------|
+| Counter | `namespace`, `service`, `route`, `policy` | Rate limit violations |
+
+**Example queries:**
+```promql
+# Rate limit hits by namespace
+sum(rate(sentinel_scoped_rate_limit_hits_total[5m])) by (namespace)
+
+# Services hitting rate limits
+sum(rate(sentinel_scoped_rate_limit_hits_total[5m])) by (namespace, service) > 0
+```
+
+### sentinel_scoped_circuit_breaker_state
+
+Circuit breaker state with scope labels.
+
+| Type | Labels | Description |
+|------|--------|-------------|
+| Gauge | `namespace`, `service`, `upstream` | State: 0=closed, 1=open |
+
+**Example queries:**
+```promql
+# Open circuit breakers by namespace
+sentinel_scoped_circuit_breaker_state == 1
+
+# Count of open circuit breakers per namespace
+count(sentinel_scoped_circuit_breaker_state == 1) by (namespace)
+```
+
 ## Upstream Metrics
 
 ### sentinel_upstream_attempts_total
