@@ -209,6 +209,69 @@ route "api-v1" {
 
 The schema file is loaded at startup and used to validate requests against the paths, methods, and schemas defined in the OpenAPI specification.
 
+##### Inline OpenAPI/Swagger Specification
+
+Embed an OpenAPI specification directly in the configuration as a string:
+
+```kdl
+route "api-v1" {
+    matches {
+        path-prefix "/api/v1"
+    }
+    upstream "api-backend"
+    service-type "api"
+    api-schema {
+        validate-requests #true
+        schema-content r#"
+openapi: 3.0.0
+info:
+  title: User API
+  version: 1.0.0
+paths:
+  /api/v1/users:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+    get:
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string, format: uuid }
+                    email: { type: string, format: email }
+                    username: { type: string }
+        "#
+    }
+}
+```
+
+**Important**: The `schema-file` and `schema-content` options are **mutually exclusive**. Use one or the other, not both.
+
+Inline specs are useful for:
+- Small APIs that don't warrant a separate file
+- Testing and prototyping
+- Self-contained configuration that includes all dependencies
+
+For large or shared schemas, prefer `schema-file` to keep configuration maintainable.
+
 ##### Inline JSON Schema
 
 Define JSON schemas directly in the configuration using KDL syntax:
