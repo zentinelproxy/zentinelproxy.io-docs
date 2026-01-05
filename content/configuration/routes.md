@@ -781,6 +781,219 @@ Circuit breaker states:
 - **Open**: Requests fail immediately (circuit tripped)
 - **Half-Open**: Limited requests to test recovery
 
+## Traffic Mirroring / Shadow Traffic
+
+Traffic mirroring (also called shadow traffic or dark traffic) duplicates live requests to a secondary upstream for testing purposes, while the client receives the response from the primary upstream. This enables safe canary deployments, performance testing, and debug workflows.
+
+```kdl
+route "api" {
+    upstream "production"
+
+    shadow {
+        upstream "canary"
+        percentage 100.0
+        timeout-ms 5000
+        buffer-body #false
+        max-body-bytes 1048576
+    }
+}
+```
+
+### Key Characteristics
+
+- **Fire-and-forget**: Shadow requests are sent asynchronously and non-blocking
+- **No client impact**: Shadow failures don't affect the primary response
+- **Zero latency**: Shadow execution happens in a separate tokio task
+- **Sampling control**: Percentage-based and header-based filtering
+- **Independent failure domain**: Separate connection pools for shadow upstreams
+
+### Shadow Configuration Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `upstream` | string | *required* | Shadow target upstream ID (must exist in upstreams block) |
+| `percentage` | float | `100.0` | Percentage of requests to mirror (0.0-100.0) |
+| `sample-header` | tuple | none | Only mirror if request header matches `(name, value)` |
+| `timeout-ms` | int | `5000` | Shadow request timeout in milliseconds |
+| `buffer-body` | bool | `false` | Whether to buffer request bodies for POST/PUT/PATCH |
+| `max-body-bytes` | int | `1048576` | Maximum body size to shadow (1MB default) |
+
+### Example: Full Shadow (100% Mirrored)
+
+Mirror all traffic to a canary deployment for comprehensive testing:
+
+```kdl
+route "api-full-shadow" {
+    matches {
+        path-prefix "/api/v1"
+    }
+    upstream "production"
+
+    shadow {
+        upstream "canary"
+        percentage 100.0
+        timeout-ms 5000
+    }
+}
+```
+
+**Use case**: Initial canary deployment - validate stability with all traffic.
+
+### Example: Partial Shadow (10% Sampling)
+
+Mirror a percentage of requests to reduce shadow load:
+
+```kdl
+route "api-partial-shadow" {
+    matches {
+        path-prefix "/api/v2"
+    }
+    upstream "production"
+
+    shadow {
+        upstream "canary"
+        percentage 10.0  // Mirror 10% of requests
+        timeout-ms 5000
+    }
+}
+```
+
+**Use case**: Gradual rollout - representative traffic sampling with lower overhead.
+
+### Example: Header-Based Shadow
+
+Mirror only requests with specific headers for targeted testing:
+
+```kdl
+route "api-debug-shadow" {
+    matches {
+        path-prefix "/api/v3"
+    }
+    upstream "production"
+
+    shadow {
+        upstream "canary"
+        percentage 100.0
+        sample-header "X-Debug-Shadow" "true"  // Only if header present
+        timeout-ms 5000
+    }
+}
+```
+
+**Use case**: Developer testing - mirror only debug-flagged requests.
+
+### Body Buffering
+
+By default, shadow requests **do not** include request bodies to avoid buffering overhead. For POST/PUT/PATCH requests that need body inspection in the shadow:
+
+```kdl
+shadow {
+    upstream "canary"
+    buffer-body #true        // Enable body buffering
+    max-body-bytes 1048576   // Limit to 1MB
+}
+```
+
+⚠️ **Important**: Buffering request bodies has memory and latency implications. Use `max-body-bytes` to enforce strict limits.
+
+**When to buffer bodies:**
+- ✅ Small payloads (<1MB), testing form submissions, API validation
+- ❌ Large uploads, streaming data, file uploads, high-throughput APIs
+
+### Metrics
+
+Sentinel exposes Prometheus metrics for shadow traffic monitoring:
+
+```prometheus
+# Total shadow requests sent (labels: route, upstream, result)
+shadow_requests_total{route="api-full-shadow",upstream="canary",result="success"} 1234
+
+# Shadow request errors (labels: route, upstream, error_type)
+shadow_errors_total{route="api-full-shadow",upstream="canary",error_type="timeout"} 5
+
+# Shadow request latency histogram (labels: route, upstream)
+shadow_latency_seconds_bucket{route="api-full-shadow",upstream="canary",le="0.1"} 980
+```
+
+**Key metrics to monitor:**
+- `shadow_requests_total{result="success"}` - Successful shadow requests
+- `shadow_requests_total{result="error"}` - Failed shadow requests
+- `shadow_errors_total{error_type="timeout"}` - Shadow timeouts
+- `shadow_latency_seconds` - Shadow request latency distribution
+
+### Security Considerations
+
+Shadow traffic contains **real user data**. Ensure shadow upstreams:
+
+- Have equivalent security controls (TLS, auth, encryption)
+- Comply with data residency and privacy requirements
+- Use the same data handling policies as production
+- Audit shadow traffic access appropriately
+
+For regulated environments (PCI, HIPAA, GDPR):
+- **Do not** mirror sensitive data to less-secure environments
+- Use `sample-header` to exclude sensitive requests
+- Consider data masking/scrubbing before shadowing
+- Document shadow data flows in compliance audits
+
+### Best Practices
+
+1. **Start with low sampling**: Begin with 1-5% and gradually increase
+2. **Use timeouts**: Configure shadow timeouts shorter than primary timeouts
+3. **Monitor shadow health**: Set up alerts for shadow error rates
+4. **Body buffering limits**: Enforce strict size limits when buffering
+5. **Header-based targeting**: Use headers for targeted testing without impacting all traffic
+
+### Complete Example
+
+```kdl
+routes {
+    // Production route with canary shadow
+    route "api-v2" {
+        priority 200
+        matches {
+            path-prefix "/api/v2/"
+            method "GET" "POST" "PUT" "DELETE"
+        }
+        upstream "production"
+
+        // Mirror 10% of traffic to canary
+        shadow {
+            upstream "canary"
+            percentage 10.0
+            timeout-ms 3000
+            buffer-body #false
+        }
+
+        // Additional configuration
+        filters "auth" "rate-limit"
+        retry-policy {
+            max-attempts 3
+            retryable-status-codes 502 503 504
+        }
+    }
+
+    // Debug route with 100% shadow for beta users
+    route "api-beta" {
+        priority 250
+        matches {
+            path-prefix "/api/v2/"
+            header name="X-User-Tier" value="beta"
+        }
+        upstream "production"
+
+        shadow {
+            upstream "canary"
+            percentage 100.0
+            sample-header "X-Enable-Shadow" "true"
+            timeout-ms 5000
+        }
+    }
+}
+```
+
+For a complete traffic mirroring example with Docker Compose and test scripts, see the [Traffic Mirroring Example](../../examples/traffic-mirroring/).
+
 ## Error Pages
 
 ```kdl

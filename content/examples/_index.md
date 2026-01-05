@@ -15,6 +15,7 @@ Complete, production-ready configuration examples for common Sentinel use cases.
 | [API Gateway](api-gateway/) | API management | Versioning, auth, rate limiting |
 | [API Validation](api-validation/) | Schema validation | OpenAPI specs, JSON Schema, contract enforcement |
 | [Load Balancer](load-balancer/) | Traffic distribution | Multiple backends, algorithms |
+| [Traffic Mirroring](traffic-mirroring/) | Canary deployments | Shadow traffic, safe testing, sampling |
 | [Static Site](static-site/) | File serving | Caching, compression, SPA |
 | [Microservices](microservices/) | Service mesh | Multi-service routing |
 | [Security](security/) | WAF + Auth | Agents, protection layers |
