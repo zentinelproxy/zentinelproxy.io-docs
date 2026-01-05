@@ -93,9 +93,117 @@ routes {
 }
 ```
 
+### Inline OpenAPI Specification
+
+Embed an OpenAPI spec directly in the configuration (useful for small APIs or testing):
+
+```kdl
+routes {
+    // API v1 with inline OpenAPI spec
+    route "api-v1" {
+        priority 100
+        matches {
+            path-prefix "/api/v1"
+        }
+        upstream "api-backend"
+        service-type "api"
+
+        api-schema {
+            validate-requests #true
+            validate-responses #false
+            schema-content r#"
+openapi: 3.0.0
+info:
+  title: User API
+  version: 1.0.0
+  description: Simple user management API
+paths:
+  /api/v1/users:
+    post:
+      summary: Create a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, username]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  description: User email address
+                password:
+                  type: string
+                  minLength: 8
+                  description: User password (min 8 chars)
+                username:
+                  type: string
+                  minLength: 3
+                  maxLength: 32
+                  pattern: ^[a-zA-Z0-9_-]+$
+                  description: Username (alphanumeric, dash, underscore)
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  email:
+                    type: string
+                  username:
+                    type: string
+    get:
+      summary: List users
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string, format: uuid }
+                    email: { type: string, format: email }
+                    username: { type: string }
+                    created_at: { type: string, format: date-time }
+            "#
+        }
+
+        policies {
+            buffer-requests #true
+            max-body-size "1MB"
+        }
+    }
+}
+```
+
+**Note**: `schema-file` and `schema-content` are mutually exclusive. Use one or the other.
+
 ### Inline JSON Schema
 
-For simpler APIs, define schemas inline:
+For simpler APIs, define schemas inline using KDL syntax:
 
 ```kdl
 routes {
