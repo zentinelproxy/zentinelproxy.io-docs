@@ -13,6 +13,16 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### [Unreleased]
 
 #### Added
+- **Traffic Mirroring / Shadow Traffic** (v0.3.0)
+  - Fire-and-forget async request duplication to shadow upstreams
+  - Percentage-based sampling (0-100%) for controlled traffic mirroring
+  - Header-based filtering for targeted shadow requests
+  - Optional request body buffering with configurable size limits
+  - Independent failure domain (shadow failures don't affect clients)
+  - Zero latency impact on primary request path
+  - Separate connection pools for shadow upstreams
+  - Prometheus metrics: `shadow_requests_total`, `shadow_errors_total`, `shadow_latency_seconds`
+  - Complete documentation and examples for canary deployments
 - **API Schema Validation**
   - JSON Schema validation for API routes (requests and responses)
   - OpenAPI 3.0 and Swagger 2.0 specification support
