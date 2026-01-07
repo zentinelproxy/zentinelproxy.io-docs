@@ -86,7 +86,7 @@ routes {
             path-prefix "/api/users/"
         }
         upstream "user-service"
-        agents ["auth" "ratelimit"]
+        agents "auth" "ratelimit"
         service-type "api"
         circuit-breaker {
             failure-threshold 5
@@ -111,7 +111,7 @@ routes {
             path-prefix "/api/orders/"
         }
         upstream "order-service"
-        agents ["auth" "ratelimit"]
+        agents "auth" "ratelimit"
         service-type "api"
         circuit-breaker {
             failure-threshold 3
@@ -138,7 +138,7 @@ routes {
             method "GET"
         }
         upstream "product-service"
-        agents ["ratelimit"]  // No auth for public product listing
+        agents "ratelimit"  // No auth for public product listing
         service-type "api"
         retry-policy {
             max-attempts 3
@@ -159,7 +159,7 @@ routes {
             method "POST" "PUT" "DELETE"
         }
         upstream "product-service"
-        agents ["auth" "ratelimit"]
+        agents "auth" "ratelimit"
         service-type "api"
         policies {
             timeout-secs 30
@@ -278,7 +278,7 @@ agents {
         transport "unix_socket" {
             path "/var/run/sentinel/auth.sock"
         }
-        events ["request_headers"]
+        events "request_headers"
         timeout-ms 50
         failure-mode "closed"
     }
@@ -287,7 +287,7 @@ agents {
         transport "unix_socket" {
             path "/var/run/sentinel/ratelimit.sock"
         }
-        events ["request_headers"]
+        events "request_headers"
         timeout-ms 20
         failure-mode "open"
     }
@@ -309,6 +309,7 @@ observability {
         sample-rate 0.1  // Sample 10% of requests
     }
 }
+
 ```
 
 ## Service Discovery

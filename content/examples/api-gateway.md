@@ -77,7 +77,7 @@ routes {
             method "GET" "POST" "PUT" "DELETE" "PATCH"
         }
         upstream "api-v2"
-        agents ["auth" "ratelimit"]
+        agents "auth" "ratelimit"
         service-type "api"
         retry-policy {
             max-attempts 3
@@ -112,7 +112,7 @@ routes {
             path-prefix "/api/v1/"
         }
         upstream "api-v1"
-        agents ["auth"]
+        agents "auth"
         service-type "api"
         policies {
             timeout-secs 60
@@ -177,7 +177,7 @@ agents {
         transport "unix_socket" {
             path "/var/run/sentinel/auth.sock"
         }
-        events ["request_headers"]
+        events "request_headers"
         timeout-ms 100
         failure-mode "closed"
     }
@@ -186,7 +186,7 @@ agents {
         transport "unix_socket" {
             path "/var/run/sentinel/ratelimit.sock"
         }
-        events ["request_headers"]
+        events "request_headers"
         timeout-ms 50
         failure-mode "open"
     }
@@ -207,6 +207,7 @@ observability {
         endpoint "http://localhost:4317"
     }
 }
+
 ```
 
 ## Setup

@@ -76,11 +76,10 @@ routes {
             host "api.openai.local"
         }
         upstream "openai"
-        agents ["ai-gateway" "auth" "ratelimit"]
+        agents "ai-gateway" "auth" "ratelimit"
         policies {
-            timeout-secs 120  // LLM responses can be slow
-            max-body-size "10MB"
-            buffer-requests true
+            timeout_secs 120
+            max_body_size "10MB"
         }
     }
 
@@ -92,11 +91,10 @@ routes {
             host "api.anthropic.local"
         }
         upstream "anthropic"
-        agents ["ai-gateway" "auth" "ratelimit"]
+        agents "ai-gateway" "auth" "ratelimit"
         policies {
-            timeout-secs 120
-            max-body-size "10MB"
-            buffer-requests true
+            timeout_secs 120
+            max_body_size "10MB"
         }
     }
 
@@ -108,10 +106,10 @@ routes {
             host "azure.openai.local"
         }
         upstream "azure-openai"
-        agents ["ai-gateway" "auth" "ratelimit"]
+        agents "ai-gateway" "auth" "ratelimit"
         policies {
-            timeout-secs 120
-            max-body-size "10MB"
+            timeout_secs 120
+            max_body_size "10MB"
         }
     }
 }
@@ -122,8 +120,8 @@ upstreams {
             target { address "api.openai.com:443" }
         }
         tls {
-            enabled #true
-            verify-peer true
+            sni "api.openai.com"
+            insecure-skip-verify #false
         }
     }
 
@@ -132,8 +130,8 @@ upstreams {
             target { address "api.anthropic.com:443" }
         }
         tls {
-            enabled #true
-            verify-peer true
+            sni "api.anthropic.com"
+            insecure-skip-verify #false
         }
     }
 
@@ -142,8 +140,8 @@ upstreams {
             target { address "your-resource.openai.azure.com:443" }
         }
         tls {
-            enabled #true
-            verify-peer true
+            sni "your-resource.openai.azure.com"
+            insecure-skip-verify #false
         }
     }
 }
@@ -153,7 +151,7 @@ agents {
         transport "unix_socket" {
             path "/var/run/sentinel/ai-gateway.sock"
         }
-        events ["request_headers" "request_body"]
+        events "request_headers" "request_body"
         timeout-ms 100
         failure-mode "closed"
     }
@@ -162,7 +160,7 @@ agents {
         transport "unix_socket" {
             path "/var/run/sentinel/auth.sock"
         }
-        events ["request_headers"]
+        events "request_headers"
         timeout-ms 50
         failure-mode "closed"
     }
@@ -171,7 +169,7 @@ agents {
         transport "unix_socket" {
             path "/var/run/sentinel/ratelimit.sock"
         }
-        events ["request_headers"]
+        events "request_headers"
         timeout-ms 20
         failure-mode "open"
     }

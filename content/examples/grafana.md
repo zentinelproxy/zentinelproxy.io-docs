@@ -48,18 +48,12 @@ listeners {
         tls {
             cert-file "/etc/sentinel/certs/api.crt"
             key-file "/etc/sentinel/certs/api.key"
-            min-version "1.2"
-            ciphers [
-                "TLS_AES_256_GCM_SHA384"
-                "TLS_CHACHA20_POLY1305_SHA256"
-                "TLS_AES_128_GCM_SHA256"
-            ]
+            min-version "TLS1.2"
         }
     }
     listener "http" {
         address "0.0.0.0:8080"
         protocol "http"
-        redirect-https true
     }
 }
 
@@ -78,10 +72,10 @@ routes {
         matches {
             path-prefix "/public/"
         }
-        agents ["waf" "ratelimit"]
+        agents "waf" "ratelimit"
         upstream "backend"
         policies {
-            response-headers {
+            response_headers {
                 set {
                     "X-Content-Type-Options" "nosniff"
                     "X-Frame-Options" "DENY"
@@ -102,14 +96,13 @@ routes {
         matches {
             path-prefix "/api/"
         }
-        agents ["waf" "auth" "ratelimit"]
+        agents "waf" "auth" "ratelimit"
         upstream "backend"
         service-type "api"
         policies {
-            timeout-secs 30
-            max-body-size "10MB"
-            buffer-requests true  // Required for WAF body inspection
-            response-headers {
+            timeout_secs 30
+            max_body_size "10MB"
+            response_headers {
                 set {
                     "X-Content-Type-Options" "nosniff"
                     "X-Frame-Options" "DENY"
@@ -118,8 +111,8 @@ routes {
                 remove "Server" "X-Powered-By"
             }
         }
-        error-pages {
-            default-format "json"
+        error_pages {
+            default_format "json"
         }
     }
 
@@ -129,11 +122,11 @@ routes {
         matches {
             path-prefix "/admin/"
         }
-        agents ["waf" "auth" "ratelimit-strict"]
+        agents "waf" "auth" "ratelimit-strict"
         upstream "backend"
         policies {
-            failure-mode "closed"
-            request-headers {
+            failure_mode "closed"
+            request_headers {
                 set { "X-Admin-Request" "true" }
             }
         }
@@ -158,7 +151,7 @@ agents {
         transport "unix_socket" {
             path "/var/run/sentinel/waf.sock"
         }
-        events ["request_headers" "request_body"]
+        events "request_headers" "request_body"
         timeout-ms 100
         failure-mode "closed"
     }
@@ -168,7 +161,7 @@ agents {
         transport "unix_socket" {
             path "/var/run/sentinel/auth.sock"
         }
-        events ["request_headers"]
+        events "request_headers"
         timeout-ms 50
         failure-mode "closed"
     }
@@ -178,7 +171,7 @@ agents {
         transport "unix_socket" {
             path "/var/run/sentinel/ratelimit.sock"
         }
-        events ["request_headers"]
+        events "request_headers"
         timeout-ms 20
         failure-mode "open"
     }
@@ -188,7 +181,7 @@ agents {
         transport "unix_socket" {
             path "/var/run/sentinel/ratelimit-strict.sock"
         }
-        events ["request_headers"]
+        events "request_headers"
         timeout-ms 20
         failure-mode "closed"
     }

@@ -56,7 +56,7 @@ routes {
             path "/ws"
         }
         upstream "ws-backend"
-        agents ["ws-inspector"]
+        agents "ws-inspector"
         websocket {
             enabled #true
             ping-interval-secs 30
@@ -72,7 +72,7 @@ routes {
             path-prefix "/socket.io/"
         }
         upstream "ws-backend"
-        agents ["ws-inspector"]
+        agents "ws-inspector"
         websocket {
             enabled #true
         }
@@ -85,7 +85,7 @@ routes {
             path-prefix "/api/"
         }
         upstream "ws-backend"
-        agents ["auth"]
+        agents "auth"
     }
 }
 
@@ -106,7 +106,7 @@ agents {
         transport "unix_socket" {
             path "/var/run/sentinel/ws-inspector.sock"
         }
-        events ["websocket_frame"]
+        events "websocket_frame"
         timeout-ms 50
         failure-mode "open"
     }
@@ -115,7 +115,7 @@ agents {
         transport "unix_socket" {
             path "/var/run/sentinel/auth.sock"
         }
-        events ["request_headers"]
+        events "request_headers"
         timeout-ms 50
         failure-mode "closed"
     }
@@ -131,6 +131,7 @@ observability {
         format "json"
     }
 }
+
 ```
 
 ## Agent Setup
@@ -407,7 +408,7 @@ routes {
             path "/chat"
         }
         upstream "chat-service"
-        agents ["auth" "ws-inspector"]
+        agents "auth" "ws-inspector"
         websocket {
             enabled #true
             ping-interval-secs 30
@@ -422,7 +423,7 @@ routes {
             path-prefix "/api/chat/"
         }
         upstream "chat-service"
-        agents ["auth" "ratelimit"]
+        agents "auth" "ratelimit"
     }
 }
 
@@ -431,7 +432,7 @@ agents {
         transport "unix_socket" {
             path "/var/run/sentinel/ws-inspector.sock"
         }
-        events ["websocket_frame"]
+        events "websocket_frame"
         timeout-ms 20
         failure-mode "open"
     }
@@ -444,6 +445,7 @@ upstreams {
         }
     }
 }
+
 ```
 
 ## Next Steps
