@@ -389,7 +389,7 @@ spec:
 ### Configuration
 
 ```kdl
-server {
+system {
     graceful-shutdown-timeout-secs 30
 }
 ```

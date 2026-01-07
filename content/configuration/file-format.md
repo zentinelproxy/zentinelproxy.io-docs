@@ -11,7 +11,7 @@ Sentinel uses [KDL](https://kdl.dev/) as its primary configuration format. KDL i
 |---------|---------|
 | **Human-readable** | Clean syntax without excessive punctuation |
 | **Git-friendly** | Diffs are clear and meaningful |
-| **Typed values** | Numbers, strings, booleans, null |
+| **Typed values** | Numbers, strings, booleans, #null |
 | **Comments** | Both line (`//`) and block (`/* */`) |
 | **Hierarchical** | Natural nesting for configuration blocks |
 
@@ -55,19 +55,47 @@ health-check type="http" interval-secs=10
 ### Data Types
 
 ```kdl
-// Strings (quoted)
-name "my-service"
+// Example showing KDL data types in Sentinel config
 
-// Numbers (integer or float)
-port 8080
-weight 1.5
+system {
+    // Numbers (integer)
+    worker-threads 4
+    max-connections 1000
+    graceful-shutdown-timeout-secs 30
+}
 
-// Booleans
-enabled true
-disabled false
+listeners {
+    listener "http" {
+        // Strings (quoted)
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
 
-// Null
-optional-field null
+routes {
+    route "default" {
+        // Booleans (#true, #false)
+        enabled #true
+
+        matches { path-prefix "/" }
+        upstream "backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target {
+                address "127.0.0.1:3000"
+                // Numbers (float)
+                weight 1.5
+            }
+        }
+
+        // Null values (#null)
+        health-check #null
+    }
+}
 ```
 
 ### Comments

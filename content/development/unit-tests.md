@@ -281,7 +281,7 @@ use test_case::test_case;
 
 #[test_case("/api/users", "/api/users" => true ; "exact match")]
 #[test_case("/api/*", "/api/users" => true ; "wildcard match")]
-#[test_case("/api/*", "/other" => false ; "wildcard no match")]
+#[test_case("/api/*", "/other" => #false ; "wildcard no match")]
 #[test_case("/*", "/anything" => true ; "root wildcard")]
 fn test_route_matching(pattern: &str, path: &str) -> bool {
     Route::new(pattern).matches(path)

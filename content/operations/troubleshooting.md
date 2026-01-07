@@ -327,8 +327,15 @@ perf top -p $(pgrep sentinel)
 
 **Solutions:**
 ```kdl
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
 // Adjust worker threads
-server {
+system {
     worker-threads 4  // Match CPU cores
 }
 
@@ -339,8 +346,16 @@ server {
 routes {
     route "api" {
         policies {
-            buffer-requests false
-            buffer-responses false
+            buffer-requests #false
+            buffer-responses #false
+        }
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
         }
     }
 }

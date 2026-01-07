@@ -38,7 +38,7 @@ Create `sentinel.kdl`:
 // API Gateway Configuration
 // Production-ready API management
 
-server {
+system {
     worker-threads 0
     graceful-shutdown-timeout-secs 30
 }
@@ -196,7 +196,7 @@ agents {
 
 observability {
     metrics {
-        enabled true
+        enabled #true
         address "0.0.0.0:9090"
     }
     logging {
@@ -204,7 +204,7 @@ observability {
         format "json"
     }
     tracing {
-        enabled true
+        enabled #true
         service-name "api-gateway"
         endpoint "http://localhost:4317"
     }
@@ -313,23 +313,46 @@ sentinel-agent-auth \
 Create separate rate limit agents for different routes:
 
 ```kdl
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
 agents {
-    agent "ratelimit-standard" {
-        transport "unix_socket" {
-            path "/var/run/sentinel/ratelimit-standard.sock"
-        }
-        events ["request_headers"]
+    agent "ratelimit-standard" type="custom" {
+        unix-socket "/var/run/sentinel/ratelimit-standard.sock"
+        events "request_headers"
         timeout-ms 50
     }
 
-    agent "ratelimit-premium" {
-        transport "unix_socket" {
-            path "/var/run/sentinel/ratelimit-premium.sock"
-        }
-        events ["request_headers"]
+    agent "ratelimit-premium" type="custom" {
+        unix-socket "/var/run/sentinel/ratelimit-premium.sock"
+        events "request_headers"
         timeout-ms 50
     }
 }
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
+    }
+}
+
 ```
 
 ### CORS Configuration

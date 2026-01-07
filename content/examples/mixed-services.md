@@ -37,7 +37,7 @@ Create `sentinel.kdl`:
 // Microservices Gateway Configuration
 // Routes to multiple backend services
 
-server {
+system {
     worker-threads 0
     graceful-shutdown-timeout-secs 60
 }
@@ -295,7 +295,7 @@ agents {
 
 observability {
     metrics {
-        enabled true
+        enabled #true
         address "0.0.0.0:9090"
     }
     logging {
@@ -303,7 +303,7 @@ observability {
         format "json"
     }
     tracing {
-        enabled true
+        enabled #true
         service-name "api-gateway"
         endpoint "http://jaeger.internal:4317"
         sample-rate 0.1  // Sample 10% of requests
@@ -387,7 +387,7 @@ Send duplicate requests to reduce tail latency:
 route "search" {
     upstream "search-service"
     hedge {
-        enabled true
+        enabled #true
         delay-ms 50  // Hedge after 50ms
         max-requests 2
     }

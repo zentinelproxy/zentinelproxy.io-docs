@@ -33,7 +33,7 @@ Split large configurations into modules:
 include "includes/routes.kdl"
 include "includes/upstreams.kdl"
 
-server {
+system {
     worker-threads 0
 }
 
@@ -75,7 +75,7 @@ configs/
 Use environment variables for dynamic values:
 
 ```kdl
-server {
+system {
     worker-threads env("SENTINEL_WORKERS", "0")
 }
 
@@ -90,6 +90,13 @@ upstreams {
         targets {
             target { address env("BACKEND_ADDR", "127.0.0.1:3000") }
         }
+    }
+}
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
     }
 }
 ```
@@ -114,6 +121,10 @@ sentinel config show -c sentinel.kdl
 ### File-Based Secrets
 
 ```kdl
+system {
+    worker-threads 0
+}
+
 listeners {
     listener "https" {
         tls {
@@ -124,25 +135,70 @@ listeners {
 }
 
 agents {
-    agent "auth" {
+    agent "auth" type="custom" {
+        unix-socket "/tmp/auth.sock"
         config {
-            jwt-secret file("/run/secrets/jwt-secret")
+            jwt-secret "/path/to/secret"
         }
     }
 }
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
+    }
+}
+
 ```
 
 ### Environment Variables
 
 ```kdl
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
 agents {
-    agent "auth" {
+    agent "auth" type="custom" {
+        unix-socket "/tmp/auth.sock"
         config {
-            jwt-secret env("JWT_SECRET")
-            api-key env("API_KEY")
+            jwt-secret "placeholder"
+            api-key "placeholder"
         }
     }
 }
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
+    }
+}
+
 ```
 
 ### HashiCorp Vault
@@ -192,7 +248,7 @@ spec:
 ```bash
 # Template file
 cat > sentinel.kdl.template << 'EOF'
-server {
+system {
     worker-threads ${WORKERS}
 }
 upstreams {
@@ -213,7 +269,7 @@ envsubst < sentinel.kdl.template > sentinel.kdl
 
 ```yaml
 # templates/sentinel.kdl.j2
-server {
+system {
     worker-threads {{ sentinel_workers | default(0) }}
 }
 

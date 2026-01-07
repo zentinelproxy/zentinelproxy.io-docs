@@ -10,7 +10,7 @@ Sentinel uses [KDL](https://kdl.dev) (KDL Document Language) as its primary conf
 Here's the simplest configuration that gets Sentinel running as a reverse proxy:
 
 ```kdl
-server {
+system {
     worker-threads 0
 }
 
@@ -66,7 +66,7 @@ A Sentinel configuration file consists of several top-level sections:
 The `server` block controls global behavior:
 
 ```kdl
-server {
+system {
     worker-threads 4              // 0 = auto-detect CPU cores
     max-connections 10000         // Total connection limit
     graceful-shutdown-timeout-secs 30
@@ -156,7 +156,7 @@ routes {
         service-type "static"
         static-files {
             root "/var/www/static"
-            compress true
+            compress #true
         }
     }
 }
@@ -247,7 +247,7 @@ Enable metrics and logging:
 ```kdl
 observability {
     metrics {
-        enabled true
+        enabled #true
         address "0.0.0.0:9090"
         path "/metrics"
     }
@@ -264,7 +264,7 @@ observability {
 Here's a production-ready configuration:
 
 ```kdl
-server {
+system {
     worker-threads 0
     max-connections 10000
     graceful-shutdown-timeout-secs 30
@@ -328,7 +328,7 @@ limits {
 
 observability {
     metrics {
-        enabled true
+        enabled #true
         address "0.0.0.0:9090"
     }
     logging {

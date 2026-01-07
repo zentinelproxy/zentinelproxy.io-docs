@@ -8,7 +8,7 @@ The `server` block configures global proxy settings including worker threads, co
 ## Basic Configuration
 
 ```kdl
-server {
+system {
     worker-threads 0              // 0 = auto-detect CPU cores
     max-connections 10000
     graceful-shutdown-timeout-secs 30
@@ -20,7 +20,7 @@ server {
 ### Worker Threads
 
 ```kdl
-server {
+system {
     worker-threads 0
 }
 ```
@@ -39,7 +39,7 @@ server {
 ### Connection Limits
 
 ```kdl
-server {
+system {
     max-connections 10000
 }
 ```
@@ -59,7 +59,7 @@ Memory impact: ~10KB per connection.
 ### Graceful Shutdown
 
 ```kdl
-server {
+system {
     graceful-shutdown-timeout-secs 30
 }
 ```
@@ -75,7 +75,7 @@ When Sentinel receives SIGTERM or SIGINT:
 ### Trace ID Format
 
 ```kdl
-server {
+system {
     trace-id-format "tinyflake"  // or "uuid"
 }
 ```
@@ -96,9 +96,32 @@ Trace IDs appear in:
 ### Auto Reload
 
 ```kdl
-server {
-    auto-reload true
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
 }
+
+system {
+    auto-reload #true
+}
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
+    }
+}
+
 ```
 
 When enabled, Sentinel watches the configuration file and automatically reloads on changes.
@@ -114,10 +137,33 @@ Reload triggers:
 ### Daemon Mode
 
 ```kdl
-server {
-    daemon true
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
+system {
+    daemon #true
     pid-file "/var/run/sentinel.pid"
 }
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
+    }
+}
+
 ```
 
 Run Sentinel as a background daemon:
@@ -127,7 +173,7 @@ Run Sentinel as a background daemon:
 ### User/Group
 
 ```kdl
-server {
+system {
     user "sentinel"
     group "sentinel"
 }
@@ -143,7 +189,7 @@ Drop privileges after binding to ports. Useful when binding to privileged ports 
 ### Working Directory
 
 ```kdl
-server {
+system {
     working-directory "/var/lib/sentinel"
 }
 ```
@@ -153,7 +199,14 @@ Change working directory after startup. Affects relative paths in configuration.
 ## Complete Example
 
 ```kdl
-server {
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
+system {
     // Performance
     worker-threads 0
     max-connections 50000
@@ -165,15 +218,31 @@ server {
     trace-id-format "uuid"
 
     // Hot reload
-    auto-reload true
+    auto-reload #true
 
     // Process management (production)
-    daemon true
+    daemon #true
     pid-file "/var/run/sentinel.pid"
     user "sentinel"
     group "sentinel"
     working-directory "/var/lib/sentinel"
 }
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
+    }
+}
+
 ```
 
 ## Environment Variables
@@ -203,7 +272,7 @@ Environment variables take precedence over config file values.
 ### High-Traffic Deployment
 
 ```kdl
-server {
+system {
     worker-threads 0           // Use all cores
     max-connections 100000     // High connection limit
     graceful-shutdown-timeout-secs 120  // Long drain time
@@ -213,7 +282,7 @@ server {
 ### Resource-Constrained Environment
 
 ```kdl
-server {
+system {
     worker-threads 2           // Limited threads
     max-connections 5000       // Lower limit
     graceful-shutdown-timeout-secs 15   // Quick shutdown

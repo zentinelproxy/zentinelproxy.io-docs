@@ -36,7 +36,7 @@ upstream backend {
     server 10.0.1.2:8080;
 }
 
-server {
+system {
     listen 80;
     server_name api.example.com;
 
@@ -88,7 +88,7 @@ upstreams {
 
 **nginx:**
 ```nginx
-server {
+system {
     listen 443 ssl http2;
     server_name api.example.com;
 

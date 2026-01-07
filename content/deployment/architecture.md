@@ -93,7 +93,7 @@ agent "auth" type="auth" {
     unix-socket "/run/sentinel/auth.sock"
 
     health-check {
-        enabled true
+        enabled #true
         interval-ms 5000
         timeout-ms 100
         healthy-threshold 2

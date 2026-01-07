@@ -144,9 +144,9 @@ route "assets" {
     static-files {
         root "/var/www/static"
         index "index.html"
-        directory-listing false
+        directory-listing #false
         cache-control "public, max-age=86400"
-        compress true
+        compress #true
         fallback "index.html"  // For SPAs
     }
 }
@@ -214,53 +214,39 @@ The schema file is loaded at startup and used to validate requests against the p
 Embed an OpenAPI specification directly in the configuration as a string:
 
 ```kdl
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
 route "api-v1" {
     matches {
         path-prefix "/api/v1"
     }
     upstream "api-backend"
-    service-type "api"
-    api-schema {
-        validate-requests #true
-        schema-content r#"
-openapi: 3.0.0
-info:
-  title: User API
-  version: 1.0.0
-paths:
-  /api/v1/users:
-    post:
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [email, password]
-              properties:
-                email:
-                  type: string
-                  format: email
-                password:
-                  type: string
-                  minLength: 8
-    get:
-      responses:
-        '200':
-          description: List of users
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id: { type: string, format: uuid }
-                    email: { type: string, format: email }
-                    username: { type: string }
-        "#
+}
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
     }
 }
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
+    }
+}
+
 ```
 
 **Important**: The `schema-file` and `schema-content` options are **mutually exclusive**. Use one or the other, not both.
@@ -634,7 +620,7 @@ Enable WAF shorthand:
 
 ```kdl
 route "api" {
-    waf-enabled true
+    waf-enabled #true
 }
 ```
 
@@ -720,12 +706,39 @@ route "metrics" {
 ### Request/Response Buffering
 
 ```kdl
-route "api" {
-    policies {
-        buffer-requests true   // Buffer full request before forwarding
-        buffer-responses true  // Buffer full response before sending
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
     }
 }
+
+route "api" {
+    policies {
+        buffer-requests #true   // Buffer full request before forwarding
+        buffer-responses #true  // Buffer full response before sending
+    }
+}
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
+    }
+}
+
 ```
 
 Buffering is required for body inspection by agents. Be mindful of memory usage with large bodies.
@@ -1104,7 +1117,7 @@ routes {
         static-files {
             root "/var/www/static"
             cache-control "public, max-age=31536000, immutable"
-            compress true
+            compress #true
         }
     }
 

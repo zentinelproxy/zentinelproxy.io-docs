@@ -98,6 +98,17 @@ routes {
 Embed an OpenAPI spec directly in the configuration (useful for small APIs or testing):
 
 ```kdl
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
 routes {
     // API v1 with inline OpenAPI spec
     route "api-v1" {
@@ -106,90 +117,6 @@ routes {
             path-prefix "/api/v1"
         }
         upstream "api-backend"
-        service-type "api"
-
-        api-schema {
-            validate-requests #true
-            validate-responses #false
-            schema-content r#"
-openapi: 3.0.0
-info:
-  title: User API
-  version: 1.0.0
-  description: Simple user management API
-paths:
-  /api/v1/users:
-    post:
-      summary: Create a new user
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [email, password, username]
-              properties:
-                email:
-                  type: string
-                  format: email
-                  description: User email address
-                password:
-                  type: string
-                  minLength: 8
-                  description: User password (min 8 chars)
-                username:
-                  type: string
-                  minLength: 3
-                  maxLength: 32
-                  pattern: ^[a-zA-Z0-9_-]+$
-                  description: Username (alphanumeric, dash, underscore)
-      responses:
-        '201':
-          description: User created successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                    format: uuid
-                  email:
-                    type: string
-                  username:
-                    type: string
-    get:
-      summary: List users
-      parameters:
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-            default: 10
-        - name: offset
-          in: query
-          schema:
-            type: integer
-            minimum: 0
-            default: 0
-      responses:
-        '200':
-          description: List of users
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id: { type: string, format: uuid }
-                    email: { type: string, format: email }
-                    username: { type: string }
-                    created_at: { type: string, format: date-time }
-            "#
-        }
 
         policies {
             buffer-requests #true
@@ -197,6 +124,15 @@ paths:
         }
     }
 }
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
+    }
+}
+
 ```
 
 **Note**: `schema-file` and `schema-content` are mutually exclusive. Use one or the other.
@@ -573,12 +509,12 @@ curl -X POST http://localhost:8080/api/register \
     {
       "field": "$.username",
       "message": "Missing required property",
-      "value": null
+      "value": #null
     },
     {
       "field": "$.terms_accepted",
       "message": "Missing required property",
-      "value": null
+      "value": #null
     }
   ]
 }

@@ -30,7 +30,7 @@ sentinel --version
 Create `sentinel.kdl` in your current directory:
 
 ```kdl
-server {
+system {
     worker-threads 0
 }
 
@@ -74,7 +74,7 @@ upstreams {
 
 observability {
     metrics {
-        enabled true
+        enabled #true
         address "0.0.0.0:9090"
     }
     logging {

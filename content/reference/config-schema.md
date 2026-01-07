@@ -8,7 +8,7 @@ Quick reference for all Sentinel configuration options.
 ## Top-Level Blocks
 
 ```kdl
-server { }       // Server settings
+system { }       // Server settings
 listeners { }    // Network listeners
 routes { }       // Request routing
 upstreams { }    // Backend servers
@@ -19,19 +19,41 @@ limits { }       // Request limits
 ## Server Block
 
 ```kdl
-server {
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
+system {
     worker-threads 0                      // 0 = auto (CPU cores)
     max-connections 10000
     graceful-shutdown-timeout-secs 30
     trace-id-format "tinyflake"           // or "uuid"
-    auto-reload false
+    auto-reload #false
 
     // Process management
-    daemon false
+    daemon #false
     pid-file "/var/run/sentinel.pid"
     user "sentinel"
     group "sentinel"
     working-directory "/var/lib/sentinel"
+}
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
+    }
 }
 ```
 
@@ -51,6 +73,10 @@ server {
 ## Listeners Block
 
 ```kdl
+system {
+    worker-threads 0
+}
+
 listeners {
     listener "id" {
         address "0.0.0.0:8080"
@@ -66,10 +92,25 @@ listeners {
             ca-file "/path/to/ca.pem"
             min-version "1.2"
             max-version "1.3"
-            client-auth false
-            ocsp-stapling true
-            session-resumption true
+            client-auth #false
+            ocsp-stapling #true
+            session-resumption #true
             cipher-suites "..."
+        }
+    }
+}
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
         }
     }
 }
@@ -101,6 +142,17 @@ listeners {
 ## Routes Block
 
 ```kdl
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
 routes {
     route "id" {
         priority 100
@@ -117,14 +169,14 @@ routes {
         service-type "web"                 // web, api, static, builtin
         builtin-handler "health"           // For service-type=builtin
         filters "auth" "ratelimit"
-        waf-enabled false
+        waf-enabled #false
 
         policies {
             timeout-secs 30
             max-body-size "10MB"
             failure-mode "closed"          // closed, open
-            buffer-requests false
-            buffer-responses false
+            buffer-requests #false
+            buffer-responses #false
 
             request-headers {
                 set { "X-Header" "value" }
@@ -160,9 +212,9 @@ routes {
         static-files {
             root "/var/www"
             index "index.html"
-            directory-listing false
+            directory-listing #false
             cache-control "public, max-age=3600"
-            compress true
+            compress #true
             fallback "index.html"
         }
 
@@ -172,6 +224,14 @@ routes {
                 "404" { format "json" message "Not found" }
                 "500" { format "html" template "/path/to/500.html" }
             }
+        }
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
         }
     }
 }
@@ -190,6 +250,17 @@ routes {
 ## Upstreams Block
 
 ```kdl
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
 upstreams {
     upstream "id" {
         targets {
@@ -235,8 +306,15 @@ upstreams {
             client-cert "/path/to/cert.pem"
             client-key "/path/to/key.pem"
             ca-cert "/path/to/ca.pem"
-            insecure-skip-verify false
+            insecure-skip-verify #false
         }
+    }
+}
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
     }
 }
 ```
@@ -328,7 +406,7 @@ agents {
 ## Complete Minimal Example
 
 ```kdl
-server {
+system {
     worker-threads 0
     max-connections 10000
 }
@@ -361,12 +439,12 @@ upstreams {
 ## Complete Production Example
 
 ```kdl
-server {
+system {
     worker-threads 0
     max-connections 50000
     graceful-shutdown-timeout-secs 60
-    auto-reload true
-    daemon true
+    auto-reload #true
+    daemon #true
     pid-file "/var/run/sentinel.pid"
     user "sentinel"
     group "sentinel"
@@ -374,13 +452,14 @@ server {
 
 listeners {
     listener "https" {
+                tls {
+                    cert-file "/etc/sentinel/certs/server.crt"
+                    key-file "/etc/sentinel/certs/server.key"
+                    min-version "1.2"
+                }
         address "0.0.0.0:443"
         protocol "https"
-        tls {
-            cert-file "/etc/sentinel/certs/server.crt"
-            key-file "/etc/sentinel/certs/server.key"
-            min-version "1.2"
-        }
+
     }
 
     listener "admin" {
@@ -426,6 +505,7 @@ limits {
     max-body-size-bytes 10485760
     max-requests-per-second-per-client 100
 }
+
 ```
 
 ## See Also

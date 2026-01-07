@@ -20,7 +20,7 @@ Create `sentinel.kdl`:
 // WebSocket Configuration
 // Real-time WebSocket proxying with security
 
-server {
+system {
     worker-threads 0
     graceful-shutdown-timeout-secs 60
 }
@@ -58,7 +58,7 @@ routes {
         upstream "ws-backend"
         agents ["ws-inspector"]
         websocket {
-            enabled true
+            enabled #true
             ping-interval-secs 30
             ping-timeout-secs 10
             max-message-size "1MB"
@@ -74,7 +74,7 @@ routes {
         upstream "ws-backend"
         agents ["ws-inspector"]
         websocket {
-            enabled true
+            enabled #true
         }
     }
 
@@ -123,7 +123,7 @@ agents {
 
 observability {
     metrics {
-        enabled true
+        enabled #true
         address "0.0.0.0:9090"
     }
     logging {
@@ -219,6 +219,17 @@ for (let i = 0; i < 200; i++) {
 ### Token in Query String
 
 ```kdl
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
 routes {
     route "websocket" {
         matches {
@@ -227,6 +238,14 @@ routes {
         }
         agents ["auth" "ws-inspector"]
         upstream "ws-backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
     }
 }
 ```
@@ -246,6 +265,17 @@ const ws = new WebSocket('wss://localhost:8443/ws', ['access_token', 'eyJ...']);
 ### Cookie-Based Auth
 
 ```kdl
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
 routes {
     route "websocket" {
         matches {
@@ -254,6 +284,14 @@ routes {
         }
         agents ["auth" "ws-inspector"]
         upstream "ws-backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
     }
 }
 ```
@@ -318,7 +356,7 @@ routes {
     route "websocket" {
         upstream "ws-backend"
         websocket {
-            enabled true
+            enabled #true
             max-connections 1000
             max-connections-per-ip 10
             idle-timeout-secs 300
@@ -350,6 +388,17 @@ rate(sentinel_agent_ws_blocked_total[5m])
 Complete configuration for a chat application:
 
 ```kdl
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
 routes {
     // WebSocket for real-time messages
     route "chat-ws" {
@@ -360,7 +409,7 @@ routes {
         upstream "chat-service"
         agents ["auth" "ws-inspector"]
         websocket {
-            enabled true
+            enabled #true
             ping-interval-secs 30
             max-message-size "64KB"
         }
@@ -385,6 +434,14 @@ agents {
         events ["websocket_frame"]
         timeout-ms 20
         failure-mode "open"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
     }
 }
 ```

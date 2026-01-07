@@ -206,7 +206,7 @@ route "static" {
     static-files {
         root "/var/www/static"
         index "index.html"
-        compress true
+        compress #true
     }
 }
 ```
@@ -232,6 +232,17 @@ route "metrics" {
 Policies control request handling behavior:
 
 ```kdl
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
 route "api" {
     matches { path-prefix "/api/" }
     upstream "api-backend"
@@ -267,6 +278,21 @@ route "api" {
         }
     }
 }
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
+    }
+}
 ```
 
 ## Complete Example
@@ -274,7 +300,7 @@ route "api" {
 Here's a full example with multiple routes:
 
 ```kdl
-server {
+system {
     worker-threads 0
 }
 
@@ -317,7 +343,7 @@ routes {
         service-type "static"
         static-files {
             root "/var/www/assets"
-            compress true
+            compress #true
         }
     }
 

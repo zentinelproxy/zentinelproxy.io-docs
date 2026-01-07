@@ -63,7 +63,7 @@ Create `shadow-test.kdl`:
 ```kdl
 schema-version "1.0"
 
-server {
+system {
     worker-threads 2
     max-connections 1000
 }
@@ -136,7 +136,7 @@ services:
 
 **nginx-production.conf:**
 ```nginx
-server {
+system {
     listen 80;
     location /health {
         return 200 '{"status":"healthy","upstream":"production"}\n';
@@ -152,7 +152,7 @@ server {
 
 **nginx-canary.conf:**
 ```nginx
-server {
+system {
     listen 80;
     location /health {
         return 200 '{"status":"healthy","upstream":"canary"}\n';
@@ -291,6 +291,17 @@ curl -H "X-Debug-Shadow: true" http://localhost:8080/api/v3/users
 Shadow to staging for internal testing:
 
 ```kdl
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
 upstreams {
     upstream "production" { /* ... */ }
     upstream "canary" { /* ... */ }
@@ -302,7 +313,7 @@ routes {
     route "public-api" {
         matches {
             path-prefix "/api/"
-            header name="X-Internal-Test" invert=true
+            header name="X-Internal-Test" invert=#true
         }
         upstream "production"
 
@@ -327,6 +338,7 @@ routes {
         }
     }
 }
+
 ```
 
 ### Pattern 5: POST/PUT with Body Buffering
@@ -629,7 +641,7 @@ Full configuration with production best practices:
 ```kdl
 schema-version "1.0"
 
-server {
+system {
     worker-threads 4
     max-connections 10000
 }

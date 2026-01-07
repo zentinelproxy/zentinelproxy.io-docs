@@ -247,7 +247,7 @@ WantedBy=sentinel-agents.target
 ```kdl
 // /etc/sentinel/sentinel.kdl
 
-server {
+system {
     listen "0.0.0.0:80"
     listen "0.0.0.0:443" {
         tls {

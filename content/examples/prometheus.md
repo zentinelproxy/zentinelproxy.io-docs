@@ -37,7 +37,7 @@ Create `sentinel.kdl`:
 // Observability Configuration
 // Metrics, logging, and distributed tracing
 
-server {
+system {
     worker-threads 0
     graceful-shutdown-timeout-secs 30
 }
@@ -75,7 +75,7 @@ upstreams {
 observability {
     // Prometheus metrics endpoint
     metrics {
-        enabled true
+        enabled #true
         address "0.0.0.0:9090"
         path "/metrics"
     }
@@ -85,14 +85,14 @@ observability {
         level "info"
         format "json"
         access-log {
-            enabled true
+            enabled #true
             fields ["method" "path" "status" "latency" "upstream" "client_ip"]
         }
     }
 
     // OpenTelemetry tracing
     tracing {
-        enabled true
+        enabled #true
         service-name "sentinel"
         endpoint "http://jaeger:4317"
         protocol "grpc"  // or "http"

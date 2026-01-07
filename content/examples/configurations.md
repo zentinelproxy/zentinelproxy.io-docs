@@ -43,7 +43,7 @@ Create `sentinel.kdl`:
 // AI Gateway Configuration
 // Secure proxy for OpenAI, Anthropic, and Azure OpenAI
 
-server {
+system {
     worker-threads 0
     graceful-shutdown-timeout-secs 30
 }
@@ -122,7 +122,7 @@ upstreams {
             target { address "api.openai.com:443" }
         }
         tls {
-            enabled true
+            enabled #true
             verify-peer true
         }
     }
@@ -132,7 +132,7 @@ upstreams {
             target { address "api.anthropic.com:443" }
         }
         tls {
-            enabled true
+            enabled #true
             verify-peer true
         }
     }
@@ -142,7 +142,7 @@ upstreams {
             target { address "your-resource.openai.azure.com:443" }
         }
         tls {
-            enabled true
+            enabled #true
             verify-peer true
         }
     }
@@ -179,7 +179,7 @@ agents {
 
 observability {
     metrics {
-        enabled true
+        enabled #true
         address "0.0.0.0:9090"
     }
     logging {

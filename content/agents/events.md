@@ -71,8 +71,8 @@ agent "waf" type="waf" {
     events "request_headers" "request_body"
     config {
         paranoia-level 2
-        sqli true
-        xss true
+        sqli #true
+        xss #true
         exclude-paths "/health" "/metrics"
     }
 }
@@ -134,7 +134,7 @@ When configuration is rejected, the proxy will not start routing traffic to that
 | KDL | JSON |
 |-----|------|
 | `paranoia-level 2` | `{"paranoia-level": 2}` |
-| `sqli true` | `{"sqli": true}` |
+| `sqli #true` | `{"sqli": true}` |
 | `paths "/a" "/b"` | `{"paths": ["/a", "/b"]}` |
 | `nested { key "val" }` | `{"nested": {"key": "val"}}` |
 
@@ -235,8 +235,8 @@ When `decompress: true` is set in the WAF `body-inspection` config, Sentinel aut
 ```kdl
 waf {
     body-inspection {
-        inspect-request-body true
-        decompress true
+        inspect-request-body #true
+        decompress #true
         max-decompression-ratio 100.0  // Zip bomb protection
     }
 }

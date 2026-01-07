@@ -19,7 +19,7 @@ Create `sentinel.kdl`:
 // Simple Reverse Proxy
 // Forwards all traffic to a single backend
 
-server {
+system {
     worker-threads 0  // Auto-detect CPU cores
     graceful-shutdown-timeout-secs 30
 }
@@ -61,7 +61,7 @@ upstreams {
 
 observability {
     metrics {
-        enabled true
+        enabled #true
         address "0.0.0.0:9090"
     }
     logging {

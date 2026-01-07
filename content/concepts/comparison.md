@@ -226,7 +226,7 @@ upstream backend {
     server 127.0.0.1:3001;
 }
 
-server {
+system {
     listen 8080;
 
     location / {

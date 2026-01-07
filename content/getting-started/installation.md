@@ -161,7 +161,7 @@ By default, Sentinel looks for configuration in these locations:
 ```bash
 mkdir -p /etc/sentinel
 cat > /etc/sentinel/sentinel.kdl << 'EOF'
-server {
+system {
     worker-threads 0
 }
 

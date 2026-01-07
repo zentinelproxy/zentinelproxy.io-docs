@@ -8,3 +8,9 @@ public/
 *.swp
 *.swo
 *~
+
+# Temporary validation scripts
+*_fix.py
+validate_*.py
+validation_errors.txt
+*.txt

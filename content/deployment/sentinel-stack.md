@@ -33,7 +33,7 @@ curl -sSL https://sentinel.raskell.io/install.sh | sh
 ```bash
 # Create a simple config
 cat > sentinel.kdl << 'EOF'
-server {
+system {
     listen "0.0.0.0:8080"
 }
 
@@ -232,7 +232,7 @@ sentinel-stack --config sentinel.kdl 2>&1 | jq
 
 ```kdl
 // dev.kdl - Simple development config
-server {
+system {
     listen "127.0.0.1:8080"
 }
 
@@ -268,7 +268,7 @@ routes {
 
 ```kdl
 // local-prod.kdl - Production-like but local
-server {
+system {
     listen "0.0.0.0:8080"
 }
 

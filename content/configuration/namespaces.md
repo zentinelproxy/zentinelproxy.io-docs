@@ -424,7 +424,7 @@ namespace "web" {
 
 ```kdl
 // Global configuration
-server {
+system {
     worker-threads 0
     trace-id-format "tinyflake"
 }

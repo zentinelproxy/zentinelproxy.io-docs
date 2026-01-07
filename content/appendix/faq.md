@@ -132,7 +132,7 @@ listeners {
             cert-file "/path/to/server.crt"
             key-file "/path/to/server.key"
             ca-file "/path/to/client-ca.crt"
-            client-auth true
+            client-auth #true
         }
     }
 }
@@ -226,7 +226,7 @@ Set `worker-threads 0` (the default) to auto-detect based on CPU cores. For most
 Adjust limits in the configuration:
 
 ```kdl
-server {
+system {
     max-connections 50000
 }
 

@@ -290,7 +290,7 @@ networks:
 ### config/sentinel.kdl
 
 ```kdl
-server {
+system {
     listen "0.0.0.0:8080"
     listen "0.0.0.0:8443" {
         tls {

@@ -26,7 +26,7 @@ Sentinel uses KDL (a human-friendly document language) for configuration. This s
 ## Quick Example
 
 ```kdl
-server {
+system {
     worker-threads 0
     max-connections 10000
     trace-id-format "tinyflake"

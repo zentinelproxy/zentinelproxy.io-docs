@@ -290,6 +290,17 @@ When memory limits are reached:
 ### Development
 
 ```kdl
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
 limits {
     // Permissive for testing
     max-header-size-bytes 16384
@@ -298,8 +309,23 @@ limits {
     max-in-flight-requests 100000
 
     // No rate limits
-    max-requests-per-second-global null
-    max-requests-per-second-per-client null
+    max-requests-per-second-global #null
+    max-requests-per-second-per-client #null
+}
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
+    }
 }
 ```
 

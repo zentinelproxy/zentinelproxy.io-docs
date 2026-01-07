@@ -457,7 +457,7 @@ agent "my-agent" type="custom" {
     unix-socket "/tmp/my-agent.sock"
     events "request_headers"
     config {
-        enabled true
+        enabled #true
         threshold 100
         allowed-paths "/health" "/metrics" "/api/public"
     }

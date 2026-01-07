@@ -36,7 +36,7 @@ Create `sentinel.kdl`:
 // Security Configuration
 // WAF, authentication, and rate limiting
 
-server {
+system {
     worker-threads 0
     graceful-shutdown-timeout-secs 30
 }
@@ -196,7 +196,7 @@ agents {
 
 observability {
     metrics {
-        enabled true
+        enabled #true
         address "0.0.0.0:9090"
     }
     logging {
@@ -221,8 +221,8 @@ sentinel-agent-waf \
     --socket /var/run/sentinel/waf.sock \
     --paranoia-level 1 \
     --block-mode true \
-    --sqli true \
-    --xss true \
+    --sqli #true \
+    --xss #true \
     --path-traversal true \
     --command-injection true &
 ```
@@ -427,12 +427,12 @@ kill -HUP $(pgrep sentinel-agent-denylist)
 
 ### Enable Detect-Only Mode
 
-For investigating false positives without blocking:
+For investigating #false positives without blocking:
 
 ```bash
 sentinel-agent-waf \
     --socket /var/run/sentinel/waf.sock \
-    --block-mode false &  # Detect only, don't block
+    --block-mode #false &  # Detect only, don't block
 ```
 
 Check logs for `X-WAF-Detected` headers.

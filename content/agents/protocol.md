@@ -351,7 +351,7 @@ For Unix socket transport, messages use JSON with the following schema:
   "request_body_size": 1024,
   "response_body_size": 2048,
   "upstream_attempts": 1,
-  "error": null
+  "error": #null
 }
 ```
 

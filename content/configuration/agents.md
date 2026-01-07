@@ -219,11 +219,11 @@ Configure body inspection globally via the `waf` block:
 ```kdl
 waf {
     body-inspection {
-        inspect-request-body true
-        inspect-response-body false
+        inspect-request-body #true
+        inspect-response-body #false
         max-body-inspection-bytes 1048576   // 1MB
         content-types "application/json" "application/x-www-form-urlencoded" "text/xml"
-        decompress true
+        decompress #true
         max-decompression-ratio 100.0
     }
 }
@@ -267,7 +267,7 @@ When `decompress` is enabled, Sentinel automatically decompresses request bodies
 ```kdl
 waf {
     body-inspection {
-        decompress true
+        decompress #true
         max-decompression-ratio 50.0    // Stricter limit for sensitive routes
     }
 }
@@ -298,10 +298,10 @@ Result labels: `success`, `ratio_exceeded`, `size_exceeded`, `invalid_data`, `io
 ```kdl
 waf {
     body-inspection {
-        inspect-request-body true
+        inspect-request-body #true
         max-body-inspection-bytes 1048576
         content-types "application/json" "application/xml" "text/plain"
-        decompress true
+        decompress #true
         max-decompression-ratio 100.0
     }
 }

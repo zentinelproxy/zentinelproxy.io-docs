@@ -41,7 +41,7 @@ Create `sentinel.kdl`:
 // Distributed Tracing Configuration
 // Traces all requests to Jaeger
 
-server {
+system {
     worker-threads 0
     trace-id-format "tinyflake"
 }
@@ -229,7 +229,7 @@ datasources:
 ### sentinel.kdl (for Tempo)
 
 ```kdl
-server {
+system {
     worker-threads 0
     trace-id-format "tinyflake"
 }

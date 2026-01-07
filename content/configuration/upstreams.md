@@ -96,6 +96,17 @@ Simple sequential rotation. Good for homogeneous backends.
 ### Weighted
 
 ```kdl
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
 upstream "backend" {
     targets {
         target { address "10.0.1.1:8080" weight=3 }  // 50% traffic
@@ -103,6 +114,21 @@ upstream "backend" {
         target { address "10.0.1.3:8080" weight=1 }  // 17% traffic
     }
     load-balancing "weighted"
+}
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
+    }
 }
 ```
 
@@ -641,16 +667,43 @@ Resolves A/AAAA records and uses all IPs as targets.
 ### Consul Discovery
 
 ```kdl
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
 upstream "backend" {
     discovery "consul" {
         address "http://consul.internal:8500"
         service "backend-api"
         datacenter "dc1"
-        only-passing true
+        only-passing #true
         refresh-interval 10
         tag "production"
     }
 }
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
+    }
+}
+
 ```
 
 Discovers backends from Consul's service catalog.

@@ -37,7 +37,7 @@ Create `sentinel.kdl`:
 // Load Balancer Configuration
 // Distributes traffic across multiple backends
 
-server {
+system {
     worker-threads 0
     graceful-shutdown-timeout-secs 60
 }
@@ -126,7 +126,7 @@ upstreams {
 
 observability {
     metrics {
-        enabled true
+        enabled #true
         address "0.0.0.0:9090"
     }
     logging {
@@ -153,6 +153,17 @@ Distributes requests evenly across all healthy backends.
 ### Weighted Round Robin
 
 ```kdl
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
 upstreams {
     upstream "app" {
         targets {
@@ -161,6 +172,13 @@ upstreams {
             target { address "10.0.1.12:3000" weight 50 }   // 25% traffic
         }
         load-balancing "weighted-round-robin"
+    }
+}
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
     }
 }
 ```
@@ -351,7 +369,7 @@ curl http://localhost:9090/metrics | grep -E "sentinel_(upstream|connections)"
 upstreams {
     upstream "app" {
         connection-draining {
-            enabled true
+            enabled #true
             timeout-secs 30
         }
     }
@@ -366,7 +384,7 @@ Allows in-flight requests to complete before removing unhealthy targets.
 upstreams {
     upstream "app" {
         slow-start {
-            enabled true
+            enabled #true
             duration-secs 60
         }
     }

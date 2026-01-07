@@ -537,7 +537,7 @@ In Grafana, you can then jump from logs to traces using the trace ID.
 Configure the format for request trace IDs:
 
 ```kdl
-server {
+system {
     trace-id-format "tinyflake"   // or "uuid"
 }
 ```
@@ -550,7 +550,7 @@ server {
 ## Complete Example
 
 ```kdl
-server {
+system {
     worker-threads 0
     trace-id-format "tinyflake"
 }

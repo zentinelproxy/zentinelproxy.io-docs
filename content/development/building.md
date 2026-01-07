@@ -197,7 +197,7 @@ strip = true         # Strip symbols
 [profile.release-debug]
 inherits = "release"
 debug = true         # Include debug symbols
-strip = false
+strip = #false
 ```
 
 Build with custom profile:

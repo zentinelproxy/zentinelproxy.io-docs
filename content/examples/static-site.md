@@ -20,7 +20,7 @@ Create `sentinel.kdl`:
 // Static Site Configuration
 // High-performance static file serving
 
-server {
+system {
     worker-threads 0
     graceful-shutdown-timeout-secs 30
 }
@@ -62,7 +62,7 @@ routes {
         static-files {
             root "/var/www/site"
             cache-control "public, max-age=31536000, immutable"
-            compress true
+            compress #true
         }
     }
 
@@ -76,7 +76,7 @@ routes {
         static-files {
             root "/var/www/site"
             cache-control "public, max-age=86400"
-            compress true
+            compress #true
         }
     }
 
@@ -131,7 +131,7 @@ routes {
             index "index.html"
             fallback "index.html"  // SPA routing
             cache-control "no-cache"
-            compress true
+            compress #true
         }
         policies {
             response-headers {
@@ -148,12 +148,20 @@ routes {
 
 observability {
     metrics {
-        enabled true
+        enabled #true
         address "0.0.0.0:9090"
     }
     logging {
         level "info"
         format "json"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
     }
 }
 ```
@@ -354,7 +362,7 @@ routes {
 ```kdl
 static-files {
     root "/var/www/files"
-    directory-listing true
+    directory-listing #true
 }
 ```
 
@@ -397,7 +405,7 @@ route "spa" {
 ```kdl
 static-files {
     root "/var/www/site"
-    compress true
+    compress #true
     compression-level 6
     compression-types "text/html" "text/css" "application/javascript" "application/json"
 }

@@ -144,6 +144,17 @@ upstreams {
 Protect web applications from OWASP Top 10 attacks including SQL injection, XSS, and path traversal.
 
 ```kdl
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
 routes {
     route "web" {
         matches {
@@ -160,11 +171,19 @@ agents {
         events "request_headers" "request_body"
         config {
             paranoia-level 2
-            sqli true
-            xss true
+            sqli #true
+            xss #true
             path-traversal true
             block-mode true
             exclude-paths "/health" "/metrics"
+        }
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
         }
     }
 }
@@ -180,6 +199,17 @@ agents {
 Secure AI API traffic with prompt injection detection, PII filtering, and usage controls.
 
 ```kdl
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
 routes {
     route "ai" {
         matches {
@@ -195,14 +225,23 @@ agents {
         unix-socket "/var/run/sentinel/ai-gateway.sock"
         events "request_headers" "request_body"
         config {
-            detect-prompt-injection true
-            detect-pii true
+            detect-prompt-injection #true
+            detect-pii #true
             allowed-models "gpt-4" "gpt-3.5-turbo"
             max-tokens 4096
             rate-limit-tokens 100000
         }
     }
 }
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
+    }
+}
+
 ```
 
 **Benefits:**
@@ -215,6 +254,17 @@ agents {
 Serve static files with automatic compression while proxying API requests to backends.
 
 ```kdl
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
 routes {
     route "static" {
         priority "high"
@@ -223,7 +273,7 @@ routes {
         }
         service-type "static" {
             root "/var/www/html"
-            compression true
+            compression #true
             cache-control "public, max-age=86400"
         }
     }
@@ -246,6 +296,15 @@ routes {
         }
     }
 }
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
+    }
+}
+
 ```
 
 **Benefits:**

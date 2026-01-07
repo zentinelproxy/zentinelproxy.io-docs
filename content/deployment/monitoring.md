@@ -12,7 +12,7 @@ Sentinel exposes Prometheus metrics on the configured address:
 ```kdl
 observability {
     metrics {
-        enabled true
+        enabled #true
         address "0.0.0.0:9090"
         path "/metrics"
     }
@@ -388,13 +388,39 @@ spec:
 ### Structured Logging
 
 ```kdl
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
 observability {
     logging {
         level "info"
         format "json"
         access-log {
-            enabled true
+            enabled #true
             fields ["method" "path" "status" "latency" "upstream" "client_ip"]
+        }
+    }
+}
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
         }
     }
 }
@@ -450,14 +476,40 @@ scrape_configs:
 ### OpenTelemetry Configuration
 
 ```kdl
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
 observability {
     tracing {
-        enabled true
+        enabled #true
         service-name "sentinel"
         endpoint "http://jaeger:4317"
         protocol "grpc"
         sample-rate 0.1  # 10% sampling
         propagation "w3c"
+    }
+}
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
     }
 }
 ```

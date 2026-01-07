@@ -133,6 +133,17 @@ listener "https" {
 ### TLS Options Reference
 
 ```kdl
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
 tls {
     // Required
     cert-file "/path/to/cert.pem"
@@ -144,14 +155,29 @@ tls {
 
     // Client authentication (mTLS)
     ca-file "/path/to/ca.pem"
-    client-auth true
+    client-auth #true
 
     // Performance
-    session-resumption true  // TLS session tickets
-    ocsp-stapling true       // OCSP stapling
+    session-resumption #true  // TLS session tickets
+    ocsp-stapling #true       // OCSP stapling
 
     // Cipher control (optional)
     cipher-suites "TLS_AES_256_GCM_SHA384" "TLS_CHACHA20_POLY1305_SHA256"
+}
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
+    }
 }
 ```
 
@@ -185,7 +211,7 @@ listener "internal-api" {
         cert-file "/etc/sentinel/certs/server.crt"
         key-file "/etc/sentinel/certs/server.key"
         ca-file "/etc/sentinel/certs/client-ca.crt"
-        client-auth true
+        client-auth #true
     }
 }
 ```
@@ -195,9 +221,37 @@ Client certificates are validated against the CA certificate. Failed validation 
 ### Session Resumption
 
 ```kdl
-tls {
-    session-resumption true  // Default: true
+system {
+    worker-threads 0
 }
+
+listeners {
+    listener "http" {
+
+        tls {
+            session-resumption #true  // Default: true
+        }
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
+    }
+}
+
 ```
 
 Enables TLS session tickets for faster reconnections. Reduces handshake overhead for returning clients.
@@ -207,9 +261,37 @@ Enables TLS session tickets for faster reconnections. Reduces handshake overhead
 ### OCSP Stapling
 
 ```kdl
-tls {
-    ocsp-stapling true  // Default: true
+system {
+    worker-threads 0
 }
+
+listeners {
+    listener "http" {
+
+        tls {
+            ocsp-stapling #true  // Default: true
+        }
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
+    }
+}
+
 ```
 
 Server fetches and staples OCSP responses, proving certificate validity without clients contacting the CA.
@@ -391,7 +473,7 @@ listeners {
             cert-file "/etc/sentinel/certs/internal.crt"
             key-file "/etc/sentinel/certs/internal.key"
             ca-file "/etc/sentinel/certs/internal-ca.crt"
-            client-auth true
+            client-auth #true
         }
     }
 }
@@ -442,23 +524,28 @@ kill -HUP $(cat /var/run/sentinel.pid)
 ## Complete Example
 
 ```kdl
+system {
+    worker-threads 0
+}
+
 listeners {
     // Production HTTPS with modern TLS
     listener "https" {
+
+                tls {
+                    cert-file "/etc/sentinel/certs/fullchain.crt"
+                    key-file "/etc/sentinel/certs/server.key"
+                    min-version "1.2"
+                    max-version "1.3"
+                    ocsp-stapling #true
+                    session-resumption #true
+                }
         address "0.0.0.0:443"
         protocol "https"
         request-timeout-secs 60
         keepalive-timeout-secs 120
         max-concurrent-streams 200
 
-        tls {
-            cert-file "/etc/sentinel/certs/fullchain.crt"
-            key-file "/etc/sentinel/certs/server.key"
-            min-version "1.2"
-            max-version "1.3"
-            ocsp-stapling true
-            session-resumption true
-        }
     }
 
     // HTTP to HTTPS redirect
@@ -476,6 +563,22 @@ listeners {
         request-timeout-secs 10
     }
 }
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
+    }
+}
+
 ```
 
 ## Default Values
@@ -523,7 +626,7 @@ sudo sentinel
 sudo setcap cap_net_bind_service=+ep /usr/local/bin/sentinel
 
 # Option 3: Use user/group in config
-server {
+system {
     user "sentinel"
     group "sentinel"
 }

@@ -71,16 +71,43 @@ upstream "api-service" {
 Native integration with Consul's service catalog and health checking.
 
 ```kdl
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
 upstream "backend" {
     discovery "consul" {
         address "http://consul.service.consul:8500"
         service "backend-api"
         datacenter "dc1"
-        only-passing true
+        only-passing #true
         tag "production"
         refresh-interval 10
     }
 }
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
+    }
+}
+
 ```
 
 | Option | Default | Description |
@@ -97,19 +124,47 @@ upstream "backend" {
 When using Consul Connect (service mesh), Sentinel can discover services but connects directly (not through Connect proxies). For full Connect mTLS:
 
 ```kdl
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+            tls {
+                // Use Consul-provisioned certificates
+                client-cert "/etc/consul/certs/client.crt"
+                client-key "/etc/consul/certs/client.key"
+                ca-cert "/etc/consul/certs/ca.crt"
+            }
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
 upstream "secure-backend" {
     discovery "consul" {
         address "http://consul:8500"
         service "backend"
-        only-passing true
+        only-passing #true
     }
-    tls {
-        // Use Consul-provisioned certificates
-        client-cert "/etc/consul/certs/client.crt"
-        client-key "/etc/consul/certs/client.key"
-        ca-cert "/etc/consul/certs/ca.crt"
+
+}
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
     }
 }
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
+    }
+}
+
 ```
 
 ### Kubernetes Endpoint Discovery
@@ -398,7 +453,7 @@ Sentinel exposes metrics compatible with mesh observability:
 ```kdl
 observability {
     metrics {
-        enabled true
+        enabled #true
         endpoint "/metrics"
     }
 }

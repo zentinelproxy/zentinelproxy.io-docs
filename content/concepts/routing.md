@@ -549,11 +549,53 @@ matches { path-regex "/users/.*?/profile/.*" }
 Leave gaps for future routes:
 
 ```kdl
-route "critical" { priority 1000 }
-route "high"     { priority 100 }   // Gap allows 101-999
-route "normal"   { priority 50 }    // Gap allows 51-99
-route "low"      { priority 10 }    // Gap allows 11-49
-route "default"  { priority 1 }
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
+// Example priority values with gaps for future insertion
+routes {
+    route "critical" {
+        priority 1000
+        matches { path-prefix "/critical" }
+        upstream "backend"
+    }
+    route "high" {
+        priority 100    // Gap allows 101-999
+        matches { path-prefix "/high" }
+        upstream "backend"
+    }
+    route "normal" {
+        priority 50     // Gap allows 51-99
+        matches { path-prefix "/normal" }
+        upstream "backend"
+    }
+    route "low" {
+        priority 10     // Gap allows 11-49
+        matches { path-prefix "/low" }
+        upstream "backend"
+    }
+    route "default" {
+        priority 1
+        matches { path-prefix "/" }
+        upstream "backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
+    }
+}
 ```
 
 ### 5. Avoid Overlapping Routes
