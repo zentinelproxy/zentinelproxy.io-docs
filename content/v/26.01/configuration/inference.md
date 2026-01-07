@@ -474,8 +474,36 @@ sentinel_inference_queue_depth_requests{upstream="llm-pool",target="gpu-1:8080"}
 ### Load Balancing
 
 1. **Use `least_tokens_queued`** for inference upstreams with varying request sizes
-2. **Enable health checks** on `/v1/models` or similar endpoints
+2. **Enable inference health checks** to verify model availability
 3. **Set appropriate timeouts**: LLM requests can take 30-120 seconds
+
+### Health Checks
+
+Use the `inference` health check type for LLM backends:
+
+```kdl
+upstream "llm-pool" {
+    targets {
+        target { address "gpu-1:8080" }
+        target { address "gpu-2:8080" }
+    }
+    load-balancing "least_tokens_queued"
+    health-check {
+        type "inference" {
+            endpoint "/v1/models"
+            expected-models "gpt-4" "llama-3"
+        }
+        interval-secs 30
+        timeout-secs 10
+    }
+}
+```
+
+The inference health check:
+- Probes the models endpoint (default: `/v1/models`)
+- Expects HTTP 200 response
+- Optionally verifies expected models are available
+- Marks target unhealthy if models are missing
 
 ### Provider Selection
 

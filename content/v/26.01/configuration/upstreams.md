@@ -221,7 +221,7 @@ upstream "backend" {
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `type` | Required | Check type (`http`, `tcp`, `grpc`) |
+| `type` | Required | Check type (`http`, `tcp`, `grpc`, `inference`) |
 | `interval-secs` | `10` | Time between checks |
 | `timeout-secs` | `5` | Check timeout |
 | `healthy-threshold` | `2` | Successes to mark healthy |
@@ -256,6 +256,59 @@ upstream "grpc-service" {
 ```
 
 Uses the gRPC Health Checking Protocol.
+
+### Inference Health Check
+
+```kdl
+upstream "llm-pool" {
+    health-check {
+        type "inference" {
+            endpoint "/v1/models"
+            expected-models "gpt-4" "gpt-3.5-turbo"
+        }
+        interval-secs 30
+        timeout-secs 10
+    }
+}
+```
+
+Designed for LLM/AI inference backends. Probes the models endpoint to verify:
+
+1. The inference server is responding (HTTP 200)
+2. Expected models are available (optional)
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `endpoint` | `/v1/models` | Endpoint to probe |
+| `expected-models` | None | Model names that must be present |
+
+**Use cases:**
+- OpenAI-compatible APIs (vLLM, LocalAI, Ollama, etc.)
+- Self-hosted LLM inference servers
+- Model availability verification before routing
+
+**Example with least_tokens_queued:**
+
+```kdl
+upstream "llm-pool" {
+    targets {
+        target { address "gpu-1.internal:8080" }
+        target { address "gpu-2.internal:8080" }
+        target { address "gpu-3.internal:8080" }
+    }
+    load-balancing "least_tokens_queued"
+    health-check {
+        type "inference" {
+            endpoint "/v1/models"
+        }
+        interval-secs 30
+        timeout-secs 10
+        unhealthy-threshold 2
+    }
+}
+```
+
+See [Inference Configuration](../inference/) for complete token rate limiting setup.
 
 ### Health Check Behavior
 
