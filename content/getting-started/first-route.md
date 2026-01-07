@@ -243,43 +243,32 @@ listeners {
     }
 }
 
-route "api" {
-    matches { path-prefix "/api/" }
-    upstream "api-backend"
+routes {
+    route "api" {
+        matches { path-prefix "/api/" }
+        upstream "api-backend"
 
-    policies {
-        // Timeouts
-        timeout-secs 30
+        policies {
+            timeout-secs 30
+            max-body-size "10MB"
+            failure-mode "closed"
 
-        // Body limits
-        max-body-size "10MB"
-
-        // Failure behavior
-        failure-mode "closed"      // Block on errors (default)
-        // failure-mode "open"     // Allow on errors
-
-        // Request header manipulation
-        request-headers {
-            set {
-                "X-Forwarded-Proto" "https"
+            request-headers {
+                set {
+                    "X-Forwarded-Proto" "https"
+                }
+                remove "X-Internal-Header"
             }
-            add {
-                "X-Request-ID" "${request_id}"
-            }
-            remove ["X-Internal-Header"]
-        }
 
-        // Response header manipulation
-        response-headers {
-            set {
-                "X-Content-Type-Options" "nosniff"
-                "X-Frame-Options" "DENY"
+            response-headers {
+                set {
+                    "X-Content-Type-Options" "nosniff"
+                    "X-Frame-Options" "DENY"
+                }
             }
         }
     }
-}
 
-routes {
     route "default" {
         matches { path-prefix "/" }
         upstream "backend"
