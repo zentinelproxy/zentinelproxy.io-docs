@@ -248,7 +248,7 @@ routes {
             path-prefix "/api/"
         }
         upstream "api-backend"
-        agents ["auth" "ratelimit"]
+        agents "auth" "ratelimit"
     }
 
     route "health" {
@@ -276,7 +276,7 @@ agents {
         transport "unix_socket" {
             path "/var/run/sentinel/auth.sock"
         }
-        events ["request_headers"]
+        events "request_headers"
         timeout-ms 50
     }
 
@@ -284,7 +284,7 @@ agents {
         transport "unix_socket" {
             path "/var/run/sentinel/ratelimit.sock"
         }
-        events ["request_headers"]
+        events "request_headers"
         timeout-ms 20
     }
 }
@@ -312,6 +312,7 @@ observability {
         address "0.0.0.0:9090"
     }
 }
+
 ```
 
 ## Tracing with Agents
