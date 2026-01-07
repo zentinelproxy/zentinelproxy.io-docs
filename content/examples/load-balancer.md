@@ -167,9 +167,9 @@ listeners {
 upstreams {
     upstream "app" {
         targets {
-            target { address "10.0.1.10:3000" weight 100 }  // 50% traffic
-            target { address "10.0.1.11:3000" weight 50 }   // 25% traffic
-            target { address "10.0.1.12:3000" weight 50 }   // 25% traffic
+            target { address "10.0.1.10:3000" weight 100 }
+            target { address "10.0.1.11:3000" weight 50 }
+            target { address "10.0.1.12:3000" weight 50 }
         }
         load-balancing "weighted-round-robin"
     }
@@ -181,6 +181,7 @@ routes {
         upstream "backend"
     }
 }
+
 ```
 
 ### Least Connections

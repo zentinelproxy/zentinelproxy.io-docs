@@ -52,11 +52,9 @@ listeners {
             key-file "/etc/sentinel/certs/api.key"
         }
     }
-    // HTTP redirect to HTTPS
     listener "http" {
         address "0.0.0.0:8080"
         protocol "http"
-        redirect-https true
     }
 }
 

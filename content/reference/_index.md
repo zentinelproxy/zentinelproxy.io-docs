@@ -11,11 +11,12 @@ Quick reference documentation for Sentinel operations and troubleshooting.
 
 | Guide | Description |
 |-------|-------------|
+| [Directive Index](directives/) | Alphabetical index of all configuration directives |
+| [Configuration Schema](config-schema/) | Quick reference for all config options |
 | [CLI Reference](cli/) | Command-line options and usage |
 | [Environment Variables](env-vars/) | Environment variable configuration |
 | [Error Codes](error-codes/) | HTTP status codes and error responses |
 | [Metrics Reference](metrics/) | Prometheus metrics for monitoring |
-| [Configuration Schema](config-schema/) | Quick reference for all config options |
 
 ## Quick Links
 

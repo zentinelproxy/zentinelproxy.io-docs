@@ -37,7 +37,6 @@ listeners {
     listener "http" {
         address "0.0.0.0:8080"
         protocol "http"
-        redirect-https true
     }
 }
 
@@ -164,6 +163,7 @@ upstreams {
         }
     }
 }
+
 ```
 
 ## Directory Structure

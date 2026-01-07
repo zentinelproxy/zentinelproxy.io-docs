@@ -107,15 +107,6 @@ listeners {
     }
 }
 
-upstream "backend" {
-    targets {
-        target { address "10.0.1.1:8080" weight=3 }  // 50% traffic
-        target { address "10.0.1.2:8080" weight=2 }  // 33% traffic
-        target { address "10.0.1.3:8080" weight=1 }  // 17% traffic
-    }
-    load-balancing "weighted"
-}
-
 routes {
     route "default" {
         matches { path-prefix "/" }
@@ -126,10 +117,14 @@ routes {
 upstreams {
     upstream "backend" {
         targets {
-            target { address "127.0.0.1:3000" }
+            target { address "10.0.1.1:8080" weight=3 }
+            target { address "10.0.1.2:8080" weight=2 }
+            target { address "10.0.1.3:8080" weight=1 }
         }
+        load-balancing "weighted"
     }
 }
+
 ```
 
 Traffic distributed proportionally to weights. Use for:
