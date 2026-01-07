@@ -236,7 +236,6 @@ routes {
             path "/ws"
             query-param name="token"
         }
-        agents ["auth" "ws-inspector"]
         upstream "ws-backend"
     }
 }
@@ -248,6 +247,7 @@ upstreams {
         }
     }
 }
+
 ```
 
 Client connection:
@@ -282,7 +282,6 @@ routes {
             path "/ws"
             header name="Cookie"
         }
-        agents ["auth" "ws-inspector"]
         upstream "ws-backend"
     }
 }
@@ -294,6 +293,7 @@ upstreams {
         }
     }
 }
+
 ```
 
 ## Socket.io Support

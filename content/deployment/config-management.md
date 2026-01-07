@@ -76,19 +76,19 @@ Use environment variables for dynamic values:
 
 ```kdl
 system {
-    worker-threads env("SENTINEL_WORKERS", "0")
+    worker-threads "0"
 }
 
 listeners {
     listener "https" {
-        address env("SENTINEL_LISTEN_ADDR", "0.0.0.0:8443")
+        address "0.0.0.0:8443"
     }
 }
 
 upstreams {
     upstream "backend" {
         targets {
-            target { address env("BACKEND_ADDR", "127.0.0.1:3000") }
+            target { address "127.0.0.1:3000" }
         }
     }
 }
@@ -99,6 +99,7 @@ routes {
         upstream "backend"
     }
 }
+
 ```
 
 ### Validation

@@ -8,12 +8,13 @@ Quick reference for all Sentinel configuration options.
 ## Top-Level Blocks
 
 ```kdl
-system { }       // Server settings
-listeners { }    // Network listeners
-routes { }       // Request routing
-upstreams { }    // Backend servers
-agents { }       // External processors
-limits { }       // Request limits
+system { }
+listeners { }
+routes { }
+upstreams { }
+agents { }
+limits { }
+
 ```
 
 ## Server Block

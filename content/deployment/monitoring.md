@@ -399,17 +399,6 @@ listeners {
     }
 }
 
-observability {
-    logging {
-        level "info"
-        format "json"
-        access-log {
-            enabled #true
-            fields ["method" "path" "status" "latency" "upstream" "client_ip"]
-        }
-    }
-}
-
 routes {
     route "default" {
         matches { path-prefix "/" }
@@ -424,6 +413,7 @@ upstreams {
         }
     }
 }
+
 ```
 
 ### Log Output
@@ -487,17 +477,6 @@ listeners {
     }
 }
 
-observability {
-    tracing {
-        enabled #true
-        service-name "sentinel"
-        endpoint "http://jaeger:4317"
-        protocol "grpc"
-        sample-rate 0.1  # 10% sampling
-        propagation "w3c"
-    }
-}
-
 routes {
     route "default" {
         matches { path-prefix "/" }
@@ -512,6 +491,7 @@ upstreams {
         }
     }
 }
+
 ```
 
 ### Jaeger Setup

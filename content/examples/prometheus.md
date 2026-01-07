@@ -86,7 +86,7 @@ observability {
         format "json"
         access-log {
             enabled #true
-            fields ["method" "path" "status" "latency" "upstream" "client_ip"]
+            fields "method" "path" "status" "latency" "upstream" "client_ip"
         }
     }
 
@@ -100,6 +100,7 @@ observability {
         propagation "w3c"  // W3C Trace Context
     }
 }
+
 ```
 
 ## Prometheus Setup
