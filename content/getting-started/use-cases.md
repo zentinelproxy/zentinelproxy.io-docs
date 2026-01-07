@@ -161,27 +161,24 @@ routes {
             path-prefix "/"
         }
         upstream "web-backend"
-        filters "waf-filter"
     }
 }
 
 agents {
-    agent "waf" type="waf" {
-        unix-socket "/var/run/sentinel/waf.sock"
-        events "request_headers" "request_body"
-        config {
-            paranoia-level 2
-            sqli #true
-            xss #true
-            path-traversal true
-            block-mode true
-            exclude-paths "/health" "/metrics"
+    agent "waf" {
+        type "waf"
+        transport "unix_socket" {
+            path "/var/run/sentinel/waf.sock"
         }
+        events "request_headers" "request_body"
+        timeout-ms 200
+        failure-mode "closed"
+        max-request-body-bytes 1048576
     }
 }
 
 upstreams {
-    upstream "backend" {
+    upstream "web-backend" {
         targets {
             target { address "127.0.0.1:3000" }
         }

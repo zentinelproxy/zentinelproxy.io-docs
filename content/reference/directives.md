@@ -4,68 +4,90 @@ weight = 1
 description = "Complete reference for all Sentinel configuration directives"
 +++
 
-Complete reference for all Sentinel configuration directives. Each entry includes syntax, context, default values, and usage examples.
+Complete reference for all Sentinel configuration directives, verified against the source code. Each entry includes syntax, context, default values, and usage examples.
 
 ---
 
-### `add`
+## Root-Level Blocks
 
-Adds a header to the request or response without removing existing values. If the header already exists, the new value is appended.
+### `schema-version`
 
-**Context:** `request-headers`, `response-headers`
+Configuration schema version for compatibility checking. Sentinel validates that the config matches the expected schema version.
+
+**Context:** root
+**Default:** `"1.0"`
 
 ```kdl
-policies {
-    request-headers {
-        add { "X-Request-ID" "abc123" }
-    }
-    response-headers {
-        add { "X-Served-By" "sentinel" }
-    }
-}
+schema-version "1.0"
 ```
 
-See also: [`set`](#set), [`remove`](#remove)
-
 ---
 
-### `address`
+### `system`
 
-Specifies the network address to bind (for listeners) or connect to (for upstream targets). Format is `host:port` where host can be an IP address or `0.0.0.0` to bind all interfaces.
+Top-level block for server-wide configuration including worker threads, connections, and process management. The older name `server` is deprecated but still supported.
 
-**Context:** `listener`, `target`
+**Context:** root
 
 ```kdl
-listener "http" {
-    address "0.0.0.0:8080"
-}
-
-target {
-    address "10.0.1.5:3000"
+system {
+    worker-threads 4
+    max-connections 10000
+    graceful-shutdown-timeout-secs 30
+    auto-reload #true
 }
 ```
 
 ---
 
-### `agent`
+### `listeners`
 
-Defines an external processing agent that can intercept and modify requests/responses. Agents communicate via Unix sockets or gRPC and can implement authentication, rate limiting, WAF, or custom logic.
+Top-level block containing all listener definitions. At least one listener is required for Sentinel to accept traffic.
 
-**Context:** `agents`
+**Context:** root
 
 ```kdl
-agents {
-    agent "auth" {
-        type "auth"
-        transport "unix_socket" { path "/var/run/auth-agent.sock" }
-        timeout-ms 50
-        failure-mode "closed"
-        events "on_request_headers"
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
     }
 }
 ```
 
-See: [Agent Configuration](@/configuration/agents.md)
+---
+
+### `routes`
+
+Top-level block containing all route definitions. Routes are evaluated in priority order until a match is found. At least one route is required.
+
+**Context:** root
+
+```kdl
+routes {
+    route "api" {
+        matches { path-prefix "/api/" }
+        upstream "backend"
+    }
+}
+```
+
+---
+
+### `upstreams`
+
+Top-level block containing all upstream definitions. Upstreams are reusable groups of backend servers.
+
+**Context:** root
+
+```kdl
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "10.0.1.1:8080" }
+        }
+    }
+}
+```
 
 ---
 
@@ -77,322 +99,186 @@ Top-level block containing all agent definitions. Agents are external services t
 
 ```kdl
 agents {
-    agent "auth" { }
-    agent "ratelimit" { }
+    agent "auth" {
+        type "auth"
+        transport {
+            type "unix_socket"
+            path "/var/run/auth.sock"
+        }
+    }
 }
 ```
 
 ---
 
-### `auto-reload`
+### `filters`
 
-When enabled, Sentinel watches the configuration file for changes and automatically reloads when modifications are detected. Uses filesystem notifications for efficiency.
+Top-level block containing filter definitions. Filters modify requests/responses and can be applied to routes.
+
+**Context:** root
+
+```kdl
+filters {
+    filter "rate-limit" {
+        type "rate-limit"
+        max-rps 100
+        burst 200
+    }
+}
+```
+
+---
+
+### `waf`
+
+Top-level block for Web Application Firewall configuration.
+
+**Context:** root
+
+```kdl
+waf {
+    engine "coraza"
+    mode "prevention"
+    audit-log #true
+    ruleset {
+        crs-version "3.3.4"
+        paranoia-level 1
+    }
+}
+```
+
+---
+
+### `limits`
+
+Top-level block for global resource limits. Protects against resource exhaustion.
+
+**Context:** root
+
+```kdl
+limits {
+    max-body-size-bytes 10485760
+    max-header-size-bytes 8192
+    max-header-count 100
+    max-connections-per-client 100
+}
+```
+
+---
+
+### `cache`
+
+Top-level block for global HTTP response caching configuration.
+
+**Context:** root
+
+```kdl
+cache {
+    enabled #true
+    backend "memory"
+    max-size-bytes 104857600
+}
+```
+
+---
+
+### `observability`
+
+Top-level block for metrics, logging, and tracing configuration.
+
+**Context:** root
+
+```kdl
+observability {
+    metrics {
+        enabled #true
+        address "0.0.0.0:9090"
+        path "/metrics"
+    }
+    logging {
+        level "info"
+        format "json"
+    }
+}
+```
+
+---
+
+### `rate-limits`
+
+Top-level block for global rate limiting defaults.
+
+**Context:** root
+
+```kdl
+rate-limits {
+    default-rps 100
+    default-burst 200
+    key "client-ip"
+}
+```
+
+---
+
+### `namespaces`
+
+Top-level block for namespace-based configuration isolation.
+
+**Context:** root
+
+```kdl
+namespaces {
+    namespace "api" {
+        routes { }
+        upstreams { }
+    }
+}
+```
+
+---
+
+## System Directives
+
+### `worker-threads`
+
+Number of worker threads for request processing. Set to 0 for automatic detection based on CPU cores.
 
 **Context:** `system`
-**Default:** `#false`
+**Default:** `0` (auto-detect)
 
 ```kdl
 system {
-    auto-reload #true
+    worker-threads 4
 }
 ```
 
 ---
 
-### `backoff-base-ms`
+### `max-connections`
 
-Initial delay in milliseconds before the first retry attempt. Subsequent retries use exponential backoff starting from this value.
+Maximum number of simultaneous connections server-wide.
 
-**Context:** `retry-policy`
-**Default:** `100`
-
-```kdl
-retry-policy {
-    backoff-base-ms 200
-    backoff-max-ms 5000
-}
-```
-
----
-
-### `backoff-max-ms`
-
-Maximum delay in milliseconds between retry attempts. The exponential backoff will not exceed this value regardless of retry count.
-
-**Context:** `retry-policy`
+**Context:** `system`
 **Default:** `10000`
 
 ```kdl
-retry-policy {
-    backoff-base-ms 100
-    backoff-max-ms 3000
+system {
+    max-connections 50000
 }
 ```
 
 ---
 
-### `buffer-requests`
+### `graceful-shutdown-timeout-secs`
 
-When enabled, Sentinel reads the entire request body into memory before forwarding to the upstream. Required for request body inspection or when the upstream doesn't support chunked encoding.
+Maximum time in seconds to wait for in-flight requests to complete during shutdown.
 
-**Context:** `policies`
-**Default:** `#false`
-
-```kdl
-policies {
-    buffer-requests #true
-    max-body-size "5MB"
-}
-```
-
----
-
-### `buffer-responses`
-
-When enabled, Sentinel reads the entire response body into memory before sending to the client. Useful for response transformation or when consistent Content-Length headers are required.
-
-**Context:** `policies`
-**Default:** `#false`
+**Context:** `system`
+**Default:** `30`
 
 ```kdl
-policies {
-    buffer-responses #true
-}
-```
-
----
-
-### `builtin-handler`
-
-Specifies a built-in handler for the route instead of proxying to an upstream. Available handlers: `health` (health check endpoint), `metrics` (Prometheus metrics), `ready` (readiness probe).
-
-**Context:** `route`
-
-```kdl
-route "health" {
-    matches { path "/health" }
-    service-type "builtin"
-    builtin-handler "health"
-}
-```
-
----
-
-### `burst`
-
-Maximum number of requests allowed to exceed the rate limit in a short period. Allows temporary spikes while maintaining the average rate over time.
-
-**Context:** `rate-limit`
-**Default:** `0`
-
-```kdl
-rate-limit {
-    requests-per-second 100
-    burst 500
-    key "client_ip"
-}
-```
-
----
-
-### `ca-cert`
-
-Path to CA certificate file for verifying upstream server certificates. Used when connecting to upstreams over TLS with custom or private CAs.
-
-**Context:** `tls` (upstream)
-
-```kdl
-upstream "backend" {
-    tls {
-        ca-cert "/etc/sentinel/ca.pem"
-    }
-}
-```
-
----
-
-### `ca-file`
-
-Path to CA certificate file for verifying client certificates. Required when `client-auth` is enabled for mutual TLS (mTLS) authentication.
-
-**Context:** `tls` (listener)
-
-```kdl
-listener "https" {
-    tls {
-        cert-file "/etc/sentinel/server.crt"
-        key-file "/etc/sentinel/server.key"
-        ca-file "/etc/sentinel/client-ca.pem"
-        client-auth #true
-    }
-}
-```
-
----
-
-### `cache-control`
-
-Sets the Cache-Control header for static file responses. Controls browser and CDN caching behavior for served files.
-
-**Context:** `static-files`
-
-```kdl
-static-files {
-    root "/var/www"
-    cache-control "public, max-age=86400, immutable"
-}
-```
-
----
-
-### `cert-file`
-
-Path to the TLS certificate file in PEM format. For certificate chains, the file should contain the server certificate followed by intermediate certificates.
-
-**Context:** `tls` (listener)
-
-```kdl
-listener "https" {
-    address "0.0.0.0:443"
-    protocol "https"
-    tls {
-        cert-file "/etc/sentinel/server.crt"
-        key-file "/etc/sentinel/server.key"
-    }
-}
-```
-
----
-
-### `cipher-suites`
-
-Restricts the allowed TLS cipher suites. If not specified, Sentinel uses secure defaults. Format varies by TLS implementation.
-
-**Context:** `tls` (listener)
-
-```kdl
-tls {
-    cipher-suites "TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1305_SHA256"
-}
-```
-
----
-
-### `circuit-breaker`
-
-Configures circuit breaker behavior to prevent cascading failures. When failure threshold is reached, the circuit opens and requests fail fast without attempting the upstream.
-
-**Context:** `route`, `agent`
-
-```kdl
-circuit-breaker {
-    failure-threshold 5
-    success-threshold 2
-    timeout-seconds 30
-    half-open-max-requests 3
-}
-```
-
----
-
-### `client-auth`
-
-Enables mutual TLS (mTLS) requiring clients to present valid certificates signed by the configured CA. Essential for zero-trust architectures.
-
-**Context:** `tls` (listener)
-**Default:** `#false`
-
-```kdl
-tls {
-    cert-file "/etc/sentinel/server.crt"
-    key-file "/etc/sentinel/server.key"
-    ca-file "/etc/sentinel/client-ca.pem"
-    client-auth #true
-}
-```
-
----
-
-### `client-cert`
-
-Path to client certificate for mTLS when connecting to upstream servers that require client authentication.
-
-**Context:** `tls` (upstream)
-
-```kdl
-upstream "secure-backend" {
-    tls {
-        client-cert "/etc/sentinel/client.crt"
-        client-key "/etc/sentinel/client.key"
-    }
-}
-```
-
----
-
-### `client-key`
-
-Path to client private key for mTLS when connecting to upstream servers. Must correspond to the `client-cert` certificate.
-
-**Context:** `tls` (upstream)
-
-```kdl
-upstream "secure-backend" {
-    tls {
-        client-cert "/etc/sentinel/client.crt"
-        client-key "/etc/sentinel/client.key"
-    }
-}
-```
-
----
-
-### `compress`
-
-Enables automatic compression (gzip, brotli) for static file responses based on client Accept-Encoding headers and file types.
-
-**Context:** `static-files`
-**Default:** `#true`
-
-```kdl
-static-files {
-    root "/var/www"
-    compress #true
-}
-```
-
----
-
-### `connect-secs`
-
-Maximum time in seconds to establish a connection to an upstream target. Connections taking longer are aborted and the next target is tried.
-
-**Context:** `timeouts`
-**Default:** `10`
-
-```kdl
-timeouts {
-    connect-secs 5
-    request-secs 30
-}
-```
-
----
-
-### `connection-pool`
-
-Configures connection pooling to upstream targets. Reusing connections reduces latency and resource usage for high-throughput scenarios.
-
-**Context:** `upstream`
-
-```kdl
-upstream "backend" {
-    connection-pool {
-        max-connections 100
-        max-idle 20
-        idle-timeout-secs 60
-        max-lifetime-secs 3600
-    }
+system {
+    graceful-shutdown-timeout-secs 60
 }
 ```
 
@@ -400,7 +286,7 @@ upstream "backend" {
 
 ### `daemon`
 
-When enabled, Sentinel forks to the background after startup. Typically used with `pid-file` for process management in production deployments.
+When enabled, Sentinel forks to the background after startup.
 
 **Context:** `system`
 **Default:** `#false`
@@ -414,204 +300,23 @@ system {
 
 ---
 
-### `default-format`
+### `pid-file`
 
-Sets the default response format for error pages when the client's Accept header doesn't indicate a preference.
-
-**Context:** `error-pages`
-**Default:** `json`
-
-```kdl
-error-pages {
-    default-format "json"
-}
-```
-
----
-
-### `default-route`
-
-Specifies a fallback route ID when no other routes match the request. Useful for catch-all error handling or default backends.
-
-**Context:** `listener`
-
-```kdl
-listener "http" {
-    address "0.0.0.0:8080"
-    protocol "http"
-    default-route "fallback"
-}
-```
-
----
-
-### `directory-listing`
-
-When enabled, requests to directories without an index file return an HTML directory listing. Generally disabled for security in production.
-
-**Context:** `static-files`
-**Default:** `#false`
-
-```kdl
-static-files {
-    root "/var/www"
-    directory-listing #false
-}
-```
-
----
-
-### `error-pages`
-
-Configures custom error responses for specific HTTP status codes. Supports JSON, HTML templates, or static files.
-
-**Context:** `route`
-
-```kdl
-error-pages {
-    default-format "json"
-    pages {
-        "404" { format "json" message "Resource not found" }
-        "500" { format "html" template "/errors/500.html" }
-    }
-}
-```
-
----
-
-### `events`
-
-Specifies which request lifecycle events the agent should receive. Multiple events can be listed to process requests at different stages.
-
-**Context:** `agent`
-
-Available events: `on_request_headers`, `on_request_body`, `on_response_headers`, `on_response_body`
-
-```kdl
-agent "logger" {
-    events "on_request_headers" "on_response_headers"
-}
-```
-
----
-
-### `expected-status`
-
-The HTTP status code that indicates a healthy upstream. Health checks receiving different status codes mark the target as unhealthy.
-
-**Context:** `health-check` (http)
-**Default:** `200`
-
-```kdl
-health-check {
-    type "http" {
-        path "/health"
-        expected-status 200
-    }
-}
-```
-
----
-
-### `failure-mode`
-
-Determines behavior when an agent fails or times out. `closed` rejects the request (fail-safe), `open` allows the request to proceed (fail-open).
-
-**Context:** `policies`, `agent`
-**Default:** `closed`
-
-```kdl
-agent "ratelimit" {
-    failure-mode "open"
-}
-
-policies {
-    failure-mode "closed"
-}
-```
-
----
-
-### `failure-threshold`
-
-Number of consecutive failures before the circuit breaker opens. Once open, requests fail immediately without attempting the upstream.
-
-**Context:** `circuit-breaker`
-**Default:** `5`
-
-```kdl
-circuit-breaker {
-    failure-threshold 10
-    timeout-seconds 60
-}
-```
-
----
-
-### `fallback`
-
-File to serve when a requested static file doesn't exist. Essential for single-page applications (SPAs) that handle routing client-side.
-
-**Context:** `static-files`
-
-```kdl
-static-files {
-    root "/var/www/app"
-    fallback "index.html"
-}
-```
-
----
-
-### `filters`
-
-List of filter IDs to apply to the route in order. Filters can modify requests/responses or short-circuit processing.
-
-**Context:** `route`
-
-```kdl
-route "api" {
-    filters "auth" "ratelimit" "logging"
-    upstream "backend"
-}
-```
-
----
-
-### `format`
-
-Response format for an error page. Supports `json` for API responses or `html` for browser-friendly pages.
-
-**Context:** error page entry
-
-```kdl
-error-pages {
-    pages {
-        "404" { format "json" message "Not found" }
-    }
-}
-```
-
----
-
-### `graceful-shutdown-timeout-secs`
-
-Maximum time in seconds to wait for in-flight requests to complete during shutdown. After this timeout, remaining connections are forcibly closed.
+Path to write the process ID file for process management.
 
 **Context:** `system`
-**Default:** `30`
 
 ```kdl
 system {
-    graceful-shutdown-timeout-secs 60
+    pid-file "/var/run/sentinel.pid"
 }
 ```
 
 ---
 
-### `group`
+### `user`
 
-Unix group to switch to after binding privileged ports. Used with `user` for dropping privileges in production deployments.
+Unix user to switch to after binding privileged ports.
 
 **Context:** `system`
 
@@ -624,70 +329,534 @@ system {
 
 ---
 
-### `half-open-max-requests`
+### `group`
 
-Number of requests allowed through when the circuit breaker is in half-open state. Successful requests close the circuit; failures re-open it.
+Unix group to switch to after binding privileged ports.
 
-**Context:** `circuit-breaker`
-**Default:** `1`
+**Context:** `system`
 
 ```kdl
-circuit-breaker {
-    failure-threshold 5
-    half-open-max-requests 3
+system {
+    user "sentinel"
+    group "sentinel"
 }
 ```
 
 ---
 
-### `header`
+### `working-directory`
 
-Matches requests containing a specific header with an optional value pattern. Useful for routing based on API versions, authentication tokens, or custom headers.
+Directory to change to after startup.
+
+**Context:** `system`
+
+```kdl
+system {
+    working-directory "/var/lib/sentinel"
+}
+```
+
+---
+
+### `trace-id-format`
+
+Format for generated trace IDs. Options: `"tinyflake"` (smaller) or `"uuid"` (more compatible).
+
+**Context:** `system`
+**Default:** `"tinyflake"`
+
+```kdl
+system {
+    trace-id-format "uuid"
+}
+```
+
+---
+
+### `auto-reload`
+
+When enabled, Sentinel watches the configuration file for changes and automatically reloads.
+
+**Context:** `system`
+**Default:** `#false`
+
+```kdl
+system {
+    auto-reload #true
+}
+```
+
+---
+
+## Listener Directives
+
+### `listener`
+
+Defines a network endpoint that accepts incoming connections.
+
+**Context:** `listeners`
+
+```kdl
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+```
+
+---
+
+### `address`
+
+Socket address to bind (listeners) or connect to (upstream targets). Format: `host:port`.
+
+**Context:** `listener`, `target`
+**Required**
+
+```kdl
+listener "http" {
+    address "0.0.0.0:8080"
+}
+```
+
+---
+
+### `protocol`
+
+Network protocol for the listener. Options: `"http"`, `"https"`, `"h2"` (HTTP/2), `"h3"` (HTTP/3/QUIC).
+
+**Context:** `listener`
+**Default:** `"http"`
+
+```kdl
+listener "secure" {
+    address "0.0.0.0:443"
+    protocol "https"
+}
+```
+
+---
+
+### `request-timeout-secs`
+
+Maximum time in seconds to wait for a complete request from the client.
+
+**Context:** `listener`
+**Default:** `60`
+
+```kdl
+listener "http" {
+    request-timeout-secs 30
+}
+```
+
+---
+
+### `keepalive-timeout-secs`
+
+Maximum time in seconds to keep an idle client connection open.
+
+**Context:** `listener`
+**Default:** `75`
+
+```kdl
+listener "http" {
+    keepalive-timeout-secs 120
+}
+```
+
+---
+
+### `max-concurrent-streams`
+
+Maximum number of concurrent HTTP/2 streams per connection.
+
+**Context:** `listener`
+**Default:** `100`
+
+```kdl
+listener "h2" {
+    protocol "h2"
+    max-concurrent-streams 250
+}
+```
+
+---
+
+### `default-route`
+
+Fallback route ID when no other routes match the request.
+
+**Context:** `listener`
+
+```kdl
+listener "http" {
+    default-route "not-found"
+}
+```
+
+---
+
+## Listener TLS Directives
+
+### `tls`
+
+Configures TLS settings for secure connections.
+
+**Context:** `listener`, `upstream`
+
+```kdl
+listener "https" {
+    tls {
+        cert-file "/etc/sentinel/server.crt"
+        key-file "/etc/sentinel/server.key"
+    }
+}
+```
+
+---
+
+### `cert-file`
+
+Path to the TLS certificate file in PEM format.
+
+**Context:** `tls` (listener)
+**Required for HTTPS**
+
+```kdl
+tls {
+    cert-file "/etc/sentinel/server.crt"
+    key-file "/etc/sentinel/server.key"
+}
+```
+
+---
+
+### `key-file`
+
+Path to the TLS private key file in PEM format.
+
+**Context:** `tls` (listener)
+**Required for HTTPS**
+
+```kdl
+tls {
+    cert-file "/etc/sentinel/server.crt"
+    key-file "/etc/sentinel/server.key"
+}
+```
+
+---
+
+### `ca-file`
+
+Path to CA certificate file for verifying client certificates (mTLS).
+
+**Context:** `tls` (listener)
+
+```kdl
+tls {
+    ca-file "/etc/sentinel/client-ca.pem"
+    client-auth #true
+}
+```
+
+---
+
+### `min-version`
+
+Minimum TLS version to accept. Options: `"TLS1.2"`, `"TLS1.3"`.
+
+**Context:** `tls` (listener)
+**Default:** `"TLS1.2"`
+
+```kdl
+tls {
+    min-version "TLS1.2"
+}
+```
+
+---
+
+### `max-version`
+
+Maximum TLS version to accept.
+
+**Context:** `tls` (listener)
+
+```kdl
+tls {
+    min-version "TLS1.2"
+    max-version "TLS1.3"
+}
+```
+
+---
+
+### `client-auth`
+
+Enables mutual TLS (mTLS) requiring client certificates.
+
+**Context:** `tls` (listener)
+**Default:** `#false`
+
+```kdl
+tls {
+    ca-file "/etc/sentinel/client-ca.pem"
+    client-auth #true
+}
+```
+
+---
+
+### `ocsp-stapling`
+
+Enables OCSP stapling for certificate validation.
+
+**Context:** `tls` (listener)
+**Default:** `#true`
+
+```kdl
+tls {
+    ocsp-stapling #true
+}
+```
+
+---
+
+### `session-resumption`
+
+Enables TLS session tickets for faster subsequent connections.
+
+**Context:** `tls` (listener)
+**Default:** `#true`
+
+```kdl
+tls {
+    session-resumption #true
+}
+```
+
+---
+
+### `cipher-suites`
+
+Restricts allowed TLS cipher suites. Empty uses secure defaults.
+
+**Context:** `tls` (listener)
+
+```kdl
+tls {
+    cipher-suites "TLS_AES_256_GCM_SHA384" "TLS_CHACHA20_POLY1305_SHA256"
+}
+```
+
+---
+
+### `sni`
+
+SNI-based certificate selection block within TLS configuration.
+
+**Context:** `tls` (listener)
+
+```kdl
+tls {
+    cert-file "/etc/certs/default.crt"
+    key-file "/etc/certs/default.key"
+    sni {
+        hostnames "example.com" "*.example.com"
+        cert-file "/etc/certs/example.crt"
+        key-file "/etc/certs/example.key"
+    }
+}
+```
+
+---
+
+## Route Directives
+
+### `route`
+
+Defines a routing rule that matches requests and directs them to an upstream or handler.
+
+**Context:** `routes`
+
+```kdl
+routes {
+    route "api" {
+        matches { path-prefix "/api/" }
+        upstream "backend"
+    }
+}
+```
+
+---
+
+### `priority`
+
+Route evaluation priority. Options: `"high"`, `"normal"`, `"low"`.
+
+**Context:** `route`
+**Default:** `"normal"`
+
+```kdl
+route "specific" {
+    priority "high"
+    matches { path "/api/special" }
+}
+```
+
+---
+
+### `service-type`
+
+Categorizes the route for specialized handling. Options: `"web"`, `"api"`, `"static"`, `"builtin"`.
+
+**Context:** `route`
+**Default:** `"web"`
+
+```kdl
+route "files" {
+    service-type "static"
+    static-files { root "/var/www" }
+}
+```
+
+---
+
+### `upstream`
+
+Target upstream pool ID for proxied requests.
+
+**Context:** `route`
+
+```kdl
+route "api" {
+    upstream "backend"
+}
+```
+
+---
+
+### `builtin-handler`
+
+Built-in handler instead of proxying. Options: `"status"`, `"health"`, `"metrics"`, `"config"`, `"upstreams"`, `"cache-purge"`, `"cache-stats"`, `"not-found"`.
+
+**Context:** `route`
+
+```kdl
+route "health" {
+    matches { path "/health" }
+    service-type "builtin"
+    builtin-handler "health"
+}
+```
+
+---
+
+### `waf-enabled`
+
+Enables WAF processing for this route.
+
+**Context:** `route`
+**Default:** `#false`
+
+```kdl
+route "api" {
+    waf-enabled #true
+}
+```
+
+---
+
+### `websocket`
+
+Enables WebSocket upgrade support.
+
+**Context:** `route`
+**Default:** `#false`
+
+```kdl
+route "ws" {
+    websocket #true
+}
+```
+
+---
+
+### `websocket-inspection`
+
+Enables WebSocket frame inspection.
+
+**Context:** `route`
+**Default:** `#false`
+
+```kdl
+route "ws" {
+    websocket #true
+    websocket-inspection #true
+}
+```
+
+---
+
+### `filters`
+
+List of filter IDs to apply to the route in order.
+
+**Context:** `route`
+
+```kdl
+route "api" {
+    filters "rate-limit" "cors" "logging"
+}
+```
+
+---
+
+## Route Matching Directives
+
+### `matches`
+
+Defines conditions for routing requests. Multiple conditions use AND logic.
+
+**Context:** `route`
+
+```kdl
+route "api-v2" {
+    matches {
+        path-prefix "/api/"
+        header "X-API-Version" "v2"
+    }
+}
+```
+
+---
+
+### `path-prefix`
+
+Matches requests where the path starts with the specified prefix.
 
 **Context:** `matches`
 
 ```kdl
 matches {
-    header name="X-API-Version" value="v2"
-    header name="Authorization"
+    path-prefix "/api/v1/"
 }
 ```
 
 ---
 
-### `health-check`
+### `path`
 
-Configures active health checking for upstream targets. Unhealthy targets are removed from load balancing until they recover.
+Matches requests with an exact path.
 
-**Context:** `upstream`
-
-```kdl
-health-check {
-    type "http" {
-        path "/health"
-        expected-status 200
-        host "backend.internal"
-    }
-    interval-secs 10
-    timeout-secs 5
-    healthy-threshold 2
-    unhealthy-threshold 3
-}
-```
-
----
-
-### `healthy-threshold`
-
-Number of consecutive successful health checks required to mark an unhealthy target as healthy again.
-
-**Context:** `health-check`
-**Default:** `2`
+**Context:** `matches`
 
 ```kdl
-health-check {
-    healthy-threshold 3
-    unhealthy-threshold 2
+matches {
+    path "/api/v1/status"
 }
 ```
 
@@ -695,7 +864,7 @@ health-check {
 
 ### `host`
 
-Matches requests with a specific Host header. Supports exact matches and wildcard patterns for multi-tenant or domain-based routing.
+Matches requests with a specific Host header. Supports wildcards.
 
 **Context:** `matches`
 
@@ -711,242 +880,78 @@ matches {
 
 ---
 
-### `idle-timeout-secs`
+### `method`
 
-Maximum time in seconds a connection can remain idle in the pool before being closed. Prevents stale connections from consuming resources.
+Matches requests using specific HTTP methods.
 
-**Context:** `connection-pool`
-**Default:** `60`
+**Context:** `matches`
 
 ```kdl
-connection-pool {
-    max-idle 20
-    idle-timeout-secs 120
+matches {
+    method "GET" "POST"
 }
 ```
 
 ---
 
-### `index`
+### `header`
 
-Filename to serve when a directory is requested. Multiple index files can be specified in priority order.
+Matches requests containing a specific header with optional value.
 
-**Context:** `static-files`
-**Default:** `index.html`
+**Context:** `matches`
 
 ```kdl
-static-files {
-    root "/var/www"
-    index "index.html"
+matches {
+    header "X-API-Version" "v2"
+    header "Authorization"
 }
 ```
 
 ---
 
-### `insecure-skip-verify`
+### `query-param`
 
-Disables TLS certificate verification for upstream connections. **Security risk** — only use for development or when certificates are managed externally.
+Matches requests containing a specific query parameter with optional value.
 
-**Context:** `tls` (upstream)
-**Default:** `#false`
+**Context:** `matches`
 
 ```kdl
-upstream "dev-backend" {
-    tls {
-        insecure-skip-verify #true
-    }
+matches {
+    query-param "format" "json"
+    query-param "debug"
 }
 ```
 
 ---
 
-### `interval-secs`
+## Route Policies Directives
 
-Time in seconds between health check probes. Shorter intervals detect failures faster but increase network overhead.
+### `policies`
 
-**Context:** `health-check`
-**Default:** `10`
-
-```kdl
-health-check {
-    interval-secs 5
-    timeout-secs 2
-}
-```
-
----
-
-### `keepalive-timeout-secs`
-
-Maximum time in seconds to keep an idle client connection open. Balances connection reuse against resource consumption.
-
-**Context:** `listener`
-**Default:** `75`
-
-```kdl
-listener "http" {
-    keepalive-timeout-secs 120
-}
-```
-
----
-
-### `key`
-
-Determines how rate limits are applied. Common keys: `client_ip` (per-IP), `header:X-User-ID` (per-user), or combinations for granular control.
-
-**Context:** `rate-limit`
-**Default:** `client_ip`
-
-```kdl
-rate-limit {
-    requests-per-second 10
-    key "client_ip"
-}
-
-rate-limit {
-    requests-per-second 100
-    key "header:X-API-Key"
-}
-```
-
----
-
-### `key-file`
-
-Path to the TLS private key file in PEM format. Must be kept secure with restricted file permissions.
-
-**Context:** `tls` (listener)
-
-```kdl
-tls {
-    cert-file "/etc/sentinel/server.crt"
-    key-file "/etc/sentinel/server.key"
-}
-```
-
----
-
-### `limits`
-
-Top-level block for global resource limits. Protects against resource exhaustion from malicious or misconfigured clients.
-
-**Context:** root
-
-```kdl
-limits {
-    max-body-size-bytes 10485760
-    max-header-size-bytes 8192
-    max-connections-per-client 100
-}
-```
-
-See: [Limits Configuration](@/configuration/limits.md)
-
----
-
-### `listener`
-
-Defines a network endpoint that accepts incoming connections. Each listener has its own address, protocol, and TLS configuration.
-
-**Context:** `listeners`
-
-```kdl
-listeners {
-    listener "http" {
-        address "0.0.0.0:8080"
-        protocol "http"
-    }
-    listener "https" {
-        address "0.0.0.0:443"
-        protocol "https"
-        tls {
-            cert-file "/etc/sentinel/server.crt"
-            key-file "/etc/sentinel/server.key"
-        }
-    }
-}
-```
-
----
-
-### `listeners`
-
-Top-level block containing all listener definitions. At least one listener is required for Sentinel to accept traffic.
-
-**Context:** root
-
-```kdl
-listeners {
-    listener "main" { }
-}
-```
-
----
-
-### `load-balancing`
-
-Algorithm for distributing requests across upstream targets. Choice depends on workload characteristics and backend capabilities.
-
-**Context:** `upstream`
-**Default:** `round_robin`
-
-Available: `round_robin`, `least_connections`, `random`, `ip_hash`, `weighted`, `consistent_hash`, `power_of_two_choices`, `adaptive`
-
-```kdl
-upstream "backend" {
-    load-balancing "least_connections"
-}
-```
-
-See: [Load Balancing](@/configuration/upstreams.md#load-balancing)
-
----
-
-### `matches`
-
-Defines conditions for routing requests to this route. Multiple conditions are combined with AND logic; use multiple routes for OR logic.
+Container for route-level policies including timeouts, headers, and rate limiting.
 
 **Context:** `route`
 
 ```kdl
-route "api-v2" {
-    matches {
-        path-prefix "/api/"
-        header name="X-API-Version" value="v2"
+route "api" {
+    policies {
+        timeout-secs 30
+        max-body-size "5MB"
     }
-    upstream "backend-v2"
 }
 ```
 
 ---
 
-### `max-attempts`
+### `timeout-secs`
 
-Maximum number of times to attempt a request including the initial try. Set to 1 to disable retries.
+Request timeout in seconds.
 
-**Context:** `retry-policy`
-**Default:** `3`
-
-```kdl
-retry-policy {
-    max-attempts 5
-    retryable-status-codes 502 503 504
-}
-```
-
----
-
-### `max-body-bytes`
-
-Maximum request body size in bytes that will be sent to the agent. Larger bodies are truncated or rejected depending on agent configuration.
-
-**Context:** `agent`
-**Default:** `1048576` (1MB)
+**Context:** `policies`, `health-check`
 
 ```kdl
-agent "waf" {
-    max-body-bytes 5242880
+policies {
+    timeout-secs 30
 }
 ```
 
@@ -954,7 +959,7 @@ agent "waf" {
 
 ### `max-body-size`
 
-Maximum allowed request body size for this route. Requests exceeding this limit receive a 413 Payload Too Large response.
+Maximum allowed request body size for this route.
 
 **Context:** `policies`
 
@@ -966,340 +971,123 @@ policies {
 
 ---
 
-### `max-body-size-bytes`
+### `failure-mode`
 
-Global maximum request body size in bytes. Applied before route-specific limits as a first line of defense.
+Behavior when agent/upstream fails. Options: `"open"` (allow), `"closed"` (reject).
 
-**Context:** `limits`
-**Default:** `10485760` (10MB)
+**Context:** `policies`, `agent`
+**Default:** `"closed"`
 
 ```kdl
-limits {
-    max-body-size-bytes 52428800
+policies {
+    failure-mode "open"
 }
 ```
 
 ---
 
-### `max-concurrent-streams`
+### `buffer-requests`
 
-Maximum number of concurrent HTTP/2 streams per connection. Higher values improve multiplexing but increase memory usage.
+When enabled, reads entire request body into memory before forwarding.
 
-**Context:** `listener`
-**Default:** `100`
+**Context:** `policies`
+**Default:** `#false`
 
 ```kdl
-listener "https" {
-    protocol "h2"
-    max-concurrent-streams 250
+policies {
+    buffer-requests #true
 }
 ```
 
 ---
 
-### `max-connections`
+### `buffer-responses`
 
-Maximum number of simultaneous connections. In `system` context, this is the global limit. In `connection-pool`, it's per-upstream.
+When enabled, reads entire response body into memory before sending to client.
 
-**Context:** `system`, `connection-pool`
+**Context:** `policies`
+**Default:** `#false`
 
 ```kdl
-system {
-    max-connections 50000
-}
-
-connection-pool {
-    max-connections 100
+policies {
+    buffer-responses #true
 }
 ```
 
 ---
 
-### `max-idle`
+### `request-headers`
 
-Maximum number of idle connections to keep in the pool. Idle connections are ready for immediate reuse without TCP handshake overhead.
+Container for request header manipulation rules.
 
-**Context:** `connection-pool`
-**Default:** `20`
-
-```kdl
-connection-pool {
-    max-connections 100
-    max-idle 30
-}
-```
-
----
-
-### `max-lifetime-secs`
-
-Maximum time in seconds a connection can exist before being closed, regardless of activity. Helps with connection rotation and memory management.
-
-**Context:** `connection-pool`
-**Default:** `3600` (1 hour)
+**Context:** `policies`
 
 ```kdl
-connection-pool {
-    max-lifetime-secs 1800
-}
-```
-
----
-
-### `max-requests`
-
-Maximum requests to send through this target before rotating to another. Useful for graceful deployments or connection management.
-
-**Context:** `target`
-
-```kdl
-target {
-    address "10.0.1.1:8080"
-    max-requests 10000
-}
-```
-
----
-
-### `max-version`
-
-Maximum TLS version to accept. Usually left unset to allow the highest supported version.
-
-**Context:** `tls` (listener)
-
-```kdl
-tls {
-    min-version "1.2"
-    max-version "1.3"
-}
-```
-
----
-
-### `message`
-
-Custom message text for an error page. Returned in the response body for JSON format or as a template variable for HTML.
-
-**Context:** error page entry
-
-```kdl
-error-pages {
-    pages {
-        "404" { format "json" message "The requested resource was not found" }
+policies {
+    request-headers {
+        set { "X-Forwarded-Proto" "https" }
+        add { "X-Request-ID" "abc123" }
+        remove "Cookie"
     }
 }
 ```
 
 ---
 
-### `metadata`
+### `response-headers`
 
-Key-value pairs attached to a target for use in load balancing decisions or logging. Enables zone-aware routing or custom selection logic.
+Container for response header manipulation rules.
 
-**Context:** `target`
-
-```kdl
-target {
-    address "10.0.1.1:8080"
-    metadata { "zone" "us-east-1a" "version" "v2.1" }
-}
-```
-
----
-
-### `method`
-
-Matches requests using specific HTTP methods. Multiple methods can be specified to match any of them.
-
-**Context:** `matches`
+**Context:** `policies`
 
 ```kdl
-matches {
-    method "POST" "PUT" "PATCH"
-    path-prefix "/api/"
-}
-```
-
----
-
-### `min-version`
-
-Minimum TLS version to accept. Setting to `1.2` or higher is recommended for security.
-
-**Context:** `tls` (listener)
-**Default:** `1.2`
-
-```kdl
-tls {
-    min-version "1.2"
-}
-```
-
----
-
-### `ocsp-stapling`
-
-Enables OCSP stapling to prove certificate validity without clients contacting the CA. Improves TLS handshake performance and privacy.
-
-**Context:** `tls` (listener)
-**Default:** `#true`
-
-```kdl
-tls {
-    ocsp-stapling #true
-}
-```
-
----
-
-### `pages`
-
-Container for individual error page configurations, keyed by HTTP status code.
-
-**Context:** `error-pages`
-
-```kdl
-error-pages {
-    pages {
-        "400" { format "json" message "Bad request" }
-        "404" { format "json" message "Not found" }
-        "500" { format "html" template "/errors/500.html" }
+policies {
+    response-headers {
+        set { "X-Frame-Options" "DENY" }
+        remove "Server"
     }
 }
 ```
 
 ---
 
-### `path`
+### `set`
 
-Matches requests with an exact path. Use `path-prefix` for prefix matching or `path-regex` for patterns.
+Sets a header value, replacing any existing value.
 
-**Context:** `matches`, `health-check`
+**Context:** `request-headers`, `response-headers`
 
 ```kdl
-matches {
-    path "/api/v1/status"
-}
-
-health-check {
-    type "http" { path "/health" }
+request-headers {
+    set { "Host" "backend.internal" }
 }
 ```
 
 ---
 
-### `path-prefix`
+### `add`
 
-Matches requests where the path starts with the specified prefix. The most common matching type for API routing.
+Adds a header value without removing existing values.
 
-**Context:** `matches`
+**Context:** `request-headers`, `response-headers`
 
 ```kdl
-matches {
-    path-prefix "/api/v1/"
+response-headers {
+    add { "X-Served-By" "sentinel" }
 }
 ```
 
 ---
 
-### `path-regex`
+### `remove`
 
-Matches requests where the path matches a regular expression. Most flexible but slowest matching type.
+Removes a header.
 
-**Context:** `matches`
-
-```kdl
-matches {
-    path-regex "^/users/[0-9]+/profile$"
-}
-```
-
----
-
-### `pid-file`
-
-Path to write the process ID file. Used for process management with systemd, init scripts, or monitoring tools.
-
-**Context:** `system`
+**Context:** `request-headers`, `response-headers`
 
 ```kdl
-system {
-    daemon #true
-    pid-file "/var/run/sentinel.pid"
-}
-```
-
----
-
-### `policies`
-
-Container for route-level policies including timeouts, headers, rate limiting, and failure behavior.
-
-**Context:** `route`
-
-```kdl
-route "api" {
-    policies {
-        timeout-secs 30
-        max-body-size "5MB"
-        failure-mode "closed"
-        rate-limit {
-            requests-per-second 100
-        }
-    }
-}
-```
-
----
-
-### `priority`
-
-Numeric priority for route matching. Higher values are evaluated first. Routes with equal priority are evaluated in definition order.
-
-**Context:** `route`
-**Default:** `0`
-
-```kdl
-route "specific" {
-    priority 100
-    matches { path "/api/special" }
-}
-
-route "general" {
-    priority 10
-    matches { path-prefix "/api/" }
-}
-```
-
----
-
-### `protocol`
-
-Network protocol for the listener. Determines how connections are handled and what features are available.
-
-**Context:** `listener`
-
-Available: `http`, `https`, `h2` (HTTP/2 with TLS), `h3` (HTTP/3/QUIC)
-
-```kdl
-listener "secure" {
-    protocol "https"
-    tls { }
-}
-```
-
----
-
-### `query-param`
-
-Matches requests containing a specific query parameter with an optional value pattern.
-
-**Context:** `matches`
-
-```kdl
-matches {
-    query-param name="format" value="json"
-    query-param name="debug"
+request-headers {
+    remove "X-Internal-Token"
 }
 ```
 
@@ -1307,7 +1095,7 @@ matches {
 
 ### `rate-limit`
 
-Configures rate limiting for the route. Protects backends from overload and ensures fair resource distribution.
+Configures rate limiting for the route.
 
 **Context:** `policies`
 
@@ -1323,169 +1111,228 @@ policies {
 
 ---
 
-### `read-secs`
-
-Maximum time in seconds to wait for response data from the upstream after the connection is established.
-
-**Context:** `timeouts`
-**Default:** `30`
-
-```kdl
-timeouts {
-    read-secs 60
-}
-```
-
----
-
-### `recovery-timeout-secs`
-
-Time in seconds the circuit remains open before transitioning to half-open state to test if the upstream has recovered.
-
-**Context:** `circuit-breaker` (agent)
-**Default:** `30`
-
-```kdl
-agent "backend" {
-    circuit-breaker {
-        failure-threshold 5
-        recovery-timeout-secs 60
-    }
-}
-```
-
----
-
-### `remove`
-
-Removes a header from the request or response. Useful for stripping internal headers before forwarding.
-
-**Context:** `request-headers`, `response-headers`
-
-```kdl
-policies {
-    request-headers {
-        remove "X-Internal-Token"
-    }
-    response-headers {
-        remove "Server"
-        remove "X-Powered-By"
-    }
-}
-```
-
----
-
-### `request-headers`
-
-Container for request header manipulation rules. Modifications are applied before forwarding to the upstream.
-
-**Context:** `policies`
-
-```kdl
-policies {
-    request-headers {
-        set { "X-Forwarded-Proto" "https" }
-        add { "X-Request-Start" "$request_time" }
-        remove "Cookie"
-    }
-}
-```
-
----
-
-### `request-secs`
-
-Maximum total time in seconds for the complete request-response cycle with the upstream.
-
-**Context:** `timeouts`
-**Default:** `60`
-
-```kdl
-timeouts {
-    connect-secs 5
-    request-secs 120
-}
-```
-
----
-
-### `request-timeout-secs`
-
-Maximum time in seconds to wait for a complete request from the client. Protects against slow-loris attacks.
-
-**Context:** `listener`
-**Default:** `60`
-
-```kdl
-listener "http" {
-    request-timeout-secs 30
-}
-```
-
----
-
 ### `requests-per-second`
 
-Number of requests allowed per second for rate limiting. Requests exceeding this rate are rejected with 429 Too Many Requests.
+Number of requests allowed per second.
 
 **Context:** `rate-limit`
 
 ```kdl
 rate-limit {
-    requests-per-second 50
-    burst 100
+    requests-per-second 100
 }
 ```
 
 ---
 
-### `response-headers`
+### `burst`
 
-Container for response header manipulation rules. Modifications are applied before sending to the client.
+Maximum requests allowed to exceed the rate limit temporarily.
+
+**Context:** `rate-limit`
+**Default:** `10`
+
+```kdl
+rate-limit {
+    requests-per-second 100
+    burst 500
+}
+```
+
+---
+
+### `key`
+
+Determines how rate limits are applied. Options: `"client_ip"`, `"header:name"`, `"path"`, `"route"`.
+
+**Context:** `rate-limit`
+**Default:** `"client_ip"`
+
+```kdl
+rate-limit {
+    key "header:X-API-Key"
+}
+```
+
+---
+
+## Route Cache Directives
+
+### `cache`
+
+Configures response caching for the route.
 
 **Context:** `policies`
 
 ```kdl
 policies {
-    response-headers {
-        set { "X-Frame-Options" "DENY" }
-        set { "X-Content-Type-Options" "nosniff" }
-        remove "Server"
+    cache {
+        enabled #true
+        default-ttl-secs 3600
     }
 }
 ```
 
 ---
 
-### `retry-policy`
+### `enabled`
 
-Configures automatic retry behavior for failed requests. Helps handle transient failures without client-side retry logic.
+Enables or disables caching.
 
-**Context:** `route`
+**Context:** `cache`
+**Default:** `#false`
 
 ```kdl
-retry-policy {
-    max-attempts 3
-    timeout-ms 30000
-    backoff-base-ms 100
-    backoff-max-ms 5000
-    retryable-status-codes 502 503 504
+cache {
+    enabled #true
 }
 ```
 
 ---
 
-### `retryable-status-codes`
+### `default-ttl-secs`
 
-HTTP status codes that trigger an automatic retry. Typically includes gateway errors that indicate temporary upstream issues.
+Default cache TTL in seconds when not specified by response headers.
 
-**Context:** `retry-policy`
-**Default:** `502 503 504`
+**Context:** `cache`
+**Default:** `3600`
 
 ```kdl
-retry-policy {
-    retryable-status-codes 500 502 503 504 429
+cache {
+    default-ttl-secs 7200
+}
+```
+
+---
+
+### `max-size-bytes`
+
+Maximum size of a cached response.
+
+**Context:** `cache`
+
+```kdl
+cache {
+    max-size-bytes 10485760
+}
+```
+
+---
+
+### `cache-private`
+
+Whether to cache responses with Cache-Control: private.
+
+**Context:** `cache`
+**Default:** `#false`
+
+```kdl
+cache {
+    cache-private #true
+}
+```
+
+---
+
+### `stale-while-revalidate-secs`
+
+Serve stale content while revalidating in background.
+
+**Context:** `cache`
+
+```kdl
+cache {
+    stale-while-revalidate-secs 60
+}
+```
+
+---
+
+### `stale-if-error-secs`
+
+Serve stale content if upstream returns error.
+
+**Context:** `cache`
+
+```kdl
+cache {
+    stale-if-error-secs 300
+}
+```
+
+---
+
+### `cacheable-methods`
+
+HTTP methods eligible for caching.
+
+**Context:** `cache`
+
+```kdl
+cache {
+    cacheable-methods "GET" "HEAD"
+}
+```
+
+---
+
+### `cacheable-status-codes`
+
+HTTP status codes eligible for caching.
+
+**Context:** `cache`
+
+```kdl
+cache {
+    cacheable-status-codes 200 203 204 206 300 301 308 404 410
+}
+```
+
+---
+
+### `vary-headers`
+
+Headers to include in cache key.
+
+**Context:** `cache`
+
+```kdl
+cache {
+    vary-headers "Accept" "Accept-Encoding"
+}
+```
+
+---
+
+### `ignore-query-params`
+
+Query parameters to exclude from cache key.
+
+**Context:** `cache`
+
+```kdl
+cache {
+    ignore-query-params "utm_source" "utm_medium"
+}
+```
+
+---
+
+## Static Files Directives
+
+### `static-files`
+
+Configures static file serving for the route.
+
+**Context:** `route`
+
+```kdl
+route "assets" {
+    service-type "static"
+    static-files {
+        root "/var/www/public"
+        index "index.html"
+    }
 }
 ```
 
@@ -1493,152 +1340,137 @@ retry-policy {
 
 ### `root`
 
-Filesystem path to the directory containing static files. All file paths are resolved relative to this root.
+Filesystem path to the static files directory.
 
 **Context:** `static-files`
+**Required**
 
 ```kdl
 static-files {
     root "/var/www/public"
+}
+```
+
+---
+
+### `index`
+
+Filename to serve for directory requests.
+
+**Context:** `static-files`
+**Default:** `"index.html"`
+
+```kdl
+static-files {
     index "index.html"
 }
 ```
 
 ---
 
-### `route`
+### `directory-listing`
 
-Defines a routing rule that matches requests and directs them to an upstream or built-in handler.
+Enable HTML directory listing.
 
-**Context:** `routes`
+**Context:** `static-files`
+**Default:** `#false`
 
 ```kdl
-routes {
-    route "api" {
-        priority 100
-        matches { path-prefix "/api/" }
-        upstream "backend"
-        policies { timeout-secs 30 }
-    }
+static-files {
+    directory-listing #true
 }
 ```
 
 ---
 
-### `routes`
+### `cache-control`
 
-Top-level block containing all route definitions. Routes are evaluated in priority order until a match is found.
+Cache-Control header for static responses.
 
-**Context:** root
+**Context:** `static-files`
 
 ```kdl
-routes {
-    route "high-priority" { priority 100 }
-    route "default" { priority 0 }
+static-files {
+    cache-control "public, max-age=86400"
 }
 ```
 
 ---
 
-### `service`
+### `compress`
 
-gRPC service name for health checking. Uses the standard gRPC health checking protocol.
+Enable automatic compression (gzip, brotli).
 
-**Context:** `health-check` (grpc)
-
-```kdl
-health-check {
-    type "grpc" {
-        service "grpc.health.v1.Health"
-    }
-}
-```
-
----
-
-### `service-type`
-
-Categorizes the route for specialized handling. Affects default behaviors and available options.
-
-**Context:** `route`
-**Default:** `web`
-
-Available: `web`, `api`, `static`, `builtin`
-
-```kdl
-route "files" {
-    service-type "static"
-    static-files { root "/var/www" }
-}
-```
-
----
-
-### `session-resumption`
-
-Enables TLS session tickets for faster subsequent connections. Clients can resume sessions without full handshakes.
-
-**Context:** `tls` (listener)
+**Context:** `static-files`
 **Default:** `#true`
 
 ```kdl
-tls {
-    session-resumption #true
+static-files {
+    compress #true
 }
 ```
 
 ---
 
-### `set`
+### `fallback`
 
-Sets a header to a specific value, replacing any existing value. Use `add` to append without replacing.
+File to serve when requested file doesn't exist (SPA support).
 
-**Context:** `request-headers`, `response-headers`
+**Context:** `static-files`
 
 ```kdl
-policies {
-    request-headers {
-        set { "Host" "backend.internal" }
-    }
-    response-headers {
-        set { "Cache-Control" "no-store" }
+static-files {
+    root "/var/www/app"
+    fallback "index.html"
+}
+```
+
+---
+
+### `mime-types`
+
+Custom MIME type mappings.
+
+**Context:** `static-files`
+
+```kdl
+static-files {
+    mime-types {
+        ".wasm" "application/wasm"
     }
 }
 ```
 
 ---
 
-### `sni`
+## Circuit Breaker Directives
 
-Server Name Indication hostname to send when connecting to upstream over TLS. Required when the upstream uses virtual hosting.
+### `circuit-breaker`
 
-**Context:** `tls` (upstream)
+Configures circuit breaker to prevent cascading failures.
+
+**Context:** `route`, `agent`
 
 ```kdl
-upstream "backend" {
-    tls {
-        sni "api.backend.internal"
-    }
+circuit-breaker {
+    failure-threshold 5
+    success-threshold 2
+    timeout-seconds 30
 }
 ```
 
 ---
 
-### `static-files`
+### `failure-threshold`
 
-Configures static file serving for the route. Efficiently serves files with caching, compression, and range request support.
+Consecutive failures before circuit opens.
 
-**Context:** `route`
+**Context:** `circuit-breaker`
+**Default:** `5`
 
 ```kdl
-route "assets" {
-    matches { path-prefix "/static/" }
-    service-type "static"
-    static-files {
-        root "/var/www/assets"
-        cache-control "public, max-age=31536000"
-        compress #true
-    }
+circuit-breaker {
+    failure-threshold 10
 }
 ```
 
@@ -1646,52 +1478,317 @@ route "assets" {
 
 ### `success-threshold`
 
-Number of consecutive successful requests required to close an open circuit breaker.
+Consecutive successes to close circuit.
 
 **Context:** `circuit-breaker`
 **Default:** `2`
 
 ```kdl
 circuit-breaker {
-    failure-threshold 5
     success-threshold 3
 }
 ```
 
 ---
 
-### `system`
+### `timeout-seconds`
 
-Top-level block for server-wide configuration including worker threads, connections, and process management.
+Time circuit remains open before half-open test.
 
-**Context:** root
+**Context:** `circuit-breaker`
+**Default:** `30`
 
 ```kdl
-system {
-    worker-threads 0
-    max-connections 50000
-    graceful-shutdown-timeout-secs 60
+circuit-breaker {
+    timeout-seconds 60
 }
 ```
 
 ---
 
-### `target`
+### `half-open-max-requests`
 
-Defines an individual backend server within an upstream group. Multiple targets enable load balancing and failover.
+Requests allowed in half-open state.
 
-**Context:** `targets`
+**Context:** `circuit-breaker`
+**Default:** `3`
 
 ```kdl
-targets {
-    target {
-        address "10.0.1.1:8080"
-        weight 3
+circuit-breaker {
+    half-open-max-requests 5
+}
+```
+
+---
+
+## Retry Policy Directives
+
+### `retry-policy`
+
+Configures automatic retry behavior for failed requests.
+
+**Context:** `route`
+
+```kdl
+retry-policy {
+    max-attempts 3
+    backoff-base-ms 100
+    retryable-status-codes 502 503 504
+}
+```
+
+---
+
+### `max-attempts`
+
+Maximum retry attempts including initial try.
+
+**Context:** `retry-policy`
+**Default:** `3`
+
+```kdl
+retry-policy {
+    max-attempts 5
+}
+```
+
+---
+
+### `timeout-ms`
+
+Total timeout for all retry attempts.
+
+**Context:** `retry-policy`
+**Default:** `5000`
+
+```kdl
+retry-policy {
+    timeout-ms 30000
+}
+```
+
+---
+
+### `backoff-base-ms`
+
+Initial retry delay in milliseconds.
+
+**Context:** `retry-policy`
+**Default:** `100`
+
+```kdl
+retry-policy {
+    backoff-base-ms 200
+}
+```
+
+---
+
+### `backoff-max-ms`
+
+Maximum retry delay.
+
+**Context:** `retry-policy`
+**Default:** `2000`
+
+```kdl
+retry-policy {
+    backoff-max-ms 5000
+}
+```
+
+---
+
+### `retryable-status-codes`
+
+HTTP status codes that trigger retries.
+
+**Context:** `retry-policy`
+**Default:** `502 503 504`
+
+```kdl
+retry-policy {
+    retryable-status-codes 500 502 503 504
+}
+```
+
+---
+
+## Shadow/Traffic Mirroring Directives
+
+### `shadow`
+
+Configures traffic mirroring to a shadow upstream.
+
+**Context:** `route`
+
+```kdl
+shadow {
+    upstream "shadow-backend"
+    percentage 10.0
+}
+```
+
+---
+
+### `percentage`
+
+Percentage of traffic to mirror (0.0 to 100.0).
+
+**Context:** `shadow`
+**Default:** `100.0`
+
+```kdl
+shadow {
+    percentage 50.0
+}
+```
+
+---
+
+### `sample-header`
+
+Only mirror requests with this header/value.
+
+**Context:** `shadow`
+
+```kdl
+shadow {
+    sample-header "X-Canary" "true"
+}
+```
+
+---
+
+### `buffer-body`
+
+Buffer request body for mirroring.
+
+**Context:** `shadow`
+**Default:** `#true`
+
+```kdl
+shadow {
+    buffer-body #true
+    max-body-bytes 1048576
+}
+```
+
+---
+
+## Error Pages Directives
+
+### `error-pages`
+
+Configures custom error responses.
+
+**Context:** `route`
+
+```kdl
+error-pages {
+    default-format "json"
+    pages {
+        "404" { format "json" message "Not found" }
     }
-    target {
-        address "10.0.1.2:8080"
-        weight 1
+}
+```
+
+---
+
+### `default-format`
+
+Default response format. Options: `"html"`, `"json"`, `"text"`, `"xml"`.
+
+**Context:** `error-pages`
+**Default:** `"json"`
+
+```kdl
+error-pages {
+    default-format "html"
+}
+```
+
+---
+
+### `include-stack-trace`
+
+Include stack traces in error responses.
+
+**Context:** `error-pages`
+**Default:** `#false`
+
+```kdl
+error-pages {
+    include-stack-trace #true
+}
+```
+
+---
+
+### `template-dir`
+
+Directory containing error page templates.
+
+**Context:** `error-pages`
+
+```kdl
+error-pages {
+    template-dir "/etc/sentinel/templates"
+}
+```
+
+---
+
+### `pages`
+
+Individual error page configurations by status code.
+
+**Context:** `error-pages`
+
+```kdl
+pages {
+    "404" {
+        format "html"
+        template "/templates/404.html"
     }
+    "500" {
+        format "json"
+        message "Internal server error"
+    }
+}
+```
+
+---
+
+## Upstream Directives
+
+### `upstream`
+
+Defines a group of backend servers.
+
+**Context:** `upstreams`
+
+```kdl
+upstreams {
+    upstream "backend" {
+        targets { }
+        load-balancing "round_robin"
+    }
+}
+```
+
+---
+
+### `load-balancing`
+
+Algorithm for distributing requests. Options: `"round_robin"`, `"least_connections"`, `"ip_hash"`, `"consistent_hash"`, `"random"`.
+
+**Context:** `upstream`
+**Default:** `"round_robin"`
+
+```kdl
+upstream "backend" {
+    load-balancing "least_connections"
 }
 ```
 
@@ -1699,7 +1796,7 @@ targets {
 
 ### `targets`
 
-Container for upstream target definitions. At least one target is required for each upstream.
+Container for upstream target definitions.
 
 **Context:** `upstream`
 
@@ -1714,257 +1811,16 @@ upstream "backend" {
 
 ---
 
-### `template`
+### `target`
 
-Path to an HTML template file for custom error pages. Templates can include variables for status code and message.
+Defines an individual backend server.
 
-**Context:** error page entry
-
-```kdl
-error-pages {
-    pages {
-        "500" { format "html" template "/etc/sentinel/errors/500.html" }
-    }
-}
-```
-
----
-
-### `timeout-ms`
-
-Maximum time in milliseconds to wait for an agent response. Agents exceeding this timeout trigger the `failure-mode` behavior.
-
-**Context:** `agent`
-**Default:** `100`
+**Context:** `targets`
 
 ```kdl
-agent "auth" {
-    timeout-ms 50
-    failure-mode "closed"
-}
-```
-
----
-
-### `timeout-seconds`
-
-Time in seconds the circuit breaker remains open before attempting recovery.
-
-**Context:** `circuit-breaker`
-**Default:** `30`
-
-```kdl
-circuit-breaker {
-    failure-threshold 5
-    timeout-seconds 60
-}
-```
-
----
-
-### `timeout-secs`
-
-Request timeout in seconds. Context determines whether this applies to client requests, upstream requests, or health checks.
-
-**Context:** `policies`, `health-check`
-
-```kdl
-policies {
-    timeout-secs 30
-}
-
-health-check {
-    timeout-secs 5
-}
-```
-
----
-
-### `timeouts`
-
-Container for upstream timeout configuration. Controls connection, read, and write timeouts separately.
-
-**Context:** `upstream`
-
-```kdl
-upstream "backend" {
-    timeouts {
-        connect-secs 5
-        request-secs 60
-        read-secs 30
-        write-secs 30
-    }
-}
-```
-
----
-
-### `tls`
-
-Configures TLS settings for secure connections. In listener context, configures server TLS. In upstream context, configures client TLS.
-
-**Context:** `listener`, `upstream`
-
-```kdl
-listener "https" {
-    tls {
-        cert-file "/etc/sentinel/server.crt"
-        key-file "/etc/sentinel/server.key"
-        min-version "1.2"
-    }
-}
-
-upstream "secure" {
-    tls {
-        ca-cert "/etc/sentinel/ca.pem"
-        sni "backend.internal"
-    }
-}
-```
-
----
-
-### `trace-id-format`
-
-Format for generated trace IDs in distributed tracing. Tinyflake IDs are smaller; UUIDs are more universally compatible.
-
-**Context:** `system`
-**Default:** `tinyflake`
-
-Available: `tinyflake`, `uuid`
-
-```kdl
-system {
-    trace-id-format "uuid"
-}
-```
-
----
-
-### `transport`
-
-Communication mechanism for agent connections. Unix sockets are faster for local agents; gRPC enables remote agents.
-
-**Context:** `agent`
-
-```kdl
-agent "local-auth" {
-    transport "unix_socket" {
-        path "/var/run/auth.sock"
-    }
-}
-
-agent "remote-waf" {
-    transport "grpc" {
-        address "waf-service:50051"
-    }
-}
-```
-
----
-
-### `type`
-
-Specifies the type of agent or health check. Agent types affect default behaviors; health check types determine the protocol.
-
-**Context:** `agent`, `health-check`
-
-Agent types: `auth`, `rate_limit`, `waf`, `custom`
-
-Health check types: `http`, `tcp`, `grpc`
-
-```kdl
-agent "auth" {
-    type "auth"
-}
-
-health-check {
-    type "http" { path "/health" }
-}
-```
-
----
-
-### `unhealthy-threshold`
-
-Number of consecutive failed health checks before marking a target as unhealthy and removing it from load balancing.
-
-**Context:** `health-check`
-**Default:** `3`
-
-```kdl
-health-check {
-    unhealthy-threshold 2
-    healthy-threshold 3
-}
-```
-
----
-
-### `upstream`
-
-Defines a group of backend servers or references an upstream by name in a route.
-
-**Context:** `upstreams` (definition), `route` (reference)
-
-```kdl
-upstreams {
-    upstream "backend" {
-        targets {
-            target { address "10.0.1.1:8080" }
-        }
-        load-balancing "round_robin"
-    }
-}
-
-route "api" {
-    upstream "backend"
-}
-```
-
----
-
-### `upstreams`
-
-Top-level block containing all upstream definitions. Upstreams are reusable groups of backend servers.
-
-**Context:** root
-
-```kdl
-upstreams {
-    upstream "primary" { }
-    upstream "fallback" { }
-}
-```
-
----
-
-### `user`
-
-Unix user to switch to after binding privileged ports. Improves security by running with minimal privileges.
-
-**Context:** `system`
-
-```kdl
-system {
-    user "sentinel"
-    group "sentinel"
-}
-```
-
----
-
-### `waf-enabled`
-
-Enables Web Application Firewall processing for the route. Requires a WAF agent to be configured.
-
-**Context:** `route`
-**Default:** `#false`
-
-```kdl
-route "api" {
-    waf-enabled #true
-    upstream "backend"
+target {
+    address "10.0.1.1:8080"
+    weight 1
 }
 ```
 
@@ -1972,44 +1828,267 @@ route "api" {
 
 ### `weight`
 
-Relative weight for load balancing with weighted algorithms. Higher weights receive proportionally more traffic.
+Relative weight for load balancing.
 
 **Context:** `target`
 **Default:** `1`
 
 ```kdl
-targets {
-    target { address "10.0.1.1:8080" weight=3 }
-    target { address "10.0.1.2:8080" weight=1 }
+target {
+    address "10.0.1.1:8080"
+    weight 3
 }
 ```
 
 ---
 
-### `worker-threads`
+### `max-requests`
 
-Number of worker threads for request processing. Set to 0 for automatic detection based on CPU cores.
+Maximum requests through this target before rotation.
 
-**Context:** `system`
-**Default:** `0` (auto)
+**Context:** `target`
 
 ```kdl
-system {
-    worker-threads 0
+target {
+    address "10.0.1.1:8080"
+    max-requests 10000
 }
 ```
 
 ---
 
-### `working-directory`
+### `metadata`
 
-Directory to change to after startup. Affects relative path resolution for configuration files.
+Key-value pairs for load balancing decisions.
 
-**Context:** `system`
+**Context:** `target`
 
 ```kdl
-system {
-    working-directory "/var/lib/sentinel"
+target {
+    address "10.0.1.1:8080"
+    metadata { "zone" "us-east-1a" }
+}
+```
+
+---
+
+## Health Check Directives
+
+### `health-check`
+
+Configures active health checking for upstream targets.
+
+**Context:** `upstream`
+
+```kdl
+health-check {
+    type "http"
+    path "/health"
+    interval-secs 10
+}
+```
+
+---
+
+### `type`
+
+Health check protocol. Options: `"http"`, `"tcp"`.
+
+**Context:** `health-check`
+**Default:** `"http"`
+
+```kdl
+health-check {
+    type "tcp"
+}
+```
+
+---
+
+### `interval-secs`
+
+Time between health check probes.
+
+**Context:** `health-check`
+**Default:** `10`
+
+```kdl
+health-check {
+    interval-secs 5
+}
+```
+
+---
+
+### `healthy-threshold`
+
+Successful checks to mark target healthy.
+
+**Context:** `health-check`
+**Default:** `2`
+
+```kdl
+health-check {
+    healthy-threshold 3
+}
+```
+
+---
+
+### `unhealthy-threshold`
+
+Failed checks to mark target unhealthy.
+
+**Context:** `health-check`
+**Default:** `3`
+
+```kdl
+health-check {
+    unhealthy-threshold 2
+}
+```
+
+---
+
+### `expected-status`
+
+HTTP status indicating healthy (for HTTP checks).
+
+**Context:** `health-check`
+**Default:** `200`
+
+```kdl
+health-check {
+    type "http"
+    path "/health"
+    expected-status 200
+}
+```
+
+---
+
+## Connection Pool Directives
+
+### `connection-pool`
+
+Configures connection pooling to upstream targets.
+
+**Context:** `upstream`
+
+```kdl
+connection-pool {
+    max-connections 100
+    max-idle 20
+    idle-timeout-secs 60
+}
+```
+
+---
+
+### `max-idle`
+
+Maximum idle connections to keep in pool.
+
+**Context:** `connection-pool`
+**Default:** `20`
+
+```kdl
+connection-pool {
+    max-idle 30
+}
+```
+
+---
+
+### `idle-timeout-secs`
+
+Time before idle connection is closed.
+
+**Context:** `connection-pool`
+**Default:** `60`
+
+```kdl
+connection-pool {
+    idle-timeout-secs 120
+}
+```
+
+---
+
+### `max-lifetime-secs`
+
+Maximum connection lifetime.
+
+**Context:** `connection-pool`
+**Default:** `300`
+
+```kdl
+connection-pool {
+    max-lifetime-secs 3600
+}
+```
+
+---
+
+## Upstream Timeouts Directives
+
+### `timeouts`
+
+Container for upstream timeout configuration.
+
+**Context:** `upstream`
+
+```kdl
+timeouts {
+    connect-secs 10
+    request-secs 60
+    read-secs 30
+    write-secs 30
+}
+```
+
+---
+
+### `connect-secs`
+
+Maximum time to establish connection.
+
+**Context:** `timeouts`
+**Default:** `10`
+
+```kdl
+timeouts {
+    connect-secs 5
+}
+```
+
+---
+
+### `request-secs`
+
+Maximum time for complete request-response cycle.
+
+**Context:** `timeouts`
+**Default:** `60`
+
+```kdl
+timeouts {
+    request-secs 120
+}
+```
+
+---
+
+### `read-secs`
+
+Maximum time waiting for response data.
+
+**Context:** `timeouts`
+**Default:** `30`
+
+```kdl
+timeouts {
+    read-secs 60
 }
 ```
 
@@ -2017,7 +2096,7 @@ system {
 
 ### `write-secs`
 
-Maximum time in seconds to wait for writing request data to the upstream.
+Maximum time writing request data.
 
 **Context:** `timeouts`
 **Default:** `30`
@@ -2025,6 +2104,1181 @@ Maximum time in seconds to wait for writing request data to the upstream.
 ```kdl
 timeouts {
     write-secs 60
+}
+```
+
+---
+
+## Upstream TLS Directives
+
+### `sni`
+
+SNI hostname for upstream TLS connections.
+
+**Context:** `tls` (upstream)
+
+```kdl
+upstream "backend" {
+    tls {
+        sni "api.backend.internal"
+    }
+}
+```
+
+---
+
+### `insecure-skip-verify`
+
+Disables TLS certificate verification. **Security risk**.
+
+**Context:** `tls` (upstream)
+**Default:** `#false`
+
+```kdl
+tls {
+    insecure-skip-verify #true
+}
+```
+
+---
+
+### `client-cert`
+
+Path to client certificate for mTLS to upstream.
+
+**Context:** `tls` (upstream)
+
+```kdl
+tls {
+    client-cert "/etc/sentinel/client.crt"
+    client-key "/etc/sentinel/client.key"
+}
+```
+
+---
+
+### `client-key`
+
+Path to client private key for mTLS.
+
+**Context:** `tls` (upstream)
+
+```kdl
+tls {
+    client-cert "/etc/sentinel/client.crt"
+    client-key "/etc/sentinel/client.key"
+}
+```
+
+---
+
+### `ca-cert`
+
+Path to CA certificate for upstream verification.
+
+**Context:** `tls` (upstream)
+
+```kdl
+tls {
+    ca-cert "/etc/sentinel/ca.pem"
+}
+```
+
+---
+
+## HTTP Version Directives
+
+### `http-version`
+
+Configures HTTP version settings for upstream connections.
+
+**Context:** `upstream`
+
+```kdl
+http-version {
+    min-version 1
+    max-version 2
+}
+```
+
+---
+
+### `min-version`
+
+Minimum HTTP version (1 or 2).
+
+**Context:** `http-version`
+**Default:** `1`
+
+```kdl
+http-version {
+    min-version 2
+}
+```
+
+---
+
+### `max-version`
+
+Maximum HTTP version.
+
+**Context:** `http-version`
+**Default:** `2`
+
+```kdl
+http-version {
+    max-version 2
+}
+```
+
+---
+
+### `h2-ping-interval-secs`
+
+HTTP/2 ping interval (0 to disable).
+
+**Context:** `http-version`
+**Default:** `0`
+
+```kdl
+http-version {
+    h2-ping-interval-secs 30
+}
+```
+
+---
+
+### `max-h2-streams`
+
+Maximum HTTP/2 streams per connection.
+
+**Context:** `http-version`
+**Default:** `100`
+
+```kdl
+http-version {
+    max-h2-streams 200
+}
+```
+
+---
+
+## Agent Directives
+
+### `agent`
+
+Defines an external processing agent.
+
+**Context:** `agents`
+
+```kdl
+agents {
+    agent "auth" {
+        type "auth"
+        timeout-ms 1000
+        failure-mode "closed"
+    }
+}
+```
+
+---
+
+### `type` (agent)
+
+Agent type. Common: `"waf"`, `"auth"`, `"rate_limit"`, or custom string.
+
+**Context:** `agent`
+**Required**
+
+```kdl
+agent "auth" {
+    type "auth"
+}
+```
+
+---
+
+### `timeout-ms`
+
+Maximum time to wait for agent response.
+
+**Context:** `agent`
+**Default:** `1000`
+
+```kdl
+agent "auth" {
+    timeout-ms 50
+}
+```
+
+---
+
+### `max-request-body-bytes`
+
+Maximum request body to send to agent.
+
+**Context:** `agent`
+
+```kdl
+agent "waf" {
+    max-request-body-bytes 1048576
+}
+```
+
+---
+
+### `max-response-body-bytes`
+
+Maximum response body to send to agent.
+
+**Context:** `agent`
+
+```kdl
+agent "logger" {
+    max-response-body-bytes 4096
+}
+```
+
+---
+
+### `request-body-mode`
+
+How to handle request body. Options: `"buffer"`, `"stream"`, `"hybrid"`.
+
+**Context:** `agent`
+**Default:** `"buffer"`
+
+```kdl
+agent "waf" {
+    request-body-mode "buffer"
+}
+```
+
+---
+
+### `response-body-mode`
+
+How to handle response body. Options: `"buffer"`, `"stream"`, `"hybrid"`.
+
+**Context:** `agent`
+**Default:** `"buffer"`
+
+```kdl
+agent "logger" {
+    response-body-mode "stream"
+}
+```
+
+---
+
+### `chunk-timeout-ms`
+
+Timeout per body chunk when streaming.
+
+**Context:** `agent`
+**Default:** `5000`
+
+```kdl
+agent "waf" {
+    chunk-timeout-ms 2000
+}
+```
+
+---
+
+### `max-concurrent-calls`
+
+Maximum concurrent calls to agent.
+
+**Context:** `agent`
+**Default:** `100`
+
+```kdl
+agent "auth" {
+    max-concurrent-calls 200
+}
+```
+
+---
+
+### `transport`
+
+Communication mechanism for agent connections.
+
+**Context:** `agent`
+
+```kdl
+agent "auth" {
+    transport {
+        type "unix_socket"
+        path "/var/run/auth.sock"
+    }
+}
+```
+
+---
+
+### `events`
+
+Request lifecycle events the agent receives.
+
+**Context:** `agent`
+
+Available: `"request_headers"`, `"request_body"`, `"response_headers"`, `"response_body"`, `"log"`, `"websocket_frame"`
+
+```kdl
+agent "logger" {
+    events "request_headers" "response_headers"
+}
+```
+
+---
+
+### `config`
+
+Agent-specific configuration passed as JSON.
+
+**Context:** `agent`
+
+```kdl
+agent "custom" {
+    config {
+        custom-field "value"
+    }
+}
+```
+
+---
+
+## Transport Directives
+
+### `type` (transport)
+
+Transport type. Options: `"unix_socket"`, `"grpc"`, `"http"`.
+
+**Context:** `transport`
+**Required**
+
+```kdl
+transport {
+    type "unix_socket"
+    path "/var/run/agent.sock"
+}
+```
+
+---
+
+### `path`
+
+Unix socket path.
+
+**Context:** `transport` (unix_socket)
+
+```kdl
+transport {
+    type "unix_socket"
+    path "/var/run/auth.sock"
+}
+```
+
+---
+
+### `url`
+
+HTTP endpoint URL.
+
+**Context:** `transport` (http)
+
+```kdl
+transport {
+    type "http"
+    url "http://127.0.0.1:8888"
+}
+```
+
+---
+
+## Filter Directives
+
+### `filter`
+
+Defines a reusable filter.
+
+**Context:** `filters`
+
+```kdl
+filters {
+    filter "rate-limit" {
+        type "rate-limit"
+        max-rps 100
+    }
+}
+```
+
+---
+
+### `type` (filter)
+
+Filter type. Options: `"rate-limit"`, `"headers"`, `"compress"`, `"cors"`, `"timeout"`, `"log"`, `"geo"`, `"agent"`.
+
+**Context:** `filter`
+**Required**
+
+```kdl
+filter "cors" {
+    type "cors"
+}
+```
+
+---
+
+### `max-rps`
+
+Maximum requests per second (rate-limit filter).
+
+**Context:** `filter` (rate-limit)
+
+```kdl
+filter "rate-limit" {
+    type "rate-limit"
+    max-rps 100
+    burst 200
+}
+```
+
+---
+
+### `on-limit`
+
+Action when rate limit exceeded. Options: `"reject"`, `"delay"`, `"log-only"`.
+
+**Context:** `filter` (rate-limit)
+**Default:** `"reject"`
+
+```kdl
+filter "rate-limit" {
+    type "rate-limit"
+    on-limit "delay"
+    max-delay-ms 5000
+}
+```
+
+---
+
+### `status-code`
+
+HTTP status code for rate limit rejection.
+
+**Context:** `filter` (rate-limit)
+**Default:** `429`
+
+```kdl
+filter "rate-limit" {
+    type "rate-limit"
+    status-code 503
+}
+```
+
+---
+
+### `backend`
+
+Rate limit storage backend. Options: `"local"`, `"redis"`, `"memcached"`.
+
+**Context:** `filter` (rate-limit)
+**Default:** `"local"`
+
+```kdl
+filter "rate-limit" {
+    type "rate-limit"
+    backend {
+        type "redis"
+        url "redis://127.0.0.1:6379"
+    }
+}
+```
+
+---
+
+### `phase`
+
+When filter runs. Options: `"request"`, `"response"`, `"both"`.
+
+**Context:** `filter` (headers)
+
+```kdl
+filter "headers" {
+    type "headers"
+    phase "response"
+}
+```
+
+---
+
+### `algorithms`
+
+Compression algorithms. Options: `"gzip"`, `"br"`, `"deflate"`, `"zstd"`.
+
+**Context:** `filter` (compress)
+
+```kdl
+filter "compress" {
+    type "compress"
+    algorithms "gzip" "br"
+}
+```
+
+---
+
+### `min-size`
+
+Minimum size for compression.
+
+**Context:** `filter` (compress)
+**Default:** `1024`
+
+```kdl
+filter "compress" {
+    type "compress"
+    min-size 512
+}
+```
+
+---
+
+### `content-types`
+
+Content types to compress.
+
+**Context:** `filter` (compress)
+
+```kdl
+filter "compress" {
+    type "compress"
+    content-types "text/html" "application/json"
+}
+```
+
+---
+
+### `level`
+
+Compression level (1-9).
+
+**Context:** `filter` (compress)
+**Default:** `6`
+
+```kdl
+filter "compress" {
+    type "compress"
+    level 9
+}
+```
+
+---
+
+### `allowed-origins`
+
+CORS allowed origins.
+
+**Context:** `filter` (cors)
+
+```kdl
+filter "cors" {
+    type "cors"
+    allowed-origins "*"
+}
+```
+
+---
+
+### `allowed-methods`
+
+CORS allowed methods.
+
+**Context:** `filter` (cors)
+
+```kdl
+filter "cors" {
+    type "cors"
+    allowed-methods "GET" "POST" "PUT"
+}
+```
+
+---
+
+### `allowed-headers`
+
+CORS allowed headers.
+
+**Context:** `filter` (cors)
+
+```kdl
+filter "cors" {
+    type "cors"
+    allowed-headers "Content-Type" "Authorization"
+}
+```
+
+---
+
+### `allow-credentials`
+
+CORS allow credentials.
+
+**Context:** `filter` (cors)
+**Default:** `#false`
+
+```kdl
+filter "cors" {
+    type "cors"
+    allow-credentials #true
+}
+```
+
+---
+
+### `max-age-secs`
+
+CORS preflight cache duration.
+
+**Context:** `filter` (cors)
+**Default:** `86400`
+
+```kdl
+filter "cors" {
+    type "cors"
+    max-age-secs 3600
+}
+```
+
+---
+
+### `database-path`
+
+GeoIP database path.
+
+**Context:** `filter` (geo)
+
+```kdl
+filter "geo" {
+    type "geo"
+    database-path "/etc/sentinel/GeoLite2-Country.mmdb"
+}
+```
+
+---
+
+### `database-type`
+
+GeoIP database type. Options: `"maxmind"`, `"ip2location"`.
+
+**Context:** `filter` (geo)
+**Default:** `"maxmind"`
+
+```kdl
+filter "geo" {
+    type "geo"
+    database-type "maxmind"
+}
+```
+
+---
+
+### `action`
+
+Geo filter action. Options: `"block"`, `"allow"`, `"log-only"`.
+
+**Context:** `filter` (geo)
+
+```kdl
+filter "geo" {
+    type "geo"
+    action "block"
+    countries "RU" "CN"
+}
+```
+
+---
+
+### `countries`
+
+Country codes for geo filter (ISO 3166-1 alpha-2).
+
+**Context:** `filter` (geo)
+
+```kdl
+filter "geo" {
+    type "geo"
+    countries "US" "CA" "GB"
+}
+```
+
+---
+
+## WAF Directives
+
+### `engine`
+
+WAF engine. Options: `"modsecurity"`, `"coraza"`, or custom.
+
+**Context:** `waf`
+**Required**
+
+```kdl
+waf {
+    engine "coraza"
+}
+```
+
+---
+
+### `mode`
+
+WAF mode. Options: `"off"`, `"detection"`, `"prevention"`.
+
+**Context:** `waf`
+**Default:** `"prevention"`
+
+```kdl
+waf {
+    mode "detection"
+}
+```
+
+---
+
+### `audit-log`
+
+Enable WAF audit logging.
+
+**Context:** `waf`
+**Default:** `#true`
+
+```kdl
+waf {
+    audit-log #true
+}
+```
+
+---
+
+### `ruleset`
+
+WAF ruleset configuration.
+
+**Context:** `waf`
+
+```kdl
+waf {
+    ruleset {
+        crs-version "3.3.4"
+        paranoia-level 1
+        anomaly-threshold 5
+    }
+}
+```
+
+---
+
+### `crs-version`
+
+OWASP Core Rule Set version.
+
+**Context:** `ruleset`
+
+```kdl
+ruleset {
+    crs-version "3.3.4"
+}
+```
+
+---
+
+### `paranoia-level`
+
+CRS paranoia level (1-4).
+
+**Context:** `ruleset`
+**Default:** `1`
+
+```kdl
+ruleset {
+    paranoia-level 2
+}
+```
+
+---
+
+### `anomaly-threshold`
+
+Anomaly score threshold for blocking.
+
+**Context:** `ruleset`
+**Default:** `5`
+
+```kdl
+ruleset {
+    anomaly-threshold 10
+}
+```
+
+---
+
+### `exclusions`
+
+WAF rule exclusions.
+
+**Context:** `waf`
+
+```kdl
+waf {
+    exclusions {
+        exclusion {
+            rule-ids "920350" "920420"
+            scope "global"
+        }
+    }
+}
+```
+
+---
+
+### `body-inspection`
+
+WAF body inspection policy.
+
+**Context:** `waf`
+
+```kdl
+waf {
+    body-inspection {
+        inspect-request-body #true
+        inspect-response-body #false
+        max-inspection-bytes 1048576
+    }
+}
+```
+
+---
+
+## Limits Directives
+
+### `max-header-size-bytes`
+
+Maximum size per header.
+
+**Context:** `limits`
+**Default:** `8192`
+
+```kdl
+limits {
+    max-header-size-bytes 16384
+}
+```
+
+---
+
+### `max-header-count`
+
+Maximum number of headers.
+
+**Context:** `limits`
+**Default:** `100`
+
+```kdl
+limits {
+    max-header-count 200
+}
+```
+
+---
+
+### `max-body-size-bytes`
+
+Maximum request body size.
+
+**Context:** `limits`
+**Default:** `1048576`
+
+```kdl
+limits {
+    max-body-size-bytes 10485760
+}
+```
+
+---
+
+### `max-connections-per-client`
+
+Maximum connections from single client.
+
+**Context:** `limits`
+**Default:** `100`
+
+```kdl
+limits {
+    max-connections-per-client 50
+}
+```
+
+---
+
+### `max-connections-per-route`
+
+Maximum connections per route.
+
+**Context:** `limits`
+**Default:** `1000`
+
+```kdl
+limits {
+    max-connections-per-route 500
+}
+```
+
+---
+
+### `max-total-connections`
+
+Global maximum connections.
+
+**Context:** `limits`
+**Default:** `10000`
+
+```kdl
+limits {
+    max-total-connections 50000
+}
+```
+
+---
+
+### `max-in-flight-requests`
+
+Maximum in-flight requests globally.
+
+**Context:** `limits`
+**Default:** `10000`
+
+```kdl
+limits {
+    max-in-flight-requests 20000
+}
+```
+
+---
+
+### `max-queued-requests`
+
+Queue length before rejection.
+
+**Context:** `limits`
+**Default:** `1000`
+
+```kdl
+limits {
+    max-queued-requests 5000
+}
+```
+
+---
+
+## Observability Directives
+
+### `metrics`
+
+Prometheus metrics configuration.
+
+**Context:** `observability`
+
+```kdl
+observability {
+    metrics {
+        enabled #true
+        address "0.0.0.0:9090"
+        path "/metrics"
+    }
+}
+```
+
+---
+
+### `high-cardinality`
+
+Enable high-cardinality metrics labels.
+
+**Context:** `metrics`
+**Default:** `#false`
+
+```kdl
+metrics {
+    high-cardinality #true
+}
+```
+
+---
+
+### `logging`
+
+Logging configuration.
+
+**Context:** `observability`
+
+```kdl
+observability {
+    logging {
+        level "info"
+        format "json"
+    }
+}
+```
+
+---
+
+### `format`
+
+Log format. Options: `"json"`, `"pretty"`.
+
+**Context:** `logging`
+**Default:** `"json"`
+
+```kdl
+logging {
+    format "pretty"
+}
+```
+
+---
+
+### `timestamps`
+
+Include timestamps in logs.
+
+**Context:** `logging`
+**Default:** `#true`
+
+```kdl
+logging {
+    timestamps #true
+}
+```
+
+---
+
+### `file`
+
+Log output file path.
+
+**Context:** `logging`
+
+```kdl
+logging {
+    file "/var/log/sentinel/app.log"
+}
+```
+
+---
+
+### `access-log`
+
+Access log configuration.
+
+**Context:** `logging`
+
+```kdl
+logging {
+    access-log {
+        enabled #true
+        file "/var/log/sentinel/access.log"
+        format "json"
+    }
+}
+```
+
+---
+
+### `error-log`
+
+Error log configuration.
+
+**Context:** `logging`
+
+```kdl
+logging {
+    error-log {
+        enabled #true
+        file "/var/log/sentinel/error.log"
+        level "warn"
+    }
+}
+```
+
+---
+
+### `audit-log`
+
+Audit log configuration.
+
+**Context:** `logging`
+
+```kdl
+logging {
+    audit-log {
+        enabled #true
+        file "/var/log/sentinel/audit.log"
+        log-blocked #true
+    }
+}
+```
+
+---
+
+### `tracing`
+
+Distributed tracing configuration.
+
+**Context:** `observability`
+
+```kdl
+observability {
+    tracing {
+        backend "otlp" {
+            endpoint "http://localhost:4317"
+        }
+        sampling-rate 0.01
+        service-name "sentinel"
+    }
+}
+```
+
+---
+
+### `sampling-rate`
+
+Tracing sampling rate (0.0 to 1.0).
+
+**Context:** `tracing`
+**Default:** `0.01`
+
+```kdl
+tracing {
+    sampling-rate 0.1
+}
+```
+
+---
+
+### `service-name`
+
+Service name for tracing spans.
+
+**Context:** `tracing`
+**Default:** `"sentinel"`
+
+```kdl
+tracing {
+    service-name "api-gateway"
 }
 ```
 
