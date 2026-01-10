@@ -356,6 +356,27 @@ curl -X POST https://llm-gateway.example.com/v1/anthropic/messages \
   }'
 ```
 
+### Streaming Request
+
+Streaming responses (SSE) are automatically handled. Token counting works seamlessly:
+
+```bash
+curl -X POST https://llm-gateway.example.com/v1/openai/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-client-key" \
+  -d '{
+    "model": "gpt-4o",
+    "stream": true,
+    "messages": [{"role": "user", "content": "Write a haiku about proxies"}]
+  }'
+```
+
+Sentinel will:
+- Parse each SSE chunk to extract content
+- Accumulate the full response text
+- Count tokens using tiktoken (or use API-provided usage if available)
+- Apply the token count to rate limits and budgets
+
 ## Alerting Rules
 
 Example Prometheus alerting rules:
