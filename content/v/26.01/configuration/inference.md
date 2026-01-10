@@ -190,6 +190,261 @@ X-RateLimit-Remaining-Tokens: 0
 X-RateLimit-Reset: 1704067200
 ```
 
+## Token Budget Management
+
+While rate limiting controls tokens *per minute*, budget management tracks **cumulative token usage** over longer periods (hourly, daily, monthly). This enables:
+
+- **Quota enforcement** for API consumers
+- **Usage alerts** at configurable thresholds
+- **Spending controls** for cost management
+
+### Basic Budget Configuration
+
+```kdl
+inference {
+    provider "openai"
+
+    budget {
+        period "daily"
+        limit 1000000
+        enforce true
+    }
+}
+```
+
+| Option | Required | Default | Description |
+|--------|----------|---------|-------------|
+| `period` | No | `daily` | Reset period: `hourly`, `daily`, `monthly`, or custom seconds |
+| `limit` | Yes | — | Maximum tokens allowed in the period |
+| `enforce` | No | `true` | Block requests when budget exhausted |
+| `alert-thresholds` | No | `0.80 0.90 0.95` | Percentages that trigger alerts |
+| `rollover` | No | `false` | Carry unused tokens to next period |
+| `burst-allowance` | No | — | Allow percentage above limit (soft limit) |
+
+### Budget Periods
+
+```kdl
+// Hourly budget
+budget {
+    period "hourly"
+    limit 100000
+}
+
+// Daily budget (default)
+budget {
+    period "daily"
+    limit 1000000
+}
+
+// Monthly budget
+budget {
+    period "monthly"
+    limit 50000000
+}
+
+// Custom period (seconds)
+budget {
+    period 3600  // 1 hour in seconds
+    limit 100000
+}
+```
+
+### Alert Thresholds
+
+Configure usage alerts at specific percentages:
+
+```kdl
+budget {
+    period "daily"
+    limit 1000000
+    alert-thresholds 0.50 0.80 0.90 0.95
+}
+```
+
+Alerts are logged when usage crosses each threshold:
+
+```
+2026-01-10T14:30:00Z WARN Token budget alert threshold crossed
+    route_id="openai-proxy" tenant="client-123"
+    threshold_pct=80 tokens_used=800000 tokens_limit=1000000
+```
+
+### Soft Limits with Burst Allowance
+
+Allow temporary burst usage above the limit:
+
+```kdl
+budget {
+    period "daily"
+    limit 1000000
+    burst-allowance 0.10  // Allow 10% burst (up to 1.1M tokens)
+    enforce true
+}
+```
+
+When within burst allowance:
+- Request proceeds with a warning logged
+- `X-Budget-Remaining` header shows negative value
+- Next request may be blocked if over burst limit
+
+### Rollover
+
+Carry unused tokens to the next period:
+
+```kdl
+budget {
+    period "daily"
+    limit 1000000
+    rollover true
+}
+```
+
+If a client uses 300,000 tokens on day 1, they have 1,700,000 tokens available on day 2 (capped at 2× limit).
+
+### Budget Response Headers
+
+Successful responses include budget headers when budget tracking is enabled:
+
+```
+HTTP/1.1 200 OK
+X-Budget-Remaining: 500000
+X-Budget-Period-Reset: 2026-01-11T00:00:00Z
+```
+
+| Header | Description |
+|--------|-------------|
+| `X-Budget-Remaining` | Tokens remaining in current period |
+| `X-Budget-Period-Reset` | ISO 8601 timestamp when period resets |
+
+### Budget Exhausted Response
+
+When budget is exhausted and enforcement is enabled:
+
+```
+HTTP/1.1 429 Too Many Requests
+Retry-After: 3600
+Content-Type: application/json
+
+{"error": "Token budget exhausted"}
+```
+
+## Cost Attribution
+
+Track the monetary cost of inference requests with per-model pricing.
+
+### Basic Cost Configuration
+
+```kdl
+inference {
+    provider "openai"
+
+    cost-attribution {
+        pricing {
+            model "gpt-4*" {
+                input-cost-per-million 30.0
+                output-cost-per-million 60.0
+            }
+            model "gpt-3.5*" {
+                input-cost-per-million 0.50
+                output-cost-per-million 1.50
+            }
+        }
+        default-input-cost 1.0
+        default-output-cost 2.0
+    }
+}
+```
+
+### Model Pattern Matching
+
+Model patterns support wildcards:
+
+| Pattern | Matches |
+|---------|---------|
+| `gpt-4*` | `gpt-4`, `gpt-4-turbo`, `gpt-4o`, `gpt-4o-mini` |
+| `*claude*` | `claude-3-opus`, `claude-3-sonnet`, `claude-instant` |
+| `llama-3` | Exact match only |
+
+### Multiple Pricing Rules
+
+```kdl
+cost-attribution {
+    pricing {
+        // OpenAI models
+        model "gpt-4o" {
+            input-cost-per-million 5.0
+            output-cost-per-million 15.0
+        }
+        model "gpt-4-turbo*" {
+            input-cost-per-million 10.0
+            output-cost-per-million 30.0
+        }
+        model "gpt-4*" {
+            input-cost-per-million 30.0
+            output-cost-per-million 60.0
+        }
+        model "gpt-3.5*" {
+            input-cost-per-million 0.50
+            output-cost-per-million 1.50
+        }
+
+        // Anthropic models
+        model "claude-3-opus*" {
+            input-cost-per-million 15.0
+            output-cost-per-million 75.0
+        }
+        model "claude-3-sonnet*" {
+            input-cost-per-million 3.0
+            output-cost-per-million 15.0
+        }
+        model "claude-3-haiku*" {
+            input-cost-per-million 0.25
+            output-cost-per-million 1.25
+        }
+    }
+
+    // Fallback for unknown models
+    default-input-cost 1.0
+    default-output-cost 2.0
+    currency "USD"
+}
+```
+
+### Currency Override
+
+Set currency per model or globally:
+
+```kdl
+cost-attribution {
+    currency "USD"  // Global default
+
+    pricing {
+        model "gpt-4*" {
+            input-cost-per-million 30.0
+            output-cost-per-million 60.0
+            currency "EUR"  // Override for this model
+        }
+    }
+}
+```
+
+### Cost Metrics
+
+Cost attribution exposes Prometheus metrics:
+
+```prometheus
+# Total cost by model and route
+sentinel_inference_cost_total{namespace="",service="",route="openai",model="gpt-4-turbo",currency="USD"} 12.45
+
+# Token counts by model
+sentinel_inference_input_tokens_total{route="openai",model="gpt-4-turbo"} 415000
+sentinel_inference_output_tokens_total{route="openai",model="gpt-4-turbo"} 125000
+
+# Cost per request histogram
+sentinel_inference_cost_per_request_bucket{route="openai",model="gpt-4-turbo",le="0.01"} 45
+sentinel_inference_cost_per_request_bucket{route="openai",model="gpt-4-turbo",le="0.1"} 892
+```
+
 ## Inference Routing
 
 ### Routing Strategies
@@ -250,7 +505,7 @@ This is recommended for inference upstreams where request processing time correl
 
 ## Complete Examples
 
-### OpenAI Proxy
+### OpenAI Proxy with Budget and Cost Tracking
 
 ```kdl
 routes {
@@ -271,6 +526,36 @@ routes {
                 requests-per-minute 1000
                 burst-tokens 20000
                 estimation-method "chars"
+            }
+
+            budget {
+                period "daily"
+                limit 1000000
+                alert-thresholds 0.80 0.90 0.95
+                enforce true
+            }
+
+            cost-attribution {
+                pricing {
+                    model "gpt-4o" {
+                        input-cost-per-million 5.0
+                        output-cost-per-million 15.0
+                    }
+                    model "gpt-4-turbo*" {
+                        input-cost-per-million 10.0
+                        output-cost-per-million 30.0
+                    }
+                    model "gpt-4*" {
+                        input-cost-per-million 30.0
+                        output-cost-per-million 60.0
+                    }
+                    model "gpt-3.5*" {
+                        input-cost-per-million 0.50
+                        output-cost-per-million 1.50
+                    }
+                }
+                default-input-cost 1.0
+                default-output-cost 2.0
             }
 
             routing {
@@ -463,6 +748,50 @@ sentinel_inference_queue_depth_tokens{upstream="llm-pool",target="gpu-1:8080"}
 sentinel_inference_queue_depth_requests{upstream="llm-pool",target="gpu-1:8080"}
 ```
 
+### Budget Metrics
+
+When budget tracking is enabled:
+
+```prometheus
+# Budget limit per tenant (gauge)
+sentinel_inference_budget_limit{namespace="",service="",route="openai",tenant="client-123"} 1000000
+
+# Total tokens consumed against budget (counter)
+sentinel_inference_budget_used_total{namespace="",service="",route="openai",tenant="client-123"} 450000
+
+# Tokens remaining in budget (gauge, can be negative)
+sentinel_inference_budget_remaining{namespace="",service="",route="openai",tenant="client-123"} 550000
+
+# Requests blocked due to exhausted budget (counter)
+sentinel_inference_budget_exhausted_total{namespace="",service="",route="openai",tenant="client-123"} 12
+
+# Budget alert thresholds crossed (counter)
+sentinel_inference_budget_alerts_total{namespace="",service="",route="openai",tenant="client-123",threshold="80"} 1
+sentinel_inference_budget_alerts_total{namespace="",service="",route="openai",tenant="client-123",threshold="90"} 1
+```
+
+### Cost Metrics
+
+When cost attribution is enabled:
+
+```prometheus
+# Total cost by model and route (counter)
+sentinel_inference_cost_total{namespace="",service="",route="openai",model="gpt-4-turbo",currency="USD"} 12.45
+
+# Input tokens by model (counter)
+sentinel_inference_input_tokens_total{namespace="",service="",route="openai",model="gpt-4-turbo"} 415000
+
+# Output tokens by model (counter)
+sentinel_inference_output_tokens_total{namespace="",service="",route="openai",model="gpt-4-turbo"} 125000
+
+# Cost per request histogram (histogram)
+sentinel_inference_cost_per_request_bucket{namespace="",service="",route="openai",model="gpt-4-turbo",le="0.001"} 15
+sentinel_inference_cost_per_request_bucket{namespace="",service="",route="openai",model="gpt-4-turbo",le="0.01"} 245
+sentinel_inference_cost_per_request_bucket{namespace="",service="",route="openai",model="gpt-4-turbo",le="0.1"} 892
+sentinel_inference_cost_per_request_bucket{namespace="",service="",route="openai",model="gpt-4-turbo",le="1.0"} 1050
+sentinel_inference_cost_per_request_bucket{namespace="",service="",route="openai",model="gpt-4-turbo",le="+Inf"} 1052
+```
+
 ## Best Practices
 
 ### Token Limits
@@ -511,6 +840,21 @@ The inference health check:
 2. **Use `generic`** for self-hosted or uncommon APIs
 3. **Prefer header extraction**: It's more efficient than body parsing
 
+### Budget Management
+
+1. **Choose appropriate periods**: Use `daily` for most use cases, `monthly` for enterprise quotas
+2. **Set alert thresholds**: Configure alerts at 80%, 90%, 95% to notify before exhaustion
+3. **Consider burst allowance**: Allow 10-20% burst for traffic spikes
+4. **Enable rollover carefully**: Rollover can lead to large accumulated quotas
+5. **Combine with rate limiting**: Budget controls total usage; rate limiting controls burst speed
+
+### Cost Attribution
+
+1. **Keep pricing rules updated**: Model pricing changes frequently
+2. **Use specific patterns first**: Order rules from specific to general (e.g., `gpt-4-turbo` before `gpt-4*`)
+3. **Set reasonable defaults**: Fallback pricing should be conservative (higher than expected)
+4. **Monitor cost metrics**: Track `sentinel_inference_cost_total` for spending trends
+
 ## Default Values
 
 | Setting | Default |
@@ -518,6 +862,11 @@ The inference health check:
 | `provider` | `generic` |
 | `estimation-method` | `chars` |
 | `routing.strategy` | `round_robin` |
+| `budget.period` | `daily` |
+| `budget.enforce` | `true` |
+| `budget.alert-thresholds` | `0.80, 0.90, 0.95` |
+| `budget.rollover` | `false` |
+| `cost-attribution.currency` | `USD` |
 
 ## Next Steps
 

@@ -116,23 +116,25 @@ Client Response
 
 This documentation will guide you through:
 
-1. **[Installation](./getting-started/installation.md)** - Get Sentinel up and running
-2. **[Quick Start](./getting-started/quick-start.md)** - Your first proxy configuration
-3. **[Core Concepts](./concepts/architecture.md)** - Understand how Sentinel works
-4. **[Configuration](./configuration/overview.md)** - Master the configuration system
-5. **[Service Types](./service-types/overview.md)** - Leverage service-specific features
-6. **[Deployment](./deployment/overview.md)** - Deploy to production
+1. **[Installation](./getting-started/installation.md)** — Get Sentinel up and running
+2. **[Quick Start](./getting-started/quick-start.md)** — Your first proxy configuration
+3. **[Core Concepts](./concepts/architecture.md)** — Understand how Sentinel works
+4. **[Configuration](./configuration/file-format.md)** — Master the configuration system
+5. **[Features](./features/)** — Explore all capabilities
+6. **[Deployment](./deployment/docker.md)** — Deploy to production
 
 ## Documentation Structure
 
-- **Getting Started**: Installation and basic setup
-- **Core Concepts**: Fundamental architecture and design principles
-- **Configuration**: Detailed configuration reference
-- **Service Types**: Service-specific features and optimizations
-- **Features**: Advanced capabilities and integrations
-- **Operations**: Production deployment and management
-- **Examples**: Real-world configuration examples
-- **Reference**: API documentation and specifications
+- **[Getting Started](./getting-started/)** — Installation and basic setup
+- **[Core Concepts](./concepts/)** — Fundamental architecture and design principles
+- **[Configuration](./configuration/)** — Detailed configuration reference
+- **[Features](./features/)** — Complete feature list with code references
+- **[Agents](./agents/)** — External agent system for extensibility
+- **[Operations](./operations/)** — Production management and troubleshooting
+- **[Deployment](./deployment/)** — Container and cloud deployment guides
+- **[Examples](./examples/)** — Real-world configuration examples
+- **[Reference](./reference/)** — Metrics, CLI, and API documentation
+- **[Development](./development/)** — Contributing to Sentinel
 
 ## Community
 

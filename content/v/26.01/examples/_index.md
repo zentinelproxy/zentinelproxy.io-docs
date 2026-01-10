@@ -20,6 +20,7 @@ Complete, production-ready configuration examples for common Sentinel use cases.
 | [Observability](observability/) | Monitoring stack | Prometheus, Grafana, tracing |
 | [WebSocket](websocket/) | Real-time apps | WS proxying, inspection |
 | [AI Gateway](ai-gateway/) | LLM API proxy | Prompt security, PII filtering |
+| [LLM Gateway](llm-gateway/) | LLM cost control | Token budgets, cost attribution |
 
 ## Getting Started
 
