@@ -241,9 +241,9 @@ upstreams {
         }
         load-balancing "least_tokens_queued"
         health-check {
-            type "http" {
-                path "/v1/models"
-                expected-status 200
+            type "inference" {
+                endpoint "/v1/models"
+                expected-models "llama-3-70b" "codellama-34b"
             }
             interval-secs 30
             timeout-secs 10

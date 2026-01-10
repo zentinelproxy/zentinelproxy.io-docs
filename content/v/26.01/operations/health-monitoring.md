@@ -287,6 +287,36 @@ upstreams {
 }
 ```
 
+### Inference Health Check
+
+For LLM/AI inference backends, use the inference health check to verify specific models are loaded and available. This goes beyond a simple HTTP 200 check by parsing the `/v1/models` endpoint response and confirming expected models are present:
+
+```kdl
+upstreams {
+    upstream "gpu-cluster" {
+        health-check {
+            type "inference" {
+                endpoint "/v1/models"
+                expected-models "llama-3-70b" "codellama-34b"
+            }
+            interval-secs 30
+            timeout-secs 10
+            healthy-threshold 2
+            unhealthy-threshold 3
+        }
+    }
+}
+```
+
+The inference health check:
+
+- Sends a GET request to the models endpoint (OpenAI-compatible `/v1/models` or Ollama `/api/tags`)
+- Parses the JSON response to extract available model IDs
+- Verifies all expected models are present (supports prefix matching for versioned models like `gpt-4` matching `gpt-4-turbo`)
+- Marks the backend unhealthy if any expected model is missing
+
+This is particularly useful for GPU backends where models may need time to load after restart, or when running multiple model variants across a cluster.
+
 ### Health Check Tuning
 
 | Scenario | interval | timeout | healthy | unhealthy |

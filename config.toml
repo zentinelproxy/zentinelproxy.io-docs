@@ -31,6 +31,12 @@ discussions = "https://github.com/raskell-io/sentinel/discussions"
 edit_url = "https://github.com/raskell-io/sentinel.raskell.io-docs/edit/main/content"
 show_theme_toggle = true
 
+# Home site link (back to main landing page)
+[extra.home_site]
+name = "Sentinel"
+url = "https://sentinel.raskell.io"
+logo = "img/sentinel-mascot.png"
+
 # Version picker
 [extra.versions]
 current = "26.01"
