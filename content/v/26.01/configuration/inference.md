@@ -16,6 +16,7 @@ Inference routing addresses the unique challenges of AI/LLM traffic:
 - **Fallback routing**: Automatic failover with cross-provider model mapping
 - **Token budgets**: Track cumulative usage with alerts and enforcement
 - **Cost attribution**: Per-model pricing and spending metrics
+- **Semantic guardrails**: Prompt injection detection and PII scanning via external agents
 
 ## Basic Configuration
 
@@ -980,6 +981,284 @@ upstreams {
 }
 ```
 
+## Semantic Guardrails
+
+Semantic guardrails provide content inspection for inference routes via external agents. This enables:
+
+- **Prompt injection detection**: Block or flag requests containing injection attacks
+- **PII detection**: Detect sensitive data (SSN, credit cards, emails) in responses
+- **Configurable actions**: Block, log, or warn based on detection results
+- **Failure modes**: Define behavior when guardrail agents are unavailable
+
+### Basic Guardrails Configuration
+
+```kdl
+routes {
+    route "inference-api" {
+        matches {
+            path-prefix "/v1/chat/completions"
+        }
+        service-type "inference"
+        upstream "openai-primary"
+
+        inference {
+            provider "openai"
+
+            guardrails {
+                prompt-injection {
+                    enabled true
+                    agent "prompt-guard"
+                    action "block"
+                    block-status 400
+                    block-message "Request blocked: potential prompt injection detected"
+                    timeout-ms 500
+                    failure-mode "open"
+                }
+
+                pii-detection {
+                    enabled true
+                    agent "pii-scanner"
+                    action "log"
+                    categories "ssn" "credit-card" "email" "phone"
+                    timeout-ms 1000
+                    failure-mode "open"
+                }
+            }
+        }
+    }
+}
+```
+
+### Prompt Injection Detection
+
+Detects attempts to manipulate LLM behavior through malicious prompts in the request phase.
+
+```kdl
+guardrails {
+    prompt-injection {
+        enabled true
+        agent "prompt-guard"
+        action "block"
+        block-status 400
+        block-message "Request blocked: potential prompt injection detected"
+        timeout-ms 500
+        failure-mode "open"
+    }
+}
+```
+
+| Option | Required | Default | Description |
+|--------|----------|---------|-------------|
+| `enabled` | No | `false` | Enable prompt injection detection |
+| `agent` | Yes | — | Name of the guardrail agent to use |
+| `action` | No | `block` | Action on detection: `block`, `log`, or `warn` |
+| `block-status` | No | `400` | HTTP status code when blocking |
+| `block-message` | No | — | Custom message in block response |
+| `timeout-ms` | No | `500` | Agent call timeout in milliseconds |
+| `failure-mode` | No | `open` | Behavior on agent failure: `open` or `closed` |
+
+#### Actions
+
+| Action | Behavior |
+|--------|----------|
+| `block` | Return error response, do not forward to upstream |
+| `log` | Log detection, allow request to proceed |
+| `warn` | Allow request, add `X-Guardrail-Warning` header to response |
+
+#### Failure Modes
+
+| Mode | Behavior |
+|------|----------|
+| `open` | Allow request if agent times out or fails (fail-open) |
+| `closed` | Block request if agent times out or fails (fail-closed) |
+
+### PII Detection
+
+Detects personally identifiable information in LLM responses during the logging phase.
+
+```kdl
+guardrails {
+    pii-detection {
+        enabled true
+        agent "pii-scanner"
+        action "log"
+        categories "ssn" "credit-card" "email" "phone" "address"
+        timeout-ms 1000
+        failure-mode "open"
+    }
+}
+```
+
+| Option | Required | Default | Description |
+|--------|----------|---------|-------------|
+| `enabled` | No | `false` | Enable PII detection |
+| `agent` | Yes | — | Name of the guardrail agent to use |
+| `action` | No | `log` | Action on detection: `log`, `redact`, or `block` |
+| `categories` | No | — | PII categories to detect |
+| `timeout-ms` | No | `1000` | Agent call timeout in milliseconds |
+| `failure-mode` | No | `open` | Behavior on agent failure |
+
+#### PII Categories
+
+Common PII categories supported by guardrail agents:
+
+| Category | Examples |
+|----------|----------|
+| `ssn` | Social Security Numbers |
+| `credit-card` | Credit/debit card numbers |
+| `email` | Email addresses |
+| `phone` | Phone numbers |
+| `address` | Physical addresses |
+| `name` | Personal names |
+| `dob` | Dates of birth |
+| `passport` | Passport numbers |
+| `driver-license` | Driver's license numbers |
+
+#### PII Actions
+
+| Action | Behavior |
+|--------|----------|
+| `log` | Log detection with categories, response unchanged |
+| `redact` | Replace detected PII with redacted placeholders |
+| `block` | Block response (non-streaming only) |
+
+> **Note:** PII detection runs in the logging phase after the response has been sent. For streaming responses, the `redact` and `block` actions are not supported; use `log` to record detections.
+
+### Agent Configuration
+
+Guardrail agents must be defined in the agents section:
+
+```kdl
+agents {
+    agent "prompt-guard" {
+        address "127.0.0.1:9001"
+        timeout-ms 500
+        failure-mode "open"
+    }
+
+    agent "pii-scanner" {
+        address "127.0.0.1:9002"
+        timeout-ms 1000
+        failure-mode "open"
+    }
+}
+```
+
+Agents receive `GuardrailInspect` events with:
+- `inspection_type`: `PromptInjection` or `PiiDetection`
+- `content`: Text content to inspect
+- `model`: Model name (for prompt injection)
+- `categories`: Requested PII categories (for PII detection)
+- `correlation_id`: Request trace ID
+
+Agents respond with:
+- `detected`: Boolean indicating if issues were found
+- `confidence`: Detection confidence score (0.0-1.0)
+- `detections`: List of detected issues with category and description
+- `redacted_content`: Optional redacted version of content
+
+### Response Headers
+
+When guardrails detect issues in warn mode:
+
+```
+HTTP/1.1 200 OK
+X-Guardrail-Warning: prompt-injection-detected
+```
+
+### Guardrail Metrics
+
+```prometheus
+# Requests blocked by prompt injection detection
+sentinel_blocked_requests_total{reason="prompt_injection"} 42
+
+# PII detections by route and category
+sentinel_pii_detected_total{route="inference-api",category="ssn"} 15
+sentinel_pii_detected_total{route="inference-api",category="email"} 128
+sentinel_pii_detected_total{route="inference-api",category="credit-card"} 7
+```
+
+### Complete Guardrails Example
+
+```kdl
+routes {
+    route "secure-inference-api" {
+        priority 100
+        matches {
+            path-prefix "/v1/chat/completions"
+        }
+        service-type "inference"
+        upstream "openai-primary"
+
+        inference {
+            provider "openai"
+
+            rate-limit {
+                tokens-per-minute 100000
+                burst-tokens 20000
+            }
+
+            guardrails {
+                // Block prompt injection attempts
+                prompt-injection {
+                    enabled true
+                    agent "prompt-guard"
+                    action "block"
+                    block-status 400
+                    block-message "Request blocked: potential prompt injection detected"
+                    timeout-ms 500
+                    failure-mode "open"  // Allow if agent unavailable
+                }
+
+                // Log PII in responses for compliance
+                pii-detection {
+                    enabled true
+                    agent "pii-scanner"
+                    action "log"
+                    categories "ssn" "credit-card" "email" "phone"
+                    timeout-ms 1000
+                    failure-mode "open"
+                }
+            }
+        }
+
+        policies {
+            timeout-secs 120
+        }
+    }
+}
+
+agents {
+    agent "prompt-guard" {
+        address "127.0.0.1:9001"
+        timeout-ms 500
+        failure-mode "open"
+    }
+
+    agent "pii-scanner" {
+        address "127.0.0.1:9002"
+        timeout-ms 1000
+        failure-mode "open"
+    }
+}
+
+upstreams {
+    upstream "openai-primary" {
+        targets { target { address "api.openai.com:443" } }
+        tls { enabled true }
+    }
+}
+```
+
+### Best Practices
+
+1. **Choose appropriate actions**: Use `block` for high-security environments; use `log` or `warn` for monitoring before enforcement
+2. **Set reasonable timeouts**: Guardrail checks add latency; keep timeouts under 1 second for interactive APIs
+3. **Use fail-open for availability**: Default to `failure-mode "open"` unless security requirements mandate fail-closed
+4. **Monitor agent health**: Track agent latency and timeout metrics to ensure guardrails remain effective
+5. **Start with logging**: Enable guardrails in `log` mode first to understand detection patterns before blocking
+6. **Configure PII categories**: Only enable categories relevant to your use case to reduce false positives
+
 ## Load Balancing for Inference
 
 The `least_tokens_queued` load balancing algorithm can also be set at the upstream level:
@@ -1387,6 +1666,15 @@ The inference health check:
 | `fallback.triggers.on-connection-error` | `true` |
 | `fallback-upstream.skip-if-unhealthy` | `false` |
 | `fallback-upstream.provider` | `generic` |
+| `guardrails.prompt-injection.enabled` | `false` |
+| `guardrails.prompt-injection.action` | `block` |
+| `guardrails.prompt-injection.block-status` | `400` |
+| `guardrails.prompt-injection.timeout-ms` | `500` |
+| `guardrails.prompt-injection.failure-mode` | `open` |
+| `guardrails.pii-detection.enabled` | `false` |
+| `guardrails.pii-detection.action` | `log` |
+| `guardrails.pii-detection.timeout-ms` | `1000` |
+| `guardrails.pii-detection.failure-mode` | `open` |
 
 ## Next Steps
 
