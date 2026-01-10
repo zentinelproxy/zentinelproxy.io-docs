@@ -59,7 +59,7 @@ routes {
                 tokens-per-minute 100000
                 requests-per-minute 1000
                 burst-tokens 20000
-                estimation-method "chars"
+                estimation-method "tiktoken"  // Accurate model-specific tokenization
             }
 
             // Budget: cumulative daily limit per client

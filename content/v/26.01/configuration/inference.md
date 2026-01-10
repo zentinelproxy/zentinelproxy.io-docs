@@ -165,7 +165,7 @@ inference {
     rate-limit {
         tokens-per-minute 100000
         burst-tokens 10000
-        estimation-method "chars"
+        estimation-method "tiktoken"
     }
 }
 ```
@@ -174,9 +174,58 @@ inference {
 |--------|-------------|----------|
 | `chars` | Characters / 4 (default) | ~75% |
 | `words` | Words * 1.3 | ~80% |
-| `tiktoken` | Actual tokenizer (future) | ~99% |
+| `tiktoken` | Model-specific BPE tokenizer | ~99% |
 
 After the response, actual token counts are used to refund or charge the difference.
+
+### Tiktoken Tokenizer
+
+When `estimation-method` is set to `tiktoken`, Sentinel uses OpenAI's tiktoken tokenizer for accurate token counting. This requires the `tiktoken` feature to be enabled at build time.
+
+**Model-specific encodings:**
+
+| Encoding | Models |
+|----------|--------|
+| `o200k_base` | GPT-4o, GPT-4o-mini |
+| `cl100k_base` | GPT-4, GPT-4-turbo, GPT-3.5-turbo, Claude (approximation) |
+| `p50k_base` | Codex, text-davinci-003 |
+
+**Features:**
+
+- **Cached tokenizers**: BPE instances are cached and reused across requests
+- **Model detection**: Automatically selects the correct encoding based on model name
+- **Chat-aware parsing**: Extracts message content from chat completion requests
+- **Multi-modal support**: Estimates tokens for image attachments (~170 tokens per image)
+- **Tool call handling**: Counts tokens in function names and arguments
+
+**Request parsing:**
+
+For chat completion requests, tiktoken parses the JSON to extract just the text content:
+
+```json
+{
+  "model": "gpt-4",
+  "messages": [
+    {"role": "system", "content": "You are a helpful assistant."},
+    {"role": "user", "content": "Hello!"}
+  ]
+}
+```
+
+Token count includes:
+- Message content (tokenized with model-specific encoding)
+- Role names (~1 token each)
+- Per-message overhead (~4 tokens for formatting)
+- Conversation overhead (~3 tokens)
+
+**Fallback behavior:**
+
+If the `tiktoken` feature is not enabled at compile time, the tokenizer falls back to character-based estimation (characters / 4).
+
+```bash
+# Build with tiktoken support
+cargo build --features tiktoken
+```
 
 ### Rate Limit Response
 
@@ -525,7 +574,7 @@ routes {
                 tokens-per-minute 100000
                 requests-per-minute 1000
                 burst-tokens 20000
-                estimation-method "chars"
+                estimation-method "tiktoken"
             }
 
             budget {
@@ -799,6 +848,7 @@ sentinel_inference_cost_per_request_bucket{namespace="",service="",route="openai
 1. **Start conservative**: Begin with lower limits and increase based on observed usage
 2. **Use dual limiting**: Combine token and request limits for comprehensive protection
 3. **Monitor refunds**: High refund rates indicate over-estimation; consider adjusting
+4. **Use tiktoken when possible**: Build with `--features tiktoken` for ~99% accuracy; falls back to character-based estimation otherwise
 
 ### Load Balancing
 
