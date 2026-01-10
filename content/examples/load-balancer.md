@@ -99,13 +99,11 @@ routes {
 
 upstreams {
     upstream "app-cluster" {
-        targets {
-            target { address "10.0.1.10:3000" weight 100 }
-            target { address "10.0.1.11:3000" weight 100 }
-            target { address "10.0.1.12:3000" weight 100 }
-            target { address "10.0.1.13:3000" weight 100 }
-            target { address "10.0.1.14:3000" weight 100 }
-        }
+        target "10.0.1.10:3000" weight=100
+        target "10.0.1.11:3000" weight=100
+        target "10.0.1.12:3000" weight=100
+        target "10.0.1.13:3000" weight=100
+        target "10.0.1.14:3000" weight=100
         load-balancing "round-robin"
         health-check {
             type "http" {
@@ -166,11 +164,9 @@ listeners {
 
 upstreams {
     upstream "app" {
-        targets {
-            target { address "10.0.1.10:3000" weight 100 }
-            target { address "10.0.1.11:3000" weight 50 }
-            target { address "10.0.1.12:3000" weight 50 }
-        }
+        target "10.0.1.10:3000" weight=100
+        target "10.0.1.11:3000" weight=50
+        target "10.0.1.12:3000" weight=50
         load-balancing "weighted-round-robin"
     }
 }
@@ -226,18 +222,14 @@ upstreams {
 upstreams {
     // Blue (current production)
     upstream "app-blue" {
-        targets {
-            target { address "10.0.1.10:3000" }
-            target { address "10.0.1.11:3000" }
-        }
+        target "10.0.1.10:3000"
+        target "10.0.1.11:3000"
     }
 
     // Green (new version)
     upstream "app-green" {
-        targets {
-            target { address "10.0.2.10:3000" }
-            target { address "10.0.2.11:3000" }
-        }
+        target "10.0.2.10:3000"
+        target "10.0.2.11:3000"
     }
 }
 
@@ -263,13 +255,11 @@ kill -HUP $(pgrep sentinel)
 ```kdl
 upstreams {
     upstream "app-canary" {
-        targets {
-            // Stable (90% traffic)
-            target { address "10.0.1.10:3000" weight 90 }
-            target { address "10.0.1.11:3000" weight 90 }
-            // Canary (10% traffic)
-            target { address "10.0.2.10:3000" weight 10 }
-        }
+        // Stable (90% traffic)
+        target "10.0.1.10:3000" weight=90
+        target "10.0.1.11:3000" weight=90
+        // Canary (10% traffic)
+        target "10.0.2.10:3000" weight=10
         load-balancing "weighted-round-robin"
     }
 }

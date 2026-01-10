@@ -78,8 +78,8 @@ routes {
         upstream "openai"
         agents "ai-gateway" "auth" "ratelimit"
         policies {
-            timeout_secs 120
-            max_body_size "10MB"
+            timeout-secs 120
+            max-body-size "10MB"
         }
     }
 
@@ -93,8 +93,8 @@ routes {
         upstream "anthropic"
         agents "ai-gateway" "auth" "ratelimit"
         policies {
-            timeout_secs 120
-            max_body_size "10MB"
+            timeout-secs 120
+            max-body-size "10MB"
         }
     }
 
@@ -108,67 +108,58 @@ routes {
         upstream "azure-openai"
         agents "ai-gateway" "auth" "ratelimit"
         policies {
-            timeout_secs 120
-            max_body_size "10MB"
+            timeout-secs 120
+            max-body-size "10MB"
         }
     }
 }
 
 upstreams {
     upstream "openai" {
-        targets {
-            target { address "api.openai.com:443" }
-        }
+        target "api.openai.com:443" weight=1
+
         tls {
             sni "api.openai.com"
-            insecure-skip-verify #false
+            verify #true
         }
     }
 
     upstream "anthropic" {
-        targets {
-            target { address "api.anthropic.com:443" }
-        }
+        target "api.anthropic.com:443" weight=1
+
         tls {
             sni "api.anthropic.com"
-            insecure-skip-verify #false
+            verify #true
         }
     }
 
     upstream "azure-openai" {
-        targets {
-            target { address "your-resource.openai.azure.com:443" }
-        }
+        target "your-resource.openai.azure.com:443" weight=1
+
         tls {
             sni "your-resource.openai.azure.com"
-            insecure-skip-verify #false
+            verify #true
         }
     }
 }
 
 agents {
     agent "ai-gateway" {
-        transport "unix_socket" {
-            path "/var/run/sentinel/ai-gateway.sock"
-        }
+        unix-socket path="/var/run/sentinel/ai-gateway.sock"
         events "request_headers" "request_body"
         timeout-ms 100
         failure-mode "closed"
     }
 
     agent "auth" {
-        transport "unix_socket" {
-            path "/var/run/sentinel/auth.sock"
-        }
+        unix-socket path="/var/run/sentinel/auth.sock"
         events "request_headers"
         timeout-ms 50
         failure-mode "closed"
     }
 
     agent "ratelimit" {
-        transport "unix_socket" {
-            path "/var/run/sentinel/ratelimit.sock"
-        }
+        unix-socket path="/var/run/sentinel/ratelimit.sock"
         events "request_headers"
         timeout-ms 20
         failure-mode "open"

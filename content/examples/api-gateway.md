@@ -144,10 +144,9 @@ routes {
 
 upstreams {
     upstream "api-v2" {
-        targets {
-            target { address "127.0.0.1:3000" weight 100 }
-            target { address "127.0.0.1:3001" weight 100 }
-        }
+        target "127.0.0.1:3000" weight=100
+        target "127.0.0.1:3001" weight=100
+
         load-balancing "round-robin"
         health-check {
             type "http" {
@@ -160,9 +159,8 @@ upstreams {
     }
 
     upstream "api-v1" {
-        targets {
-            target { address "127.0.0.1:3010" }
-        }
+        target "127.0.0.1:3010" weight=1
+
         health-check {
             type "http" {
                 path "/health"
@@ -174,18 +172,14 @@ upstreams {
 
 agents {
     agent "auth" {
-        transport "unix_socket" {
-            path "/var/run/sentinel/auth.sock"
-        }
+        unix-socket path="/var/run/sentinel/auth.sock"
         events "request_headers"
         timeout-ms 100
         failure-mode "closed"
     }
 
     agent "ratelimit" {
-        transport "unix_socket" {
-            path "/var/run/sentinel/ratelimit.sock"
-        }
+        unix-socket path="/var/run/sentinel/ratelimit.sock"
         events "request_headers"
         timeout-ms 50
         failure-mode "open"
@@ -324,14 +318,16 @@ listeners {
 }
 
 agents {
-    agent "ratelimit-standard" type="custom" {
-        unix-socket "/var/run/sentinel/ratelimit-standard.sock"
+    agent "ratelimit-standard" {
+        type "custom"
+        unix-socket path="/var/run/sentinel/ratelimit-standard.sock"
         events "request_headers"
         timeout-ms 50
     }
 
-    agent "ratelimit-premium" type="custom" {
-        unix-socket "/var/run/sentinel/ratelimit-premium.sock"
+    agent "ratelimit-premium" {
+        type "custom"
+        unix-socket path="/var/run/sentinel/ratelimit-premium.sock"
         events "request_headers"
         timeout-ms 50
     }
@@ -346,9 +342,7 @@ routes {
 
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
-        }
+        target "127.0.0.1:3000" weight=1
     }
 }
 

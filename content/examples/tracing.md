@@ -72,9 +72,7 @@ routes {
 
 upstreams {
     upstream "api-backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
-        }
+        target "127.0.0.1:3000"
     }
 }
 
@@ -261,9 +259,7 @@ routes {
 
 upstreams {
     upstream "api-backend" {
-        targets {
-            target { address "api-backend:3000" }
-        }
+        target "api-backend:3000"
         health-check {
             type "http" { path "/health" }
             interval-secs 10
@@ -273,17 +269,13 @@ upstreams {
 
 agents {
     agent "auth" {
-        transport "unix_socket" {
-            path "/var/run/sentinel/auth.sock"
-        }
+        unix-socket path="/var/run/sentinel/auth.sock"
         events "request_headers"
         timeout-ms 50
     }
 
     agent "ratelimit" {
-        transport "unix_socket" {
-            path "/var/run/sentinel/ratelimit.sock"
-        }
+        unix-socket path="/var/run/sentinel/ratelimit.sock"
         events "request_headers"
         timeout-ms 20
     }

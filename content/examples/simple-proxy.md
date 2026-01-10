@@ -42,11 +42,8 @@ routes {
 
 upstreams {
     upstream "backend" {
-        targets {
-            target {
-                address "127.0.0.1:3000"
-            }
-        }
+        target "127.0.0.1:3000" weight=1
+
         health-check {
             type "http" {
                 path "/health"
@@ -172,11 +169,10 @@ listeners {
 ```kdl
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
-            target { address "127.0.0.1:3001" }
-            target { address "127.0.0.1:3002" }
-        }
+        target "127.0.0.1:3000" weight=1
+        target "127.0.0.1:3001" weight=1
+        target "127.0.0.1:3002" weight=1
+
         load-balancing "round-robin"
     }
 }

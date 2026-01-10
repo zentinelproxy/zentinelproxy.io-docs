@@ -91,9 +91,7 @@ routes {
 
 upstreams {
     upstream "ws-backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
-        }
+        target "127.0.0.1:3000"
         health-check {
             type "http" { path "/health" }
             interval-secs 10
@@ -103,18 +101,14 @@ upstreams {
 
 agents {
     agent "ws-inspector" {
-        transport "unix_socket" {
-            path "/var/run/sentinel/ws-inspector.sock"
-        }
+        unix-socket path="/var/run/sentinel/ws-inspector.sock"
         events "websocket_frame"
         timeout-ms 50
         failure-mode "open"
     }
 
     agent "auth" {
-        transport "unix_socket" {
-            path "/var/run/sentinel/auth.sock"
-        }
+        unix-socket path="/var/run/sentinel/auth.sock"
         events "request_headers"
         timeout-ms 50
         failure-mode "closed"
@@ -243,9 +237,7 @@ routes {
 
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
-        }
+        target "127.0.0.1:3000"
     }
 }
 
@@ -289,9 +281,7 @@ routes {
 
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
-        }
+        target "127.0.0.1:3000"
     }
 }
 
@@ -429,9 +419,7 @@ routes {
 
 agents {
     agent "ws-inspector" {
-        transport "unix_socket" {
-            path "/var/run/sentinel/ws-inspector.sock"
-        }
+        unix-socket path="/var/run/sentinel/ws-inspector.sock"
         events "websocket_frame"
         timeout-ms 20
         failure-mode "open"
@@ -440,9 +428,7 @@ agents {
 
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
-        }
+        target "127.0.0.1:3000"
     }
 }
 

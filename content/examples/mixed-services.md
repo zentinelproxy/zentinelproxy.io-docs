@@ -210,9 +210,7 @@ routes {
 
 upstreams {
     upstream "auth-service" {
-        targets {
-            target { address "auth.internal:3005" }
-        }
+        target "auth.internal:3005"
         health-check {
             type "http" { path "/health" }
             interval-secs 5
@@ -220,10 +218,8 @@ upstreams {
     }
 
     upstream "user-service" {
-        targets {
-            target { address "users-1.internal:3001" }
-            target { address "users-2.internal:3001" }
-        }
+        target "users-1.internal:3001"
+        target "users-2.internal:3001"
         load-balancing "least-connections"
         health-check {
             type "http" { path "/health" }
@@ -232,11 +228,9 @@ upstreams {
     }
 
     upstream "order-service" {
-        targets {
-            target { address "orders-1.internal:3002" }
-            target { address "orders-2.internal:3002" }
-            target { address "orders-3.internal:3002" }
-        }
+        target "orders-1.internal:3002"
+        target "orders-2.internal:3002"
+        target "orders-3.internal:3002"
         load-balancing "round-robin"
         health-check {
             type "http" { path "/health" }
@@ -245,10 +239,8 @@ upstreams {
     }
 
     upstream "product-service" {
-        targets {
-            target { address "products-1.internal:3003" }
-            target { address "products-2.internal:3003" }
-        }
+        target "products-1.internal:3003"
+        target "products-2.internal:3003"
         load-balancing "round-robin"
         health-check {
             type "http" { path "/health" }
@@ -257,9 +249,7 @@ upstreams {
     }
 
     upstream "search-service" {
-        targets {
-            target { address "search.internal:3004" }
-        }
+        target "search.internal:3004"
         health-check {
             type "http" { path "/health" }
             interval-secs 5
@@ -267,26 +257,20 @@ upstreams {
     }
 
     upstream "webhook-service" {
-        targets {
-            target { address "webhooks.internal:3006" }
-        }
+        target "webhooks.internal:3006"
     }
 }
 
 agents {
     agent "auth" {
-        transport "unix_socket" {
-            path "/var/run/sentinel/auth.sock"
-        }
+        unix-socket path="/var/run/sentinel/auth.sock"
         events "request_headers"
         timeout-ms 50
         failure-mode "closed"
     }
 
     agent "ratelimit" {
-        transport "unix_socket" {
-            path "/var/run/sentinel/ratelimit.sock"
-        }
+        unix-socket path="/var/run/sentinel/ratelimit.sock"
         events "request_headers"
         timeout-ms 20
         failure-mode "open"
