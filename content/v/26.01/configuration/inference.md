@@ -12,6 +12,10 @@ Inference routing addresses the unique challenges of AI/LLM traffic:
 - **Token-based rate limiting**: Limit by tokens per minute rather than requests per second
 - **Provider adapters**: Extract token counts from OpenAI, Anthropic, and generic APIs
 - **Intelligent load balancing**: Route based on estimated queue time (tokens queued / throughput)
+- **Model-based routing**: Route to different upstreams based on model name with glob patterns
+- **Fallback routing**: Automatic failover with cross-provider model mapping
+- **Token budgets**: Track cumulative usage with alerts and enforcement
+- **Cost attribution**: Per-model pricing and spending metrics
 
 ## Basic Configuration
 
@@ -568,6 +572,414 @@ This accounts for:
 - Current queue depth (tokens waiting)
 - Historical throughput (tokens per second EWMA)
 
+## Model-Based Routing
+
+Route inference requests to different upstreams based on the model name in the request. This enables:
+
+- **Multi-provider gateways**: Route GPT models to OpenAI, Claude models to Anthropic
+- **Specialized hardware**: Route large models to high-memory GPUs
+- **Cost optimization**: Route cheaper models to lower-cost infrastructure
+
+### Basic Model Routing
+
+```kdl
+inference {
+    provider "openai"
+
+    model-routing {
+        default-upstream "openai-primary"
+
+        model "gpt-4" upstream="openai-premium"
+        model "gpt-4*" upstream="openai-primary" provider="openai"
+        model "claude-*" upstream="anthropic-backend" provider="anthropic"
+        model "llama-*" upstream="local-gpu" provider="generic"
+    }
+}
+```
+
+| Option | Required | Description |
+|--------|----------|-------------|
+| `default-upstream` | No | Fallback upstream when no pattern matches |
+| `model` | Yes | Model pattern with upstream mapping |
+| `upstream` | Yes | Target upstream for matching models |
+| `provider` | No | Override inference provider for this upstream |
+
+### Pattern Matching
+
+Model patterns support glob-style wildcards:
+
+| Pattern | Matches |
+|---------|---------|
+| `gpt-4` | Exact match only |
+| `gpt-4*` | `gpt-4`, `gpt-4-turbo`, `gpt-4o`, `gpt-4o-mini` |
+| `claude-*` | `claude-3-opus`, `claude-3-sonnet`, `claude-3-haiku` |
+| `*-turbo` | `gpt-4-turbo`, `gpt-3.5-turbo` |
+| `claude-*-sonnet` | `claude-3-sonnet`, `claude-3.5-sonnet` |
+
+**First match wins**: Order patterns from most specific to least specific.
+
+### Model Header Extraction
+
+Sentinel extracts the model name from request headers:
+
+1. `x-model` (preferred)
+2. `x-model-id` (fallback)
+
+If no header is found, the `default-upstream` is used.
+
+### Cross-Provider Routing
+
+Route requests to different providers with automatic provider switching:
+
+```kdl
+routes {
+    route "unified-llm-api" {
+        matches {
+            path-prefix "/v1/chat/completions"
+        }
+        service-type "inference"
+        upstream "openai-primary"
+
+        inference {
+            provider "openai"  // Default provider
+
+            model-routing {
+                default-upstream "openai-primary"
+
+                // OpenAI models stay with OpenAI
+                model "gpt-4*" upstream="openai-primary" provider="openai"
+                model "gpt-3.5*" upstream="openai-secondary" provider="openai"
+
+                // Claude models route to Anthropic
+                model "claude-*" upstream="anthropic-backend" provider="anthropic"
+
+                // Local models use generic provider
+                model "llama-*" upstream="local-gpu" provider="generic"
+                model "mistral-*" upstream="local-gpu" provider="generic"
+            }
+        }
+    }
+}
+
+upstreams {
+    upstream "openai-primary" {
+        targets { target { address "api.openai.com:443" } }
+        tls { enabled true }
+    }
+    upstream "openai-secondary" {
+        targets { target { address "api.openai.com:443" } }
+        tls { enabled true }
+    }
+    upstream "anthropic-backend" {
+        targets { target { address "api.anthropic.com:443" } }
+        tls { enabled true }
+    }
+    upstream "local-gpu" {
+        targets {
+            target { address "gpu-1.internal:8080" }
+            target { address "gpu-2.internal:8080" }
+        }
+        load-balancing "least_tokens_queued"
+    }
+}
+```
+
+When a request with `x-model: claude-3-opus` arrives:
+1. Model routing matches `claude-*` pattern
+2. Request routes to `anthropic-backend` upstream
+3. Provider switches to `anthropic` for correct token extraction
+
+### Model Routing Metrics
+
+```prometheus
+# Requests routed by model
+sentinel_model_routing_total{route="unified-api",model="gpt-4-turbo",upstream="openai-primary"} 1523
+
+# Requests using default upstream (no pattern matched)
+sentinel_model_routing_default_total{route="unified-api"} 42
+
+# Requests with no model header
+sentinel_model_routing_no_header_total{route="unified-api"} 15
+
+# Provider overrides applied
+sentinel_model_routing_provider_override_total{route="unified-api",upstream="anthropic-backend",provider="anthropic"} 892
+```
+
+## Fallback Routing
+
+Automatically fail over to alternative upstreams when the primary is unavailable, exhausted, or returns errors.
+
+### Basic Fallback Configuration
+
+```kdl
+routes {
+    route "inference-api" {
+        matches {
+            path-prefix "/v1/chat/completions"
+        }
+        upstream "openai-primary"
+
+        inference {
+            provider "openai"
+        }
+
+        fallback {
+            max-attempts 2
+
+            triggers {
+                on-health-failure true
+                on-budget-exhausted true
+                on-connection-error true
+                on-error-codes 429 500 502 503 504
+            }
+
+            fallback-upstream "anthropic-fallback" {
+                provider "anthropic"
+                skip-if-unhealthy true
+
+                model-mapping {
+                    "gpt-4" "claude-3-opus"
+                    "gpt-4o" "claude-3-5-sonnet"
+                    "gpt-3.5-turbo" "claude-3-haiku"
+                }
+            }
+
+            fallback-upstream "local-gpu" {
+                provider "generic"
+                skip-if-unhealthy true
+
+                model-mapping {
+                    "gpt-4*" "llama-3-70b"
+                    "gpt-3.5*" "llama-3-8b"
+                }
+            }
+        }
+    }
+}
+```
+
+### Fallback Triggers
+
+Configure when fallback is triggered:
+
+| Trigger | Default | Description |
+|---------|---------|-------------|
+| `on-health-failure` | `true` | Primary upstream health check failed |
+| `on-budget-exhausted` | `false` | Token budget for primary is exhausted |
+| `on-latency-threshold-ms` | — | Response time exceeds threshold |
+| `on-error-codes` | — | Specific HTTP status codes (e.g., 429, 503) |
+| `on-connection-error` | `true` | Connection to primary failed |
+
+```kdl
+fallback {
+    triggers {
+        on-health-failure true
+        on-budget-exhausted true
+        on-latency-threshold-ms 5000
+        on-error-codes 429 500 502 503 504
+        on-connection-error true
+    }
+}
+```
+
+### Fallback Upstreams
+
+Define ordered fallback targets:
+
+```kdl
+fallback {
+    max-attempts 3  // Try up to 3 upstreams total
+
+    fallback-upstream "backup-1" {
+        provider "openai"
+        skip-if-unhealthy true
+    }
+
+    fallback-upstream "backup-2" {
+        provider "anthropic"
+        skip-if-unhealthy true
+    }
+}
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `provider` | `generic` | Inference provider for this upstream |
+| `skip-if-unhealthy` | `false` | Skip if health check reports unhealthy |
+| `model-mapping` | — | Map models to equivalents on this provider |
+
+### Model Mapping
+
+When falling back to a different provider, map model names:
+
+```kdl
+fallback-upstream "anthropic-fallback" {
+    provider "anthropic"
+
+    model-mapping {
+        // Exact mappings
+        "gpt-4" "claude-3-opus"
+        "gpt-4-turbo" "claude-3-5-sonnet"
+        "gpt-3.5-turbo" "claude-3-haiku"
+
+        // Glob pattern mappings
+        "gpt-4o*" "claude-3-5-sonnet"
+        "gpt-4*" "claude-3-opus"
+    }
+}
+```
+
+Model mapping supports the same glob patterns as model-based routing.
+
+### Fallback Response Headers
+
+When fallback occurs, response headers indicate the routing decision:
+
+```
+HTTP/1.1 200 OK
+X-Fallback-Used: true
+X-Fallback-Upstream: anthropic-fallback
+X-Fallback-Reason: health_check_failed
+X-Original-Upstream: openai-primary
+```
+
+### Fallback Metrics
+
+```prometheus
+# Fallback attempts by reason
+sentinel_fallback_attempts_total{route="inference-api",from_upstream="openai-primary",to_upstream="anthropic-fallback",reason="health_check_failed"} 45
+
+# Successful responses after fallback
+sentinel_fallback_success_total{route="inference-api",upstream="anthropic-fallback"} 42
+
+# All fallback upstreams exhausted
+sentinel_fallback_exhausted_total{route="inference-api"} 3
+
+# Model mapping applied during fallback
+sentinel_fallback_model_mapping_total{route="inference-api",original_model="gpt-4",mapped_model="claude-3-opus"} 38
+```
+
+### Complete Fallback Example
+
+```kdl
+routes {
+    route "resilient-llm-api" {
+        priority 100
+        matches {
+            path-prefix "/v1/"
+        }
+        service-type "inference"
+        upstream "openai-primary"
+
+        inference {
+            provider "openai"
+
+            rate-limit {
+                tokens-per-minute 100000
+                burst-tokens 20000
+                estimation-method "tiktoken"
+            }
+
+            budget {
+                period "daily"
+                limit 1000000
+                enforce true
+            }
+        }
+
+        fallback {
+            max-attempts 3
+
+            triggers {
+                on-health-failure true
+                on-budget-exhausted true
+                on-error-codes 429 503
+                on-connection-error true
+            }
+
+            // First fallback: Different OpenAI endpoint
+            fallback-upstream "openai-secondary" {
+                provider "openai"
+                skip-if-unhealthy true
+            }
+
+            // Second fallback: Anthropic
+            fallback-upstream "anthropic-backend" {
+                provider "anthropic"
+                skip-if-unhealthy true
+
+                model-mapping {
+                    "gpt-4" "claude-3-opus"
+                    "gpt-4o" "claude-3-5-sonnet"
+                    "gpt-4o-mini" "claude-3-haiku"
+                    "gpt-3.5-turbo" "claude-3-haiku"
+                }
+            }
+
+            // Third fallback: Local models
+            fallback-upstream "local-gpu" {
+                provider "generic"
+                skip-if-unhealthy true
+
+                model-mapping {
+                    "gpt-4*" "llama-3-70b"
+                    "gpt-3.5*" "llama-3-8b"
+                    "claude-*" "llama-3-70b"
+                }
+            }
+        }
+
+        policies {
+            timeout-secs 120
+        }
+    }
+}
+
+upstreams {
+    upstream "openai-primary" {
+        targets { target { address "api.openai.com:443" } }
+        tls { enabled true }
+        health-check {
+            type "http" { path "/v1/models" expected-status 200 }
+            interval-secs 30
+        }
+    }
+
+    upstream "openai-secondary" {
+        targets { target { address "api.openai.com:443" } }
+        tls { enabled true }
+        health-check {
+            type "http" { path "/v1/models" expected-status 200 }
+            interval-secs 30
+        }
+    }
+
+    upstream "anthropic-backend" {
+        targets { target { address "api.anthropic.com:443" } }
+        tls { enabled true }
+        health-check {
+            type "http" { path "/v1/models" expected-status 200 }
+            interval-secs 30
+        }
+    }
+
+    upstream "local-gpu" {
+        targets {
+            target { address "gpu-1.internal:8080" }
+            target { address "gpu-2.internal:8080" }
+        }
+        load-balancing "least_tokens_queued"
+        health-check {
+            type "inference" {
+                endpoint "/v1/models"
+                expected-models "llama-3-70b" "llama-3-8b"
+            }
+            interval-secs 30
+        }
+    }
+}
+```
+
 ## Load Balancing for Inference
 
 The `least_tokens_queued` load balancing algorithm can also be set at the upstream level:
@@ -940,6 +1352,23 @@ The inference health check:
 3. **Set reasonable defaults**: Fallback pricing should be conservative (higher than expected)
 4. **Monitor cost metrics**: Track `sentinel_inference_cost_total` for spending trends
 
+### Model-Based Routing
+
+1. **Order patterns carefully**: Most specific patterns first, then glob patterns (e.g., `gpt-4` before `gpt-4*`)
+2. **Set a default upstream**: Always configure `default-upstream` to handle unknown models
+3. **Use model headers**: Have clients send `x-model` header to enable routing before body parsing
+4. **Match provider to upstream**: Use `provider` override when routing to different API providers
+5. **Monitor routing metrics**: Track `sentinel_model_routing_total` to understand traffic distribution
+
+### Fallback Routing
+
+1. **Enable health checks**: Set `skip-if-unhealthy true` to avoid routing to known-bad upstreams
+2. **Configure realistic triggers**: Start with `on-health-failure` and `on-connection-error`; add `on-error-codes` based on observed failures
+3. **Plan model mappings**: Map to equivalent capability models (e.g., GPT-4 → Claude Opus, not Claude Haiku)
+4. **Limit max attempts**: Set `max-attempts` to 2-3 to avoid excessive latency on failures
+5. **Test fallback paths**: Regularly verify fallback upstreams work with mapped models
+6. **Monitor exhaustion**: Alert on `sentinel_fallback_exhausted_total` to detect infrastructure issues
+
 ## Default Values
 
 | Setting | Default |
@@ -952,6 +1381,12 @@ The inference health check:
 | `budget.alert-thresholds` | `0.80, 0.90, 0.95` |
 | `budget.rollover` | `false` |
 | `cost-attribution.currency` | `USD` |
+| `fallback.max-attempts` | `3` |
+| `fallback.triggers.on-health-failure` | `true` |
+| `fallback.triggers.on-budget-exhausted` | `false` |
+| `fallback.triggers.on-connection-error` | `true` |
+| `fallback-upstream.skip-if-unhealthy` | `false` |
+| `fallback-upstream.provider` | `generic` |
 
 ## Next Steps
 
