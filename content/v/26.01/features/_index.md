@@ -1,6 +1,6 @@
 +++
 title = "Features"
-weight = 15
+weight = 4
 sort_by = "weight"
 template = "section.html"
 description = "Complete feature list for Sentinel reverse proxy"
