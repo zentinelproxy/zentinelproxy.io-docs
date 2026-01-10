@@ -14,6 +14,10 @@ Guides for operating, monitoring, and maintaining Sentinel in production.
 | [Troubleshooting](troubleshooting/) | Diagnosing and resolving common issues |
 | [Health Monitoring](health-monitoring/) | Health checks, probes, and alerting |
 | [Migration Guide](migration/) | Migrating from nginx, HAProxy, Traefik |
+| [Incident Response](incident-response/) | Procedures for handling production incidents |
+| [Security Hardening](security-hardening/) | Best practices for securing deployments |
+| [Capacity Planning](capacity-planning/) | Sizing and scaling guidelines |
+| [Upgrade Guide](upgrade-guide/) | Upgrade and migration procedures |
 
 ## Quick Diagnostics
 
