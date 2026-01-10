@@ -721,7 +721,7 @@ route "specific" {
 
 ### `service-type`
 
-Categorizes the route for specialized handling. Options: `"web"`, `"api"`, `"static"`, `"builtin"`.
+Categorizes the route for specialized handling. Options: `"web"`, `"api"`, `"static"`, `"builtin"`, `"inference"`.
 
 **Context:** `route`
 **Default:** `"web"`
@@ -730,6 +730,11 @@ Categorizes the route for specialized handling. Options: `"web"`, `"api"`, `"sta
 route "files" {
     service-type "static"
     static-files { root "/var/www" }
+}
+
+route "llm-api" {
+    service-type "inference"
+    inference { provider "openai" }
 }
 ```
 
@@ -3002,6 +3007,424 @@ waf {
         inspect-response-body #false
         max-inspection-bytes 1048576
     }
+}
+```
+
+---
+
+## Inference Directives
+<small class="docs-ref">[Inference](/configuration/inference/)</small>
+<small class="source-ref">[`crates/config/src/routes.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/routes.rs)</small>
+
+### `inference`
+
+Configures inference/LLM-specific settings for a route, including token-based rate limiting, budget tracking, cost attribution, model routing, and semantic guardrails.
+
+**Context:** `route`
+
+```kdl
+route "openai-proxy" {
+    inference {
+        provider "openai"
+        rate-limit {
+            tokens-per-minute 100000
+        }
+    }
+}
+```
+
+---
+
+### `provider`
+
+LLM provider type for token counting and API parsing. Options: `"openai"`, `"anthropic"`, `"generic"`.
+
+**Context:** `inference`
+**Required**
+
+```kdl
+inference {
+    provider "openai"
+}
+```
+
+---
+
+### `rate-limit` (inference)
+
+Token-based rate limiting for inference routes.
+
+**Context:** `inference`
+
+```kdl
+inference {
+    rate-limit {
+        tokens-per-minute 100000
+        requests-per-minute 1000
+        key "header:X-API-Key"
+    }
+}
+```
+
+---
+
+### `tokens-per-minute`
+
+Maximum tokens per minute for inference rate limiting.
+
+**Context:** `rate-limit` (inference)
+
+```kdl
+rate-limit {
+    tokens-per-minute 50000
+}
+```
+
+---
+
+### `requests-per-minute`
+
+Maximum requests per minute (in addition to token limits).
+
+**Context:** `rate-limit` (inference)
+
+```kdl
+rate-limit {
+    requests-per-minute 500
+}
+```
+
+---
+
+### `budget`
+
+Token budget tracking with cumulative limits and alerts.
+
+**Context:** `inference`
+
+```kdl
+inference {
+    budget {
+        hourly-limit 1000000
+        daily-limit 10000000
+        monthly-limit 100000000
+        alert-threshold 0.8
+    }
+}
+```
+
+---
+
+### `hourly-limit`
+
+Maximum tokens allowed per hour.
+
+**Context:** `budget`
+
+```kdl
+budget {
+    hourly-limit 500000
+}
+```
+
+---
+
+### `daily-limit`
+
+Maximum tokens allowed per day.
+
+**Context:** `budget`
+
+```kdl
+budget {
+    daily-limit 5000000
+}
+```
+
+---
+
+### `monthly-limit`
+
+Maximum tokens allowed per month.
+
+**Context:** `budget`
+
+```kdl
+budget {
+    monthly-limit 50000000
+}
+```
+
+---
+
+### `alert-threshold`
+
+Percentage of budget (0.0-1.0) at which to emit alerts.
+
+**Context:** `budget`
+**Default:** `0.8`
+
+```kdl
+budget {
+    alert-threshold 0.9
+}
+```
+
+---
+
+### `cost-attribution`
+
+Per-model pricing for cost tracking and metrics.
+
+**Context:** `inference`
+
+```kdl
+inference {
+    cost-attribution {
+        model "gpt-4" {
+            input-cost-per-1k 0.03
+            output-cost-per-1k 0.06
+        }
+        model "gpt-3.5-turbo" {
+            input-cost-per-1k 0.0015
+            output-cost-per-1k 0.002
+        }
+    }
+}
+```
+
+---
+
+### `input-cost-per-1k`
+
+Cost per 1,000 input tokens in USD.
+
+**Context:** `model` (cost-attribution)
+
+```kdl
+model "gpt-4" {
+    input-cost-per-1k 0.03
+}
+```
+
+---
+
+### `output-cost-per-1k`
+
+Cost per 1,000 output tokens in USD.
+
+**Context:** `model` (cost-attribution)
+
+```kdl
+model "gpt-4" {
+    output-cost-per-1k 0.06
+}
+```
+
+---
+
+### `model-routing`
+
+Route requests to different upstreams based on model name.
+
+**Context:** `inference`
+
+```kdl
+inference {
+    model-routing {
+        route "gpt-4*" upstream="openai-primary"
+        route "claude*" upstream="anthropic"
+        default-upstream "openai-fallback"
+    }
+}
+```
+
+---
+
+### `default-upstream`
+
+Fallback upstream when no model route matches.
+
+**Context:** `model-routing`
+
+```kdl
+model-routing {
+    default-upstream "generic-backend"
+}
+```
+
+---
+
+### `fallback`
+
+Automatic failover configuration with model mapping.
+
+**Context:** `inference`
+
+```kdl
+inference {
+    fallback {
+        enabled #true
+        upstreams "openai-primary" "openai-secondary" "anthropic"
+        model-mapping {
+            "gpt-4" "claude-3-opus-20240229"
+            "gpt-3.5-turbo" "claude-3-haiku-20240307"
+        }
+    }
+}
+```
+
+---
+
+### `model-mapping`
+
+Maps models between providers for cross-provider failover.
+
+**Context:** `fallback`
+
+```kdl
+fallback {
+    model-mapping {
+        "gpt-4" "claude-3-opus-20240229"
+    }
+}
+```
+
+---
+
+### `guardrails`
+
+Semantic guardrails for prompt injection detection and PII scanning.
+
+**Context:** `inference`
+
+```kdl
+inference {
+    guardrails {
+        prompt-injection {
+            enabled #true
+            agent "prompt-guard"
+            action "block"
+        }
+        pii-detection {
+            enabled #true
+            agent "pii-scanner"
+            categories "ssn" "credit-card" "email"
+        }
+    }
+}
+```
+
+---
+
+### `prompt-injection`
+
+Prompt injection detection configuration for request-phase inspection.
+
+**Context:** `guardrails`
+
+```kdl
+prompt-injection {
+    enabled #true
+    agent "prompt-guard"
+    action "block"
+    block-status 400
+    block-message "Request blocked: potential prompt injection"
+    timeout-ms 500
+    failure-mode "open"
+}
+```
+
+---
+
+### `action` (prompt-injection)
+
+Action when prompt injection is detected. Options: `"block"`, `"log"`, `"warn"`.
+
+**Context:** `prompt-injection`
+**Default:** `"block"`
+
+```kdl
+prompt-injection {
+    action "warn"
+}
+```
+
+---
+
+### `block-status`
+
+HTTP status code returned when blocking.
+
+**Context:** `prompt-injection`
+**Default:** `400`
+
+```kdl
+prompt-injection {
+    action "block"
+    block-status 403
+}
+```
+
+---
+
+### `block-message`
+
+Message returned in response body when blocking.
+
+**Context:** `prompt-injection`
+
+```kdl
+prompt-injection {
+    block-message "Your request was blocked for security reasons"
+}
+```
+
+---
+
+### `pii-detection`
+
+PII detection configuration for response-phase inspection.
+
+**Context:** `guardrails`
+
+```kdl
+pii-detection {
+    enabled #true
+    agent "pii-scanner"
+    action "log"
+    categories "ssn" "credit-card" "email" "phone"
+    timeout-ms 1000
+    failure-mode "open"
+}
+```
+
+---
+
+### `action` (pii-detection)
+
+Action when PII is detected. Options: `"log"`, `"redact"`, `"block"`.
+
+**Context:** `pii-detection`
+**Default:** `"log"`
+
+```kdl
+pii-detection {
+    action "redact"
+}
+```
+
+---
+
+### `categories`
+
+PII categories to detect. Options: `"ssn"`, `"credit-card"`, `"email"`, `"phone"`, `"address"`, `"name"`, `"dob"`, `"passport"`, `"driver-license"`, `"bank-account"`, `"ip-address"`, `"medical-record"`.
+
+**Context:** `pii-detection`
+
+```kdl
+pii-detection {
+    categories "ssn" "credit-card" "email"
 }
 ```
 
