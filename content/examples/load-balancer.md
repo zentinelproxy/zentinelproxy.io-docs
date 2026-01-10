@@ -214,6 +214,126 @@ upstreams {
 }
 ```
 
+### Maglev (Consistent Hashing)
+
+```kdl
+upstreams {
+    upstream "cache-cluster" {
+        target "cache-1:6379"
+        target "cache-2:6379"
+        target "cache-3:6379"
+        load-balancing "maglev"
+    }
+}
+```
+
+Google's Maglev algorithm provides O(1) lookup with minimal key redistribution when backends change. Ideal for cache clusters.
+
+### Peak EWMA (Latency-Aware)
+
+```kdl
+upstreams {
+    upstream "api" {
+        target "api-1:8080"
+        target "api-2:8080"
+        target "api-3:8080"
+        load-balancing "peak_ewma"
+    }
+}
+```
+
+Tracks latency using exponential moving average. Automatically routes away from slow backends.
+
+### Locality-Aware (Multi-Region)
+
+```kdl
+upstreams {
+    upstream "global-api" {
+        target "10.0.1.1:8080" {
+            metadata { "zone" "us-east-1a" }
+        }
+        target "10.0.1.2:8080" {
+            metadata { "zone" "us-east-1b" }
+        }
+        target "10.0.2.1:8080" {
+            metadata { "zone" "eu-west-1a" }
+        }
+        load-balancing "locality_aware"
+    }
+}
+```
+
+Prefers backends in the same zone as the proxy, reducing cross-region latency.
+
+### Weighted Least Connections
+
+```kdl
+upstreams {
+    upstream "mixed-capacity" {
+        target "large-server:8080" weight=200
+        target "medium-server:8080" weight=100
+        target "small-server:8080" weight=50
+        load-balancing "weighted_least_conn"
+    }
+}
+```
+
+Selects backends with the lowest connections-to-weight ratio. Use when backends have different capacities.
+
+### Deterministic Subsetting (Large Clusters)
+
+```kdl
+upstreams {
+    upstream "mega-cluster" {
+        // 1000+ targets
+        target "backend-001:8080"
+        target "backend-002:8080"
+        // ... many more ...
+        target "backend-999:8080"
+        load-balancing "deterministic_subset"
+    }
+}
+```
+
+Each proxy instance connects to a subset of backends. Reduces connection overhead for very large clusters.
+
+### Adaptive (Self-Tuning)
+
+```kdl
+upstreams {
+    upstream "api" {
+        target "api-1:8080" weight=100
+        target "api-2:8080" weight=100
+        target "api-3:8080" weight=100
+        load-balancing "adaptive"
+        health-check {
+            type "http" {
+                path "/health"
+                expected-status 200
+            }
+            interval-secs 5
+        }
+    }
+}
+```
+
+Dynamically adjusts weights based on response times and error rates.
+
+### LLM Inference (Token-Based)
+
+```kdl
+upstreams {
+    upstream "llm-cluster" {
+        target "gpu-node-1:8080"
+        target "gpu-node-2:8080"
+        target "gpu-node-3:8080"
+        load-balancing "least_tokens_queued"
+    }
+}
+```
+
+Specialized for LLM workloads. Routes to the backend with fewest tokens queued.
+
 ## Deployment Patterns
 
 ### Blue-Green Deployment

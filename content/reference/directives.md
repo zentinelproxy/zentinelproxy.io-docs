@@ -1814,16 +1814,37 @@ upstreams {
 
 ### `load-balancing`
 
-Algorithm for distributing requests. Options: `"round_robin"`, `"least_connections"`, `"ip_hash"`, `"consistent_hash"`, `"random"`.
+Algorithm for distributing requests across upstream targets.
 
 **Context:** `upstream`
 **Default:** `"round_robin"`
+
+**Options:**
+
+| Algorithm | Description |
+|-----------|-------------|
+| `round_robin` | Sequential rotation (default) |
+| `least_connections` | Fewest active connections |
+| `weighted_least_conn` | Connection/weight ratio |
+| `random` | Random selection |
+| `ip_hash` | Client IP based routing |
+| `weighted` | Weight-proportional selection |
+| `consistent_hash` | Ring-based consistent hashing |
+| `maglev` | Google's Maglev consistent hashing |
+| `power_of_two_choices` | Best of two random targets |
+| `adaptive` | Response time based |
+| `peak_ewma` | EWMA latency tracking |
+| `locality_aware` | Zone-aware with fallback |
+| `deterministic_subset` | Subset per proxy (large clusters) |
+| `least_tokens_queued` | LLM/inference workloads |
 
 ```kdl
 upstream "backend" {
     load-balancing "least_connections"
 }
 ```
+
+See [Upstreams - Load Balancing](/configuration/upstreams/#load-balancing) for detailed algorithm documentation.
 
 ---
 

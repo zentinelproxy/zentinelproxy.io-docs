@@ -76,12 +76,18 @@ upstream "backend" {
 |-----------|-------------|
 | `round_robin` | Sequential rotation through targets (default) |
 | `least_connections` | Route to target with fewest active connections |
+| `weighted_least_conn` | Weighted least connections (connection/weight ratio) |
 | `random` | Random target selection |
 | `ip_hash` | Consistent routing based on client IP |
 | `weighted` | Weighted random selection |
 | `consistent_hash` | Consistent hashing for cache-friendly routing |
+| `maglev` | Google's Maglev consistent hashing (minimal disruption) |
 | `power_of_two_choices` | Pick best of two random targets |
 | `adaptive` | Dynamic selection based on response times |
+| `peak_ewma` | Latency-based selection using exponential moving average |
+| `locality_aware` | Zone-aware routing with fallback strategies |
+| `deterministic_subset` | Subset of backends per proxy (large clusters) |
+| `least_tokens_queued` | Token-based selection for LLM workloads |
 
 ### Round Robin
 
@@ -259,6 +265,216 @@ upstream "api" {
 ```
 
 If `api-2` starts responding slowly, traffic automatically shifts to `api-1` and `api-3`. When `api-2` recovers, it gradually receives more traffic again.
+
+### Maglev
+
+```kdl
+upstream "cache-cluster" {
+    load-balancing "maglev"
+}
+```
+
+Google's Maglev consistent hashing algorithm provides O(1) lookup with minimal disruption when backends are added or removed. Uses a permutation-based lookup table for fast, consistent routing.
+
+#### How It Works
+
+1. **Lookup Table**: Builds a 65,537-entry lookup table mapping hash values to backends
+2. **Permutation Sequences**: Each backend generates a unique permutation for table population
+3. **Minimal Disruption**: When backends change, only ~1/N keys are remapped (N = number of backends)
+4. **Hash Key Sources**: Can hash on client IP, header value, cookie, or request path
+
+#### When to Use Maglev
+
+**Best for:**
+- Large cache clusters requiring consistent routing
+- Services where session affinity matters
+- Minimizing cache invalidation during scaling
+- High-throughput systems needing O(1) selection
+
+**Comparison with `consistent_hash`:**
+- Maglev: Better load distribution, O(1) lookup, more memory
+- Consistent Hash: Ring-based, O(log N) lookup, less memory
+
+### Peak EWMA
+
+```kdl
+upstream "api" {
+    load-balancing "peak_ewma"
+}
+```
+
+Twitter Finagle's Peak EWMA (Exponentially Weighted Moving Average) algorithm tracks latency and selects backends with the lowest predicted completion time.
+
+#### How It Works
+
+1. **EWMA Tracking**: Maintains exponentially weighted moving average of each backend's latency
+2. **Peak Detection**: Uses the maximum of EWMA and recent latency to quickly detect spikes
+3. **Load Penalty**: Penalizes backends with active connections
+4. **Decay Time**: Old latency observations decay over time (default: 10 seconds)
+
+#### Selection Algorithm
+
+For each request, Peak EWMA:
+1. Calculates `load_score = peak_latency × (1 + active_connections × penalty)`
+2. Selects the backend with the lowest load score
+3. Reports actual latency after request completes
+
+#### When to Use Peak EWMA
+
+**Best for:**
+- Heterogeneous backends with varying performance
+- Latency-sensitive applications
+- Backends with unpredictable response times
+- Services where slow backends should be avoided
+
+**Consider alternatives when:**
+- All backends have identical performance (use `round_robin`)
+- Session affinity is required (use `maglev` or `consistent_hash`)
+
+### Locality-Aware
+
+```kdl
+upstream "global-api" {
+    load-balancing "locality_aware"
+}
+```
+
+Prefers targets in the same zone or region as the proxy, falling back to other zones when local targets are unavailable.
+
+#### Zone Configuration
+
+Zones can be specified in target metadata or parsed from addresses:
+
+```kdl
+targets {
+    target {
+        address "10.0.1.1:8080"
+        metadata { "zone" "us-east-1a" }
+    }
+    target {
+        address "10.0.1.2:8080"
+        metadata { "zone" "us-east-1b" }
+    }
+    target {
+        address "10.0.2.1:8080"
+        metadata { "zone" "us-west-2a" }
+    }
+}
+```
+
+#### Fallback Strategies
+
+When no local targets are healthy:
+
+| Strategy | Behavior |
+|----------|----------|
+| `round_robin` | Round-robin across all healthy targets (default) |
+| `random` | Random selection from all healthy targets |
+| `fail_local` | Return error if no local targets available |
+
+#### When to Use Locality-Aware
+
+**Best for:**
+- Multi-region deployments
+- Minimizing cross-zone latency
+- Reducing data transfer costs
+- Geographic data residency requirements
+
+### Deterministic Subsetting
+
+```kdl
+upstream "large-cluster" {
+    load-balancing "deterministic_subset"
+}
+```
+
+For very large clusters (1000+ backends), limits each proxy instance to a deterministic subset of backends, reducing connection overhead while ensuring even distribution.
+
+#### How It Works
+
+1. **Subset Selection**: Each proxy uses a consistent hash to select its subset
+2. **Deterministic**: Same proxy ID always selects the same subset
+3. **Even Distribution**: Across all proxies, each backend receives roughly equal traffic
+4. **Subset Size**: Default 10 backends per proxy (configurable)
+
+#### When to Use Deterministic Subsetting
+
+**Best for:**
+- Very large backend pools (1000+ targets)
+- Reducing connection overhead
+- Limiting memory usage per proxy
+- Services where full-mesh connectivity is impractical
+
+**Trade-offs:**
+- Each proxy only sees a subset of backends
+- Subset changes when proxy restarts with different ID
+- Less effective with small backend pools
+
+### Weighted Least Connections
+
+```kdl
+upstream "mixed-capacity" {
+    load-balancing "weighted_least_conn"
+}
+```
+
+Combines weight with connection counting. Selects the backend with the lowest ratio of active connections to weight.
+
+#### Selection Algorithm
+
+```
+score = active_connections / weight
+```
+
+A backend with weight 200 and 10 connections (score: 0.05) is preferred over a backend with weight 100 and 6 connections (score: 0.06).
+
+#### Example: Mixed Capacity Backends
+
+```kdl
+targets {
+    target { address "large-server:8080" weight=200 }   // Can handle 2x traffic
+    target { address "medium-server:8080" weight=100 }  // Standard capacity
+    target { address "small-server:8080" weight=50 }    // Half capacity
+}
+load-balancing "weighted_least_conn"
+```
+
+#### When to Use Weighted Least Connections
+
+**Best for:**
+- Heterogeneous backend capacities
+- Mixed old/new hardware
+- Gradual capacity scaling
+- Long-running requests with varying backend power
+
+**Comparison with `least_connections`:**
+- `least_connections`: Ignores weight, pure connection count
+- `weighted_least_conn`: Accounts for backend capacity via weight
+
+### Least Tokens Queued
+
+```kdl
+upstream "llm-backend" {
+    load-balancing "least_tokens_queued"
+}
+```
+
+Specialized algorithm for LLM/inference workloads. Selects the backend with the fewest estimated tokens currently being processed.
+
+#### How It Works
+
+1. **Token Estimation**: Parses request body to estimate input tokens
+2. **Queue Tracking**: Tracks estimated tokens queued per backend
+3. **Selection**: Routes to backend with lowest token queue
+4. **Completion Tracking**: Updates queue when requests complete
+
+#### When to Use Least Tokens Queued
+
+**Best for:**
+- LLM inference backends (OpenAI-compatible APIs)
+- Services where request cost varies by input size
+- GPU-bound workloads with token-based processing
+- Balancing across heterogeneous inference hardware
 
 ## Health Checks
 
