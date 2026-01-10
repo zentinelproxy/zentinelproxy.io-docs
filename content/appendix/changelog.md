@@ -6,7 +6,9 @@ weight = 1
 All notable changes to Sentinel and official agents.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+Crate versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+> **Note:** Sentinel uses dual versioning. See [Versioning](../versioning/) for how crate versions (0.1.0) map to release versions (26.01).
 
 ## Sentinel Proxy
 
