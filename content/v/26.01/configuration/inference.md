@@ -227,6 +227,41 @@ If the `tiktoken` feature is not enabled at compile time, the tokenizer falls ba
 cargo build --features tiktoken
 ```
 
+### Streaming Token Counting
+
+For streaming responses (SSE), Sentinel automatically counts tokens as they stream through:
+
+**How it works:**
+
+1. **Detection**: SSE responses are detected via `Content-Type: text/event-stream`
+2. **Parsing**: Each SSE chunk is parsed to extract content deltas
+3. **Accumulation**: Content is accumulated across all chunks
+4. **Counting**: Final token count is calculated when the stream completes
+
+**Supported formats:**
+
+| Provider | SSE Format | Usage in Stream |
+|----------|-----------|-----------------|
+| OpenAI | `{"choices":[{"delta":{"content":"..."}}]}` | Final chunk includes `usage` |
+| Anthropic | `{"type":"content_block_delta","delta":{"text":"..."}}` | `message_delta` includes `usage` |
+
+**Token count sources (priority order):**
+
+1. **API-provided**: If the LLM includes usage in the SSE stream (preferred)
+2. **Tiktoken**: Count accumulated content using model-specific tokenizer
+3. **Fallback**: Character-based estimation if tiktoken unavailable
+
+**Example SSE flow:**
+
+```
+data: {"choices":[{"delta":{"content":"Hello"}}]}
+data: {"choices":[{"delta":{"content":" world"}}]}
+data: {"choices":[{"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":10,"completion_tokens":2}}
+data: [DONE]
+```
+
+Sentinel accumulates "Hello world" and either uses the API-provided token count (2 completion tokens) or counts via tiktoken.
+
 ### Rate Limit Response
 
 When rate limited, clients receive a `429 Too Many Requests` with headers:

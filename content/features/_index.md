@@ -40,6 +40,7 @@ Sentinel is a next-generation reverse proxy built on [Cloudflare's Pingora](http
 ## Configuration
 
 ### Multiple Formats
+<small class="docs-ref">[File Format](/configuration/file-format/)</small>
 <small class="source-ref">[`crates/config/src/lib.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/lib.rs)</small>
 
 - **KDL** — Human-friendly primary format
@@ -47,6 +48,7 @@ Sentinel is a next-generation reverse proxy built on [Cloudflare's Pingora](http
 - **TOML** — Familiar to Rust developers
 
 ### Hot Reload
+<small class="docs-ref">[Server Config](/configuration/server/)</small>
 <small class="source-ref">[`crates/proxy/src/reload/`](https://github.com/raskell-io/sentinel/tree/main/crates/proxy/src/reload)</small>
 
 - SIGHUP signal triggers reload
@@ -78,6 +80,7 @@ Sentinel is a next-generation reverse proxy built on [Cloudflare's Pingora](http
 ## Routing
 
 ### Path Matching
+<small class="docs-ref">[Routes](/configuration/routes/)</small>
 <small class="source-ref">[`crates/proxy/src/routing.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/proxy/src/routing.rs)</small>
 
 - **Prefix matching** — `/api/` matches `/api/users`
@@ -111,6 +114,7 @@ Sentinel is a next-generation reverse proxy built on [Cloudflare's Pingora](http
 ## Load Balancing
 
 ### Algorithms
+<small class="docs-ref">[Upstreams](/configuration/upstreams/)</small>
 <small class="source-ref">[`crates/proxy/src/upstream/`](https://github.com/raskell-io/sentinel/tree/main/crates/proxy/src/upstream)</small>
 
 - **Round Robin** — Default, simple rotation
@@ -150,6 +154,7 @@ Sentinel is a next-generation reverse proxy built on [Cloudflare's Pingora](http
 ## Service Discovery
 
 ### Backend Sources
+<small class="docs-ref">[Upstreams](/configuration/upstreams/)</small>
 <small class="source-ref">[`crates/proxy/src/discovery.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/proxy/src/discovery.rs)</small>
 
 - **Static** — Fixed list of backends (default)
@@ -236,6 +241,7 @@ Sentinel is a next-generation reverse proxy built on [Cloudflare's Pingora](http
 ## Caching
 
 ### HTTP Response Cache
+<small class="docs-ref">[Cache](/configuration/cache/)</small>
 <small class="source-ref">[`crates/proxy/src/cache.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/proxy/src/cache.rs)</small>
 
 - Pingora-based cache infrastructure
@@ -283,6 +289,7 @@ Sentinel is a next-generation reverse proxy built on [Cloudflare's Pingora](http
 ## Security
 
 ### TLS / SSL
+<small class="docs-ref">[Listeners](/configuration/listeners/)</small>
 <small class="source-ref">[`crates/proxy/src/tls.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/proxy/src/tls.rs)</small>
 
 - SNI-based certificate selection
@@ -300,6 +307,7 @@ Sentinel is a next-generation reverse proxy built on [Cloudflare's Pingora](http
 - Per-listener client auth configuration
 
 ### Rate Limiting
+<small class="docs-ref">[Limits](/configuration/limits/)</small>
 <small class="source-ref">[`crates/proxy/src/rate_limit.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/proxy/src/rate_limit.rs)</small>
 
 - **Local rate limiting** — Per-instance, lock-free
@@ -367,6 +375,7 @@ Sentinel is a next-generation reverse proxy built on [Cloudflare's Pingora](http
 ## Observability
 
 ### Access Logging
+<small class="docs-ref">[Observability](/configuration/observability/)</small>
 <small class="source-ref">[`crates/proxy/src/logging.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/proxy/src/logging.rs)</small>
 
 - **JSON format** — Structured, machine-readable
@@ -440,6 +449,7 @@ Sentinel is a next-generation reverse proxy built on [Cloudflare's Pingora](http
 ## External Agents
 
 ### Agent Protocol
+<small class="docs-ref">[Agents](/configuration/agents/)</small>
 <small class="source-ref">[`crates/agent-protocol/src/`](https://github.com/raskell-io/sentinel/tree/main/crates/agent-protocol/src)</small>
 
 - SPOE-inspired external agent system
@@ -490,6 +500,7 @@ Sentinel is a next-generation reverse proxy built on [Cloudflare's Pingora](http
 ## Multi-Tenancy
 
 ### Namespace Support
+<small class="docs-ref">[Namespaces](/configuration/namespaces/)</small>
 <small class="source-ref">[`crates/config/src/namespace.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/namespace.rs)</small>
 
 - Hierarchical organization (global → namespace → service)
@@ -518,6 +529,7 @@ Sentinel is a next-generation reverse proxy built on [Cloudflare's Pingora](http
 ## Resource Limits
 
 ### Global Limits
+<small class="docs-ref">[Limits](/configuration/limits/)</small>
 <small class="source-ref">[`crates/common/src/limits.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/common/src/limits.rs)</small>
 
 - Max header size
@@ -564,6 +576,7 @@ Sentinel is a next-generation reverse proxy built on [Cloudflare's Pingora](http
 ## Filters & Pipelines
 
 ### Filter System
+<small class="docs-ref">[Filters](/configuration/filters/)</small>
 <small class="source-ref">[`crates/config/src/filters.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/filters.rs)</small>
 
 - Named filter instances (reusable)
