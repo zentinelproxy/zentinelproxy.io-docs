@@ -9,6 +9,7 @@ Complete reference for all Sentinel configuration directives, verified against t
 ---
 
 ## Root-Level Blocks
+<small class="docs-ref">[File Format](/configuration/file-format/)</small>
 <small class="source-ref">[`crates/config/src/lib.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/lib.rs)</small>
 
 ### `schema-version`
@@ -239,6 +240,7 @@ namespaces {
 ---
 
 ## System Directives
+<small class="docs-ref">[Server](/configuration/server/)</small>
 <small class="source-ref">[`crates/config/src/server.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/server.rs)</small>
 
 ### `worker-threads`
@@ -391,6 +393,7 @@ system {
 ---
 
 ## Listener Directives
+<small class="docs-ref">[Listeners](/configuration/listeners/)</small>
 <small class="source-ref">[`crates/config/src/server.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/server.rs)</small>
 
 ### `listener`
@@ -502,6 +505,7 @@ listener "http" {
 ---
 
 ## Listener TLS Directives
+<small class="docs-ref">[Listeners](/configuration/listeners/)</small>
 <small class="source-ref">[`crates/config/src/server.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/server.rs)</small>
 
 ### `tls`
@@ -679,6 +683,7 @@ tls {
 ---
 
 ## Route Directives
+<small class="docs-ref">[Routes](/configuration/routes/)</small>
 <small class="source-ref">[`crates/config/src/routes.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/routes.rs)</small>
 
 ### `route`
@@ -821,6 +826,7 @@ route "api" {
 ---
 
 ## Route Matching Directives
+<small class="docs-ref">[Routes](/configuration/routes/)</small>
 <small class="source-ref">[`crates/config/src/routes.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/routes.rs)</small>
 
 ### `matches`
@@ -931,6 +937,7 @@ matches {
 ---
 
 ## Route Policies Directives
+<small class="docs-ref">[Routes](/configuration/routes/)</small>
 <small class="source-ref">[`crates/config/src/routes.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/routes.rs)</small>
 
 ### `policies`
@@ -1164,6 +1171,7 @@ rate-limit {
 ---
 
 ## Route Cache Directives
+<small class="docs-ref">[Cache](/configuration/cache/)</small>
 <small class="source-ref">[`crates/config/src/routes.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/routes.rs)</small>
 
 ### `cache`
@@ -1327,6 +1335,7 @@ cache {
 ---
 
 ## Static Files Directives
+<small class="docs-ref">[Routes](/configuration/routes/)</small>
 <small class="source-ref">[`crates/config/src/routes.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/routes.rs)</small>
 
 ### `static-files`
@@ -1453,6 +1462,7 @@ static-files {
 ---
 
 ## Circuit Breaker Directives
+<small class="docs-ref">[Upstreams](/configuration/upstreams/)</small>
 <small class="source-ref">[`crates/config/src/routes.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/routes.rs)</small>
 
 ### `circuit-breaker`
@@ -1532,6 +1542,7 @@ circuit-breaker {
 ---
 
 ## Retry Policy Directives
+<small class="docs-ref">[Routes](/configuration/routes/)</small>
 <small class="source-ref">[`crates/config/src/routes.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/routes.rs)</small>
 
 ### `retry-policy`
@@ -1626,6 +1637,7 @@ retry-policy {
 ---
 
 ## Shadow/Traffic Mirroring Directives
+<small class="docs-ref">[Routes](/configuration/routes/)</small>
 <small class="source-ref">[`crates/config/src/routes.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/routes.rs)</small>
 
 ### `shadow`
@@ -1689,6 +1701,7 @@ shadow {
 ---
 
 ## Error Pages Directives
+<small class="docs-ref">[Routes](/configuration/routes/)</small>
 <small class="source-ref">[`crates/config/src/routes.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/routes.rs)</small>
 
 ### `error-pages`
@@ -1774,6 +1787,7 @@ pages {
 ---
 
 ## Upstream Directives
+<small class="docs-ref">[Upstreams](/configuration/upstreams/)</small>
 <small class="source-ref">[`crates/config/src/upstreams.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/upstreams.rs)</small>
 
 ### `upstream`
@@ -1887,6 +1901,7 @@ target {
 ---
 
 ## Health Check Directives
+<small class="docs-ref">[Upstreams](/configuration/upstreams/)</small>
 <small class="source-ref">[`crates/config/src/upstreams.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/upstreams.rs)</small>
 
 ### `health-check`
@@ -1983,6 +1998,7 @@ health-check {
 ---
 
 ## Connection Pool Directives
+<small class="docs-ref">[Upstreams](/configuration/upstreams/)</small>
 <small class="source-ref">[`crates/config/src/upstreams.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/upstreams.rs)</small>
 
 ### `connection-pool`
@@ -2047,6 +2063,7 @@ connection-pool {
 ---
 
 ## Upstream Timeouts Directives
+<small class="docs-ref">[Upstreams](/configuration/upstreams/)</small>
 <small class="source-ref">[`crates/config/src/upstreams.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/upstreams.rs)</small>
 
 ### `timeouts`
@@ -2127,6 +2144,7 @@ timeouts {
 ---
 
 ## Upstream TLS Directives
+<small class="docs-ref">[Upstreams](/configuration/upstreams/)</small>
 <small class="source-ref">[`crates/config/src/upstreams.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/upstreams.rs)</small>
 
 ### `sni`
@@ -2205,6 +2223,7 @@ tls {
 ---
 
 ## HTTP Version Directives
+<small class="docs-ref">[Upstreams](/configuration/upstreams/)</small>
 <small class="source-ref">[`crates/config/src/upstreams.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/upstreams.rs)</small>
 
 ### `http-version`
@@ -2283,6 +2302,7 @@ http-version {
 ---
 
 ## Agent Directives
+<small class="docs-ref">[Agents](/configuration/agents/)</small>
 <small class="source-ref">[`crates/config/src/agents.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/agents.rs)</small>
 
 ### `agent`
@@ -2471,6 +2491,7 @@ agent "custom" {
 ---
 
 ## Transport Directives
+<small class="docs-ref">[Agents](/configuration/agents/)</small>
 <small class="source-ref">[`crates/config/src/agents.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/agents.rs)</small>
 
 ### `type` (transport)
@@ -2520,6 +2541,7 @@ transport {
 ---
 
 ## Filter Directives
+<small class="docs-ref">[Filters](/configuration/filters/)</small>
 <small class="source-ref">[`crates/config/src/filters.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/filters.rs)</small>
 
 ### `filter`
@@ -2986,6 +3008,7 @@ waf {
 ---
 
 ## Limits Directives
+<small class="docs-ref">[Limits](/configuration/limits/)</small>
 <small class="source-ref">[`crates/common/src/limits.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/common/src/limits.rs)</small>
 
 ### `max-header-size-bytes`
@@ -3109,6 +3132,7 @@ limits {
 ---
 
 ## Observability Directives
+<small class="docs-ref">[Observability](/configuration/observability/)</small>
 <small class="source-ref">[`crates/config/src/observability.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/observability.rs)</small>
 
 ### `metrics`
