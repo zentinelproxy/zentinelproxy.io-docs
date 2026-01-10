@@ -188,12 +188,19 @@ Sentinel is a next-generation reverse proxy built on [Cloudflare's Pingora](http
 - Configurable caching headers
 
 ### Inference / LLM
+<small class="docs-ref">[Inference](/configuration/inference/)</small>
 <small class="source-ref">[`crates/proxy/src/inference/`](https://github.com/raskell-io/sentinel/tree/main/crates/proxy/src/inference)</small>
 
-- Token-based rate limiting
-- Multi-provider token counting (OpenAI, Anthropic)
-- Model-aware load balancing
-- Token budget tracking
+- **Token-based rate limiting** — Limit by tokens per minute, not just requests
+- **Multi-provider support** — OpenAI, Anthropic, and generic API adapters
+- **Token counting** — Tiktoken for accurate estimation, streaming SSE support
+- **Model-based routing** — Route to different upstreams based on model name
+- **Fallback routing** — Automatic failover with cross-provider model mapping
+- **Token budget tracking** — Cumulative usage limits with alerts (hourly/daily/monthly)
+- **Cost attribution** — Per-model pricing and spending metrics
+- **Semantic guardrails** — Prompt injection detection and PII scanning via agents
+- **Inference load balancing** — Least-tokens-queued algorithm for optimal distribution
+- **Inference health checks** — Verify model availability on backends
 
 ### Built-in Handlers
 <small class="source-ref">[`crates/proxy/src/builtin_handlers.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/proxy/src/builtin_handlers.rs)</small>
