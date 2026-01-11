@@ -1,0 +1,53 @@
+# Sentinel Documentation - robots.txt
+# https://sentinel.raskell.io/docs/
+
+# Allow all standard crawlers
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://sentinel.raskell.io/docs/sitemap.xml
+
+# AI Crawlers - Welcome to index our documentation
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Anthropic-AI
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Cohere-AI
+Allow: /
+
+User-agent: Meta-ExternalAgent
+Allow: /
+
+# Crawl-delay for AI bots
+User-agent: GPTBot
+Crawl-delay: 1
+
+User-agent: ClaudeBot
+Crawl-delay: 1
+
+User-agent: PerplexityBot
+Crawl-delay: 1
+
+# AI context file for documentation
+# See: https://sentinel.raskell.io/docs/llms.txt

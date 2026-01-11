@@ -13,4 +13,10 @@ public/
 *_fix.py
 validate_*.py
 validation_errors.txt
+
+# Exclude txt files except important ones
 *.txt
+!robots.txt
+!llms.txt
+!static/robots.txt
+!static/llms.txt

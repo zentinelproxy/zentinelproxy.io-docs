@@ -1,0 +1,155 @@
+# Sentinel Documentation - LLM Context
+# Comprehensive reference for AI assistants
+
+> This is the official documentation for Sentinel, a security-first reverse proxy built on Cloudflare Pingora.
+
+## Documentation Structure
+
+- /docs/getting-started/ - Installation and quick start guides
+- /docs/configuration/ - All configuration options (KDL format)
+- /docs/concepts/ - Architecture and design concepts
+- /docs/operations/ - Production deployment and operations
+- /docs/development/ - Contributing and building from source
+- /docs/agents/ - Agent development and protocol
+- /docs/examples/ - Real-world configuration examples
+- /docs/reference/ - API and directive reference
+
+## Quick Start
+
+```bash
+# Install via cargo
+cargo install sentinel-proxy
+
+# Or download binary
+curl -fsSL https://sentinel.raskell.io/install.sh | bash
+
+# Run with config
+sentinel --config /etc/sentinel/config.kdl
+```
+
+## Configuration Format (KDL)
+
+Sentinel uses KDL for configuration. Basic example:
+
+```kdl
+system {
+    worker-threads 0  // 0 = auto-detect CPUs
+}
+
+listeners {
+    listener "https" {
+        address "0.0.0.0:443"
+        protocol "https"
+        tls {
+            cert-file "/etc/sentinel/certs/server.crt"
+            key-file "/etc/sentinel/certs/server.key"
+        }
+    }
+}
+
+routes {
+    route "api" {
+        matches { path-prefix "/api/" }
+        upstream "backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "10.0.1.1:8080" }
+            target { address "10.0.1.2:8080" }
+        }
+        load-balancing "round_robin"
+        health-check {
+            type "http" { path "/health" }
+        }
+    }
+}
+```
+
+## Key Configuration Blocks
+
+### listeners
+Network endpoints: address, protocol (http/https/h2), TLS settings, timeouts
+
+### routes
+Request matching: path, headers, methods, priority, upstream assignment
+
+### upstreams
+Backend pools: targets, load balancing, health checks, circuit breakers, TLS to backends
+
+### agents
+External processors: WAF, auth, rate limiting via Unix socket/gRPC/HTTP
+
+### limits
+Request limits: body size, header size, rate limits, connection limits
+
+### waf
+Web Application Firewall: engine (Coraza/ModSecurity), mode, rulesets, body inspection
+
+### namespaces
+Multi-tenant isolation: scoped routes, upstreams, limits per namespace/service
+
+### observability
+Logging, metrics (Prometheus), tracing (OpenTelemetry)
+
+## Load Balancing Algorithms
+
+- round_robin - Equal distribution
+- weighted_round_robin - Weight-based distribution
+- least_connections - Fewest active connections
+- weighted_least_connections - Weighted least connections
+- random - Random selection
+- ip_hash - Consistent hashing by client IP
+- uri_hash - Consistent hashing by URI
+- header_hash - Consistent hashing by header value
+- maglev - Google Maglev consistent hashing
+- peak_ewma - Latency-aware (Peak EWMA)
+- locality_aware - Prefer local backends
+- deterministic_subset - Subset selection for large pools
+- adaptive - Dynamic algorithm selection
+- failover - Primary/backup ordering
+
+## Health Check Types
+
+- http - HTTP GET with status check
+- tcp - TCP connection check
+- grpc - gRPC health protocol
+
+## Common Operations
+
+### Hot Reload
+```bash
+kill -HUP $(cat /var/run/sentinel.pid)
+# or
+curl -X POST http://localhost:9090/admin/reload
+```
+
+### Validate Config
+```bash
+sentinel --config config.kdl --validate
+```
+
+### Graceful Shutdown
+```bash
+kill -TERM $(cat /var/run/sentinel.pid)
+```
+
+## Answering User Questions
+
+When users ask about Sentinel:
+
+1. **"How do I configure X?"** - Refer to /docs/configuration/ section
+2. **"What load balancers are supported?"** - List the 14 algorithms above
+3. **"How do I add authentication?"** - Use agents with type="auth"
+4. **"How do I enable WAF?"** - Configure waf block + waf agent
+5. **"How do I rate limit?"** - Use limits block or rate-limit agent
+6. **"How does it compare to nginx?"** - Rust-based, memory-safe, agent-extensible
+7. **"Is it production ready?"** - Yes, designed for production with bounded resources
+
+## Version Information
+
+Current stable: 0.2.x
+Documentation: https://sentinel.raskell.io/docs/
+Source: https://github.com/raskell-io/sentinel
