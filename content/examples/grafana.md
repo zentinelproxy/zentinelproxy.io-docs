@@ -75,7 +75,7 @@ routes {
         agents "waf" "ratelimit"
         upstream "backend"
         policies {
-            response_headers {
+            response-headers {
                 set {
                     "X-Content-Type-Options" "nosniff"
                     "X-Frame-Options" "DENY"
@@ -100,9 +100,9 @@ routes {
         upstream "backend"
         service-type "api"
         policies {
-            timeout_secs 30
-            max_body_size "10MB"
-            response_headers {
+            timeout-secs 30
+            max-body-size "10MB"
+            response-headers {
                 set {
                     "X-Content-Type-Options" "nosniff"
                     "X-Frame-Options" "DENY"
@@ -111,8 +111,8 @@ routes {
                 remove "Server" "X-Powered-By"
             }
         }
-        error_pages {
-            default_format "json"
+        error-pages {
+            default-format "json"
         }
     }
 
@@ -125,8 +125,8 @@ routes {
         agents "waf" "auth" "ratelimit-strict"
         upstream "backend"
         policies {
-            failure_mode "closed"
-            request_headers {
+            failure-mode "closed"
+            request-headers {
                 set { "X-Admin-Request" "true" }
             }
         }
@@ -138,8 +138,12 @@ upstreams {
         targets {
             target { address "127.0.0.1:3000" }
         }
+        load-balancing "round_robin"
         health-check {
-            type "http" { path "/health" }
+            type "http" {
+                path "/health"
+                expected-status 200
+            }
             interval-secs 10
         }
     }
@@ -147,40 +151,32 @@ upstreams {
 
 agents {
     // Web Application Firewall
-    agent "waf" {
-        transport "unix_socket" {
-            path "/var/run/sentinel/waf.sock"
-        }
+    agent "waf" type="waf" {
+        unix-socket "/var/run/sentinel/waf.sock"
         events "request_headers" "request_body"
         timeout-ms 100
         failure-mode "closed"
     }
 
     // Authentication
-    agent "auth" {
-        transport "unix_socket" {
-            path "/var/run/sentinel/auth.sock"
-        }
+    agent "auth" type="auth" {
+        unix-socket "/var/run/sentinel/auth.sock"
         events "request_headers"
         timeout-ms 50
         failure-mode "closed"
     }
 
     // Standard rate limiting
-    agent "ratelimit" {
-        transport "unix_socket" {
-            path "/var/run/sentinel/ratelimit.sock"
-        }
+    agent "ratelimit" type="rate_limit" {
+        unix-socket "/var/run/sentinel/ratelimit.sock"
         events "request_headers"
         timeout-ms 20
         failure-mode "open"
     }
 
     // Strict rate limiting for admin
-    agent "ratelimit-strict" {
-        transport "unix_socket" {
-            path "/var/run/sentinel/ratelimit-strict.sock"
-        }
+    agent "ratelimit-strict" type="rate_limit" {
+        unix-socket "/var/run/sentinel/ratelimit-strict.sock"
         events "request_headers"
         timeout-ms 20
         failure-mode "closed"

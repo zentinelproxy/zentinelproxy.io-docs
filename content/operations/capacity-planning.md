@@ -74,20 +74,35 @@ connection-pool {
 **Traffic**: 10,000 - 100,000 requests/second
 
 ```kdl
-server {
+system {
     worker-threads 0  // Use all available cores
     max-connections 50000
 }
 
-connection-pool {
-    max-connections 500
-    max-idle 100
-    idle-timeout-secs 120
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
 }
 
-rate-limit {
-    backend "redis" {
-        endpoints ["redis://redis-cluster:6379"]
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
+        connection-pool {
+            max-connections 500
+            max-idle 100
+            idle-timeout-secs 120
+        }
     }
 }
 ```

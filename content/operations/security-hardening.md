@@ -48,28 +48,42 @@ security {
 ### Minimum TLS Requirements
 
 ```kdl
+system {
+    worker-threads 0
+}
+
 listeners {
     listener "https" {
         address "0.0.0.0:443"
+        protocol "https"
 
         tls {
-            cert "/etc/sentinel/certs/server.crt"
-            key "/etc/sentinel/certs/server.key"
+            cert-file "/etc/sentinel/certs/server.crt"
+            key-file "/etc/sentinel/certs/server.key"
 
             // Minimum TLS 1.2 (TLS 1.3 preferred)
             min-version "1.2"
 
             // Strong cipher suites only
-            ciphers [
-                "TLS_AES_256_GCM_SHA384"
-                "TLS_AES_128_GCM_SHA256"
-                "TLS_CHACHA20_POLY1305_SHA256"
-                "ECDHE-ECDSA-AES256-GCM-SHA384"
-                "ECDHE-RSA-AES256-GCM-SHA384"
-            ]
+            ciphers "TLS_AES_256_GCM_SHA384" "TLS_AES_128_GCM_SHA256" "TLS_CHACHA20_POLY1305_SHA256" "ECDHE-ECDSA-AES256-GCM-SHA384" "ECDHE-RSA-AES256-GCM-SHA384"
 
             // OCSP stapling
-            ocsp-stapling true
+            ocsp-stapling #true
+        }
+    }
+}
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
         }
     }
 }
@@ -100,16 +114,34 @@ openssl s_client -connect localhost:443 -tls1_2 </dev/null 2>/dev/null | grep "C
 Configure client certificates for backend authentication:
 
 ```kdl
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "secure-backend"
+    }
+}
+
 upstreams {
     upstream "secure-backend" {
-        target "10.0.0.1:8443"
-
+        targets {
+            target { address "10.0.0.1:8443" }
+        }
         tls {
             sni "backend.internal"
             client-cert "/etc/sentinel/certs/client.crt"
             client-key "/etc/sentinel/certs/client.key"
             ca-cert "/etc/sentinel/certs/backend-ca.crt"
-            insecure-skip-verify false
         }
     }
 }
@@ -121,163 +153,199 @@ See [mTLS to Upstreams](/configuration/upstreams/#mtls) for detailed configurati
 
 ### Security Response Headers
 
+Security headers can be configured using response header policies in your routes:
+
 ```kdl
-policies {
-    security-headers {
-        x-frame-options "DENY"
-        x-content-type-options "nosniff"
-        x-xss-protection "1; mode=block"
-        referrer-policy "strict-origin-when-cross-origin"
-        content-security-policy "default-src 'self'"
-        strict-transport-security "max-age=31536000; includeSubDomains"
-        permissions-policy "geolocation=(), microphone=(), camera=()"
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
+        policies {
+            response-headers {
+                set {
+                    "X-Frame-Options" "DENY"
+                    "X-Content-Type-Options" "nosniff"
+                    "X-XSS-Protection" "1; mode=block"
+                    "Referrer-Policy" "strict-origin-when-cross-origin"
+                    "Content-Security-Policy" "default-src 'self'"
+                    "Strict-Transport-Security" "max-age=31536000; includeSubDomains"
+                    "Permissions-Policy" "geolocation=(), microphone=(), camera=()"
+                }
+            }
+        }
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
     }
 }
 ```
 
 ### Header Sanitization
 
-Remove sensitive headers:
+Remove sensitive headers using response and request header policies:
 
 ```kdl
-policies {
-    header-sanitization {
-        // Remove server identification
-        remove-response-headers [
-            "Server"
-            "X-Powered-By"
-            "X-AspNet-Version"
-        ]
+system {
+    worker-threads 0
+}
 
-        // Remove internal routing headers from requests
-        remove-request-headers [
-            "X-Forwarded-For"  // Will be set by Sentinel
-            "X-Real-IP"
-        ]
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
+        policies {
+            // Remove server identification from responses
+            response-headers {
+                remove "Server" "X-Powered-By" "X-AspNet-Version"
+            }
+            // Remove internal routing headers from requests
+            request-headers {
+                remove "X-Forwarded-For" "X-Real-IP"
+            }
+        }
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
     }
 }
 ```
 
 ### Request Validation
 
-```kdl
-policies {
-    request-validation {
-        // Block requests with suspicious patterns
-        block-paths [
-            "*.php"
-            "*/.git/*"
-            "*/.env"
-        ]
-
-        // Require specific headers
-        require-headers ["Host", "User-Agent"]
-    }
-}
-```
+Request validation can be implemented using WAF agents. See [Agents](/configuration/agents/) for configuration details.
 
 ## Access Control
 
-### IP-Based Access Control
-
-```kdl
-policies {
-    ip-access-control {
-        default-action "allow"
-
-        allow [
-            "10.0.0.0/8"
-            "192.168.0.0/16"
-        ]
-
-        block [
-            "0.0.0.0/8"
-            "169.254.0.0/16"
-        ]
-    }
-}
-```
-
-### GeoIP Blocking
-
-```kdl
-policies {
-    geo-access-control {
-        database "/etc/sentinel/geoip/GeoLite2-Country.mmdb"
-        allow-countries ["US", "CA", "GB", "DE", "FR"]
-        action "block"
-    }
-}
-```
+IP-based access control and GeoIP blocking can be implemented using agents. See [Agents](/configuration/agents/) for details on building custom access control agents.
 
 ### Route-Level Access Control
 
+Admin routes can be protected by requiring authentication via agents:
+
 ```kdl
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
 routes {
     route "admin" {
         matches { path-prefix "/admin/" }
-
-        policies {
-            ip-access-control {
-                allow ["10.0.0.0/8"]
-                default-action "block"
-            }
-            require-headers ["Authorization"]
-        }
-
+        agents "auth"
         upstream "admin-backend"
+    }
+}
+
+upstreams {
+    upstream "admin-backend" {
+        targets {
+            target { address "127.0.0.1:3001" }
+        }
+    }
+}
+
+agents {
+    agent "auth" type="auth" {
+        unix-socket "/var/run/sentinel/auth.sock"
+        events "request_headers"
+        timeout-ms 50
+        failure-mode "closed"
     }
 }
 ```
 
 ## Rate Limiting
 
-### Global Rate Limits
+Rate limiting is implemented via agents. Configure a rate limiting agent for your routes:
 
 ```kdl
-policies {
-    global-rate-limit {
-        requests-per-second 10000
-        burst 1000
-        max-connections 50000
-        max-connections-per-ip 100
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
     }
 }
-```
 
-### Per-Route Rate Limits
-
-```kdl
 routes {
     route "api" {
         matches { path-prefix "/api/" }
-
-        policies {
-            rate-limit {
-                key "client_ip"
-                requests-per-second 100
-                burst 50
-                action "block"
-                status-code 429
-            }
-        }
-
+        agents "ratelimit"
         upstream "api-backend"
     }
 
     route "login" {
         matches { path "/auth/login" }
-
-        policies {
-            rate-limit {
-                key "client_ip"
-                requests-per-second 5
-                burst 10
-                action "block"
-            }
-        }
-
+        agents "ratelimit-strict"
         upstream "auth-backend"
+    }
+}
+
+upstreams {
+    upstream "api-backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
+    }
+    upstream "auth-backend" {
+        targets {
+            target { address "127.0.0.1:3001" }
+        }
+    }
+}
+
+agents {
+    // Standard rate limiting: 100 req/min
+    agent "ratelimit" type="rate_limit" {
+        unix-socket "/var/run/sentinel/ratelimit.sock"
+        events "request_headers"
+        timeout-ms 20
+        failure-mode "open"
+    }
+
+    // Strict rate limiting for login: 5 req/min
+    agent "ratelimit-strict" type="rate_limit" {
+        unix-socket "/var/run/sentinel/ratelimit-strict.sock"
+        events "request_headers"
+        timeout-ms 20
+        failure-mode "closed"
     }
 }
 ```
@@ -286,38 +354,48 @@ routes {
 
 ### Event Logging
 
+Configure logging via the observability block:
+
 ```kdl
-logging {
-    security-log {
-        path "/var/log/sentinel/security.log"
-        format "json"
+system {
+    worker-threads 0
+}
 
-        events [
-            "rate_limit_triggered"
-            "ip_blocked"
-            "geo_blocked"
-            "waf_blocked"
-            "auth_failure"
-            "tls_handshake_failure"
-        ]
-
-        include-headers ["User-Agent", "X-Forwarded-For"]
-        include-client-ip true
-        include-request-id true
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
     }
+}
 
-    audit-log {
-        path "/var/log/sentinel/audit.log"
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
+    }
+}
+
+observability {
+    logging {
+        level "info"
         format "json"
-
-        events [
-            "config_reload"
-            "upstream_health_change"
-            "circuit_breaker_state_change"
-        ]
+    }
+    metrics {
+        enabled #true
+        address "0.0.0.0:9090"
     }
 }
 ```
+
+Security events are logged automatically when agents block requests or when rate limits are triggered. Monitor these via your log aggregation system.
 
 ### Log Rotation
 

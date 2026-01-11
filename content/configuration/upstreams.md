@@ -431,12 +431,35 @@ A backend with weight 200 and 10 connections (score: 0.05) is preferred over a b
 #### Example: Mixed Capacity Backends
 
 ```kdl
-targets {
-    target { address "large-server:8080" weight=200 }   // Can handle 2x traffic
-    target { address "medium-server:8080" weight=100 }  // Standard capacity
-    target { address "small-server:8080" weight=50 }    // Half capacity
+system {
+    worker-threads 0
 }
-load-balancing "weighted_least_conn"
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "mixed-capacity"
+    }
+}
+
+upstreams {
+    // Large server can handle 2x traffic, medium is standard, small is half capacity
+    upstream "mixed-capacity" {
+        targets {
+            target { address "large-server:8080" weight=200 }
+            target { address "medium-server:8080" weight=100 }
+            target { address "small-server:8080" weight=50 }
+        }
+        load-balancing "weighted_least_conn"
+    }
+}
 ```
 
 #### When to Use Weighted Least Connections
@@ -889,17 +912,6 @@ listeners {
     }
 }
 
-upstream "backend" {
-    discovery "consul" {
-        address "http://consul.internal:8500"
-        service "backend-api"
-        datacenter "dc1"
-        only-passing #true
-        refresh-interval 10
-        tag "production"
-    }
-}
-
 routes {
     route "default" {
         matches { path-prefix "/" }
@@ -909,8 +921,13 @@ routes {
 
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
+        discovery "consul" {
+            address "http://consul.internal:8500"
+            service "backend-api"
+            datacenter "dc1"
+            only-passing #true
+            refresh-interval 10
+            tag "production"
         }
     }
 }
