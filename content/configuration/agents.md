@@ -463,27 +463,172 @@ agents {
 
 ## TLS Configuration
 
-### gRPC with mTLS
+Secure gRPC connections to agents with TLS and mutual TLS (mTLS).
+
+### TLS Options
+
+| Option | Description |
+|--------|-------------|
+| `ca-cert` | Path to CA certificate for verifying the agent's server certificate |
+| `client-cert` | Path to client certificate for mTLS authentication |
+| `client-key` | Path to client private key for mTLS authentication |
+| `insecure-skip-verify` | Skip certificate verification (development only) |
+
+### Server TLS (One-Way)
+
+Verify the agent's identity using TLS:
 
 ```kdl
-agent "secure-agent" type="waf" {
-    grpc "https://waf-service:50051" {
-        ca-cert "/etc/sentinel/ca.crt"
-        client-cert "/etc/sentinel/client.crt"
-        client-key "/etc/sentinel/client.key"
+agent "secure-agent" type="auth" {
+    grpc "https://auth-service.internal:50051" {
+        ca-cert "/etc/sentinel/certs/ca.crt"
     }
+    events "request_headers"
+    timeout-ms 100
 }
 ```
 
+This configuration:
+- Encrypts traffic between Sentinel and the agent
+- Verifies the agent's certificate against the provided CA
+- Automatically extracts domain name for SNI from the address
+
+### Mutual TLS (mTLS)
+
+For bidirectional authentication where both Sentinel and the agent verify each other:
+
+```kdl
+agent "secure-waf" type="waf" {
+    grpc "https://waf-service.internal:50051" {
+        ca-cert "/etc/sentinel/certs/ca.crt"
+        client-cert "/etc/sentinel/certs/sentinel-client.crt"
+        client-key "/etc/sentinel/certs/sentinel-client.key"
+    }
+    events "request_headers" "request_body"
+    timeout-ms 200
+    failure-mode "closed"
+}
+```
+
+This configuration:
+- Encrypts traffic with TLS
+- Verifies the agent's certificate against the CA
+- Presents Sentinel's client certificate to the agent for verification
+- Provides strong mutual authentication for security-sensitive agents
+
+### Using System CA Store
+
+When no `ca-cert` is specified, Sentinel uses the system's native certificate store for server verification:
+
+```kdl
+agent "public-agent" type="custom" {
+    grpc "https://agent.example.com:50051"
+    events "request_headers"
+}
+```
+
+This works well for agents using certificates from public CAs (Let's Encrypt, DigiCert, etc.).
+
 ### Skip Verification (Development Only)
+
+**Warning:** Only use this for local development. Never use in production.
 
 ```kdl
 agent "dev-agent" type="custom" {
     grpc "https://localhost:50051" {
-        tls-insecure
+        insecure-skip-verify
+    }
+    events "request_headers"
+}
+```
+
+When enabled, Sentinel logs a security warning:
+```
+WARN: TLS certificate verification disabled for agent connection
+```
+
+### Certificate Setup
+
+#### Generate CA and Certificates
+
+```bash
+# Create CA
+openssl genrsa -out ca.key 4096
+openssl req -new -x509 -days 3650 -key ca.key -out ca.crt \
+    -subj "/CN=Sentinel Agent CA"
+
+# Create agent server certificate
+openssl genrsa -out agent.key 2048
+openssl req -new -key agent.key -out agent.csr \
+    -subj "/CN=waf-service.internal"
+openssl x509 -req -days 365 -in agent.csr -CA ca.crt -CAkey ca.key \
+    -CAcreateserial -out agent.crt
+
+# Create Sentinel client certificate (for mTLS)
+openssl genrsa -out sentinel-client.key 2048
+openssl req -new -key sentinel-client.key -out sentinel-client.csr \
+    -subj "/CN=sentinel-proxy"
+openssl x509 -req -days 365 -in sentinel-client.csr -CA ca.crt -CAkey ca.key \
+    -CAcreateserial -out sentinel-client.crt
+```
+
+#### File Permissions
+
+```bash
+# Secure the private keys
+chmod 600 /etc/sentinel/certs/*.key
+chown sentinel:sentinel /etc/sentinel/certs/*
+```
+
+### Complete Secure Agent Example
+
+```kdl
+agents {
+    // WAF with mTLS - highest security
+    agent "modsecurity" type="waf" {
+        grpc "https://waf.internal:50051" {
+            ca-cert "/etc/sentinel/certs/ca.crt"
+            client-cert "/etc/sentinel/certs/sentinel-client.crt"
+            client-key "/etc/sentinel/certs/sentinel-client.key"
+        }
+        events "request_headers" "request_body"
+        timeout-ms 200
+        failure-mode "closed"
+        circuit-breaker {
+            failure-threshold 10
+            timeout-seconds 60
+        }
+    }
+
+    // Auth with server-only TLS
+    agent "jwt-auth" type="auth" {
+        grpc "https://auth.internal:50051" {
+            ca-cert "/etc/sentinel/certs/ca.crt"
+        }
+        events "request_headers"
+        timeout-ms 50
+        failure-mode "closed"
+    }
+
+    // Rate limiter - internal network, no TLS
+    agent "rate-limiter" type="rate_limit" {
+        grpc "http://ratelimit.internal:50051"
+        events "request_headers"
+        timeout-ms 20
+        failure-mode "open"
     }
 }
 ```
+
+### Troubleshooting TLS
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| `certificate verify failed` | CA doesn't match agent cert | Verify CA certificate is correct |
+| `certificate has expired` | Agent cert expired | Renew agent certificate |
+| `handshake failure` | TLS version mismatch | Check both ends support TLS 1.2+ |
+| `unknown ca` | Missing CA cert | Add `ca-cert` option |
+| `bad certificate` | Client cert rejected | Verify client cert signed by agent's CA |
 
 ## Default Values
 
