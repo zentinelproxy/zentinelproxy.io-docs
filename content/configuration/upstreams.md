@@ -1032,6 +1032,111 @@ Kubernetes discovery with kubeconfig requires the `kubernetes` feature:
 cargo build --features kubernetes
 ```
 
+### File-based Discovery
+
+Discover backends from a simple text file. The file is watched for changes and backends are reloaded automatically.
+
+```kdl
+upstream "api" {
+    discovery "file" {
+        path "/etc/sentinel/backends/api-servers.txt"
+        watch-interval 5
+    }
+}
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `path` | Required | Path to the backends file |
+| `watch-interval` | `5` | Seconds between file modification checks |
+
+#### File Format
+
+One backend per line with optional weight parameter:
+
+```text
+# Backend servers for API cluster
+# Updated: 2026-01-11
+
+10.0.1.1:8080
+10.0.1.2:8080 weight=2
+10.0.1.3:8080 weight=3
+
+# Standby server (lower weight)
+10.0.1.4:8080 weight=1
+```
+
+**Format rules:**
+- Lines starting with `#` are comments
+- Empty lines are ignored
+- Format: `host:port` or `host:port weight=N`
+- Hostnames are resolved via DNS
+- Default weight is `1` if not specified
+
+#### Use Cases
+
+**External configuration management:**
+```kdl
+// Backends managed by Ansible/Puppet/Chef
+upstream "backend" {
+    discovery "file" {
+        path "/etc/sentinel/backends/managed-by-ansible.txt"
+        watch-interval 10
+    }
+}
+```
+
+**Integration with custom scripts:**
+```bash
+#!/bin/bash
+# update-backends.sh - Run by cron or external system
+consul catalog nodes -service=api | \
+    awk '{print $2":8080"}' > /etc/sentinel/backends/api.txt
+```
+
+```kdl
+upstream "api" {
+    discovery "file" {
+        path "/etc/sentinel/backends/api.txt"
+        watch-interval 5
+    }
+}
+```
+
+**Manual failover control:**
+```text
+# Primary datacenter
+10.0.1.1:8080 weight=10
+10.0.1.2:8080 weight=10
+
+# DR datacenter (uncomment during failover)
+# 10.0.2.1:8080 weight=10
+# 10.0.2.2:8080 weight=10
+```
+
+#### Hot Reload Behavior
+
+File-based discovery automatically detects changes:
+
+1. **Modification check**: File modification time is checked every `watch-interval` seconds
+2. **Reload trigger**: When file is modified, backends are re-read
+3. **Graceful update**: New backends are added, removed backends drain connections
+4. **Cache fallback**: If file becomes temporarily unavailable, last known backends are used
+
+#### File Permissions
+
+Ensure Sentinel can read the backends file:
+
+```bash
+# Create directory
+sudo mkdir -p /etc/sentinel/backends
+sudo chown sentinel:sentinel /etc/sentinel/backends
+
+# Create backends file
+echo "10.0.1.1:8080" | sudo tee /etc/sentinel/backends/api.txt
+sudo chmod 644 /etc/sentinel/backends/api.txt
+```
+
 ### Static Discovery
 
 Explicitly define backends (default behavior when `targets` is used):
@@ -1073,6 +1178,7 @@ All discovery methods cache results and fall back to cached backends on failure:
 - DNS resolution fails → use last known IPs
 - Consul unavailable → use last known services
 - Kubernetes API error → use last known endpoints
+- File unreadable → use last known backends
 
 This ensures resilience during control plane outages.
 
