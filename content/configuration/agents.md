@@ -79,17 +79,110 @@ agent "secure-agent" type="auth" {
 
 ### HTTP
 
-REST API agent:
+REST API agent using JSON over HTTP. This is the simplest transport option, making it easy to build agents in any language with HTTP support.
+
+#### Basic HTTP
 
 ```kdl
 agent "http-agent" type="custom" {
-    http "http://policy-service:8080/check" {
-        tls-insecure  // Skip TLS verification (dev only)
-    }
+    http "http://policy-service:8080/agent"
     events "request_headers"
     timeout-ms 150
 }
 ```
+
+#### HTTPS with TLS
+
+```kdl
+agent "secure-http-agent" type="auth" {
+    http "https://auth-service:8443/agent" {
+        ca-cert "/etc/sentinel/certs/ca.crt"
+    }
+    events "request_headers"
+    timeout-ms 100
+}
+```
+
+#### HTTPS with mTLS
+
+```kdl
+agent "mtls-agent" type="waf" {
+    http "https://waf-service:8443/agent" {
+        ca-cert "/etc/sentinel/certs/ca.crt"
+        client-cert "/etc/sentinel/certs/client.crt"
+        client-key "/etc/sentinel/certs/client.key"
+    }
+    events "request_headers" "request_body"
+    timeout-ms 200
+}
+```
+
+#### HTTP Protocol
+
+Sentinel sends events as JSON POST requests:
+
+```http
+POST /agent HTTP/1.1
+Host: policy-service:8080
+Content-Type: application/json
+X-Sentinel-Protocol-Version: 1
+
+{
+  "version": 1,
+  "event_type": "request_headers",
+  "payload": {
+    "metadata": {
+      "correlation_id": "abc123",
+      "request_id": "req-456",
+      "client_ip": "192.168.1.100",
+      "route_id": "api-route"
+    },
+    "method": "POST",
+    "uri": "/api/users",
+    "headers": {
+      "content-type": ["application/json"],
+      "authorization": ["Bearer token..."]
+    }
+  }
+}
+```
+
+Agents respond with JSON:
+
+```json
+{
+  "version": 1,
+  "decision": "allow",
+  "request_headers": [
+    {"set": {"name": "X-User-ID", "value": "user-123"}}
+  ],
+  "audit": {
+    "tags": ["authenticated"],
+    "rule_ids": ["auth-001"]
+  }
+}
+```
+
+#### When to Use HTTP
+
+| Use Case | Recommended Transport |
+|----------|----------------------|
+| Simple agents in any language | HTTP |
+| High-throughput, low-latency | Unix Socket |
+| Binary protocol, streaming | gRPC |
+| Cross-network, load-balanced | HTTP or gRPC |
+| Development/prototyping | HTTP |
+
+HTTP advantages:
+- Works with any language/framework that handles HTTP
+- Easy to debug with curl or browser tools
+- Simple JSON payloads
+- Standard load balancers and proxies work out of the box
+
+HTTP trade-offs:
+- Higher overhead than Unix sockets
+- No streaming (full request/response per call)
+- JSON parsing overhead vs binary protocols
 
 ## Events
 
