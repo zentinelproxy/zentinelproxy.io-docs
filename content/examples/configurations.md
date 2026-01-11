@@ -116,50 +116,50 @@ routes {
 
 upstreams {
     upstream "openai" {
-        target "api.openai.com:443" weight=1
-
+        targets {
+            target { address "api.openai.com:443" }
+        }
         tls {
             sni "api.openai.com"
-            verify #true
         }
     }
 
     upstream "anthropic" {
-        target "api.anthropic.com:443" weight=1
-
+        targets {
+            target { address "api.anthropic.com:443" }
+        }
         tls {
             sni "api.anthropic.com"
-            verify #true
         }
     }
 
     upstream "azure-openai" {
-        target "your-resource.openai.azure.com:443" weight=1
-
+        targets {
+            target { address "your-resource.openai.azure.com:443" }
+        }
         tls {
             sni "your-resource.openai.azure.com"
-            verify #true
         }
     }
 }
 
 agents {
-    agent "ai-gateway" {
-        unix-socket path="/var/run/sentinel/ai-gateway.sock"
+    agent "ai-gateway" type="custom" {
+        unix-socket "/var/run/sentinel/ai-gateway.sock"
         events "request_headers" "request_body"
         timeout-ms 100
         failure-mode "closed"
     }
 
-    agent "auth" {
-        unix-socket path="/var/run/sentinel/auth.sock"
+    agent "auth" type="auth" {
+        unix-socket "/var/run/sentinel/auth.sock"
         events "request_headers"
         timeout-ms 50
         failure-mode "closed"
     }
 
-    agent "ratelimit" {
-        unix-socket path="/var/run/sentinel/ratelimit.sock"
+    agent "ratelimit" type="rate_limit" {
+        unix-socket "/var/run/sentinel/ratelimit.sock"
         events "request_headers"
         timeout-ms 20
         failure-mode "open"
