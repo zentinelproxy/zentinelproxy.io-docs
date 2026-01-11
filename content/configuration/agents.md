@@ -749,6 +749,40 @@ Agent-related metrics:
 | `sentinel_agent_timeouts_total` | Agent timeouts |
 | `sentinel_agent_circuit_breaker_state` | Circuit breaker state |
 
+## Configuration Validation
+
+Sentinel validates agent configuration at startup:
+
+### Transport Validation
+
+| Transport | Validation |
+|-----------|------------|
+| Unix Socket | Path exists and is a socket file |
+| gRPC | Valid URL format (http/https with host) |
+| HTTP | Valid URL format |
+
+Example validation errors:
+
+```
+Error: Agent 'auth' socket path '/var/run/sentinel/auth.sock' does not exist
+Error: Agent 'waf' path '/tmp/not-a-socket' exists but is not a socket
+Error: Agent 'remote' gRPC address 'invalid-url' is not a valid URL
+```
+
+### Pre-flight Checks
+
+Run validation before deployment:
+
+```bash
+sentinel --config sentinel.kdl --validate
+```
+
+This checks:
+- All referenced agents exist
+- Transport paths/URLs are valid
+- Timeout values are within bounds
+- Circuit breaker thresholds are valid
+
 ## Next Steps
 
 - [Agent Protocol](../../agents/protocol/) - Wire protocol specification

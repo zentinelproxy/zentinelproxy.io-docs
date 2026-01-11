@@ -21,6 +21,7 @@ Sentinel uses KDL (a human-friendly document language) for configuration. This s
 | [Caching](cache/) | HTTP response caching configuration |
 | [Observability](observability/) | Logging, metrics, and distributed tracing |
 | [Agents](agents/) | External processing agent configuration |
+| [WAF](waf/) | Web Application Firewall configuration |
 | [Namespaces & Services](namespaces/) | Hierarchical organization and runtime isolation |
 
 ## Quick Example

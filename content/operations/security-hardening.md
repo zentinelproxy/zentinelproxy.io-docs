@@ -109,6 +109,56 @@ openssl verify -CAfile ca-chain.crt server.crt
 openssl s_client -connect localhost:443 -tls1_2 </dev/null 2>/dev/null | grep "Cipher is"
 ```
 
+### HSTS Validation
+
+Sentinel automatically warns if TLS is enabled but no HSTS (HTTP Strict Transport Security) header is configured:
+
+```bash
+sentinel --config sentinel.kdl --validate
+# Warning: TLS is enabled but no HSTS header is configured
+```
+
+To resolve this warning, add the `Strict-Transport-Security` header to your routes:
+
+```kdl
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
+        policies {
+            response-headers {
+                set {
+                    "Strict-Transport-Security" "max-age=31536000; includeSubDomains"
+                }
+            }
+        }
+    }
+}
+```
+
+Or use a headers filter:
+
+```kdl
+filters {
+    filter "security-headers" {
+        type "headers"
+        response {
+            set {
+                "Strict-Transport-Security" "max-age=31536000; includeSubDomains"
+            }
+        }
+    }
+}
+```
+
+**HSTS Settings:**
+
+| Directive | Meaning |
+|-----------|---------|
+| `max-age=31536000` | Browser remembers HTTPS-only for 1 year |
+| `includeSubDomains` | Apply to all subdomains |
+| `preload` | Request inclusion in browser preload lists |
+
 ### mTLS for Upstreams
 
 Configure client certificates for backend authentication:
@@ -510,7 +560,7 @@ iptables -A INPUT -p tcp --syn -j DROP
 - [ ] Strong cipher suites only
 - [ ] Valid certificates installed
 - [ ] Private keys have restricted permissions (0600)
-- [ ] HSTS enabled
+- [ ] HSTS enabled (see [HSTS Validation](#hsts-validation) below)
 
 **Access Control**:
 - [ ] Admin endpoints restricted to internal IPs
