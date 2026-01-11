@@ -34,6 +34,7 @@ sentinel -c sentinel.kdl
 | 3 | [First Route](first-route/) | Configure routing to your backend |
 | 4 | [Basic Configuration](basic-configuration/) | Understand the configuration file |
 | 5 | [Use Cases](use-cases/) | Common scenarios and configurations |
+| 6 | [Playground](playground/) | Try configurations in your browser |
 
 ## What's Next?
 
