@@ -27,6 +27,12 @@ include_content = true
 [extra]
 mode = "docs"
 github = "https://github.com/raskell-io/sentinel"
+
+# OpenGraph image for social sharing
+og_image = "img/og-image.png"
+og_image_width = 1200
+og_image_height = 630
+og_image_alt = "Sentinel Documentation - A security-first reverse proxy"
 discussions = "https://github.com/raskell-io/sentinel/discussions"
 edit_url = "https://github.com/raskell-io/sentinel.raskell.io-docs/edit/main/content"
 show_theme_toggle = true
