@@ -17,23 +17,23 @@ Agents are **external processes** that communicate with Sentinel over a well-def
 - **Log** audit information for observability
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                         Sentinel Proxy                          │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │                    Agent Manager                         │    │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐      │    │
-│  │  │   Auth      │  │  Rate Limit │  │    WAF      │      │    │
-│  │  │   Client    │  │   Client    │  │   Client    │      │    │
-│  │  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘      │    │
-│  └─────────┼────────────────┼────────────────┼─────────────┘    │
-└────────────┼────────────────┼────────────────┼──────────────────┘
-             │                │                │
-             ▼                ▼                ▼
-      ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
-      │  Auth Agent  │ │ RateLimit    │ │  WAF Agent   │
-      │  (process)   │ │   Agent      │ │  (remote)    │
-      └──────────────┘ └──────────────┘ └──────────────┘
-           UDS              gRPC             gRPC
+┌───────────────────────────────────────────────────────────────────────────┐
+│                             Sentinel Proxy                                 │
+│  ┌─────────────────────────────────────────────────────────────────────┐  │
+│  │                          Agent Manager                               │  │
+│  │  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────┐        │  │
+│  │  │   Auth    │  │ RateLimit │  │    WAF    │  │  Policy   │        │  │
+│  │  │  Client   │  │  Client   │  │  Client   │  │  Client   │        │  │
+│  │  └─────┬─────┘  └─────┬─────┘  └─────┬─────┘  └─────┬─────┘        │  │
+│  └────────┼──────────────┼──────────────┼──────────────┼──────────────┘  │
+└───────────┼──────────────┼──────────────┼──────────────┼─────────────────┘
+            │              │              │              │
+            ▼              ▼              ▼              ▼
+     ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐
+     │ Auth Agent │ │ RateLimit  │ │ WAF Agent  │ │  Policy    │
+     │  (local)   │ │   Agent    │ │  (remote)  │ │  Agent     │
+     └────────────┘ └────────────┘ └────────────┘ └────────────┘
+          UDS           gRPC           gRPC           HTTP
 ```
 
 ## Why External Agents?
@@ -44,18 +44,19 @@ Sentinel's architecture keeps the dataplane minimal and predictable:
 |---------|-------------|
 | **Isolation** | A buggy or crashing agent cannot take down the proxy |
 | **Independent Deployment** | Update agents without restarting Sentinel |
-| **Language Flexibility** | Write agents in Rust, Go, Python, or any gRPC-capable language |
+| **Language Flexibility** | Write agents in any language with HTTP, gRPC, or Unix socket support |
 | **Circuit Breakers** | Sentinel protects itself from slow or failing agents |
 | **Horizontal Scaling** | Run agents as separate services for high availability |
 
 ## Transport Options
 
-Agents can communicate with Sentinel via two transport mechanisms:
+Agents can communicate with Sentinel via three transport mechanisms:
 
 | Transport | Protocol | Best For |
 |-----------|----------|----------|
-| **Unix Socket** | Length-prefixed JSON | Local agents, simplicity, low latency |
-| **gRPC** | Protocol Buffers over HTTP/2 | Remote agents, polyglot, high throughput |
+| **Unix Socket** | Length-prefixed JSON | Local agents, lowest latency |
+| **gRPC** | Protocol Buffers over HTTP/2 | High throughput, streaming, binary data |
+| **HTTP** | JSON over HTTP/1.1 or HTTP/2 | Simplicity, any language, easy debugging |
 
 ## Request Lifecycle
 
@@ -105,7 +106,7 @@ Request arrives
 
 ```kdl
 agents {
-    // Unix socket agent (local)
+    // Unix socket agent (local, lowest latency)
     agent "auth-agent" type="auth" {
         unix-socket "/var/run/sentinel/auth.sock"
         events "request_headers"
@@ -113,7 +114,7 @@ agents {
         failure-mode "closed"
     }
 
-    // gRPC agent (can be remote)
+    // gRPC agent (high throughput, streaming)
     agent "waf-agent" type="waf" {
         grpc "http://localhost:50051"
         events "request_headers" "request_body"
@@ -124,13 +125,21 @@ agents {
             timeout-seconds 30
         }
     }
+
+    // HTTP agent (simple, any language)
+    agent "policy-agent" type="custom" {
+        http "http://localhost:8080/agent"
+        events "request_headers"
+        timeout-ms 150
+        failure-mode "open"
+    }
 }
 
 routes {
     route "api" {
         matches { path-prefix "/api/" }
         upstream "backend"
-        agents "auth-agent" "waf-agent"
+        agents "auth-agent" "waf-agent" "policy-agent"
     }
 }
 ```
