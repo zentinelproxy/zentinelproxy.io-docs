@@ -1,6 +1,6 @@
 +++
 title = "Examples"
-weight = 11
+weight = 5
 sort_by = "weight"
 template = "section.html"
 +++

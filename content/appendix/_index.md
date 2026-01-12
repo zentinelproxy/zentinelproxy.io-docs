@@ -1,6 +1,6 @@
 +++
 title = "Appendices"
-weight = 13
+weight = 11
 sort_by = "weight"
 template = "section.html"
 +++
