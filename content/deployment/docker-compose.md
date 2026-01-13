@@ -14,13 +14,13 @@ Docker Compose provides a straightforward way to deploy Sentinel with agents as 
 │  │                    Network: sentinel                    ││
 │  │                                                         ││
 │  │  ┌──────────┐  ┌──────────┐  ┌──────────┐             ││
-│  │  │ sentinel │  │   auth   │  │   waf    │             ││
-│  │  │  :8080   │  │  :50051  │  │  :50052  │             ││
+│  │  │ sentinel │  │   auth   │  │   echo   │             ││
+│  │  │  :8080   │  │  agent   │  │  agent   │             ││
 │  │  │  :9090   │  │          │  │          │             ││
 │  │  └────┬─────┘  └────┬─────┘  └────┬─────┘             ││
 │  │       │             │             │                    ││
 │  │       └─────────────┴─────────────┘                    ││
-│  │                  gRPC / UDS                            ││
+│  │                 Unix Sockets                           ││
 │  └─────────────────────────────────────────────────────────┘│
 │                                                              │
 │  ┌──────────────────────────────────────────────────────────┐│
@@ -53,7 +53,9 @@ services:
 
   auth-agent:
     image: ghcr.io/raskell-io/sentinel-auth:latest
-    command: ["--socket", "/var/run/sentinel/auth.sock"]
+    platform: linux/amd64  # Currently AMD64 only
+    environment:
+      - SOCKET_PATH=/var/run/sentinel/auth.sock
     volumes:
       - sockets:/var/run/sentinel
     networks:
@@ -61,7 +63,8 @@ services:
 
   echo-agent:
     image: ghcr.io/raskell-io/sentinel-echo:latest
-    command: ["--socket", "/var/run/sentinel/echo.sock"]
+    environment:
+      - SOCKET_PATH=/var/run/sentinel/echo.sock
     volumes:
       - sockets:/var/run/sentinel
     networks:
@@ -103,7 +106,8 @@ services:
   auth-agent:
     volumes:
       - sockets:/var/run/sentinel
-    command: ["--socket", "/var/run/sentinel/auth.sock"]
+    environment:
+      - SOCKET_PATH=/var/run/sentinel/auth.sock
 
 volumes:
   sockets:
@@ -120,23 +124,26 @@ agent "auth" type="auth" {
 
 Best for scaling agents independently or running on different hosts:
 
+> **Note:** The WAF agent (`sentinel-waf`) is not yet available. This example shows the planned configuration pattern for future gRPC-based agents.
+
 ```yaml
 services:
   sentinel:
     depends_on:
-      - waf-agent
+      - custom-agent
 
-  waf-agent:
-    image: ghcr.io/raskell-io/sentinel-waf:latest
-    command: ["--grpc", "0.0.0.0:50051"]
+  custom-agent:
+    image: your-custom-agent:latest
+    environment:
+      - GRPC_ADDRESS=0.0.0.0:50051
     networks:
       - sentinel
 ```
 
 Configuration:
 ```kdl
-agent "waf" type="waf" {
-    grpc "http://waf-agent:50051"
+agent "custom" type="custom" {
+    grpc "http://custom-agent:50051"
 }
 ```
 
@@ -180,15 +187,7 @@ services:
     environment:
       - RUST_LOG=info
     depends_on:
-      auth-agent:
-        condition: service_healthy
-      waf-agent:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9090/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
+      - auth-agent
     restart: unless-stopped
     networks:
       - sentinel
@@ -199,47 +198,15 @@ services:
   # ─────────────────────────────────────────────────────────
   auth-agent:
     image: ghcr.io/raskell-io/sentinel-auth:latest
+    platform: linux/amd64  # Currently AMD64 only
     container_name: sentinel-auth
-    command:
-      - "--socket"
-      - "/var/run/sentinel/auth.sock"
-      - "--config"
-      - "/etc/auth/config.toml"
     volumes:
       - sockets:/var/run/sentinel
       - ./agents/auth:/etc/auth:ro
     environment:
       - RUST_LOG=info
+      - SOCKET_PATH=/var/run/sentinel/auth.sock
       - AUTH_SECRET=${AUTH_SECRET}
-    healthcheck:
-      test: ["CMD", "test", "-S", "/var/run/sentinel/auth.sock"]
-      interval: 5s
-      timeout: 3s
-      retries: 3
-    restart: unless-stopped
-    networks:
-      - sentinel
-
-  # ─────────────────────────────────────────────────────────
-  # WAF Agent (gRPC)
-  # ─────────────────────────────────────────────────────────
-  waf-agent:
-    image: ghcr.io/raskell-io/sentinel-waf:latest
-    container_name: sentinel-waf
-    command:
-      - "--grpc"
-      - "0.0.0.0:50051"
-      - "--rules"
-      - "/etc/waf/crs-rules"
-    volumes:
-      - ./agents/waf/rules:/etc/waf/crs-rules:ro
-    environment:
-      - RUST_LOG=info
-    healthcheck:
-      test: ["CMD", "grpc-health-probe", "-addr=:50051"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
     restart: unless-stopped
     networks:
       - sentinel
@@ -250,14 +217,11 @@ services:
   echo-agent:
     image: ghcr.io/raskell-io/sentinel-echo:latest
     container_name: sentinel-echo
-    command: ["--grpc", "0.0.0.0:50052", "--verbose"]
+    volumes:
+      - sockets:/var/run/sentinel
     environment:
       - RUST_LOG=debug
-    healthcheck:
-      test: ["CMD", "grpc-health-probe", "-addr=:50052"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
+      - SOCKET_PATH=/var/run/sentinel/echo.sock
     restart: unless-stopped
     profiles:
       - debug
@@ -312,16 +276,8 @@ agents {
         failure-mode "closed"
     }
 
-    agent "waf" type="waf" {
-        grpc "http://waf-agent:50051"
-        events "request_headers" "request_body"
-        timeout-ms 100
-        failure-mode "open"
-        max-request-body-bytes 1048576
-    }
-
     agent "echo" type="custom" {
-        grpc "http://echo-agent:50052"
+        unix-socket "/var/run/sentinel/echo.sock"
         events "request_headers"
         timeout-ms 50
         failure-mode "open"
@@ -338,7 +294,7 @@ routes {
     route "api" {
         matches { path-prefix "/api/" }
         upstream "backend"
-        agents "auth" "waf"
+        agents "auth"
     }
 
     route "default" {
@@ -373,11 +329,12 @@ services:
 
   auth-agent:
     build:
-      context: ../sentinel
-      dockerfile: agents/auth/Dockerfile
+      context: ../sentinel-agent-auth
+      dockerfile: Dockerfile
     volumes:
       - sockets:/var/run/sentinel
-    command: ["--socket", "/var/run/sentinel/auth.sock"]
+    environment:
+      - SOCKET_PATH=/var/run/sentinel/auth.sock
 
 volumes:
   sockets:
@@ -402,19 +359,23 @@ curl -v http://localhost:8080/test
 
 ### Scale Agents
 
+For gRPC-based agents, you can scale replicas:
+
 ```bash
-# Scale WAF agent replicas
-docker-compose up -d --scale waf-agent=3
+# Scale agent replicas (for gRPC-based agents)
+docker-compose up -d --scale custom-agent=3
 ```
 
 With load balancing in config:
 
 ```kdl
-agent "waf" type="waf" {
+agent "custom" type="custom" {
     // Docker DNS handles round-robin
-    grpc "http://waf-agent:50051"
+    grpc "http://custom-agent:50051"
 }
 ```
+
+> **Note:** Unix socket-based agents cannot be scaled via `--scale` as they bind to a specific socket path.
 
 ### Multiple Sentinel Instances
 
@@ -507,16 +468,22 @@ docker-compose logs --tail=100 sentinel
 
 ### Service Dependencies
 
+The default agent images use distroless containers without shell access, so traditional health checks (`test -S`, `curl`) are not available. Use one of these approaches:
+
+**Option 1: Simple depends_on (recommended for most cases)**
 ```yaml
 services:
   sentinel:
     depends_on:
-      auth-agent:
-        condition: service_healthy
-      waf-agent:
-        condition: service_started
+      - auth-agent
+      - echo-agent
+```
 
+**Option 2: Use the debug image (Alpine-based, has shell)**
+```yaml
+services:
   auth-agent:
+    image: ghcr.io/raskell-io/sentinel-auth:latest-debug
     healthcheck:
       test: ["CMD", "test", "-S", "/var/run/sentinel/auth.sock"]
       interval: 5s
@@ -531,8 +498,8 @@ services:
 # Check Sentinel health
 curl http://localhost:9090/health
 
-# Check agent connectivity
-curl http://localhost:9090/agents/health
+# Check if socket exists (from host)
+docker-compose exec sentinel ls -la /var/run/sentinel/
 ```
 
 ## Production Considerations
@@ -590,24 +557,21 @@ services:
 # Check logs
 docker-compose logs auth-agent
 
-# Run interactively
-docker-compose run --rm auth-agent sh
-
 # Check if socket exists
 docker-compose exec sentinel ls -la /var/run/sentinel/
 ```
 
+> **Note:** The default agent images are distroless and don't have a shell. You cannot use `docker-compose run --rm agent sh`. Use the debug images if you need shell access.
+
 ### Agent Connection Failed
 
 ```bash
-# Check network connectivity
-docker-compose exec sentinel ping waf-agent
-
-# Test gRPC connection
-docker-compose exec sentinel grpcurl -plaintext waf-agent:50051 list
-
-# Check socket permissions
+# Check socket exists
 docker-compose exec sentinel ls -la /var/run/sentinel/
+
+# Check agent logs for connection errors
+docker-compose logs auth-agent
+docker-compose logs echo-agent
 ```
 
 ### Socket Permission Issues
