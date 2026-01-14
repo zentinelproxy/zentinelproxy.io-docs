@@ -159,6 +159,65 @@ Proxy                                              Agent
 | `0xF0` | Ping | Either |
 | `0xF1` | Pong | Either |
 
+### Binary Encoding (MessagePack)
+
+UDS supports MessagePack encoding for improved performance over JSON. Encoding is negotiated during the handshake.
+
+**Enable in Cargo.toml:**
+
+```toml
+sentinel-agent-protocol = { version = "0.3", features = ["binary-uds"] }
+```
+
+**Handshake with encoding negotiation:**
+
+```
+Proxy                                              Agent
+  │                                                  │
+  │ ──── HandshakeRequest ─────────────────────────► │
+  │      { supported_encodings: ["msgpack", "json"] }│
+  │                                                  │
+  │ ◄──────────────────────── HandshakeResponse ─── │
+  │      { encoding: "msgpack" }                     │
+  │                                                  │
+  │          (subsequent messages use msgpack)       │
+```
+
+**Available encodings:**
+
+| Encoding | Pros | Cons |
+|----------|------|------|
+| `json` | Human readable, always available | Larger payloads, slower |
+| `msgpack` | Compact, fast serialization | Requires `binary-uds` feature |
+
+### Zero-Copy Body Streaming
+
+For large request/response bodies, use binary body chunk methods to avoid base64 encoding overhead:
+
+```rust
+use sentinel_agent_protocol::{BinaryRequestBodyChunkEvent, Bytes};
+
+// Create binary body chunk (no base64)
+let chunk = BinaryRequestBodyChunkEvent::new(
+    "correlation-123",
+    Bytes::from_static(b"raw binary data"),
+    0,      // chunk_index
+    false,  // is_last
+);
+
+// Send via UDS client
+// - With MessagePack: raw bytes (most efficient)
+// - With JSON: falls back to base64
+client.send_request_body_chunk_binary(&chunk).await?;
+```
+
+**Performance comparison (1KB body chunk):**
+
+| Method | Encoding | Serialized Size |
+|--------|----------|-----------------|
+| `send_request_body_chunk` | JSON + base64 | ~1,450 bytes |
+| `send_request_body_chunk_binary` | MessagePack | ~1,050 bytes |
+
 ---
 
 ## Reverse Connections

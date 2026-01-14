@@ -319,3 +319,106 @@ async fn shutdown(pool: &AgentPool) {
     tokio::time::sleep(Duration::from_secs(5)).await;
 }
 ```
+
+---
+
+## Protocol Metrics
+
+The `AgentPool` includes built-in protocol-level metrics for detailed monitoring.
+
+### Accessing Metrics
+
+```rust
+// Get metrics instance
+let metrics = pool.protocol_metrics();
+
+// Get point-in-time snapshot
+let snapshot = metrics.snapshot();
+
+// Export to Prometheus format
+let prometheus_text = metrics.to_prometheus("agent_protocol");
+```
+
+### Available Metrics
+
+| Type | Metric | Description |
+|------|--------|-------------|
+| Counter | `requests_total` | Total requests sent |
+| Counter | `responses_total` | Total responses received |
+| Counter | `timeouts_total` | Requests that timed out |
+| Counter | `connection_errors_total` | Connection failures |
+| Counter | `flow_control_rejections_total` | Requests rejected due to flow control |
+| Gauge | `in_flight_requests` | Current in-flight requests |
+| Gauge | `healthy_connections` | Number of healthy connections |
+| Gauge | `paused_connections` | Number of paused connections |
+| Histogram | `serialization_time_us` | Serialization latency (μs) |
+| Histogram | `request_duration_us` | End-to-end request latency (μs) |
+
+### Prometheus Export
+
+```rust
+let prometheus = pool.protocol_metrics().to_prometheus("agent_protocol");
+```
+
+Output:
+```prometheus
+# HELP agent_protocol_requests_total Total requests sent
+# TYPE agent_protocol_requests_total counter
+agent_protocol_requests_total 12345
+
+# HELP agent_protocol_request_duration_us Request duration histogram
+# TYPE agent_protocol_request_duration_us histogram
+agent_protocol_request_duration_us_bucket{le="100"} 5234
+agent_protocol_request_duration_us_bucket{le="500"} 10453
+agent_protocol_request_duration_us_bucket{le="+Inf"} 12345
+```
+
+---
+
+## Connection Affinity
+
+For streaming requests, body chunks should be routed to the same connection as the initial headers.
+
+### Automatic Affinity
+
+When `send_request_headers` is called, the pool stores the selected connection for the correlation_id:
+
+```rust
+// Headers sent to connection A
+let response = pool.send_request_headers("waf", &headers).await?;
+
+// Body chunks automatically routed to connection A
+pool.send_request_body_chunk("waf", &chunk1).await?;
+pool.send_request_body_chunk("waf", &chunk2).await?;
+```
+
+### Manual Cleanup
+
+After a request completes, clear the affinity mapping:
+
+```rust
+// Clear affinity for a specific correlation_id
+pool.clear_correlation_affinity("correlation-123");
+
+// Check current affinity count
+let count = pool.correlation_affinity_count();
+```
+
+---
+
+## Performance Optimizations
+
+The `AgentPool` is optimized for high-throughput, low-latency operation:
+
+- **Lock-free agent lookup**: Uses `DashMap` for O(1) concurrent reads
+- **Cached health state**: Atomic reads avoid async I/O in hot path
+- **Synchronous connection selection**: No `.await` during selection
+- **Atomic timestamp tracking**: `AtomicU64` instead of `RwLock<Instant>`
+
+| Operation | Latency | Sync Points |
+|-----------|---------|-------------|
+| Agent lookup | ~100ns | 0 (lock-free) |
+| Connection selection | ~1μs | 1 (try_read) |
+| Health check (cached) | ~10ns | 0 (atomic) |
+
+**Total hot-path sync points per request:** 2
