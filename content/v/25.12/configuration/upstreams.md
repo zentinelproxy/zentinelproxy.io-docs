@@ -82,6 +82,7 @@ upstream "backend" {
 | `consistent_hash` | Consistent hashing for cache-friendly routing |
 | `power_of_two_choices` | Pick best of two random targets |
 | `adaptive` | Dynamic selection based on response times |
+| `sticky` | Cookie-based session affinity with HMAC-signed cookies |
 
 ### Round Robin
 
@@ -171,6 +172,52 @@ upstream "backend" {
 ```
 
 Dynamically adjusts routing based on observed response times and error rates.
+
+### Sticky Sessions (Cookie-based)
+
+```kdl
+upstream "stateful-app" {
+    targets {
+        target { address "10.0.1.1:8080" }
+        target { address "10.0.1.2:8080" }
+        target { address "10.0.1.3:8080" }
+    }
+    load-balancing "sticky" {
+        cookie-name "SERVERID"
+        cookie-ttl "1h"
+        cookie-path "/"
+        cookie-secure true
+        cookie-same-site "lax"
+        fallback "round-robin"
+    }
+}
+```
+
+Cookie-based session affinity for stateful applications. When a client first connects, they're assigned to a backend via the fallback algorithm and receive an affinity cookie. Subsequent requests with that cookie are routed to the same backend.
+
+**Cookie Format:** `{target_index}.{hmac_signature}` - The cookie contains an index (not the backend IP) and an HMAC-SHA256 signature to prevent tampering.
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `cookie-name` | Required | Name of the affinity cookie |
+| `cookie-ttl` | Required | Cookie lifetime (`1h`, `30m`, `86400s`) |
+| `cookie-path` | `/` | Cookie path attribute |
+| `cookie-secure` | `true` | Set HttpOnly and Secure flags |
+| `cookie-same-site` | `lax` | SameSite policy: `lax`, `strict`, or `none` |
+| `fallback` | `round-robin` | Algorithm when no cookie or target unavailable |
+
+**Use Cases:**
+- Applications with server-side session state
+- WebSocket connections with in-memory state
+- Applications not designed for horizontal scaling
+
+**Security Features:**
+- HMAC-SHA256 signed cookies prevent tampering
+- Target index (not IP) in cookie hides backend topology
+- HttpOnly and Secure flags enabled by default
+- SameSite policy for CSRF protection
+
+**Failover Behavior:** When the sticky target becomes unhealthy, the fallback algorithm selects a new target and sets a new cookie.
 
 ## Health Checks
 

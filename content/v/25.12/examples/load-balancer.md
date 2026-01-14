@@ -189,6 +189,46 @@ upstreams {
 
 Same client IP always routes to the same backend (when available).
 
+### Cookie-Based Sticky Sessions
+
+```kdl
+upstreams {
+    upstream "stateful-app" {
+        targets {
+            target { address "10.0.1.10:3000" }
+            target { address "10.0.1.11:3000" }
+            target { address "10.0.1.12:3000" }
+        }
+        load-balancing "sticky" {
+            cookie-name "SERVERID"
+            cookie-ttl "1h"
+            cookie-path "/"
+            cookie-secure true
+            cookie-same-site "lax"
+            fallback "round-robin"
+        }
+    }
+}
+```
+
+HMAC-signed cookie-based session affinity. More reliable than IP hash for:
+- Clients behind shared NAT
+- Mobile clients changing networks
+- Applications requiring explicit session control
+
+**How it works:**
+1. First request: fallback algorithm selects backend, `Set-Cookie` sent to client
+2. Subsequent requests: cookie routes to same backend
+3. Failover: if target unhealthy, new backend assigned with new cookie
+
+**Cookie options:**
+- `cookie-name`: The cookie name (e.g., `SERVERID`, `BACKEND_ID`)
+- `cookie-ttl`: Duration (`1h`, `30m`, `7d`)
+- `cookie-path`: URL path scope
+- `cookie-secure`: Enable HttpOnly + Secure flags (default: true)
+- `cookie-same-site`: CSRF protection (`lax`, `strict`, `none`)
+- `fallback`: Algorithm when no cookie (`round-robin`, `least-connections`, etc.)
+
 ### Random
 
 ```kdl
