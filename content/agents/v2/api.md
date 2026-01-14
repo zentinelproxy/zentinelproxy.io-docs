@@ -357,6 +357,143 @@ match pool.send_request_headers("waf", &headers).await {
 
 ---
 
+## Header Utilities
+
+The library provides zero-allocation header handling for common HTTP headers.
+
+### Common Header Names
+
+Pre-defined static strings for standard headers avoid allocations:
+
+```rust
+use sentinel_agent_protocol::headers::names;
+
+// Use static strings directly
+let content_type = names::CONTENT_TYPE;      // "content-type"
+let authorization = names::AUTHORIZATION;    // "authorization"
+let x_request_id = names::X_REQUEST_ID;      // "x-request-id"
+```
+
+### Header Name Interning
+
+The `intern_header_name` function returns borrowed references for known headers:
+
+```rust
+use sentinel_agent_protocol::headers::intern_header_name;
+use std::borrow::Cow;
+
+let name = intern_header_name("Content-Type");
+// Returns Cow::Borrowed("content-type") - no allocation
+
+let custom = intern_header_name("X-Custom-Header");
+// Returns Cow::Owned("x-custom-header") - allocates only for unknown headers
+```
+
+### Cow Header Maps
+
+For high-throughput scenarios, use `CowHeaderMap` to minimize allocations:
+
+```rust
+use sentinel_agent_protocol::headers::{CowHeaderMap, CowHeaderName, intern_header_name};
+
+let mut headers: CowHeaderMap = CowHeaderMap::new();
+headers.insert(intern_header_name("content-type"), vec!["application/json".into()]);
+
+// Convert from standard HashMap
+let cow_headers = to_cow_optimized(&standard_headers);
+
+// Convert back when needed
+let standard = from_cow_optimized(&cow_headers);
+```
+
+### Available Header Constants
+
+| Constant | Value |
+|----------|-------|
+| `CONTENT_TYPE` | "content-type" |
+| `CONTENT_LENGTH` | "content-length" |
+| `AUTHORIZATION` | "authorization" |
+| `ACCEPT` | "accept" |
+| `HOST` | "host" |
+| `USER_AGENT` | "user-agent" |
+| `X_REQUEST_ID` | "x-request-id" |
+| `X_FORWARDED_FOR` | "x-forwarded-for" |
+| ... | (32 total) |
+
+---
+
+## Memory-Mapped Buffers
+
+For large request/response bodies, memory-mapped buffers minimize heap allocation.
+
+**Feature flag required:**
+```toml
+[dependencies]
+sentinel-agent-protocol = { version = "0.3", features = ["mmap-buffers"] }
+```
+
+### Basic Usage
+
+```rust
+use sentinel_agent_protocol::mmap_buffer::{LargeBodyBuffer, LargeBodyBufferConfig};
+
+// Configure threshold for switching to mmap
+let config = LargeBodyBufferConfig {
+    mmap_threshold: 1024 * 1024,      // 1MB - use mmap above this size
+    max_body_size: 100 * 1024 * 1024, // 100MB - maximum allowed
+    temp_dir: None,                    // Use system temp directory
+};
+
+let mut buffer = LargeBodyBuffer::with_config(config);
+
+// Write chunks - automatically switches to mmap when needed
+buffer.write_chunk(b"request body data...")?;
+
+// Read back - seamless regardless of storage type
+let data = buffer.as_slice()?;
+```
+
+### Configuration Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `mmap_threshold` | 1MB | Size above which to use memory-mapped files |
+| `max_body_size` | 100MB | Maximum allowed body size |
+| `temp_dir` | None | Custom temp directory for mmap files |
+
+### Storage Behavior
+
+| Body Size | Storage | Allocation |
+|-----------|---------|------------|
+| < threshold | `Vec<u8>` | Heap memory |
+| >= threshold | mmap'd file | OS page cache |
+
+### Methods
+
+| Method | Description |
+|--------|-------------|
+| `new()` | Create buffer with default config |
+| `with_config(config)` | Create buffer with custom config |
+| `write_chunk(data)` | Write data (auto-transitions to mmap) |
+| `as_slice()` | Get immutable slice of data |
+| `as_mut_slice()` | Get mutable slice (forces to memory) |
+| `into_vec()` | Take ownership as Vec |
+| `clear()` | Reset buffer |
+| `len()` | Current data size |
+| `is_empty()` | Check if empty |
+| `is_mmap()` | Check if using mmap storage |
+
+### When to Use
+
+| Scenario | Recommendation |
+|----------|----------------|
+| File uploads | Use with 1MB threshold |
+| API responses | Use with default config |
+| Streaming bodies | Accumulate chunks, then read |
+| Memory-constrained | Lower threshold (e.g., 256KB) |
+
+---
+
 ## Migration from v1
 
 ### Before (v1)

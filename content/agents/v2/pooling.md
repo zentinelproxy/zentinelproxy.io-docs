@@ -406,6 +406,131 @@ let count = pool.correlation_affinity_count();
 
 ---
 
+## Flow Control Modes
+
+Configure how the pool behaves when an agent signals it cannot accept requests.
+
+### Configuration
+
+```rust
+use sentinel_agent_protocol::v2::{AgentPoolConfig, FlowControlMode};
+
+let config = AgentPoolConfig {
+    flow_control_mode: FlowControlMode::FailClosed, // Default
+    flow_control_wait_timeout: Duration::from_millis(100),
+    ..Default::default()
+};
+```
+
+### Available Modes
+
+| Mode | Behavior | Use Case |
+|------|----------|----------|
+| `FailClosed` | Returns error immediately | Strict backpressure |
+| `FailOpen` | Skips agent, returns allow | Optional processing |
+| `WaitAndRetry` | Waits up to timeout, then fails | Transient pauses |
+
+### Example: FailOpen for Analytics
+
+```rust
+// Analytics agent is optional - don't fail requests if it's busy
+let config = AgentPoolConfig {
+    flow_control_mode: FlowControlMode::FailOpen,
+    ..Default::default()
+};
+
+// If agent is paused, request proceeds without analytics
+let response = pool.send_request_headers("analytics", &event).await?;
+```
+
+---
+
+## Buffer Size Configuration
+
+Tune the internal channel buffer size for backpressure behavior:
+
+```rust
+let config = AgentPoolConfig {
+    channel_buffer_size: 64, // Default
+    ..Default::default()
+};
+```
+
+| Scenario | Buffer Size | Trade-off |
+|----------|-------------|-----------|
+| Low latency | 16-32 | Tighter backpressure |
+| High throughput | 64-128 | Better burst handling |
+| Memory constrained | 8-16 | Lower memory use |
+
+---
+
+## Sticky Sessions
+
+Ensure long-lived streaming connections (WebSocket, SSE) use the same agent connection.
+
+### Creating a Session
+
+```rust
+// When WebSocket connects
+pool.create_sticky_session("ws-12345", "waf-agent")?;
+```
+
+### Using Sticky Sessions
+
+```rust
+// All messages use the same connection
+let (response, used_sticky) = pool
+    .send_request_headers_with_sticky_session(
+        "ws-12345",
+        "waf-agent",
+        "corr-123",
+        &event,
+    )
+    .await?;
+```
+
+### Session Management
+
+```rust
+// Check if session exists
+pool.has_sticky_session("ws-12345");
+
+// Refresh session (updates last-accessed time)
+pool.refresh_sticky_session("ws-12345");
+
+// Clear when stream ends
+pool.clear_sticky_session("ws-12345");
+
+// Get active session count
+let count = pool.sticky_session_count();
+```
+
+### Automatic Expiry
+
+Sessions expire after `sticky_session_timeout` (default: 5 minutes):
+
+```rust
+let config = AgentPoolConfig {
+    sticky_session_timeout: Some(Duration::from_secs(300)),
+    ..Default::default()
+};
+
+// Disable automatic expiry
+let config = AgentPoolConfig {
+    sticky_session_timeout: None,
+    ..Default::default()
+};
+```
+
+| Scenario | Use Sticky Sessions? |
+|----------|---------------------|
+| WebSocket | Yes |
+| Server-Sent Events | Yes |
+| Long-polling | Yes |
+| Regular HTTP | No (use correlation affinity) |
+
+---
+
 ## Performance Optimizations
 
 The `AgentPool` is optimized for high-throughput, low-latency operation:
@@ -414,11 +539,14 @@ The `AgentPool` is optimized for high-throughput, low-latency operation:
 - **Cached health state**: Atomic reads avoid async I/O in hot path
 - **Synchronous connection selection**: No `.await` during selection
 - **Atomic timestamp tracking**: `AtomicU64` instead of `RwLock<Instant>`
+- **Configurable flow control**: Choose fail-open or fail-closed behavior
+- **Sticky session support**: Session affinity for streaming connections
 
 | Operation | Latency | Sync Points |
 |-----------|---------|-------------|
 | Agent lookup | ~100ns | 0 (lock-free) |
 | Connection selection | ~1μs | 1 (try_read) |
 | Health check (cached) | ~10ns | 0 (atomic) |
+| Sticky session lookup | ~13ns | 0 (lock-free) |
 
 **Total hot-path sync points per request:** 2
