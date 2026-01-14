@@ -119,6 +119,7 @@ Sentinel is a next-generation reverse proxy built on [Cloudflare's Pingora](http
 - **Least Tokens Queued** — Optimized for inference/LLM workloads
 - **Adaptive** — Based on response times
 - **Weighted** — Per-target weight configuration
+- **Sticky Sessions** — Cookie-based session affinity with HMAC-signed cookies
 
 ### Health Checking
 <small class="source-ref">[`crates/proxy/src/health.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/proxy/src/health.rs)</small>
