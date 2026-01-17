@@ -165,6 +165,7 @@ The SDK provides ergonomic wrappers around the protocol, handling connection man
 | [Connection Pooling](v2/pooling/) | Load balancing and circuit breakers |
 | [Transport Options](v2/transports/) | gRPC, UDS, and Reverse comparison |
 | [Reverse Connections](v2/reverse-connections/) | NAT traversal setup |
+| [Migration Guide](v2/migration/) | Migrate from v1 to v2 |
 
 ### Protocol v1 (Legacy)
 
