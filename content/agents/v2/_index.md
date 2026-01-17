@@ -26,6 +26,7 @@ Agent Protocol v2 is the recommended protocol for new agent deployments. It prov
 | [Connection Pooling](pooling/) | Load balancing and circuit breakers |
 | [Transport Options](transports/) | gRPC, UDS, and Reverse comparison |
 | [Reverse Connections](reverse-connections/) | NAT traversal and agent-initiated connections |
+| [Performance Benchmarks](performance/) | Latency, throughput, and optimization results |
 | [Migration Guide](migration/) | Migrate from v1 to v2 |
 
 ## Quick Start
