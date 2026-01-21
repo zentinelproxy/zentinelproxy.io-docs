@@ -434,6 +434,356 @@ kill -HUP $(cat /var/run/sentinel.pid)
 
 Connections in progress continue with old certificates. New connections use updated certificates.
 
+## ACME (Automatic Certificate Management)
+
+Sentinel supports automatic TLS certificate management using the ACME protocol (RFC 8555). This eliminates manual certificate management by automatically requesting, validating, and renewing certificates from Let's Encrypt.
+
+### Basic ACME Configuration
+
+```kdl
+listener "https" {
+    address "0.0.0.0:443"
+    protocol "https"
+    tls {
+        acme {
+            email "admin@example.com"
+            domains "example.com" "www.example.com"
+        }
+    }
+}
+```
+
+With ACME enabled, Sentinel will:
+1. Create or restore a Let's Encrypt account
+2. Request certificates for configured domains
+3. Complete HTTP-01 domain validation automatically
+4. Store certificates securely on disk
+5. Renew certificates before expiration
+6. Hot-reload certificates without proxy restart
+
+### ACME Options Reference
+
+```kdl
+listener "https" {
+    address "0.0.0.0:443"
+    protocol "https"
+    tls {
+        acme {
+            // Required
+            email "admin@example.com"
+            domains "example.com" "www.example.com"
+
+            // Optional
+            staging false                           // Use staging environment for testing
+            storage "/var/lib/sentinel/acme"        // Certificate storage directory
+            renew-before-days 30                    // Days before expiry to renew
+        }
+    }
+}
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `email` | string | **required** | Contact email for Let's Encrypt account |
+| `domains` | string[] | **required** | Domains to include in certificate |
+| `staging` | bool | `false` | Use Let's Encrypt staging environment |
+| `storage` | path | `/var/lib/sentinel/acme` | Directory for certificates and credentials |
+| `renew-before-days` | u32 | `30` | Days before expiry to trigger renewal |
+| `challenge-type` | string | `"http-01"` | Challenge type: `http-01` or `dns-01` |
+| `dns-provider` | block | - | DNS provider config (required for `dns-01`) |
+
+### HTTP-01 Challenge (Default)
+
+ACME uses HTTP-01 challenges to validate domain ownership. Sentinel automatically handles these challenges by serving responses at `/.well-known/acme-challenge/`.
+
+**Requirements:**
+- Port 80 must be accessible from the internet
+- DNS must point to the server running Sentinel
+- Firewall must allow incoming HTTP traffic
+
+For HTTP-01 challenges to work, you typically need an HTTP listener on port 80:
+
+```kdl
+listeners {
+    // HTTP listener for ACME challenges (and optional redirect)
+    listener "http" {
+        address "0.0.0.0:80"
+        protocol "http"
+    }
+
+    // HTTPS listener with ACME
+    listener "https" {
+        address "0.0.0.0:443"
+        protocol "https"
+        tls {
+            acme {
+                email "admin@example.com"
+                domains "example.com"
+            }
+        }
+    }
+}
+```
+
+### DNS-01 Challenge (For Wildcard Certificates)
+
+DNS-01 challenges validate domain ownership by creating TXT records in DNS. This is **required for wildcard certificates** and works even when port 80 is not accessible.
+
+```kdl
+listener "https" {
+    address "0.0.0.0:443"
+    protocol "https"
+    tls {
+        acme {
+            email "admin@example.com"
+            domains "example.com" "*.example.com"
+            challenge-type "dns-01"
+
+            dns-provider {
+                type "hetzner"
+                credentials-file "/etc/sentinel/secrets/hetzner-dns.json"
+                api-timeout-secs 30
+
+                propagation {
+                    initial-delay-secs 10
+                    check-interval-secs 5
+                    timeout-secs 120
+                    nameservers "8.8.8.8" "1.1.1.1"
+                }
+            }
+        }
+    }
+}
+```
+
+**DNS-01 Flow:**
+1. Sentinel creates a TXT record at `_acme-challenge.example.com`
+2. Waits for DNS propagation (checks against configured nameservers)
+3. Notifies Let's Encrypt to validate
+4. Cleans up TXT records after validation
+
+**Supported DNS Providers:**
+
+| Provider | Type | Description |
+|----------|------|-------------|
+| Hetzner | `hetzner` | Hetzner DNS API |
+| Webhook | `webhook` | Generic webhook for custom integrations |
+
+#### Hetzner DNS Provider
+
+```kdl
+dns-provider {
+    type "hetzner"
+    credentials-file "/etc/sentinel/secrets/hetzner.json"
+    // or
+    credentials-env "HETZNER_DNS_TOKEN"
+}
+```
+
+Credential file format:
+```json
+{"token": "your-hetzner-dns-api-token"}
+```
+
+#### Webhook Provider (Custom DNS)
+
+For custom DNS integrations, use the webhook provider:
+
+```kdl
+dns-provider {
+    type "webhook"
+    url "https://dns-api.internal/v1"
+    auth-header "X-API-Key"
+    credentials-file "/etc/sentinel/secrets/webhook.json"
+}
+```
+
+The webhook provider makes HTTP calls:
+- `POST /records` - Create TXT record (returns `{"record_id": "..."}`)
+- `DELETE /records/{record_id}` - Delete record
+- `GET /domains/{domain}/supported` - Check domain support
+
+#### DNS Provider Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `type` | string | **required** | Provider type: `hetzner`, `webhook` |
+| `credentials-file` | path | - | Path to credentials JSON file |
+| `credentials-env` | string | - | Environment variable with credentials |
+| `api-timeout-secs` | u64 | `30` | API request timeout |
+| `url` | string | - | Webhook URL (webhook provider only) |
+| `auth-header` | string | - | Auth header name (webhook provider only) |
+
+#### Propagation Check Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `initial-delay-secs` | u64 | `10` | Wait before first DNS check |
+| `check-interval-secs` | u64 | `5` | Interval between checks |
+| `timeout-secs` | u64 | `120` | Max time to wait for propagation |
+| `nameservers` | string[] | public DNS | DNS servers to query |
+
+#### Credential File Formats
+
+**Token format (Hetzner, simple webhooks):**
+```json
+{"token": "your-api-token"}
+```
+
+**Key/Secret format:**
+```json
+{"api_key": "your-key", "api_secret": "your-secret"}
+```
+
+**Plain text (entire file is the token):**
+```
+your-api-token
+```
+
+Security: Credential files should have mode `0600` or `0400`.
+
+### Staging Environment
+
+Use Let's Encrypt's staging environment for testing to avoid rate limits:
+
+```kdl
+tls {
+    acme {
+        email "admin@example.com"
+        domains "example.com"
+        staging true  // Uses staging, certificates won't be trusted by browsers
+    }
+}
+```
+
+**Rate limits (production):**
+- 50 certificates per registered domain per week
+- 5 duplicate certificates per week
+- 300 new orders per account per 3 hours
+
+Staging has much higher limits for testing.
+
+### Certificate Storage
+
+ACME stores certificates and account credentials on disk:
+
+```
+/var/lib/sentinel/acme/
+├── credentials.json      # ACME account credentials (keep secure)
+├── account.json          # Account metadata
+└── domains/
+    └── example.com/
+        ├── cert.pem      # Certificate chain
+        ├── key.pem       # Private key (mode 0600)
+        └── meta.json     # Expiry, issued date, domains
+```
+
+**Security:**
+- Storage directory created with mode `0700`
+- Private keys stored with mode `0600`
+- Keep `credentials.json` secure—it contains your account private key
+
+### Certificate Renewal
+
+Certificates are automatically renewed when they're within `renew-before-days` of expiration:
+
+- Default renewal window: 30 days before expiry
+- Renewal checks run every 12 hours
+- Let's Encrypt certificates are valid for 90 days
+- After renewal, certificates are hot-reloaded without restart
+
+### Combining ACME with Manual Certificates
+
+You can use ACME alongside manually managed certificates:
+
+```kdl
+listener "https" {
+    address "0.0.0.0:443"
+    protocol "https"
+    tls {
+        // Manual certificates (takes precedence if both exist)
+        cert-file "/etc/sentinel/certs/manual.crt"
+        key-file "/etc/sentinel/certs/manual.key"
+
+        // ACME for automatic management
+        acme {
+            email "admin@example.com"
+            domains "auto.example.com"
+        }
+
+        // SNI for domain-specific certificates
+        additional-certs {
+            sni-cert {
+                hostnames "api.example.com"
+                cert-file "/etc/sentinel/certs/api.crt"
+                key-file "/etc/sentinel/certs/api.key"
+            }
+        }
+    }
+}
+```
+
+When both ACME and manual certificates are configured, manual certificates are used if present. ACME certificates are stored and used as fallback or for specified domains.
+
+### Multi-Domain Certificates
+
+Request a single certificate covering multiple domains:
+
+```kdl
+tls {
+    acme {
+        email "admin@example.com"
+        domains "example.com" "www.example.com" "api.example.com" "cdn.example.com"
+    }
+}
+```
+
+All domains must pass HTTP-01 validation and point to the server.
+
+### ACME Troubleshooting
+
+#### Challenge Failed
+
+```
+Error: ACME challenge validation failed for domain 'example.com'
+```
+
+- Verify DNS points to this server: `dig +short example.com`
+- Ensure port 80 is accessible from the internet
+- Check firewall allows incoming HTTP traffic
+- Verify no other service is handling `/.well-known/acme-challenge/`
+
+#### Rate Limit Exceeded
+
+```
+Error: Rate limit exceeded
+```
+
+- Wait for the rate limit window to reset (typically 1 week)
+- Use `staging true` for testing
+- Consolidate multiple domains into one certificate request
+
+#### Storage Permission Denied
+
+```
+Error: Permission denied writing to storage directory
+```
+
+- Ensure the Sentinel process has write access to the storage directory
+- Check directory ownership: `chown sentinel:sentinel /var/lib/sentinel/acme`
+- Verify parent directories exist and are accessible
+
+#### Certificate Not Renewing
+
+Check the Sentinel logs for renewal status. Renewals are attempted:
+- Every 12 hours (check interval)
+- When certificate is within `renew-before-days` of expiry
+
+Manually trigger a reload to force renewal check:
+```bash
+kill -HUP $(cat /var/run/sentinel.pid)
+```
+
 ## Multiple Listeners
 
 Run multiple listeners for different purposes:
@@ -592,6 +942,14 @@ upstreams {
 | `tls.ocsp-stapling` | `true` |
 | `tls.session-resumption` | `true` |
 | `tls.client-auth` | `false` |
+| `tls.acme.staging` | `false` |
+| `tls.acme.storage` | `/var/lib/sentinel/acme` |
+| `tls.acme.renew-before-days` | `30` |
+| `tls.acme.challenge-type` | `"http-01"` |
+| `tls.acme.dns-provider.api-timeout-secs` | `30` |
+| `tls.acme.dns-provider.propagation.initial-delay-secs` | `10` |
+| `tls.acme.dns-provider.propagation.check-interval-secs` | `5` |
+| `tls.acme.dns-provider.propagation.timeout-secs` | `120` |
 
 ## Troubleshooting
 
