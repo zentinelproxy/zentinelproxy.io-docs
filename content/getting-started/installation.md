@@ -15,6 +15,8 @@ curl -fsSL https://getsentinel.raskell.io | sh
 
 The script downloads the appropriate binary and installs it to `~/.local/bin`. You may need to add this to your PATH:
 
+> **Note:** Linux ARM64 (aarch64) pre-built binaries are not yet available. If you're on Linux ARM64 (e.g., AWS Graviton, Raspberry Pi 4/5), please [build from source](#build-from-source) or use the [OCI container](#oci-container) instead.
+
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
 ```
@@ -27,9 +29,41 @@ Add this line to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.) to make it p
 sentinel --version
 ```
 
+## Install with Bundled Agents
+
+For production deployments, you'll likely want the proxy plus agents (WAF, rate limiting, denylist). The bundle command installs everything together:
+
+```bash
+# First install Sentinel
+curl -fsSL https://getsentinel.raskell.io | sh
+
+# Then install bundled agents
+sudo sentinel bundle install
+```
+
+This downloads and installs:
+- **WAF agent** - ModSecurity-based web application firewall
+- **Ratelimit agent** - Token bucket rate limiting
+- **Denylist agent** - IP and path blocking
+
+Check installation status:
+
+```bash
+sentinel bundle status
+```
+
+For detailed bundle documentation, see [Deploying with Agents](/docs/deployment/sentinel-stack/).
+
 ## Pre-built Binaries
 
 Alternatively, download binaries manually from [GitHub Releases](https://github.com/raskell-io/sentinel/releases).
+
+**Supported platforms:**
+- Linux x86_64 (amd64)
+- macOS Apple Silicon (arm64)
+- macOS Intel (amd64)
+
+> **Linux ARM64 (aarch64):** Pre-built binaries are not yet available. Use [Build from Source](#build-from-source) or [OCI Container](#oci-container).
 
 ### Linux (amd64)
 

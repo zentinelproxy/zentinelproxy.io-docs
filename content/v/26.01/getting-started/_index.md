@@ -13,7 +13,7 @@ The fastest way to try Sentinel:
 
 ```bash
 # Install
-curl -fsSL https://get.sentinel.dev | bash
+curl -fsSL https://getsentinel.raskell.io | sh
 
 # Run with a simple config
 sentinel -c sentinel.kdl
