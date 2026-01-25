@@ -188,6 +188,75 @@ Test with:
 curl -k https://localhost:8443/
 ```
 
+## Troubleshooting
+
+### "command not found: sentinel"
+
+The install directory isn't in your PATH. Add it:
+
+```bash
+# Check where it was installed
+ls ~/.local/bin/sentinel || ls /usr/local/bin/sentinel
+
+# Add to PATH (add this to your ~/.bashrc or ~/.zshrc)
+export PATH="$HOME/.local/bin:$PATH"
+
+# Reload your shell
+source ~/.bashrc  # or source ~/.zshrc
+```
+
+### "Permission denied" when installing
+
+The installer needs write access to `/usr/local/bin`:
+
+```bash
+# Option 1: Use sudo (will prompt for password)
+curl -fsSL https://getsentinel.raskell.io | sudo sh
+
+# Option 2: Install to user directory (no sudo needed)
+# The script will automatically fall back to ~/.local/bin
+```
+
+### "Address already in use" when starting
+
+Another process is using port 8080:
+
+```bash
+# Find what's using the port
+lsof -i :8080
+
+# Either stop that process, or change Sentinel's port
+# In sentinel.kdl, change:
+#   address "0.0.0.0:8080"
+# to:
+#   address "0.0.0.0:9000"
+```
+
+### "Connection refused" when testing
+
+Your backend server isn't running or is on a different port:
+
+```bash
+# Check if backend is running
+curl http://localhost:3000/
+
+# If not, start one for testing
+python3 -m http.server 3000
+```
+
+### Configuration errors
+
+Validate your config file:
+
+```bash
+sentinel --config sentinel.kdl --check
+```
+
+Common issues:
+- Missing closing braces `}`
+- Typos in property names (e.g., `adress` instead of `address`)
+- Invalid port numbers (must be 1-65535)
+
 ## Next Steps
 
 - [Basic Configuration](../basic-configuration/) - Detailed configuration reference
