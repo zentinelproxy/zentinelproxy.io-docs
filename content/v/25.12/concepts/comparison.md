@@ -9,14 +9,15 @@ How Sentinel compares to other popular reverse proxies and load balancers.
 
 Sentinel occupies a unique position in the reverse proxy landscape. Rather than competing directly with established proxies on feature breadth, it focuses on security-first design, operational predictability, and an extensible agent architecture.
 
-| Feature | Sentinel | Envoy | HAProxy | Nginx |
-|---------|----------|-------|---------|-------|
-| **Language** | Rust | C++ | C | C |
-| **Memory Safety** | Yes (Rust) | No | No | No |
-| **Configuration** | KDL | YAML/xDS | Config file | Config file |
-| **Hot Reload** | Yes | Yes (xDS) | Yes | Yes (SIGHUP) |
-| **Extension Model** | External agents | Filters (C++/Wasm) | Lua/SPOE | Modules/Lua |
-| **Primary Use Case** | Security gateway | Service mesh | Load balancing | Web server/proxy |
+| Feature | Sentinel | Envoy | HAProxy | Nginx | Traefik | Caddy |
+|---------|----------|-------|---------|-------|---------|-------|
+| **Language** | Rust | C++ | C | C | Go | Go |
+| **Memory Safety** | Yes | No | No | No | Yes | Yes |
+| **Configuration** | KDL | YAML/xDS | Config file | Config file | YAML/Labels | Caddyfile/JSON |
+| **Hot Reload** | Yes | Yes (xDS) | Yes | Yes (SIGHUP) | Yes (auto) | Yes (API) |
+| **Extension Model** | External agents | Filters (C++/Wasm) | Lua/SPOE | Modules/Lua | Plugins (Go) | Modules (Go) |
+| **Auto HTTPS** | Planned | No | No | No | Yes | Yes |
+| **Primary Use Case** | Security gateway | Service mesh | Load balancing | Web server/proxy | Cloud-native edge | Simple web server |
 
 ## Sentinel vs Envoy
 
@@ -212,10 +213,10 @@ upstreams {
 
 ### When to Choose Sentinel
 
-- Pure reverse proxy (no static file serving needed)
 - Security controls are the primary requirement
 - Want isolated, updateable security components
 - Prefer explicit configuration over complex conditionals
+- Need static file serving with SPA support (`fallback` for try_files equivalent)
 
 ### Configuration Comparison
 
@@ -272,67 +273,296 @@ upstreams {
 | Authentication | Third-party modules | Auth agent |
 | Custom logic | Lua/njs | Any language via agents |
 
+## Sentinel vs Traefik
+
+### Architecture Philosophy
+
+**Traefik** is a modern, cloud-native edge router designed for automatic service discovery and configuration. It excels in dynamic environments like Docker and Kubernetes where services come and go frequently.
+
+**Sentinel** focuses on explicit configuration and security-first design. While it supports service discovery (Consul, Kubernetes), it emphasizes predictable behavior over automatic configuration.
+
+### When to Choose Traefik
+
+- Heavy use of Docker labels for configuration
+- Need automatic Let's Encrypt certificate provisioning
+- Kubernetes Ingress controller use case
+- Prefer dynamic, auto-discovered configuration
+
+### When to Choose Sentinel
+
+- Security agents are a primary requirement
+- Want explicit, auditable configuration
+- Need process isolation for security components
+- Building custom security policies with agents
+- Require token-aware rate limiting for LLM/inference workloads
+
+### Configuration Comparison
+
+**Traefik** (Docker labels):
+```yaml
+services:
+  app:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.app.rule=Host(`app.example.com`)"
+      - "traefik.http.services.app.loadbalancer.server.port=3000"
+```
+
+**Traefik** (File):
+```yaml
+http:
+  routers:
+    app:
+      rule: "Host(`app.example.com`)"
+      service: app
+  services:
+    app:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:3000"
+```
+
+**Sentinel** (KDL):
+```kdl
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
+routes {
+    route "app" {
+        matches {
+            host "app.example.com"
+        }
+        upstream "app"
+    }
+}
+
+upstreams {
+    upstream "app" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
+    }
+}
+```
+
+### Key Differences
+
+| Aspect | Traefik | Sentinel |
+|--------|---------|----------|
+| Configuration | Dynamic (labels, API) | Explicit (KDL files) |
+| Let's Encrypt | Built-in | Planned |
+| Forward Auth | Middleware | Agent-based |
+| Extension model | Plugins (Go) | Agents (any language) |
+| Isolation | In-process | Process-level |
+
+## Sentinel vs Caddy
+
+### Architecture Philosophy
+
+**Caddy** is known for its simplicity and automatic HTTPS. It pioneered zero-config TLS with built-in Let's Encrypt integration and uses a human-friendly Caddyfile syntax.
+
+**Sentinel** shares Caddy's focus on simplicity but prioritizes security extensibility over automatic configuration. The agent model provides flexibility that Caddy's module system cannot match for security use cases.
+
+### When to Choose Caddy
+
+- Want zero-config automatic HTTPS
+- Simple static file serving with automatic TLS
+- Prefer minimal configuration
+- Need the extensive Caddy module ecosystem
+
+### When to Choose Sentinel
+
+- Need isolated security agents (WAF, auth, rate limiting)
+- Building custom security controls
+- Want process-level isolation for extensions
+- Require inference/LLM-specific features (token counting, model routing)
+- Need distributed rate limiting across instances
+
+### Configuration Comparison
+
+**Caddy** (Caddyfile):
+```
+app.example.com {
+    reverse_proxy localhost:3000
+}
+
+static.example.com {
+    root * /var/www/public
+    file_server
+}
+```
+
+**Sentinel** (KDL):
+```kdl
+listeners {
+    listener "https" {
+        address "0.0.0.0:443"
+        tls {
+            cert-path "/etc/sentinel/certs/app.crt"
+            key-path "/etc/sentinel/certs/app.key"
+        }
+    }
+}
+
+routes {
+    route "app" {
+        matches { host "app.example.com" }
+        upstream "backend"
+    }
+
+    route "static" {
+        matches { host "static.example.com" }
+        service-type "static"
+        static-files {
+            root "/var/www/public"
+            fallback "index.html"
+        }
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "localhost:3000" }
+        }
+    }
+}
+```
+
+### Key Differences
+
+| Aspect | Caddy | Sentinel |
+|--------|-------|----------|
+| Automatic HTTPS | Built-in | Planned |
+| Configuration | Caddyfile/JSON | KDL |
+| Extension model | Modules (Go) | Agents (any language) |
+| Isolation | In-process | Process-level |
+| Static files | Built-in | Built-in with SPA fallback |
+
+## Sentinel Unique Features
+
+Beyond standard proxy capabilities, Sentinel offers features designed for modern workloads:
+
+### Inference/LLM Gateway
+
+Sentinel has first-class support for LLM and inference workloads:
+
+| Feature | Description |
+|---------|-------------|
+| **Token-aware rate limiting** | Rate limit by tokens (not just requests) using tiktoken |
+| **Token budgets** | Daily/monthly cumulative token limits per client |
+| **Cost tracking** | Per-request cost attribution ($) |
+| **Model-based routing** | Route `gpt-4*` to OpenAI, `claude-*` to Anthropic |
+| **Streaming token counting** | Count tokens in SSE responses |
+| **Least-tokens load balancing** | Route to backend with lowest token queue |
+
+No other reverse proxy offers these capabilities natively.
+
+### External Agent Architecture
+
+Sentinel's agent model provides unique isolation guarantees:
+
+| Capability | Benefit |
+|------------|---------|
+| **Process isolation** | Agent crash never takes down proxy |
+| **Language flexibility** | Write agents in Python, Go, Rust, TypeScript, Elixir |
+| **Independent deployment** | Update agents without proxy restart |
+| **Resource limits** | Per-agent concurrency limits and circuit breakers |
+| **WASM sandbox** | In-process agents with Wasmtime isolation |
+
+### Distributed Rate Limiting
+
+Native support for distributed rate limiting across instances:
+
+- Redis backend (feature: `distributed-rate-limit`)
+- Memcached backend (feature: `distributed-rate-limit-memcached`)
+- Graceful degradation to local limits if backend fails
+
+### Service Discovery
+
+Built-in discovery for dynamic environments:
+
+- Consul integration
+- Kubernetes service discovery (feature: `kubernetes`)
+- DNS resolution with TTL
+
+### Security Features
+
+- **GeoIP filtering** - Block/allow by country (MaxMind, IP2Location)
+- **Decompression bomb protection** - Ratio limits (max 100x, 10MB output)
+- **Guardrails** - Prompt injection detection for LLM workloads
+- **PII detection** - Identify and mask sensitive data
+
 ## Feature Comparison Matrix
 
 ### Core Proxy Features
 
-| Feature | Sentinel | Envoy | HAProxy | Nginx |
-|---------|:--------:|:-----:|:-------:|:-----:|
-| HTTP/1.1 | ✓ | ✓ | ✓ | ✓ |
-| HTTP/2 | ✓ | ✓ | ✓ | ✓ |
-| HTTP/3 (QUIC) | Planned | ✓ | ✓ | ✓ |
-| WebSocket | ✓ | ✓ | ✓ | ✓ |
-| gRPC | ✓ | ✓ | ✓ | ✓ |
-| TCP proxy | ✓ | ✓ | ✓ | ✓ |
-| TLS termination | ✓ | ✓ | ✓ | ✓ |
-| mTLS | ✓ | ✓ | ✓ | ✓ |
+| Feature | Sentinel | Envoy | HAProxy | Nginx | Traefik | Caddy |
+|---------|:--------:|:-----:|:-------:|:-----:|:-------:|:-----:|
+| HTTP/1.1 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| HTTP/2 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| HTTP/3 (QUIC) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| WebSocket | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| gRPC | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| TCP proxy | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| TLS termination | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| mTLS | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Static files | ✓ | - | - | ✓ | ✓ | ✓ |
+| SPA fallback (try_files) | ✓ | - | - | ✓ | - | ✓ |
 
 ### Load Balancing
 
-| Feature | Sentinel | Envoy | HAProxy | Nginx |
-|---------|:--------:|:-----:|:-------:|:-----:|
-| Round robin | ✓ | ✓ | ✓ | ✓ |
-| Least connections | ✓ | ✓ | ✓ | ✓ |
-| Random | ✓ | ✓ | ✓ | ✓ |
-| Weighted | ✓ | ✓ | ✓ | ✓ |
-| Consistent hashing | ✓ | ✓ | ✓ | ✓ |
-| Active health checks | ✓ | ✓ | ✓ | ✓* |
-| Passive health checks | ✓ | ✓ | ✓ | ✓ |
+| Feature | Sentinel | Envoy | HAProxy | Nginx | Traefik | Caddy |
+|---------|:--------:|:-----:|:-------:|:-----:|:-------:|:-----:|
+| Round robin | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Least connections | ✓ | ✓ | ✓ | ✓ | - | ✓ |
+| Consistent hashing | ✓ | ✓ | ✓ | ✓ | - | - |
+| Weighted | ✓ | ✓ | ✓ | ✓ | ✓ | - |
+| Least tokens (LLM) | ✓ | - | - | - | - | - |
+| Adaptive (latency) | ✓ | ✓ | - | - | - | - |
+| Active health checks | ✓ | ✓ | ✓ | ✓* | ✓ | ✓ |
+| Passive health checks | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Circuit breakers | ✓ | ✓ | - | - | ✓ | - |
 
 *Nginx Plus only for active health checks
 
-### Security Features
+### Security & Extensions
 
-| Feature | Sentinel | Envoy | HAProxy | Nginx |
-|---------|:--------:|:-----:|:-------:|:-----:|
-| Native WAF | ✓ (agent) | - | - | - |
-| ModSecurity | ✓ (agent) | - | ✓ (SPOE) | ✓ (module) |
-| Rate limiting | ✓ (agent) | ✓ | ✓ | ✓ |
-| JWT validation | ✓ (agent) | ✓ | ✓ (Lua) | ✓ (module) |
-| CORS | ✓ | ✓ | ✓ | ✓ |
-| Request filtering | ✓ (agent) | ✓ | ✓ | ✓ |
+| Feature | Sentinel | Envoy | HAProxy | Nginx | Traefik | Caddy |
+|---------|:--------:|:-----:|:-------:|:-----:|:-------:|:-----:|
+| External agents | ✓ | - | SPOE | - | - | - |
+| WASM extensions | ✓ | ✓ | - | - | ✓ | - |
+| Rate limiting | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Distributed rate limit | ✓ | - | - | - | - | - |
+| Token-aware rate limit | ✓ | - | - | - | - | - |
+| Forward auth | Planned | - | - | - | ✓ | ✓ |
+| JWT validation | ✓ | ✓ | Lua | Module | ✓ | ✓ |
+| GeoIP filtering | ✓ | - | - | Module | - | - |
+| WAF (OWASP CRS) | Agent | - | SPOE | Module | - | - |
 
 ### Observability
 
-| Feature | Sentinel | Envoy | HAProxy | Nginx |
-|---------|:--------:|:-----:|:-------:|:-----:|
-| Prometheus metrics | ✓ | ✓ | ✓ | ✓* |
-| Distributed tracing | ✓ | ✓ | ✓ | ✓* |
-| Access logs | ✓ | ✓ | ✓ | ✓ |
-| Structured logging | ✓ | ✓ | ✓ | ✓ |
-
-*Requires additional modules
+| Feature | Sentinel | Envoy | HAProxy | Nginx | Traefik | Caddy |
+|---------|:--------:|:-----:|:-------:|:-----:|:-------:|:-----:|
+| Prometheus metrics | ✓ | ✓ | ✓ | Module | ✓ | ✓ |
+| Distributed tracing | ✓ | ✓ | ✓ | Module | ✓ | ✓ |
+| Access logs | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Structured logging | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 
 ### Operations
 
-| Feature | Sentinel | Envoy | HAProxy | Nginx |
-|---------|:--------:|:-----:|:-------:|:-----:|
-| Hot reload config | ✓ | ✓ | ✓ | ✓ |
-| Zero-downtime restart | ✓ | ✓ | ✓ | ✓ |
-| Dynamic config (API) | ✓ | ✓ (xDS) | ✓ | ✓* |
-| Graceful shutdown | ✓ | ✓ | ✓ | ✓ |
-
-*Nginx Plus only
+| Feature | Sentinel | Envoy | HAProxy | Nginx | Traefik | Caddy |
+|---------|:--------:|:-----:|:-------:|:-----:|:-------:|:-----:|
+| Hot reload config | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Zero-downtime restart | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Auto HTTPS (ACME) | Planned | - | - | - | ✓ | ✓ |
+| Dynamic config (API) | ✓ | ✓ (xDS) | ✓ | Plus | ✓ | ✓ |
+| Graceful shutdown | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Service discovery | ✓ | ✓ | ✓ | Plus | ✓ | - |
 
 ## Memory Safety
 
@@ -344,6 +574,8 @@ A key differentiator for Sentinel is memory safety through Rust:
 | Envoy | C++ | - | 30+ |
 | HAProxy | C | - | 15+ |
 | Nginx | C | - | 25+ |
+| Traefik | Go | ✓ | 5+ |
+| Caddy | Go | ✓ | 3+ |
 
 Memory safety eliminates entire classes of vulnerabilities:
 - Buffer overflows
@@ -353,14 +585,14 @@ Memory safety eliminates entire classes of vulnerabilities:
 
 ## Performance Characteristics
 
-All four proxies are capable of handling high traffic loads. The primary differences are:
+All six proxies are capable of handling high traffic loads. The primary differences are:
 
-| Aspect | Sentinel | Envoy | HAProxy | Nginx |
-|--------|----------|-------|---------|-------|
-| Latency | Low | Low | Very low | Low |
-| Throughput | High | High | Very high | High |
-| Memory usage | Predictable | Higher | Very low | Low |
-| CPU efficiency | High | High | Very high | High |
+| Aspect | Sentinel | Envoy | HAProxy | Nginx | Traefik | Caddy |
+|--------|----------|-------|---------|-------|---------|-------|
+| Latency | Low | Low | Very low | Low | Low | Low |
+| Throughput | High | High | Very high | High | High | High |
+| Memory usage | Predictable | Higher | Very low | Low | Moderate | Moderate |
+| CPU efficiency | High | High | Very high | High | High | High |
 
 **Note**: Benchmark results vary significantly based on workload, configuration, and hardware. Always benchmark with your specific use case.
 
@@ -397,6 +629,21 @@ See the [Migration Guide](/operations/migration/) for detailed examples.
 3. Replace filters with agents
 4. Remove xDS dependency (if applicable)
 
+### From Traefik to Sentinel
+
+1. Convert routers to `routes` blocks
+2. Map services to `upstreams`
+3. Replace middlewares with agents
+4. Move from Docker labels to KDL files
+5. Replace automatic HTTPS with manual certs (ACME support planned)
+
+### From Caddy to Sentinel
+
+1. Convert Caddyfile blocks to KDL
+2. Map `reverse_proxy` to routes + upstreams
+3. Move from automatic HTTPS to manual certs (ACME support planned)
+4. Replace modules with agents for security policies
+
 ## Summary
 
 Choose **Sentinel** when:
@@ -405,6 +652,7 @@ Choose **Sentinel** when:
 - Memory safety matters for your threat model
 - You prefer explicit, readable configuration
 - Building custom security policies
+- Need LLM/inference gateway features (token limiting, model routing)
 
 Choose **Envoy** when:
 - Building a service mesh
@@ -423,6 +671,18 @@ Choose **Nginx** when:
 - Need the extensive module ecosystem
 - Using OpenResty/Lua extensively
 - Established Nginx expertise
+
+Choose **Traefik** when:
+- Heavy Docker/Kubernetes environment
+- Want automatic service discovery
+- Need built-in Let's Encrypt support
+- Prefer dynamic, label-based configuration
+
+Choose **Caddy** when:
+- Want zero-config automatic HTTPS
+- Simple use case with minimal configuration
+- Need the Caddy module ecosystem
+- Prefer Caddyfile simplicity
 
 ## Next Steps
 
