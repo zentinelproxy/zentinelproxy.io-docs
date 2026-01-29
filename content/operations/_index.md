@@ -18,6 +18,7 @@ Guides for operating, monitoring, and maintaining Sentinel in production.
 | [Security Hardening](security-hardening/) | Best practices for securing deployments |
 | [Capacity Planning](capacity-planning/) | Sizing and scaling guidelines |
 | [Upgrade Guide](upgrade-guide/) | Upgrade and migration procedures |
+| [Supply Chain Security](supply-chain/) | Verifying release authenticity and integrity |
 
 ## Quick Diagnostics
 
