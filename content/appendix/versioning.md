@@ -7,28 +7,38 @@ How Sentinel versions work, mapping between release and crate versions, and chan
 
 ## Dual Versioning Scheme
 
-Sentinel uses two versioning systems for different purposes:
+Sentinel uses two versioning systems for different audiences:
 
-| System | Format | Example | Used For |
-|--------|--------|---------|----------|
-| **Release Version** | CalVer (`YY.MM`) | `26.01` | Documentation, downloads, public announcements |
-| **Crate Version** | SemVer (`MAJOR.MINOR.PATCH`) | `0.1.0` | Cargo.toml, crates.io, dependency management |
+| System | Format | Example | Audience | Used For |
+|--------|--------|---------|----------|----------|
+| **Release Version** | CalVer (`YY.MM_PATCH`) | `26.01_0` | Operators, enterprise, docs | Downloads, release tags, LTS windows, support contracts |
+| **Crate Version** | SemVer (`MAJOR.MINOR.PATCH`) | `0.3.0` | Library consumers | Cargo.toml, crates.io, dependency management |
+
+**CalVer is the primary version.** When you deploy Sentinel, report issues, reference documentation, or verify supply chain artifacts, use the CalVer release version. SemVer exists solely for Rust's package ecosystem.
 
 ### Release Version (CalVer)
 
-Public-facing releases use [Calendar Versioning](https://calver.org/) in `YY.MM` format:
+All public-facing releases use [Calendar Versioning](https://calver.org/) in `YY.MM_PATCH` format:
 
-- `26.01` = January 2026
-- `25.12` = December 2025
+```
+YY.MM_PATCH
+
+26.01_0  - January 2026, first release
+26.01_1  - January 2026, first patch
+26.02_0  - February 2026, first release
+```
+
+- **`YY.MM`** identifies the release series (e.g., `26.01` = January 2026)
+- **`_PATCH`** increments for bug fixes and security patches within a series
 
 This provides:
-- Clear indication of release age
-- No implied stability promises beyond the release notes
-- Simple chronological ordering
+- **Age at a glance** — `25.06_3` tells you the release is from June 2025
+- **LTS windows tied to the calendar** — an LTS branch like `26.01 LTS` receives security backports for 12 months, through January 2027
+- **Upgrade urgency** — if you're running `25.06_3` and the current release is `26.01_0`, you're 7 months behind
 
 ### Crate Version (SemVer)
 
-Rust crates published to crates.io use [Semantic Versioning](https://semver.org/):
+Rust crates published to crates.io use [Semantic Versioning](https://semver.org/). This is an implementation detail for library consumers using Sentinel crates as dependencies. Operators do not need to track SemVer.
 
 ```
 MAJOR.MINOR.PATCH
@@ -41,14 +51,26 @@ MAJOR.MINOR.PATCH
 2.0.0  - Breaking changes
 ```
 
+### Which Version Do I Use?
+
+| Context | Use |
+|---------|-----|
+| Downloading binaries | CalVer (`26.01_0`) |
+| Docker image tags | CalVer (`ghcr.io/raskell-io/sentinel:26.01_0`) |
+| Filing issues / support tickets | CalVer |
+| Verifying supply chain signatures | CalVer (matches release tag) |
+| LTS / support contracts | CalVer series (`26.01 LTS`) |
+| Cargo.toml dependencies | SemVer (`sentinel = "0.3"`) |
+| crates.io | SemVer |
+
 ## Version Mapping
 
-This table maps public release versions to their corresponding crate versions:
+This table maps CalVer release versions to their corresponding crate versions:
 
-| Release | Crate Version | Protocol | Release Date | Status |
+| Release (CalVer) | Crate Version (SemVer) | Protocol | Release Date | Status |
 |---------|---------------|----------|--------------|--------|
-| **26.01** | `0.3.0` | `0.2.0` | 2026-01-XX | Current |
-| **25.12** | `0.2.0` | `0.1.0` | 2025-12-15 | Previous |
+| **26.01_0** | `0.3.0` | `0.2.0` | 2026-01-XX | Current |
+| **25.12_0** | `0.2.0` | `0.1.0` | 2025-12-15 | Previous |
 | — | `0.1.0` | `0.1.0` | 2025-11-01 | Internal |
 
 ### Finding Your Version
@@ -57,15 +79,16 @@ This table maps public release versions to their corresponding crate versions:
 
 ```bash
 sentinel --version
-# sentinel 0.3.0 (release 26.01)
+# sentinel 26.01_0 (0.3.0)
 ```
 
-**From Cargo.toml:**
+The CalVer release version is shown first, with the crate SemVer in parentheses.
 
-```toml
-[dependencies]
-sentinel = "0.3"
-sentinel-agent-protocol = "0.2"
+**From Docker:**
+
+```bash
+docker inspect ghcr.io/raskell-io/sentinel:26.01_0 --format '{{ index .Config.Labels "org.opencontainers.image.version" }}'
+# 26.01_0
 ```
 
 **From the documentation URL:**
@@ -220,17 +243,34 @@ systemctl start sentinel
 
 Sentinel follows a monthly release cadence:
 
-- **Feature releases:** First week of each month
-- **Patch releases:** As needed for security or critical bugs
-- **LTS releases:** TBD (planned for first stable major version)
+- **Feature releases:** First week of each month (e.g., `26.02_0`)
+- **Patch releases:** As needed for security or critical bugs (e.g., `26.01_1`, `26.01_2`)
 
-### Version Support
+### Community Support
 
 | Release | Status | Security Fixes Until |
 |---------|--------|----------------------|
 | 26.01 | Current | Active development |
 | 25.12 | Previous | 26.03 (3 months) |
 | Older | EOL | No support |
+
+Community releases receive security patches for **3 months** after the next release series ships.
+
+### Enterprise LTS
+
+Enterprise customers receive long-term support branches designated by their CalVer series:
+
+| LTS Branch | Based On | Security Fixes Until | Config Stability |
+|------------|----------|----------------------|------------------|
+| 26.01 LTS | `26.01_0` | January 2027 (12 months) | Guaranteed |
+
+LTS branches receive:
+- **Security backports** for 12 months from the initial release
+- **Configuration compatibility** — no breaking config changes within the LTS window
+- **Patch releases** on the same CalVer series (e.g., `26.01_1`, `26.01_2`, ...)
+- **Early security advisories** before public disclosure
+
+LTS is available through the [Enterprise Builds](/support/) offering. See [Supply Chain Security](/docs/operations/supply-chain/) for verification procedures.
 
 ---
 

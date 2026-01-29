@@ -607,6 +607,7 @@ curl -s -D- https://your-domain.com -o /dev/null | \
 
 ## See Also
 
+- [Supply Chain Security](../supply-chain/) - Verifying release authenticity and integrity
 - [TLS Configuration](../../configuration/listeners/#tls) - Listener TLS settings
 - [mTLS to Upstreams](../../configuration/upstreams/#mtls) - Client certificate authentication
 - [Rate Limiting](../../configuration/limits/) - Rate limiting configuration

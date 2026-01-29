@@ -319,6 +319,8 @@ curl -I http://localhost:8080/
 curl http://localhost:9090/metrics
 ```
 
+> **Production deployments:** Before deploying to production, verify binary authenticity using cosign signatures and SLSA provenance. See [Supply Chain Security](/docs/operations/supply-chain/).
+
 ## Next Steps
 
 - [Quick Start](../quick-start/) - Get up and running in 5 minutes
