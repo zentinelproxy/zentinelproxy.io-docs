@@ -69,8 +69,9 @@ This table maps CalVer release versions to their corresponding crate versions:
 
 | Release (CalVer) | Crate Version (SemVer) | Protocol | Release Date | Status |
 |---------|---------------|----------|--------------|--------|
-| **26.01_0** | `0.3.0` | `0.2.0` | 2026-01-XX | Current |
-| **25.12_0** | `0.2.0` | `0.1.0` | 2025-12-15 | Previous |
+| **26.02_0** | `0.4.5` | `0.2.0` | 2026-01-29 | Current |
+| **26.01_0** | `0.2.0` | `0.2.0` | 2026-01-01 | Previous |
+| **25.12_0** | `0.1.0` | `0.1.0` | 2025-12-15 | Archive |
 | — | `0.1.0` | `0.1.0` | 2025-11-01 | Internal |
 
 ### Finding Your Version
@@ -79,7 +80,7 @@ This table maps CalVer release versions to their corresponding crate versions:
 
 ```bash
 sentinel --version
-# sentinel 26.01_0 (0.3.0)
+# sentinel 26.02_0 (0.4.5)
 ```
 
 The CalVer release version is shown first, with the crate SemVer in parentheses.
@@ -87,23 +88,53 @@ The CalVer release version is shown first, with the crate SemVer in parentheses.
 **From Docker:**
 
 ```bash
-docker inspect ghcr.io/raskell-io/sentinel:26.01_0 --format '{{ index .Config.Labels "org.opencontainers.image.version" }}'
-# 26.01_0
+docker inspect ghcr.io/raskell-io/sentinel:26.02_0 --format '{{ index .Config.Labels "org.opencontainers.image.version" }}'
+# 26.02_0
 ```
 
 **From the documentation URL:**
 
-- `/docs/` — Current release (26.01)
-- `/docs/v/25.12/` — Previous release
+- `/docs/` — Current release (26.02)
+- `/docs/v/26.01/` — Previous release
+- `/docs/v/25.12/` — Archive
 
 ---
 
 ## Changelogs
 
+For the full changelog with all patch releases, see [Changelog](../changelog/).
+
+### Release 26.02
+
+**Crate version:** `0.4.5`
+**Release date:** January 2026
+
+#### Added
+
+- **Supply chain security for release pipeline**
+  - SBOM generation in CycloneDX 1.5 and SPDX 2.3 formats
+  - Binary signing with Sigstore cosign (keyless, GitHub Actions OIDC)
+  - Container image signing with cosign and SBOM attestation
+  - SLSA v1.0 provenance (Build Level 3)
+- Per-request allocation reduction in hot path
+- DNS-01 ACME challenge support for wildcard certificates
+- Agent Protocol v2 connection pooling, load balancing, reverse connections
+- Sticky load balancing algorithm
+
+#### Changed
+
+- Major dependency updates (opentelemetry, prost, tonic, tungstenite, sysinfo, and more)
+
+#### Fixed
+
+- Prevent single connection failure from permanently marking upstream target unhealthy
+- Security vulnerability fixes via pingora fork
+
+---
+
 ### Release 26.01
 
-**Crate version:** `0.3.0`
-**Protocol version:** `0.2.0`
+**Crate version:** `0.2.0` -- `0.3.0`
 **Release date:** January 2026
 
 #### Added
@@ -111,20 +142,10 @@ docker inspect ghcr.io/raskell-io/sentinel:26.01_0 --format '{{ index .Config.La
 - **Traffic Mirroring / Shadow Traffic**
   - Fire-and-forget async request duplication to shadow upstreams
   - Percentage-based sampling (0-100%) for controlled traffic mirroring
-  - Header-based filtering for targeted shadow requests
-  - Optional request body buffering with configurable size limits
-  - Independent failure domain (shadow failures don't affect clients)
-  - Zero latency impact on primary request path
-  - Separate connection pools for shadow upstreams
-  - Prometheus metrics: `shadow_requests_total`, `shadow_errors_total`, `shadow_latency_seconds`
 
 - **API Schema Validation**
   - JSON Schema validation for API routes (requests and responses)
   - OpenAPI 3.0 and Swagger 2.0 specification support
-  - Inline JSON Schema definitions in KDL configuration
-  - Strict mode to reject additional properties
-  - Structured validation error responses with field-level details
-  - Support for complex nested schemas and arrays
 
 - WebSocket frame inspection support in agent protocol
 - Graceful shutdown improvements
@@ -139,7 +160,6 @@ docker inspect ghcr.io/raskell-io/sentinel:26.01_0 --format '{{ index .Config.La
 
 - Removed archived agents with unsafe FFI code (Lua, WAF, auth, denylist, ratelimit)
 - Replaced `unreachable!()` panics with proper error handling in agent-protocol
-- Added `WrongConnectionType` error variant for better error handling
 
 ---
 
@@ -194,7 +214,7 @@ docker inspect ghcr.io/raskell-io/sentinel:26.01_0 --format '{{ index .Config.La
 
 ## Upgrade Guides
 
-### From 25.12 to 26.01
+### From 26.01 to 26.02
 
 No breaking changes. Direct upgrade supported.
 
@@ -203,9 +223,11 @@ No breaking changes. Direct upgrade supported.
 systemctl stop sentinel
 
 # Install new version
+VERSION="26.02_0"
 curl -Lo /usr/local/bin/sentinel \
-    https://github.com/raskell-io/sentinel/releases/download/26.01/sentinel
-chmod +x /usr/local/bin/sentinel
+    "https://github.com/raskell-io/sentinel/releases/download/${VERSION}/sentinel-${VERSION}-linux-amd64.tar.gz"
+tar -xzf "sentinel-${VERSION}-linux-amd64.tar.gz"
+chmod +x sentinel && sudo mv sentinel /usr/local/bin/
 
 # Validate configuration
 sentinel validate -c /etc/sentinel/sentinel.kdl
@@ -213,6 +235,16 @@ sentinel validate -c /etc/sentinel/sentinel.kdl
 # Start new version
 systemctl start sentinel
 ```
+
+**New features to consider:**
+
+- [Supply Chain Security](/docs/operations/supply-chain/) -- verify binary and container authenticity
+- DNS-01 ACME challenges for wildcard certificates
+- Agent Protocol v2 connection pooling
+
+### From 25.12 to 26.01
+
+No breaking changes. Direct upgrade supported.
 
 **New features to consider:**
 
@@ -227,6 +259,7 @@ systemctl start sentinel
 
 | Sentinel Release | Protocol | Compatible Agent Versions |
 |------------------|----------|---------------------------|
+| 26.02 | `0.2.0` | Agents built with protocol `0.2.x` |
 | 26.01 | `0.2.0` | Agents built with protocol `0.2.x` |
 | 25.12 | `0.1.0` | Agents built with protocol `0.1.x` |
 
@@ -234,6 +267,7 @@ systemctl start sentinel
 
 | Sentinel Release | Minimum Rust Version | Recommended |
 |------------------|----------------------|-------------|
+| 26.02 | 1.85.0 | 1.85.0+ |
 | 26.01 | 1.75.0 | 1.83.0+ |
 | 25.12 | 1.70.0 | 1.75.0+ |
 
@@ -250,9 +284,9 @@ Sentinel follows a monthly release cadence:
 
 | Release | Status | Security Fixes Until |
 |---------|--------|----------------------|
-| 26.01 | Current | Active development |
-| 25.12 | Previous | 26.03 (3 months) |
-| Older | EOL | No support |
+| 26.02 | Current | Active development |
+| 26.01 | Previous | 26.04 (3 months) |
+| 25.12 | EOL | No support |
 
 Community releases receive security patches for **3 months** after the next release series ships.
 

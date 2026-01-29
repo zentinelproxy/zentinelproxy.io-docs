@@ -45,8 +45,9 @@ logo = "img/sentinel-mascot.png"
 
 # Version picker
 [extra.versions]
-current = "26.01"
+current = "26.02"
 list = [
-    { version = "26.01", url = "/docs/", label = "latest" },
+    { version = "26.02", url = "/docs/", label = "latest" },
+    { version = "26.01", url = "/docs/v/26.01/", label = "" },
     { version = "25.12", url = "/docs/v/25.12/", label = "" },
 ]

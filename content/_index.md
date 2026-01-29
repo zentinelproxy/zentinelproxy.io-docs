@@ -146,7 +146,7 @@ Contributions are welcome! See our [Contributing Guide](./development/contributi
 
 ## Version Information
 
-This documentation covers Sentinel version 0.1.0 and later. For the latest updates and changes, see the [Changelog](./appendix/changelog.md).
+This documentation covers Sentinel release **26.02**. For the latest updates and changes, see the [Changelog](./appendix/changelog.md). For details on the versioning scheme, see [Versioning](./appendix/versioning.md).
 
 ## License
 
