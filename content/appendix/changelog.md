@@ -14,6 +14,7 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 
 | CalVer | Crate Version | Date | Highlights |
 |--------|---------------|------|------------|
+| [26.02_1](#26-02-1) | 0.4.7 | 2026-02-02 | Pingora 0.7 upgrade, drop fork, major dependency sweep |
 | [26.02_0](#26-02-0) | 0.4.5 | 2026-01-29 | Supply chain security: SBOM, cosign signing, SLSA provenance |
 | [26.01_11](#26-01-11) | 0.4.5 | 2026-01-29 | Per-request allocation reduction in hot path |
 | [26.01_10](#26-01-10) | 0.4.3 | 2026-01-27 | Security fixes, dependency updates |
@@ -25,6 +26,39 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 | [26.01_3](#26-01-3) | 0.2.3 | 2026-01-05 | Bug fixes |
 | [26.01_0](#26-01-0) | 0.2.0 | 2026-01-01 | First CalVer release |
 | [25.12](#25-12) | 0.1.x | 2025-12 | Initial public releases |
+
+---
+
+## 26.02_1
+
+**Date:** 2026-02-02
+**Crate version:** 0.4.7
+
+### Changed
+- **Pingora 0.6 → 0.7** — Upgraded to upstream Pingora 0.7.0, removing the `raskell-io/pingora` security fork and all 16 `[patch.crates-io]` overrides. Sentinel now builds against upstream Pingora with zero patches.
+  - `ForcedInvalidationKind` renamed to `ForcedFreshness` in cache layer
+  - `range_header_filter` now accepts `max_multipart_ranges` parameter (defaults to 200)
+- **Major dependency updates:**
+  - thiserror 1.x → 2.0
+  - redis 0.27 → 1.0 (distributed rate limiting)
+  - criterion 0.6 → 0.8 (benchmarking)
+  - instant-acme 0.7 → 0.8 (ACME client rewritten for new builder/stream API)
+  - jsonschema 0.18 → 0.40 (validation module rewritten for new API: `JSONSchema` → `Validator`, `compile` → `draft7::new`)
+  - quick-xml 0.37 → 0.39 (data masking agent: `unescape()` → `decode()`)
+  - async-memcached 0.5 → 0.6
+  - tiktoken-rs 0.6 → 0.9
+  - sysinfo 0.37 → 0.38
+
+### Security
+- **Resolved all three security issues** previously requiring a Pingora fork:
+  - [RUSTSEC-2026-0002](https://rustsec.org/advisories/RUSTSEC-2026-0002.html): `lru` crate vulnerability (fixed in upstream Pingora 0.7)
+  - `atty` unmaintained dependency removed (fixed in upstream Pingora 0.7)
+  - `protobuf` uncontrolled recursion bounded (fixed in upstream Pingora 0.7)
+
+### Removed
+- `[patch.crates-io]` section with 16 git overrides pointing to `raskell-io/pingora` fork
+
+See the [blog post](/blog/pingora-0-7-upgrade/) for a detailed writeup.
 
 ---
 
