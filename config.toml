@@ -8,10 +8,12 @@ build_search_index = true
 generate_feeds = false
 
 [markdown]
-highlight_code = true
-highlight_theme = "css"
-extra_syntaxes_and_themes = ["syntaxes"]
 smart_punctuation = true
+
+[markdown.highlighting]
+style = "class"
+light_theme = "catppuccin-latte"
+dark_theme = "catppuccin-mocha"
 
 [slugify]
 paths = "on"
