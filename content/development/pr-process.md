@@ -12,7 +12,7 @@ Guidelines for submitting and reviewing pull requests.
 - [ ] Code compiles without warnings: `cargo build`
 - [ ] All tests pass: `cargo test`
 - [ ] Code is formatted: `cargo fmt`
-- [ ] Lints pass: `cargo clippy -- -D warnings`
+- [ ] Lints pass: `cargo clippy --workspace --all-targets -- -D warnings`
 - [ ] Documentation updated if needed
 - [ ] Changelog updated for user-facing changes
 - [ ] Commit messages follow conventions
@@ -184,7 +184,15 @@ let result = items.iter().filter(|x| x.is_valid()).count();
 
 ### Required Checks
 
-- CI passes (tests, lint, format)
+The following CI checks must pass (matching `.github/workflows/ci.yml`):
+
+- **Formatting** — `cargo fmt --all --check`
+- **Clippy** — `cargo clippy --workspace --all-targets --all-features -- -D warnings`
+- **Tests** — `cargo test --workspace`
+- **Documentation** — `cargo doc --workspace --no-deps` with `-D warnings`
+
+Additionally:
+
 - At least one approval
 - No unresolved conversations
 - Branch is up to date with main

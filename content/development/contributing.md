@@ -66,7 +66,7 @@ Follow the [Code Style](../code-style/) guide and ensure:
 cargo fmt
 
 # Check lints
-cargo clippy -- -D warnings
+cargo clippy --workspace --all-targets -- -D warnings
 
 # Run tests
 cargo test

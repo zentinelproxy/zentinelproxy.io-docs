@@ -400,13 +400,15 @@ Sentinel uses these Pingora crates:
 
 ```toml
 [dependencies]
-pingora = { version = "0.6", features = ["proxy", "lb"] }
-pingora-core = "0.6"
-pingora-http = "0.6"
-pingora-proxy = "0.6"
-pingora-load-balancing = "0.6"
-pingora-timeout = "0.6"
+pingora = { version = "0.7", features = ["proxy", "lb"] }
+pingora-core = "0.7"
+pingora-http = "0.7"
+pingora-proxy = "0.7"
+pingora-load-balancing = "0.7"
+pingora-timeout = "0.7"
 ```
+
+> **Note:** Sentinel uses a fork (`raskell-io/pingora`) that disables the prometheus protobuf default feature to remove the RUSTSEC-2024-0437 vulnerability. The fork tracks upstream Pingora 0.7 with this single change.
 
 ## Next Steps
 

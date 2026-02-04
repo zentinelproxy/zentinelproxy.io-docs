@@ -69,7 +69,7 @@ This table maps CalVer release versions to their corresponding crate versions:
 
 | Release (CalVer) | Crate Version (SemVer) | Protocol | Release Date | Status |
 |---------|---------------|----------|--------------|--------|
-| **26.02_0** | `0.4.5` | `0.2.0` | 2026-01-29 | Current |
+| **26.02_4** | `0.4.10` | `0.2.0` | 2026-02-04 | Current |
 | **26.01_0** | `0.2.0` | `0.2.0` | 2026-01-01 | Previous |
 | **25.12_0** | `0.1.0` | `0.1.0` | 2025-12-15 | Archive |
 | — | `0.1.0` | `0.1.0` | 2025-11-01 | Internal |
@@ -80,7 +80,7 @@ This table maps CalVer release versions to their corresponding crate versions:
 
 ```bash
 sentinel --version
-# sentinel 26.02_0 (0.4.5)
+# sentinel 26.02_4 (0.4.10)
 ```
 
 The CalVer release version is shown first, with the crate SemVer in parentheses.
@@ -88,8 +88,8 @@ The CalVer release version is shown first, with the crate SemVer in parentheses.
 **From Docker:**
 
 ```bash
-docker inspect ghcr.io/raskell-io/sentinel:26.02_0 --format '{{ index .Config.Labels "org.opencontainers.image.version" }}'
-# 26.02_0
+docker inspect ghcr.io/raskell-io/sentinel:26.02_4 --format '{{ index .Config.Labels "org.opencontainers.image.version" }}'
+# 26.02_4
 ```
 
 **From the documentation URL:**
@@ -106,8 +106,8 @@ For the full changelog with all patch releases, see [Changelog](../changelog/).
 
 ### Release 26.02
 
-**Crate version:** `0.4.5`
-**Release date:** January 2026
+**Crate version:** `0.4.10`
+**Release date:** January -- February 2026
 
 #### Added
 
@@ -120,15 +120,21 @@ For the full changelog with all patch releases, see [Changelog](../changelog/).
 - DNS-01 ACME challenge support for wildcard certificates
 - Agent Protocol v2 connection pooling, load balancing, reverse connections
 - Sticky load balancing algorithm
+- CI workflow (formatting, clippy, tests, docs checks)
+- Weekly `cargo audit` workflow with automatic issue creation
+- First-time user smoke tests (WAF, Lua)
+- `protocol-version` KDL config for agent blocks
 
 #### Changed
 
-- Major dependency updates (opentelemetry, prost, tonic, tungstenite, sysinfo, and more)
+- Major dependency updates (opentelemetry, prost, tonic, tungstenite, sysinfo, reqwest, jsonschema, and more)
+- Pingora switched to `raskell-io/pingora` fork to remove protobuf vulnerability (RUSTSEC-2024-0437)
 
 #### Fixed
 
 - Prevent single connection failure from permanently marking upstream target unhealthy
-- Security vulnerability fixes via pingora fork
+- 16 rustdoc warnings across 10 files
+- Example configs now pass `sentinel test` validation
 
 ---
 
@@ -223,7 +229,7 @@ No breaking changes. Direct upgrade supported.
 systemctl stop sentinel
 
 # Install new version
-VERSION="26.02_0"
+VERSION="26.02_4"
 curl -Lo /usr/local/bin/sentinel \
     "https://github.com/raskell-io/sentinel/releases/download/${VERSION}/sentinel-${VERSION}-linux-amd64.tar.gz"
 tar -xzf "sentinel-${VERSION}-linux-amd64.tar.gz"
