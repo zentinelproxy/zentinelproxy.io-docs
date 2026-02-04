@@ -1,0 +1,134 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Protocol Buffer",
+  "scopeName": "source.protobuf",
+  "fileTypes": ["proto", "protobuf"],
+  "patterns": [
+    { "include": "#comment-line" },
+    { "include": "#comment-block" },
+    { "include": "#string-double" },
+    { "include": "#string-single" },
+    { "include": "#number-hex" },
+    { "include": "#number" },
+    { "include": "#constant-boolean" },
+    { "include": "#keyword-syntax" },
+    { "include": "#keyword-import" },
+    { "include": "#keyword-option" },
+    { "include": "#keyword-declaration" },
+    { "include": "#storage-modifier" },
+    { "include": "#storage-type" },
+    { "include": "#keyword-rpc" },
+    { "include": "#field-number" },
+    { "include": "#name-message" },
+    { "include": "#name-enum" },
+    { "include": "#name-service" },
+    { "include": "#type-reference" },
+    { "include": "#field-name" },
+    { "include": "#punctuation" }
+  ],
+  "repository": {
+    "comment-line": {
+      "match": "//.*$",
+      "name": "comment.line.double-slash.protobuf"
+    },
+    "comment-block": {
+      "begin": "/\\*",
+      "end": "\\*/",
+      "name": "comment.block.protobuf"
+    },
+    "string-double": {
+      "begin": "\"",
+      "end": "\"",
+      "name": "string.quoted.double.protobuf",
+      "patterns": [
+        { "match": "\\\\.", "name": "constant.character.escape.protobuf" }
+      ]
+    },
+    "string-single": {
+      "begin": "'",
+      "end": "'",
+      "name": "string.quoted.single.protobuf",
+      "patterns": [
+        { "match": "\\\\.", "name": "constant.character.escape.protobuf" }
+      ]
+    },
+    "number": {
+      "match": "\\b[0-9]+(\\.[0-9]+)?([eE][+-]?[0-9]+)?\\b",
+      "name": "constant.numeric.protobuf"
+    },
+    "number-hex": {
+      "match": "\\b0x[0-9a-fA-F]+\\b",
+      "name": "constant.numeric.hex.protobuf"
+    },
+    "constant-boolean": {
+      "match": "\\b(true|false)\\b",
+      "name": "constant.language.protobuf"
+    },
+    "keyword-syntax": {
+      "match": "\\b(syntax)\\b",
+      "name": "keyword.other.protobuf"
+    },
+    "keyword-import": {
+      "match": "\\b(package|import|public|weak)\\b",
+      "name": "keyword.control.import.protobuf"
+    },
+    "keyword-option": {
+      "match": "\\b(option)\\b",
+      "name": "keyword.other.protobuf"
+    },
+    "keyword-declaration": {
+      "match": "\\b(message|enum|service|rpc|extend|extensions|reserved|to|max)\\b",
+      "name": "keyword.declaration.protobuf"
+    },
+    "storage-modifier": {
+      "match": "\\b(required|optional|repeated|map|oneof)\\b",
+      "name": "storage.modifier.protobuf"
+    },
+    "storage-type": {
+      "match": "\\b(double|float|int32|int64|uint32|uint64|sint32|sint64|fixed32|fixed64|sfixed32|sfixed64|bool|string|bytes)\\b",
+      "name": "storage.type.protobuf"
+    },
+    "keyword-rpc": {
+      "match": "\\b(returns|stream)\\b",
+      "name": "keyword.other.protobuf"
+    },
+    "field-number": {
+      "match": "=\\s*([0-9]+)",
+      "captures": {
+        "1": { "name": "constant.numeric.protobuf" }
+      }
+    },
+    "name-message": {
+      "match": "(?<=message\\s)[A-Z][a-zA-Z0-9_]*",
+      "name": "entity.name.class.protobuf"
+    },
+    "name-enum": {
+      "match": "(?<=enum\\s)[A-Z][a-zA-Z0-9_]*",
+      "name": "entity.name.enum.protobuf"
+    },
+    "name-service": {
+      "match": "(?<=service\\s)[A-Z][a-zA-Z0-9_]*",
+      "name": "entity.name.class.protobuf"
+    },
+    "type-reference": {
+      "match": "\\b[A-Z][a-zA-Z0-9_]*\\b",
+      "name": "entity.name.type.protobuf"
+    },
+    "field-name": {
+      "match": "\\b[a-z_][a-zA-Z0-9_]*(?=\\s*=)",
+      "name": "variable.other.protobuf"
+    },
+    "punctuation": {
+      "patterns": [
+        { "match": "\\{", "name": "punctuation.section.block.begin.protobuf" },
+        { "match": "\\}", "name": "punctuation.section.block.end.protobuf" },
+        { "match": "\\[", "name": "punctuation.section.brackets.begin.protobuf" },
+        { "match": "\\]", "name": "punctuation.section.brackets.end.protobuf" },
+        { "match": "\\(", "name": "punctuation.section.parens.begin.protobuf" },
+        { "match": "\\)", "name": "punctuation.section.parens.end.protobuf" },
+        { "match": ";", "name": "punctuation.terminator.protobuf" },
+        { "match": ",", "name": "punctuation.separator.protobuf" }
+      ]
+    }
+  }
+}
