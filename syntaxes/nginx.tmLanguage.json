@@ -1,0 +1,94 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Nginx",
+  "scopeName": "source.nginx",
+  "fileTypes": ["nginx", "nginx.conf"],
+  "patterns": [
+    { "include": "#comment" },
+    { "include": "#string-double" },
+    { "include": "#string-single" },
+    { "include": "#number" },
+    { "include": "#variable" },
+    { "include": "#keyword-block" },
+    { "include": "#keyword-directive" },
+    { "include": "#directive-proxy" },
+    { "include": "#directive-upstream" },
+    { "include": "#directive-ssl" },
+    { "include": "#directive-logging" },
+    { "include": "#directive-gzip" },
+    { "include": "#directive-other" },
+    { "include": "#operator-location" },
+    { "include": "#punctuation" }
+  ],
+  "repository": {
+    "comment": {
+      "match": "#.*$",
+      "name": "comment.line.hash.nginx"
+    },
+    "string-double": {
+      "begin": "\"",
+      "end": "\"",
+      "name": "string.quoted.double.nginx",
+      "patterns": [
+        { "match": "\\$[a-zA-Z_][a-zA-Z0-9_]*", "name": "variable.other.nginx" },
+        { "match": "\\\\.", "name": "constant.character.escape.nginx" }
+      ]
+    },
+    "string-single": {
+      "begin": "'",
+      "end": "'",
+      "name": "string.quoted.single.nginx"
+    },
+    "number": {
+      "match": "\\b[0-9]+[kmgKMG]?\\b",
+      "name": "constant.numeric.nginx"
+    },
+    "variable": {
+      "match": "\\$[a-zA-Z_][a-zA-Z0-9_]*",
+      "name": "variable.other.nginx"
+    },
+    "keyword-block": {
+      "match": "\\b(http|server|location|upstream|events|stream|mail|map|geo|types|if|limit_except)\\b",
+      "name": "keyword.control.nginx"
+    },
+    "keyword-directive": {
+      "match": "\\b(listen|server_name|root|index|try_files|error_page|return|rewrite|set|include)\\b",
+      "name": "keyword.other.nginx"
+    },
+    "directive-proxy": {
+      "match": "\\b(proxy_pass|proxy_set_header|proxy_redirect|proxy_buffering|proxy_buffer_size|proxy_buffers|proxy_busy_buffers_size|proxy_temp_file_write_size|proxy_connect_timeout|proxy_send_timeout|proxy_read_timeout|proxy_next_upstream|proxy_http_version)\\b",
+      "name": "support.function.nginx"
+    },
+    "directive-upstream": {
+      "match": "\\b(weight|max_fails|fail_timeout|backup|down|zone|keepalive|least_conn|ip_hash|hash|random)\\b",
+      "name": "support.function.nginx"
+    },
+    "directive-ssl": {
+      "match": "\\b(ssl|ssl_certificate|ssl_certificate_key|ssl_protocols|ssl_ciphers|ssl_prefer_server_ciphers|ssl_session_cache|ssl_session_timeout|ssl_stapling|ssl_stapling_verify|ssl_trusted_certificate)\\b",
+      "name": "support.function.nginx"
+    },
+    "directive-logging": {
+      "match": "\\b(access_log|error_log|log_format|log_not_found|log_subrequest)\\b",
+      "name": "support.function.nginx"
+    },
+    "directive-gzip": {
+      "match": "\\b(gzip|gzip_types|gzip_min_length|gzip_comp_level|gzip_vary|gzip_proxied|gzip_buffers|gzip_disable)\\b",
+      "name": "support.function.nginx"
+    },
+    "directive-other": {
+      "match": "\\b(worker_processes|worker_connections|multi_accept|use|sendfile|tcp_nopush|tcp_nodelay|keepalive_timeout|keepalive_requests|client_max_body_size|client_body_buffer_size|default_type|charset|add_header|expires|etag|autoindex|allow|deny|auth_basic|auth_basic_user_file)\\b",
+      "name": "support.function.nginx"
+    },
+    "operator-location": {
+      "match": "(=|~\\*|~|\\^~)",
+      "name": "keyword.operator.nginx"
+    },
+    "punctuation": {
+      "patterns": [
+        { "match": "\\{", "name": "punctuation.section.block.begin.nginx" },
+        { "match": "\\}", "name": "punctuation.section.block.end.nginx" },
+        { "match": ";", "name": "punctuation.terminator.nginx" }
+      ]
+    }
+  }
+}

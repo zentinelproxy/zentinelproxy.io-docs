@@ -14,6 +14,12 @@ smart_punctuation = true
 style = "class"
 light_theme = "catppuccin-latte"
 dark_theme = "catppuccin-mocha"
+extra_grammars = [
+  "syntaxes/kdl.tmLanguage.json",
+  "syntaxes/nginx.tmLanguage.json",
+  "syntaxes/promql.tmLanguage.json",
+  "syntaxes/protobuf.tmLanguage.json",
+]
 
 [slugify]
 paths = "on"
