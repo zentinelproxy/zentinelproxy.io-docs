@@ -162,7 +162,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
@@ -187,7 +187,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Download artifacts
         uses: actions/download-artifact@v4
@@ -243,7 +243,7 @@ cargo yank --version 1.2.0 --undo
 
 ```dockerfile
 # Dockerfile
-FROM rust:1.75 as builder
+FROM rust:1.92 as builder
 WORKDIR /app
 COPY . .
 RUN cargo build --release
@@ -258,7 +258,7 @@ ENTRYPOINT ["sentinel"]
 ```yaml
 # In release workflow
 - name: Build and push Docker image
-  uses: docker/build-push-action@v5
+  uses: docker/build-push-action@v6
   with:
     push: true
     tags: |

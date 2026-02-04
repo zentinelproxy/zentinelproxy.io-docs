@@ -14,6 +14,8 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 
 | CalVer | Crate Version | Date | Highlights |
 |--------|---------------|------|------------|
+| [26.02_4](#26-02-4) | 0.4.10 | 2026-02-04 | CI workflows, dependency audit, Pingora fork security fix |
+| [26.02_3](#26-02-3) | 0.4.9 | 2026-02-03 | First-time user smoke tests, protocol-version config, docs refresh |
 | [26.02_1](#26-02-1) | 0.4.7 | 2026-02-02 | Pingora 0.7 upgrade, drop fork, major dependency sweep |
 | [26.02_0](#26-02-0) | 0.4.5 | 2026-01-29 | Supply chain security: SBOM, cosign signing, SLSA provenance |
 | [26.01_11](#26-01-11) | 0.4.5 | 2026-01-29 | Per-request allocation reduction in hot path |
@@ -26,6 +28,51 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 | [26.01_3](#26-01-3) | 0.2.3 | 2026-01-05 | Bug fixes |
 | [26.01_0](#26-01-0) | 0.2.0 | 2026-01-01 | First CalVer release |
 | [25.12](#25-12) | 0.1.x | 2025-12 | Initial public releases |
+
+---
+
+## 26.02_4
+
+**Date:** 2026-02-04
+**Crate version:** 0.4.10
+
+### Fixed
+- **16 rustdoc warnings** — Fixed bare URLs, unclosed HTML tags, unresolved type references, and private module links across 10 files.
+- **Clippy warnings** — Resolved warnings and migrated to updated dependency APIs.
+- **`_build.yml` header comment** — Fixed misleading "Called by" reference.
+
+### Changed
+- **Pingora switched to fork** — All Pingora dependencies now point to `raskell-io/pingora` fork (rev `5847d5e`) which disables the prometheus protobuf default feature, removing the RUSTSEC-2024-0437 vulnerability.
+- **Dependency updates:**
+  - `cargo update` — 61 packages updated to latest compatible versions
+  - reqwest 0.12 → 0.13 (feature renames: `rustls-tls` → `rustls`, `query` now opt-in)
+  - jsonschema 0.40 → 0.41 (performance improvements)
+  - bytes 1.9 → 1.11.1 (integer overflow fix)
+
+### Added
+- **CI workflow** (`.github/workflows/ci.yml`) — Formatting, clippy, tests, and docs checks on PRs and pushes to main.
+- **Weekly audit workflow** (`.github/workflows/audit.yml`) — Runs `cargo audit` weekly, creates/updates GitHub issues on vulnerabilities.
+- **Cargo audit ignore list** (`.cargo/audit.toml`) — Documented ignores for upstream-only advisories (daemonize, derivative, fxhash, rustls-pemfile).
+- **Branch protection** — Required status checks (Formatting, Clippy, Tests, Documentation) on main.
+
+---
+
+## 26.02_3
+
+**Date:** 2026-02-03
+**Crate version:** 0.4.9
+
+### Added
+- **First-time user smoke tests** — Self-contained integration tests (`test_first_time_waf.sh`, `test_first_time_lua.sh`) that validate building Sentinel + an agent from source, wiring them together, and verifying end-to-end behavior. WAF test covers 8 scenarios (SQLi, XSS, path traversal, fail-open, recovery); Lua test covers 4 (header injection, blocking, fail-open).
+- **`protocol-version` KDL config** — Agent blocks now accept `protocol-version "v2"` to explicitly select Protocol v2 for gRPC agents, instead of always defaulting to v1.
+- **Makefile targets** — `test-first-time`, `test-first-time-waf`, `test-first-time-lua` for running smoke tests.
+
+### Fixed
+- **Example configs** — All configs in `config/examples/` now pass `sentinel test` validation.
+- **Install script** — Removed stale linux-arm64 block, fixed sudo fallback.
+
+### Changed
+- **README** — Replaced Inference Gateway section with Use Cases overview; updated feature table with caching, WebSocket, hot reload details; linked to full features page.
 
 ---
 
