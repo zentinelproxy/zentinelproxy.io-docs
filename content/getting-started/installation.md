@@ -15,8 +15,6 @@ curl -fsSL https://getsentinel.raskell.io | sh
 
 The script downloads the appropriate binary and installs it to `~/.local/bin`. You may need to add this to your PATH:
 
-> **Note:** Linux ARM64 (aarch64) pre-built binaries are not yet available. If you're on Linux ARM64 (e.g., AWS Graviton, Raspberry Pi 4/5), please [build from source](#build-from-source) or use the [OCI container](#oci-container) instead.
-
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
 ```
@@ -60,32 +58,16 @@ Alternatively, download binaries manually from [GitHub Releases](https://github.
 
 **Supported platforms:**
 - Linux x86_64 (amd64)
+- Linux ARM64 (aarch64)
 - macOS Apple Silicon (arm64)
 - macOS Intel (amd64)
 
-> **Linux ARM64 (aarch64):** Pre-built binaries are not yet available. Use [Build from Source](#build-from-source) or [OCI Container](#oci-container).
-
-### Linux (amd64)
+Download the archive for your platform from the [latest release](https://github.com/raskell-io/sentinel/releases), extract, and install:
 
 ```bash
-curl -LO https://github.com/raskell-io/sentinel/releases/latest/download/sentinel-linux-amd64.tar.gz
-tar xzf sentinel-linux-amd64.tar.gz
-sudo mv sentinel /usr/local/bin/
-```
-
-### macOS (Apple Silicon)
-
-```bash
-curl -LO https://github.com/raskell-io/sentinel/releases/latest/download/sentinel-darwin-arm64.tar.gz
-tar xzf sentinel-darwin-arm64.tar.gz
-sudo mv sentinel /usr/local/bin/
-```
-
-### macOS (Intel)
-
-```bash
-curl -LO https://github.com/raskell-io/sentinel/releases/latest/download/sentinel-darwin-amd64.tar.gz
-tar xzf sentinel-darwin-amd64.tar.gz
+# Example for Linux amd64 — replace version and platform as needed
+curl -LO https://github.com/raskell-io/sentinel/releases/download/26.02_4/sentinel-26.02_4-linux-amd64.tar.gz
+tar xzf sentinel-26.02_4-linux-amd64.tar.gz
 sudo mv sentinel /usr/local/bin/
 ```
 
