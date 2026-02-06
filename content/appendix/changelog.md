@@ -14,7 +14,7 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 
 | CalVer | Crate Version | Date | Highlights |
 |--------|---------------|------|------------|
-| [26.02_4](#26-02-4) | 0.4.10 | 2026-02-04 | CI workflows, dependency audit, Pingora fork security fix |
+| [26.02_4](#26-02-4) | 0.4.10 | 2026-02-04 | Install script fix, CI workflows, Pingora fork security fix |
 | [26.02_3](#26-02-3) | 0.4.9 | 2026-02-03 | First-time user smoke tests, protocol-version config, docs refresh |
 | [26.02_1](#26-02-1) | 0.4.7 | 2026-02-02 | Pingora 0.7 upgrade, drop fork, major dependency sweep |
 | [26.02_0](#26-02-0) | 0.4.5 | 2026-01-29 | Supply chain security: SBOM, cosign signing, SLSA provenance |
@@ -37,6 +37,8 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 **Crate version:** 0.4.10
 
 ### Fixed
+- **Install script** — `get_latest_version()` now queries `/releases` and selects the first release with actual binary assets, instead of relying on `/releases/latest` which could point to a release without binaries ([#67](https://github.com/raskell-io/sentinel/issues/67)).
+- **Release workflow** — Version bump push to `main` now falls back to creating a PR when blocked by branch protection.
 - **16 rustdoc warnings** — Fixed bare URLs, unclosed HTML tags, unresolved type references, and private module links across 10 files.
 - **Clippy warnings** — Resolved warnings and migrated to updated dependency APIs.
 - **`_build.yml` header comment** — Fixed misleading "Called by" reference.
