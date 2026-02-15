@@ -1342,7 +1342,7 @@ routes {
             timeout-secs 120
             request-headers {
                 set {
-                    "Authorization" "Bearer ${OPENAI_API_KEY}"
+                    "Authorization" "Bearer your-openai-api-key"
                 }
             }
         }

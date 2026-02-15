@@ -109,7 +109,7 @@ routes {
             timeout-secs 120
             request-headers {
                 set {
-                    "Authorization" "Bearer ${OPENAI_API_KEY}"
+                    "Authorization" "Bearer your-openai-api-key"
                 }
             }
         }
@@ -173,7 +173,7 @@ routes {
             timeout-secs 120
             request-headers {
                 set {
-                    "x-api-key" "${ANTHROPIC_API_KEY}"
+                    "x-api-key" "your-anthropic-api-key"
                     "anthropic-version" "2023-06-01"
                 }
             }
