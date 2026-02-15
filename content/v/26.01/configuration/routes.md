@@ -228,7 +228,6 @@ route "api" {
             // Set or replace header
             set {
                 "X-Forwarded-Proto" "https"
-                "X-Request-Start" "${request_time}"
             }
             // Add header (preserves existing)
             add {

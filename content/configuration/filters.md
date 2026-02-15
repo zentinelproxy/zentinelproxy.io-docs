@@ -127,7 +127,7 @@ filter "security-headers" {
 
     // Add headers (preserves existing)
     add {
-        "X-Request-ID" "${trace_id}"
+        "X-Request-ID" "sentinel-generated"
     }
 
     // Remove headers

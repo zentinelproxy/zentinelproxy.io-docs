@@ -67,7 +67,7 @@ routes {
         policies {
             request-headers {
                 set {
-                    "X-Real-IP" "${client_ip}"
+                    "X-Forwarded-Proto" "https"
                 }
             }
         }
