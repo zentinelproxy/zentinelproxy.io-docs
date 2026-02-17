@@ -185,7 +185,7 @@ After the response, actual token counts are used to refund or charge the differe
 
 ### Tiktoken Tokenizer
 
-When `estimation-method` is set to `tiktoken`, Sentinel uses OpenAI's tiktoken tokenizer for accurate token counting. This requires the `tiktoken` feature to be enabled at build time.
+When `estimation-method` is set to `tiktoken`, Zentinel uses OpenAI's tiktoken tokenizer for accurate token counting. This requires the `tiktoken` feature to be enabled at build time.
 
 **Model-specific encodings:**
 
@@ -234,7 +234,7 @@ cargo build --features tiktoken
 
 ### Streaming Token Counting
 
-For streaming responses (SSE), Sentinel automatically counts tokens as they stream through:
+For streaming responses (SSE), Zentinel automatically counts tokens as they stream through:
 
 **How it works:**
 
@@ -265,7 +265,7 @@ data: {"choices":[{"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":
 data: [DONE]
 ```
 
-Sentinel accumulates "Hello world" and either uses the API-provided token count (2 completion tokens) or counts via tiktoken.
+Zentinel accumulates "Hello world" and either uses the API-provided token count (2 completion tokens) or counts via tiktoken.
 
 ### Rate Limit Response
 
@@ -523,15 +523,15 @@ Cost attribution exposes Prometheus metrics:
 
 ```prometheus
 # Total cost by model and route
-sentinel_inference_cost_total{namespace="",service="",route="openai",model="gpt-4-turbo",currency="USD"} 12.45
+zentinel_inference_cost_total{namespace="",service="",route="openai",model="gpt-4-turbo",currency="USD"} 12.45
 
 # Token counts by model
-sentinel_inference_input_tokens_total{route="openai",model="gpt-4-turbo"} 415000
-sentinel_inference_output_tokens_total{route="openai",model="gpt-4-turbo"} 125000
+zentinel_inference_input_tokens_total{route="openai",model="gpt-4-turbo"} 415000
+zentinel_inference_output_tokens_total{route="openai",model="gpt-4-turbo"} 125000
 
 # Cost per request histogram
-sentinel_inference_cost_per_request_bucket{route="openai",model="gpt-4-turbo",le="0.01"} 45
-sentinel_inference_cost_per_request_bucket{route="openai",model="gpt-4-turbo",le="0.1"} 892
+zentinel_inference_cost_per_request_bucket{route="openai",model="gpt-4-turbo",le="0.01"} 45
+zentinel_inference_cost_per_request_bucket{route="openai",model="gpt-4-turbo",le="0.1"} 892
 ```
 
 ## Inference Routing
@@ -621,7 +621,7 @@ Model patterns support glob-style wildcards:
 
 ### Model Header Extraction
 
-Sentinel extracts the model name from request headers:
+Zentinel extracts the model name from request headers:
 
 1. `x-model` (preferred)
 2. `x-model-id` (fallback)
@@ -694,16 +694,16 @@ When a request with `x-model: claude-3-opus` arrives:
 
 ```prometheus
 # Requests routed by model
-sentinel_model_routing_total{route="unified-api",model="gpt-4-turbo",upstream="openai-primary"} 1523
+zentinel_model_routing_total{route="unified-api",model="gpt-4-turbo",upstream="openai-primary"} 1523
 
 # Requests using default upstream (no pattern matched)
-sentinel_model_routing_default_total{route="unified-api"} 42
+zentinel_model_routing_default_total{route="unified-api"} 42
 
 # Requests with no model header
-sentinel_model_routing_no_header_total{route="unified-api"} 15
+zentinel_model_routing_no_header_total{route="unified-api"} 15
 
 # Provider overrides applied
-sentinel_model_routing_provider_override_total{route="unified-api",upstream="anthropic-backend",provider="anthropic"} 892
+zentinel_model_routing_provider_override_total{route="unified-api",upstream="anthropic-backend",provider="anthropic"} 892
 ```
 
 ## Fallback Routing
@@ -848,16 +848,16 @@ X-Original-Upstream: openai-primary
 
 ```prometheus
 # Fallback attempts by reason
-sentinel_fallback_attempts_total{route="inference-api",from_upstream="openai-primary",to_upstream="anthropic-fallback",reason="health_check_failed"} 45
+zentinel_fallback_attempts_total{route="inference-api",from_upstream="openai-primary",to_upstream="anthropic-fallback",reason="health_check_failed"} 45
 
 # Successful responses after fallback
-sentinel_fallback_success_total{route="inference-api",upstream="anthropic-fallback"} 42
+zentinel_fallback_success_total{route="inference-api",upstream="anthropic-fallback"} 42
 
 # All fallback upstreams exhausted
-sentinel_fallback_exhausted_total{route="inference-api"} 3
+zentinel_fallback_exhausted_total{route="inference-api"} 3
 
 # Model mapping applied during fallback
-sentinel_fallback_model_mapping_total{route="inference-api",original_model="gpt-4",mapped_model="claude-3-opus"} 38
+zentinel_fallback_model_mapping_total{route="inference-api",original_model="gpt-4",mapped_model="claude-3-opus"} 38
 ```
 
 ### Complete Fallback Example
@@ -1170,12 +1170,12 @@ X-Guardrail-Warning: prompt-injection-detected
 
 ```prometheus
 # Requests blocked by prompt injection detection
-sentinel_blocked_requests_total{reason="prompt_injection"} 42
+zentinel_blocked_requests_total{reason="prompt_injection"} 42
 
 # PII detections by route and category
-sentinel_pii_detected_total{route="inference-api",category="ssn"} 15
-sentinel_pii_detected_total{route="inference-api",category="email"} 128
-sentinel_pii_detected_total{route="inference-api",category="credit-card"} 7
+zentinel_pii_detected_total{route="inference-api",category="ssn"} 15
+zentinel_pii_detected_total{route="inference-api",category="email"} 128
+zentinel_pii_detected_total{route="inference-api",category="credit-card"} 7
 ```
 
 ### Complete Guardrails Example
@@ -1511,16 +1511,16 @@ Inference routes expose additional Prometheus metrics:
 
 ```prometheus
 # Token rate limiter stats
-sentinel_inference_tokens_allowed_total{route="openai"}
-sentinel_inference_tokens_rejected_total{route="openai"}
-sentinel_inference_tokens_queued{upstream="llm-pool",target="gpu-1:8080"}
+zentinel_inference_tokens_allowed_total{route="openai"}
+zentinel_inference_tokens_rejected_total{route="openai"}
+zentinel_inference_tokens_queued{upstream="llm-pool",target="gpu-1:8080"}
 
 # Token throughput
-sentinel_inference_tokens_per_second{upstream="llm-pool",target="gpu-1:8080"}
+zentinel_inference_tokens_per_second{upstream="llm-pool",target="gpu-1:8080"}
 
 # Queue depth
-sentinel_inference_queue_depth_tokens{upstream="llm-pool",target="gpu-1:8080"}
-sentinel_inference_queue_depth_requests{upstream="llm-pool",target="gpu-1:8080"}
+zentinel_inference_queue_depth_tokens{upstream="llm-pool",target="gpu-1:8080"}
+zentinel_inference_queue_depth_requests{upstream="llm-pool",target="gpu-1:8080"}
 ```
 
 ### Budget Metrics
@@ -1529,20 +1529,20 @@ When budget tracking is enabled:
 
 ```prometheus
 # Budget limit per tenant (gauge)
-sentinel_inference_budget_limit{namespace="",service="",route="openai",tenant="client-123"} 1000000
+zentinel_inference_budget_limit{namespace="",service="",route="openai",tenant="client-123"} 1000000
 
 # Total tokens consumed against budget (counter)
-sentinel_inference_budget_used_total{namespace="",service="",route="openai",tenant="client-123"} 450000
+zentinel_inference_budget_used_total{namespace="",service="",route="openai",tenant="client-123"} 450000
 
 # Tokens remaining in budget (gauge, can be negative)
-sentinel_inference_budget_remaining{namespace="",service="",route="openai",tenant="client-123"} 550000
+zentinel_inference_budget_remaining{namespace="",service="",route="openai",tenant="client-123"} 550000
 
 # Requests blocked due to exhausted budget (counter)
-sentinel_inference_budget_exhausted_total{namespace="",service="",route="openai",tenant="client-123"} 12
+zentinel_inference_budget_exhausted_total{namespace="",service="",route="openai",tenant="client-123"} 12
 
 # Budget alert thresholds crossed (counter)
-sentinel_inference_budget_alerts_total{namespace="",service="",route="openai",tenant="client-123",threshold="80"} 1
-sentinel_inference_budget_alerts_total{namespace="",service="",route="openai",tenant="client-123",threshold="90"} 1
+zentinel_inference_budget_alerts_total{namespace="",service="",route="openai",tenant="client-123",threshold="80"} 1
+zentinel_inference_budget_alerts_total{namespace="",service="",route="openai",tenant="client-123",threshold="90"} 1
 ```
 
 ### Cost Metrics
@@ -1551,20 +1551,20 @@ When cost attribution is enabled:
 
 ```prometheus
 # Total cost by model and route (counter)
-sentinel_inference_cost_total{namespace="",service="",route="openai",model="gpt-4-turbo",currency="USD"} 12.45
+zentinel_inference_cost_total{namespace="",service="",route="openai",model="gpt-4-turbo",currency="USD"} 12.45
 
 # Input tokens by model (counter)
-sentinel_inference_input_tokens_total{namespace="",service="",route="openai",model="gpt-4-turbo"} 415000
+zentinel_inference_input_tokens_total{namespace="",service="",route="openai",model="gpt-4-turbo"} 415000
 
 # Output tokens by model (counter)
-sentinel_inference_output_tokens_total{namespace="",service="",route="openai",model="gpt-4-turbo"} 125000
+zentinel_inference_output_tokens_total{namespace="",service="",route="openai",model="gpt-4-turbo"} 125000
 
 # Cost per request histogram (histogram)
-sentinel_inference_cost_per_request_bucket{namespace="",service="",route="openai",model="gpt-4-turbo",le="0.001"} 15
-sentinel_inference_cost_per_request_bucket{namespace="",service="",route="openai",model="gpt-4-turbo",le="0.01"} 245
-sentinel_inference_cost_per_request_bucket{namespace="",service="",route="openai",model="gpt-4-turbo",le="0.1"} 892
-sentinel_inference_cost_per_request_bucket{namespace="",service="",route="openai",model="gpt-4-turbo",le="1.0"} 1050
-sentinel_inference_cost_per_request_bucket{namespace="",service="",route="openai",model="gpt-4-turbo",le="+Inf"} 1052
+zentinel_inference_cost_per_request_bucket{namespace="",service="",route="openai",model="gpt-4-turbo",le="0.001"} 15
+zentinel_inference_cost_per_request_bucket{namespace="",service="",route="openai",model="gpt-4-turbo",le="0.01"} 245
+zentinel_inference_cost_per_request_bucket{namespace="",service="",route="openai",model="gpt-4-turbo",le="0.1"} 892
+zentinel_inference_cost_per_request_bucket{namespace="",service="",route="openai",model="gpt-4-turbo",le="1.0"} 1050
+zentinel_inference_cost_per_request_bucket{namespace="",service="",route="openai",model="gpt-4-turbo",le="+Inf"} 1052
 ```
 
 ## Best Practices
@@ -1629,7 +1629,7 @@ The inference health check:
 1. **Keep pricing rules updated**: Model pricing changes frequently
 2. **Use specific patterns first**: Order rules from specific to general (e.g., `gpt-4-turbo` before `gpt-4*`)
 3. **Set reasonable defaults**: Fallback pricing should be conservative (higher than expected)
-4. **Monitor cost metrics**: Track `sentinel_inference_cost_total` for spending trends
+4. **Monitor cost metrics**: Track `zentinel_inference_cost_total` for spending trends
 
 ### Model-Based Routing
 
@@ -1637,7 +1637,7 @@ The inference health check:
 2. **Set a default upstream**: Always configure `default-upstream` to handle unknown models
 3. **Use model headers**: Have clients send `x-model` header to enable routing before body parsing
 4. **Match provider to upstream**: Use `provider` override when routing to different API providers
-5. **Monitor routing metrics**: Track `sentinel_model_routing_total` to understand traffic distribution
+5. **Monitor routing metrics**: Track `zentinel_model_routing_total` to understand traffic distribution
 
 ### Fallback Routing
 
@@ -1646,7 +1646,7 @@ The inference health check:
 3. **Plan model mappings**: Map to equivalent capability models (e.g., GPT-4 → Claude Opus, not Claude Haiku)
 4. **Limit max attempts**: Set `max-attempts` to 2-3 to avoid excessive latency on failures
 5. **Test fallback paths**: Regularly verify fallback upstreams work with mapped models
-6. **Monitor exhaustion**: Alert on `sentinel_fallback_exhausted_total` to detect infrastructure issues
+6. **Monitor exhaustion**: Alert on `zentinel_fallback_exhausted_total` to detect infrastructure issues
 
 ## Default Values
 

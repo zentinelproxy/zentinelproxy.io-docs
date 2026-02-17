@@ -26,7 +26,7 @@ If you just want pooling benefits without code changes:
 
 **Before (v1):**
 ```rust
-use sentinel_agent_protocol::AgentClient;
+use zentinel_agent_protocol::AgentClient;
 
 let client = AgentClient::unix_socket(
     "proxy",
@@ -39,7 +39,7 @@ let response = client.send_event(EventType::RequestHeaders, &event).await?;
 
 **After (v2):**
 ```rust
-use sentinel_agent_protocol::v2::AgentPool;
+use zentinel_agent_protocol::v2::AgentPool;
 
 let pool = AgentPool::new();
 pool.add_agent("agent", "/var/run/agent.sock").await?;
@@ -62,17 +62,17 @@ The `AgentPool` automatically:
 ```toml
 # Cargo.toml
 [dependencies]
-sentinel-agent-protocol = "0.3"  # v2 included
+zentinel-agent-protocol = "0.3"  # v2 included
 ```
 
 ### 2. Import v2 Types
 
 ```rust
 // Before
-use sentinel_agent_protocol::{AgentClient, EventType, AgentEvent};
+use zentinel_agent_protocol::{AgentClient, EventType, AgentEvent};
 
 // After
-use sentinel_agent_protocol::v2::{
+use zentinel_agent_protocol::v2::{
     AgentPool,
     AgentPoolConfig,
     LoadBalanceStrategy,
@@ -126,7 +126,7 @@ let response = client.send_event(EventType::RequestHeaders, &event).await?;
 
 **After:**
 ```rust
-use sentinel_agent_protocol::v2::RequestHeadersEvent;
+use zentinel_agent_protocol::v2::RequestHeadersEvent;
 
 let event = RequestHeadersEvent {
     correlation_id: correlation_id.clone(),
@@ -174,7 +174,7 @@ match response.decision {
 ### 6. Add Error Handling for New Error Types
 
 ```rust
-use sentinel_agent_protocol::v2::AgentProtocolError;
+use zentinel_agent_protocol::v2::AgentProtocolError;
 
 match pool.send_request_headers("waf", &event).await {
     Ok(response) => handle_response(response),
@@ -487,7 +487,7 @@ Large bodies may need mmap buffers:
 
 ```toml
 [dependencies]
-sentinel-agent-protocol = { version = "0.3", features = ["mmap-buffers"] }
+zentinel-agent-protocol = { version = "0.3", features = ["mmap-buffers"] }
 ```
 
 ---

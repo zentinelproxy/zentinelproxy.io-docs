@@ -16,7 +16,7 @@ Complete security configuration with WAF, authentication, rate limiting, and sec
 
 ```
                          ┌─────────────────┐
-                         │    Sentinel     │
+                         │    Zentinel     │
                          └────────┬────────┘
                                   │
          ┌────────────────────────┼────────────────────────┐
@@ -30,7 +30,7 @@ Complete security configuration with WAF, authentication, rate limiting, and sec
 
 ## Configuration
 
-Create `sentinel.kdl`:
+Create `zentinel.kdl`:
 
 ```kdl
 // Security Configuration
@@ -46,8 +46,8 @@ listeners {
         address "0.0.0.0:8443"
         protocol "https"
         tls {
-            cert-file "/etc/sentinel/certs/api.crt"
-            key-file "/etc/sentinel/certs/api.key"
+            cert-file "/etc/zentinel/certs/api.crt"
+            key-file "/etc/zentinel/certs/api.key"
             min-version "TLS1.2"
         }
     }
@@ -152,7 +152,7 @@ upstreams {
 agents {
     // Web Application Firewall
     agent "waf" type="waf" {
-        unix-socket "/var/run/sentinel/waf.sock"
+        unix-socket "/var/run/zentinel/waf.sock"
         events "request_headers" "request_body"
         timeout-ms 100
         failure-mode "closed"
@@ -160,7 +160,7 @@ agents {
 
     // Authentication
     agent "auth" type="auth" {
-        unix-socket "/var/run/sentinel/auth.sock"
+        unix-socket "/var/run/zentinel/auth.sock"
         events "request_headers"
         timeout-ms 50
         failure-mode "closed"
@@ -168,7 +168,7 @@ agents {
 
     // Standard rate limiting
     agent "ratelimit" type="rate_limit" {
-        unix-socket "/var/run/sentinel/ratelimit.sock"
+        unix-socket "/var/run/zentinel/ratelimit.sock"
         events "request_headers"
         timeout-ms 20
         failure-mode "open"
@@ -176,7 +176,7 @@ agents {
 
     // Strict rate limiting for admin
     agent "ratelimit-strict" type="rate_limit" {
-        unix-socket "/var/run/sentinel/ratelimit-strict.sock"
+        unix-socket "/var/run/zentinel/ratelimit-strict.sock"
         events "request_headers"
         timeout-ms 20
         failure-mode "closed"
@@ -200,14 +200,14 @@ observability {
 ### Install Agents
 
 ```bash
-cargo install sentinel-agent-waf sentinel-agent-auth sentinel-agent-ratelimit
+cargo install zentinel-agent-waf zentinel-agent-auth zentinel-agent-ratelimit
 ```
 
 ### Start WAF Agent
 
 ```bash
-sentinel-agent-waf \
-    --socket /var/run/sentinel/waf.sock \
+zentinel-agent-waf \
+    --socket /var/run/zentinel/waf.sock \
     --paranoia-level 1 \
     --block-mode true \
     --sqli #true \
@@ -220,8 +220,8 @@ sentinel-agent-waf \
 
 ```bash
 # JWT authentication
-sentinel-agent-auth \
-    --socket /var/run/sentinel/auth.sock \
+zentinel-agent-auth \
+    --socket /var/run/zentinel/auth.sock \
     --jwt-secret "your-256-bit-secret" \
     --jwt-issuer "api.example.com" \
     --jwt-audience "api" &
@@ -231,14 +231,14 @@ sentinel-agent-auth \
 
 ```bash
 # Standard: 100 req/min
-sentinel-agent-ratelimit \
-    --socket /var/run/sentinel/ratelimit.sock \
+zentinel-agent-ratelimit \
+    --socket /var/run/zentinel/ratelimit.sock \
     --requests-per-minute 100 \
     --burst 20 &
 
 # Strict: 10 req/min for admin
-sentinel-agent-ratelimit \
-    --socket /var/run/sentinel/ratelimit-strict.sock \
+zentinel-agent-ratelimit \
+    --socket /var/run/zentinel/ratelimit-strict.sock \
     --requests-per-minute 10 \
     --burst 2 &
 ```
@@ -324,15 +324,15 @@ For full OWASP CRS support, use the ModSecurity agent:
 
 ```bash
 # Install ModSecurity agent
-cargo install sentinel-agent-modsec
+cargo install zentinel-agent-modsec
 
 # Download OWASP CRS
 git clone https://github.com/coreruleset/coreruleset /etc/modsecurity/crs
 cp /etc/modsecurity/crs/crs-setup.conf.example /etc/modsecurity/crs/crs-setup.conf
 
 # Start ModSecurity agent
-sentinel-agent-modsec \
-    --socket /var/run/sentinel/waf.sock \
+zentinel-agent-modsec \
+    --socket /var/run/zentinel/waf.sock \
     --rules /etc/modsecurity/crs/crs-setup.conf \
     --rules "/etc/modsecurity/crs/rules/*.conf" &
 ```
@@ -340,12 +340,12 @@ sentinel-agent-modsec \
 ### API Key Authentication
 
 ```bash
-sentinel-agent-auth \
-    --socket /var/run/sentinel/auth.sock \
-    --api-keys-file /etc/sentinel/api-keys.json &
+zentinel-agent-auth \
+    --socket /var/run/zentinel/auth.sock \
+    --api-keys-file /etc/zentinel/api-keys.json &
 ```
 
-Create `/etc/sentinel/api-keys.json`:
+Create `/etc/zentinel/api-keys.json`:
 
 ```json
 {
@@ -367,8 +367,8 @@ Create `/etc/sentinel/api-keys.json`:
 ### IP-Based Rate Limiting
 
 ```bash
-sentinel-agent-ratelimit \
-    --socket /var/run/sentinel/ratelimit.sock \
+zentinel-agent-ratelimit \
+    --socket /var/run/zentinel/ratelimit.sock \
     --key-by "client_ip" \
     --requests-per-minute 100 &
 ```
@@ -376,11 +376,11 @@ sentinel-agent-ratelimit \
 ### IP Denylist
 
 ```bash
-cargo install sentinel-agent-denylist
+cargo install zentinel-agent-denylist
 
-sentinel-agent-denylist \
-    --socket /var/run/sentinel/denylist.sock \
-    --file /etc/sentinel/blocked-ips.txt \
+zentinel-agent-denylist \
+    --socket /var/run/zentinel/denylist.sock \
+    --file /etc/zentinel/blocked-ips.txt \
     --cidr "10.0.0.0/8" "192.168.0.0/16" &
 ```
 
@@ -390,16 +390,16 @@ Key security metrics to monitor:
 
 ```promql
 # WAF blocks per rule
-sum by (rule) (rate(sentinel_agent_waf_blocks_total[5m]))
+sum by (rule) (rate(zentinel_agent_waf_blocks_total[5m]))
 
 # Auth failures
-rate(sentinel_agent_auth_failures_total[5m])
+rate(zentinel_agent_auth_failures_total[5m])
 
 # Rate limit hits
-rate(sentinel_agent_ratelimit_limited_total[5m])
+rate(zentinel_agent_ratelimit_limited_total[5m])
 
 # Blocked requests (all agents)
-sum(rate(sentinel_requests_total{blocked="true"}[5m]))
+sum(rate(zentinel_requests_total{blocked="true"}[5m]))
 ```
 
 ## Incident Response
@@ -408,10 +408,10 @@ sum(rate(sentinel_requests_total{blocked="true"}[5m]))
 
 ```bash
 # Add to denylist
-echo "1.2.3.4" >> /etc/sentinel/blocked-ips.txt
+echo "1.2.3.4" >> /etc/zentinel/blocked-ips.txt
 
 # Reload denylist agent
-kill -HUP $(pgrep sentinel-agent-denylist)
+kill -HUP $(pgrep zentinel-agent-denylist)
 ```
 
 ### Enable Detect-Only Mode
@@ -419,8 +419,8 @@ kill -HUP $(pgrep sentinel-agent-denylist)
 For investigating #false positives without blocking:
 
 ```bash
-sentinel-agent-waf \
-    --socket /var/run/sentinel/waf.sock \
+zentinel-agent-waf \
+    --socket /var/run/zentinel/waf.sock \
     --block-mode #false &  # Detect only, don't block
 ```
 

@@ -17,7 +17,7 @@ A complete API gateway configuration with versioned APIs, authentication, rate l
 
 ```
                     ┌─────────────────┐
-                    │    Sentinel     │
+                    │    Zentinel     │
                     │   API Gateway   │
                     └────────┬────────┘
                              │
@@ -32,7 +32,7 @@ A complete API gateway configuration with versioned APIs, authentication, rate l
 
 ## Configuration
 
-Create `sentinel.kdl`:
+Create `zentinel.kdl`:
 
 ```kdl
 // API Gateway Configuration
@@ -48,8 +48,8 @@ listeners {
         address "0.0.0.0:8443"
         protocol "https"
         tls {
-            cert-file "/etc/sentinel/certs/api.crt"
-            key-file "/etc/sentinel/certs/api.key"
+            cert-file "/etc/zentinel/certs/api.crt"
+            key-file "/etc/zentinel/certs/api.key"
         }
     }
     listener "http" {
@@ -172,14 +172,14 @@ upstreams {
 
 agents {
     agent "auth" {
-        unix-socket path="/var/run/sentinel/auth.sock"
+        unix-socket path="/var/run/zentinel/auth.sock"
         events "request_headers"
         timeout-ms 100
         failure-mode "closed"
     }
 
     agent "ratelimit" {
-        unix-socket path="/var/run/sentinel/ratelimit.sock"
+        unix-socket path="/var/run/zentinel/ratelimit.sock"
         events "request_headers"
         timeout-ms 50
         failure-mode "open"
@@ -209,21 +209,21 @@ observability {
 ### 1. Install Agents
 
 ```bash
-cargo install sentinel-agent-auth sentinel-agent-ratelimit
+cargo install zentinel-agent-auth zentinel-agent-ratelimit
 ```
 
 ### 2. Start Agents
 
 ```bash
 # Auth agent with JWT validation
-sentinel-agent-auth \
-  --socket /var/run/sentinel/auth.sock \
+zentinel-agent-auth \
+  --socket /var/run/zentinel/auth.sock \
   --jwt-secret "your-secret-key" \
   --jwt-issuer "api.example.com" &
 
 # Rate limit agent
-sentinel-agent-ratelimit \
-  --socket /var/run/sentinel/ratelimit.sock \
+zentinel-agent-ratelimit \
+  --socket /var/run/zentinel/ratelimit.sock \
   --requests-per-minute 100 \
   --burst 20 &
 ```
@@ -239,10 +239,10 @@ node api-v2/server.js --port 3001 &
 node api-v1/server.js --port 3010 &
 ```
 
-### 4. Run Sentinel
+### 4. Run Zentinel
 
 ```bash
-sentinel -c sentinel.kdl
+zentinel -c zentinel.kdl
 ```
 
 ## Testing
@@ -296,9 +296,9 @@ Sunset: 2025-12-31
 
 ```bash
 # Run auth agent with API keys
-sentinel-agent-auth \
-  --socket /var/run/sentinel/auth.sock \
-  --api-keys-file /etc/sentinel/api-keys.json
+zentinel-agent-auth \
+  --socket /var/run/zentinel/auth.sock \
+  --api-keys-file /etc/zentinel/api-keys.json
 ```
 
 ### Per-Route Rate Limits
@@ -320,14 +320,14 @@ listeners {
 agents {
     agent "ratelimit-standard" {
         type "custom"
-        unix-socket path="/var/run/sentinel/ratelimit-standard.sock"
+        unix-socket path="/var/run/zentinel/ratelimit-standard.sock"
         events "request_headers"
         timeout-ms 50
     }
 
     agent "ratelimit-premium" {
         type "custom"
-        unix-socket path="/var/run/sentinel/ratelimit-premium.sock"
+        unix-socket path="/var/run/zentinel/ratelimit-premium.sock"
         events "request_headers"
         timeout-ms 50
     }

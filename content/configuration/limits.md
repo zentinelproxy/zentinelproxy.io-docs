@@ -456,16 +456,16 @@ limits {
 
 ### Metrics
 
-Sentinel exposes limit-related metrics:
+Zentinel exposes limit-related metrics:
 
 ```
-sentinel_header_size_exceeded_total
-sentinel_body_size_exceeded_total
-sentinel_connection_limit_reached_total
-sentinel_rate_limit_exceeded_total
-sentinel_memory_usage_bytes
-sentinel_connections_active
-sentinel_requests_in_flight
+zentinel_header_size_exceeded_total
+zentinel_body_size_exceeded_total
+zentinel_connection_limit_reached_total
+zentinel_rate_limit_exceeded_total
+zentinel_memory_usage_bytes
+zentinel_connections_active
+zentinel_requests_in_flight
 ```
 
 ### Logging
@@ -491,7 +491,7 @@ Request body exceeds `max-body-size-bytes`:
 
 ```bash
 # Check current limit
-grep max-body-size sentinel.kdl
+grep max-body-size zentinel.kdl
 
 # Increase for specific route
 route "upload" {

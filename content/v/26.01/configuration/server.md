@@ -64,7 +64,7 @@ server {
 }
 ```
 
-When Sentinel receives SIGTERM or SIGINT:
+When Zentinel receives SIGTERM or SIGINT:
 
 1. Stop accepting new connections
 2. Wait for in-flight requests to complete
@@ -101,7 +101,7 @@ server {
 }
 ```
 
-When enabled, Sentinel watches the configuration file and automatically reloads on changes.
+When enabled, Zentinel watches the configuration file and automatically reloads on changes.
 
 **Default**: `false`
 
@@ -116,11 +116,11 @@ Reload triggers:
 ```kdl
 server {
     daemon true
-    pid-file "/var/run/sentinel.pid"
+    pid-file "/var/run/zentinel.pid"
 }
 ```
 
-Run Sentinel as a background daemon:
+Run Zentinel as a background daemon:
 - Detaches from terminal
 - Writes PID to file for process management
 
@@ -128,8 +128,8 @@ Run Sentinel as a background daemon:
 
 ```kdl
 server {
-    user "sentinel"
-    group "sentinel"
+    user "zentinel"
+    group "zentinel"
 }
 ```
 
@@ -144,7 +144,7 @@ Drop privileges after binding to ports. Useful when binding to privileged ports 
 
 ```kdl
 server {
-    working-directory "/var/lib/sentinel"
+    working-directory "/var/lib/zentinel"
 }
 ```
 
@@ -169,10 +169,10 @@ server {
 
     // Process management (production)
     daemon true
-    pid-file "/var/run/sentinel.pid"
-    user "sentinel"
-    group "sentinel"
-    working-directory "/var/lib/sentinel"
+    pid-file "/var/run/zentinel.pid"
+    user "zentinel"
+    group "zentinel"
+    working-directory "/var/lib/zentinel"
 }
 ```
 
@@ -182,8 +182,8 @@ Server settings can be overridden via environment variables:
 
 | Variable | Setting |
 |----------|---------|
-| `SENTINEL_WORKERS` | `worker-threads` |
-| `SENTINEL_MAX_CONNECTIONS` | `max-connections` |
+| `ZENTINEL_WORKERS` | `worker-threads` |
+| `ZENTINEL_MAX_CONNECTIONS` | `max-connections` |
 
 Environment variables take precedence over config file values.
 

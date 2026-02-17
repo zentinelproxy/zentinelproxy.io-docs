@@ -5,7 +5,7 @@ sort_by = "weight"
 template = "section.html"
 +++
 
-Supplementary reference material for Sentinel.
+Supplementary reference material for Zentinel.
 
 ## Contents
 

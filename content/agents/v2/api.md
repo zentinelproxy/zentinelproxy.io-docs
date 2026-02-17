@@ -8,7 +8,7 @@ This document covers the v2 APIs for building agent integrations with connection
 ## Quick Start
 
 ```rust
-use sentinel_agent_protocol::v2::{AgentPool, AgentPoolConfig, LoadBalanceStrategy};
+use zentinel_agent_protocol::v2::{AgentPool, AgentPoolConfig, LoadBalanceStrategy};
 use std::time::Duration;
 
 #[tokio::main]
@@ -43,7 +43,7 @@ The `AgentPool` is the primary interface for v2 agent communication. It manages 
 ### Creating a Pool
 
 ```rust
-use sentinel_agent_protocol::v2::{AgentPool, AgentPoolConfig, LoadBalanceStrategy};
+use zentinel_agent_protocol::v2::{AgentPool, AgentPoolConfig, LoadBalanceStrategy};
 
 // Default configuration
 let pool = AgentPool::new();
@@ -70,7 +70,7 @@ pool.add_agent("waf", "localhost:50051").await?;
 pool.add_agent("remote-waf", "waf.internal:50051").await?;
 
 // UDS agent (detected by path format)
-pool.add_agent("auth", "/var/run/sentinel/auth.sock").await?;
+pool.add_agent("auth", "/var/run/zentinel/auth.sock").await?;
 
 // Explicit transport selection
 pool.add_grpc_agent("waf", "localhost:50051", tls_config).await?;
@@ -80,7 +80,7 @@ pool.add_uds_agent("auth", "/var/run/auth.sock").await?;
 ### Sending Requests
 
 ```rust
-use sentinel_agent_protocol::v2::RequestHeaders;
+use zentinel_agent_protocol::v2::RequestHeaders;
 
 let headers = RequestHeaders {
     request_id: 1,
@@ -143,7 +143,7 @@ Low-level gRPC client for direct use without pooling.
 ### Creating a Client
 
 ```rust
-use sentinel_agent_protocol::v2::AgentClientV2;
+use zentinel_agent_protocol::v2::AgentClientV2;
 
 let client = AgentClientV2::connect(
     "waf-agent",
@@ -182,11 +182,11 @@ Low-level UDS client for direct use without pooling.
 ### Creating a Client
 
 ```rust
-use sentinel_agent_protocol::v2::AgentClientV2Uds;
+use zentinel_agent_protocol::v2::AgentClientV2Uds;
 
 let client = AgentClientV2Uds::connect(
     "auth-agent",
-    "/var/run/sentinel/auth.sock",
+    "/var/run/zentinel/auth.sock",
     Duration::from_secs(30),
 ).await?;
 ```
@@ -213,7 +213,7 @@ Accepts inbound connections from agents.
 ### Creating a Listener
 
 ```rust
-use sentinel_agent_protocol::v2::{ReverseConnectionListener, ReverseConnectionConfig};
+use zentinel_agent_protocol::v2::{ReverseConnectionListener, ReverseConnectionConfig};
 
 let config = ReverseConnectionConfig {
     handshake_timeout: Duration::from_secs(10),
@@ -223,7 +223,7 @@ let config = ReverseConnectionConfig {
 };
 
 let listener = ReverseConnectionListener::bind_uds(
-    "/var/run/sentinel/agents.sock",
+    "/var/run/zentinel/agents.sock",
     config,
 ).await?;
 ```
@@ -366,7 +366,7 @@ The library provides zero-allocation header handling for common HTTP headers.
 Pre-defined static strings for standard headers avoid allocations:
 
 ```rust
-use sentinel_agent_protocol::headers::names;
+use zentinel_agent_protocol::headers::names;
 
 // Use static strings directly
 let content_type = names::CONTENT_TYPE;      // "content-type"
@@ -379,7 +379,7 @@ let x_request_id = names::X_REQUEST_ID;      // "x-request-id"
 The `intern_header_name` function returns borrowed references for known headers:
 
 ```rust
-use sentinel_agent_protocol::headers::intern_header_name;
+use zentinel_agent_protocol::headers::intern_header_name;
 use std::borrow::Cow;
 
 let name = intern_header_name("Content-Type");
@@ -394,7 +394,7 @@ let custom = intern_header_name("X-Custom-Header");
 For high-throughput scenarios, use `CowHeaderMap` to minimize allocations:
 
 ```rust
-use sentinel_agent_protocol::headers::{CowHeaderMap, CowHeaderName, intern_header_name};
+use zentinel_agent_protocol::headers::{CowHeaderMap, CowHeaderName, intern_header_name};
 
 let mut headers: CowHeaderMap = CowHeaderMap::new();
 headers.insert(intern_header_name("content-type"), vec!["application/json".into()]);
@@ -429,13 +429,13 @@ For large request/response bodies, memory-mapped buffers minimize heap allocatio
 **Feature flag required:**
 ```toml
 [dependencies]
-sentinel-agent-protocol = { version = "0.3", features = ["mmap-buffers"] }
+zentinel-agent-protocol = { version = "0.3", features = ["mmap-buffers"] }
 ```
 
 ### Basic Usage
 
 ```rust
-use sentinel_agent_protocol::mmap_buffer::{LargeBodyBuffer, LargeBodyBufferConfig};
+use zentinel_agent_protocol::mmap_buffer::{LargeBodyBuffer, LargeBodyBufferConfig};
 
 // Configure threshold for switching to mmap
 let config = LargeBodyBufferConfig {
@@ -499,7 +499,7 @@ let data = buffer.as_slice()?;
 ### Before (v1)
 
 ```rust
-use sentinel_agent_protocol::AgentClient;
+use zentinel_agent_protocol::AgentClient;
 
 let client = AgentClient::unix_socket(
     "proxy",
@@ -513,7 +513,7 @@ let response = client.send_event(EventType::RequestHeaders, &event).await?;
 ### After (v2 with pooling)
 
 ```rust
-use sentinel_agent_protocol::v2::AgentPool;
+use zentinel_agent_protocol::v2::AgentPool;
 
 let pool = AgentPool::new();
 pool.add_agent("agent", "/tmp/agent.sock").await?;

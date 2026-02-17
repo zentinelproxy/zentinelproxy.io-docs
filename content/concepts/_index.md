@@ -5,17 +5,17 @@ sort_by = "weight"
 template = "section.html"
 +++
 
-Understanding Sentinel's architecture and design principles.
+Understanding Zentinel's architecture and design principles.
 
 ## Overview
 
-Sentinel is a high-performance reverse proxy built on [Cloudflare's Pingora](https://github.com/cloudflare/pingora) framework. It provides a flexible agent-based architecture for implementing security controls, traffic management, and custom request processing.
+Zentinel is a high-performance reverse proxy built on [Cloudflare's Pingora](https://github.com/cloudflare/pingora) framework. It provides a flexible agent-based architecture for implementing security controls, traffic management, and custom request processing.
 
 ## Key Concepts
 
 | Concept | Description |
 |---------|-------------|
-| **Proxy** | The core Sentinel process that handles incoming requests |
+| **Proxy** | The core Zentinel process that handles incoming requests |
 | **Listener** | A network endpoint (IP:port) that accepts connections |
 | **Route** | Rules that match requests and direct them to upstreams |
 | **Upstream** | A group of backend servers that handle requests |
@@ -37,7 +37,7 @@ Sentinel is a high-performance reverse proxy built on [Cloudflare's Pingora](htt
 | [Pingora Foundation](pingora/) | Understanding the Pingora framework |
 | [Request Flow](request-flow/) | How requests traverse the proxy |
 | [Routing](routing/) | Request matching and forwarding rules |
-| [Comparison](comparison/) | How Sentinel compares to Envoy, HAProxy, and Nginx |
+| [Comparison](comparison/) | How Zentinel compares to Envoy, HAProxy, and Nginx |
 
 ## Recommended Reading Order
 

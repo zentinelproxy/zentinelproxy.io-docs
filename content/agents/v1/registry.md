@@ -3,13 +3,13 @@ title = "Agent Registry"
 weight = 1
 +++
 
-Sentinel has a growing ecosystem of agents for security, traffic management, and custom logic. This page catalogs official agents maintained by the Sentinel team and community-contributed agents.
+Zentinel has a growing ecosystem of agents for security, traffic management, and custom logic. This page catalogs official agents maintained by the Zentinel team and community-contributed agents.
 
-> **Browse the full registry at [sentinel.raskell.io/agents](https://sentinel.raskell.io/agents/)**
+> **Browse the full registry at [zentinelproxy.io/agents](https://zentinelproxy.io/agents/)**
 
 ## Official Agents
 
-Official agents are maintained by the Sentinel Core Team and follow strict quality, security, and compatibility standards.
+Official agents are maintained by the Zentinel Core Team and follow strict quality, security, and compatibility standards.
 
 ### Stable
 
@@ -50,7 +50,7 @@ On the roadmap for future development.
 
 ## Built-in Reference Agents
 
-The Sentinel repository includes reference implementations for testing and as templates:
+The Zentinel repository includes reference implementations for testing and as templates:
 
 ### Echo Agent
 
@@ -58,13 +58,13 @@ A simple agent that echoes request metadata back as headers. Useful for testing 
 
 ```bash
 # Run with Unix socket
-sentinel-echo-agent --socket /tmp/echo.sock
+zentinel-echo-agent --socket /tmp/echo.sock
 
 # Run with gRPC
-sentinel-echo-agent --grpc 0.0.0.0:50051
+zentinel-echo-agent --grpc 0.0.0.0:50051
 ```
 
-**Source:** [`agents/echo/`](https://github.com/raskell-io/sentinel/tree/main/agents/echo)
+**Source:** [`agents/echo/`](https://github.com/zentinelproxy/zentinel/tree/main/agents/echo)
 
 ### Features
 
@@ -75,18 +75,18 @@ sentinel-echo-agent --grpc 0.0.0.0:50051
 
 ## Community Agents
 
-Community agents are created and maintained by the Sentinel community. They follow the agent protocol specification but are not officially supported.
+Community agents are created and maintained by the Zentinel community. They follow the agent protocol specification but are not officially supported.
 
 > **No community agents registered yet.**
 >
-> Want to contribute? [Submit your agent](https://github.com/raskell-io/sentinel/issues/new?template=community-agent.md) to the registry!
+> Want to contribute? [Submit your agent](https://github.com/zentinelproxy/zentinel/issues/new?template=community-agent.md) to the registry!
 
 ### Submission Requirements
 
 To submit a community agent:
 
 1. Implement the [Agent Protocol](protocol/)
-2. Include a `sentinel-agent.toml` manifest
+2. Include a `zentinel-agent.toml` manifest
 3. Provide documentation and examples
 4. Open an issue with the `community-agent` template
 
@@ -95,7 +95,7 @@ To submit a community agent:
 Every agent should include a manifest file:
 
 ```toml
-# sentinel-agent.toml
+# zentinel-agent.toml
 [agent]
 name = "my-awesome-agent"
 version = "0.1.0"
@@ -109,25 +109,25 @@ version = "1"
 events = ["request_headers", "response_headers"]
 
 [compatibility]
-sentinel-proxy = ">=0.1.0"
-sentinel-agent-protocol = "0.1"
+zentinel-proxy = ">=0.1.0"
+zentinel-agent-protocol = "0.1"
 
 [registry]
 homepage = "https://example.com/my-agent"
 documentation = "https://docs.example.com/my-agent"
-keywords = ["sentinel", "agent", "awesome"]
+keywords = ["zentinel", "agent", "awesome"]
 categories = ["security"]  # security, traffic, observability, custom
 ```
 
 ## Agent Configuration
 
-Configure agents in your `sentinel.kdl`:
+Configure agents in your `zentinel.kdl`:
 
 ```kdl
 agents {
     // Official auth agent
     agent "auth" type="auth" {
-        unix-socket "/var/run/sentinel/auth.sock"
+        unix-socket "/var/run/zentinel/auth.sock"
         events "request_headers"
         timeout-ms 100
         failure-mode "closed"  // Block if agent fails

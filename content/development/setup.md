@@ -3,7 +3,7 @@ title = "Development Setup"
 weight = 2
 +++
 
-Configure your development environment for working on Sentinel.
+Configure your development environment for working on Zentinel.
 
 ## IDE Configuration
 
@@ -42,10 +42,10 @@ Create `.vscode/launch.json` for debugging:
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug Sentinel",
+            "name": "Debug Zentinel",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}/target/debug/sentinel",
+            "program": "${workspaceFolder}/target/debug/zentinel",
             "args": ["-c", "examples/simple.kdl"],
             "cwd": "${workspaceFolder}"
         },
@@ -154,7 +154,7 @@ Create a `.env` file for development:
 
 ```bash
 # Logging
-RUST_LOG=sentinel=debug,tower=info
+RUST_LOG=zentinel=debug,tower=info
 
 # Backtrace for panics
 RUST_BACKTRACE=1
@@ -178,7 +178,7 @@ brew install direnv  # macOS
 sudo apt install direnv  # Ubuntu
 
 # Create .envrc
-echo 'export RUST_LOG=sentinel=debug' > .envrc
+echo 'export RUST_LOG=zentinel=debug' > .envrc
 echo 'export RUST_BACKTRACE=1' >> .envrc
 
 # Allow the directory
@@ -257,11 +257,11 @@ rustflags = ["-C", "link-arg=-fuse-ld=lld"]
 For agent development, consider this layout:
 
 ```
-sentinel-workspace/
-├── sentinel/                    # Main proxy
-├── sentinel-agent-protocol/     # Shared protocol
-├── sentinel-agent-waf/          # WAF agent
-├── sentinel-agent-auth/         # Auth agent
+zentinel-workspace/
+├── zentinel/                    # Main proxy
+├── zentinel-agent-protocol/     # Shared protocol
+├── zentinel-agent-waf/          # WAF agent
+├── zentinel-agent-auth/         # Auth agent
 └── Cargo.toml                   # Workspace manifest
 ```
 
@@ -270,10 +270,10 @@ Workspace `Cargo.toml`:
 ```toml
 [workspace]
 members = [
-    "sentinel",
-    "sentinel-agent-protocol",
-    "sentinel-agent-waf",
-    "sentinel-agent-auth",
+    "zentinel",
+    "zentinel-agent-protocol",
+    "zentinel-agent-waf",
+    "zentinel-agent-auth",
 ]
 resolver = "2"
 
@@ -285,14 +285,14 @@ tracing = "0.1"
 
 ## Development Server
 
-Run Sentinel with live reload:
+Run Zentinel with live reload:
 
 ```bash
 # Terminal 1: Watch and rebuild
 cargo watch -x build
 
 # Terminal 2: Run (restart manually on rebuild)
-./target/debug/sentinel -c examples/dev.kdl
+./target/debug/zentinel -c examples/dev.kdl
 ```
 
 Or use `systemfd` for socket handoff:

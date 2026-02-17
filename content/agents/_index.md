@@ -5,11 +5,11 @@ sort_by = "weight"
 template = "section.html"
 +++
 
-Agents are the primary extension mechanism for Sentinel. They allow you to add custom logic, security policies, and integrations without modifying the core proxy.
+Agents are the primary extension mechanism for Zentinel. They allow you to add custom logic, security policies, and integrations without modifying the core proxy.
 
 ## Protocol Versions
 
-Sentinel supports two protocol versions for agent communication:
+Zentinel supports two protocol versions for agent communication:
 
 | Version | Status | Recommendation |
 |---------|--------|----------------|
@@ -43,7 +43,7 @@ Protocol v2 introduces significant enhancements:
 
 ## What Are Agents?
 
-Agents are **external processes** that communicate with Sentinel over a well-defined protocol. When a request flows through Sentinel, configured agents receive events at key lifecycle points and can:
+Agents are **external processes** that communicate with Zentinel over a well-defined protocol. When a request flows through Zentinel, configured agents receive events at key lifecycle points and can:
 
 - **Inspect** request/response headers and bodies
 - **Modify** headers, routing metadata, and more
@@ -52,7 +52,7 @@ Agents are **external processes** that communicate with Sentinel over a well-def
 
 ```
 ┌───────────────────────────────────────────────────────────────────────────┐
-│                             Sentinel Proxy                                 │
+│                             Zentinel Proxy                                 │
 │  ┌─────────────────────────────────────────────────────────────────────┐  │
 │  │                          Agent Manager                               │  │
 │  │  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────┐        │  │
@@ -72,19 +72,19 @@ Agents are **external processes** that communicate with Sentinel over a well-def
 
 ## Why External Agents?
 
-Sentinel's architecture keeps the dataplane minimal and predictable:
+Zentinel's architecture keeps the dataplane minimal and predictable:
 
 | Benefit | Description |
 |---------|-------------|
 | **Isolation** | A buggy or crashing agent cannot take down the proxy |
-| **Independent Deployment** | Update agents without restarting Sentinel |
+| **Independent Deployment** | Update agents without restarting Zentinel |
 | **Language Flexibility** | Write agents in any language with gRPC or Unix socket support |
-| **Circuit Breakers** | Sentinel protects itself from slow or failing agents |
+| **Circuit Breakers** | Zentinel protects itself from slow or failing agents |
 | **Horizontal Scaling** | Run agents as separate services for high availability |
 
 ## Transport Options
 
-Agents can communicate with Sentinel via multiple transports:
+Agents can communicate with Zentinel via multiple transports:
 
 | Transport | Protocol | Best For |
 |-----------|----------|----------|
@@ -99,7 +99,7 @@ Agents can communicate with Sentinel via multiple transports:
 agents {
     // v2 Unix socket agent with pooling
     agent "auth-agent" type="auth" {
-        unix-socket "/var/run/sentinel/auth.sock"
+        unix-socket "/var/run/zentinel/auth.sock"
         protocol-version 2
         connections 4
         events "request_headers"
@@ -124,7 +124,7 @@ agents {
 
 // v2 reverse connection listener
 reverse-listener {
-    path "/var/run/sentinel/agents.sock"
+    path "/var/run/zentinel/agents.sock"
     max-connections-per-agent 4
     handshake-timeout "10s"
 }
@@ -140,10 +140,10 @@ routes {
 
 ## Building Your Own Agent
 
-The easiest way to build a custom agent is with the **Sentinel Agent SDK**:
+The easiest way to build a custom agent is with the **Zentinel Agent SDK**:
 
 ```rust
-use sentinel_agent_protocol::v2::{AgentPool, AgentPoolConfig};
+use zentinel_agent_protocol::v2::{AgentPool, AgentPoolConfig};
 
 // v2 with connection pooling
 let pool = AgentPool::new();

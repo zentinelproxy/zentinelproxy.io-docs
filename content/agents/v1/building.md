@@ -3,26 +3,26 @@ title = "Building Agents"
 weight = 3
 +++
 
-This guide covers two approaches to building Sentinel agents:
+This guide covers two approaches to building Zentinel agents:
 
 1. **SDK (Recommended)** - High-level, ergonomic API with less boilerplate
 2. **Low-level Protocol** - Direct protocol access for maximum control
 
 ## Using the SDK (Recommended)
 
-The [Sentinel Agent SDK](https://github.com/raskell-io/sentinel-agent-sdk) provides a high-level API that handles protocol details, connection management, CLI parsing, and logging automatically.
+The [Zentinel Agent SDK](https://github.com/zentinelproxy/zentinel-agent-sdk) provides a high-level API that handles protocol details, connection management, CLI parsing, and logging automatically.
 
 ### Add Dependency
 
 ```toml
 [dependencies]
-sentinel-agent-sdk = { git = "https://github.com/raskell-io/sentinel-agent-sdk" }
+zentinel-agent-sdk = { git = "https://github.com/zentinelproxy/zentinel-agent-sdk" }
 ```
 
 ### Implement Your Agent
 
 ```rust
-use sentinel_agent_sdk::prelude::*;
+use zentinel_agent_sdk::prelude::*;
 
 struct MyAgent;
 
@@ -97,7 +97,7 @@ For more control, use the low-level protocol directly. The fastest way to start 
 cargo install cargo-generate
 
 # Generate from template
-cargo generate --git https://github.com/raskell-io/sentinel --path agent-template
+cargo generate --git https://github.com/zentinelproxy/zentinel --path agent-template
 
 # Follow prompts for project name and description
 ```
@@ -121,8 +121,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-# Sentinel agent protocol
-sentinel-agent-protocol = "0.1"
+# Zentinel agent protocol
+zentinel-agent-protocol = "0.1"
 
 # Async runtime
 tokio = { version = "1", features = ["full"] }
@@ -147,7 +147,7 @@ The core of every agent is the `AgentHandler` trait:
 
 ```rust
 use async_trait::async_trait;
-use sentinel_agent_protocol::{
+use zentinel_agent_protocol::{
     AgentHandler, AgentResponse, AuditMetadata, HeaderOp,
     ConfigureEvent, RequestHeadersEvent, RequestBodyChunkEvent,
     ResponseHeadersEvent, ResponseBodyChunkEvent,
@@ -201,7 +201,7 @@ use std::path::PathBuf;
 use anyhow::{Context, Result};
 use clap::Parser;
 use tracing::info;
-use sentinel_agent_protocol::{AgentServer, GrpcAgentServer};
+use zentinel_agent_protocol::{AgentServer, GrpcAgentServer};
 
 mod handler;
 use handler::MyAgent;
@@ -511,13 +511,13 @@ CMD ["--grpc", "0.0.0.0:50051"]
 ```ini
 # /etc/systemd/system/my-agent.service
 [Unit]
-Description=My Sentinel Agent
+Description=My Zentinel Agent
 After=network.target
 
 [Service]
 Type=simple
-User=sentinel
-ExecStart=/usr/local/bin/my-agent --socket /var/run/sentinel/my-agent.sock
+User=zentinel
+ExecStart=/usr/local/bin/my-agent --socket /var/run/zentinel/my-agent.sock
 Restart=always
 RestartSec=5
 
@@ -527,12 +527,12 @@ WantedBy=multi-user.target
 
 ## Proxy Configuration
 
-Configure Sentinel to use your agent:
+Configure Zentinel to use your agent:
 
 ```kdl
 agents {
     agent "my-agent" type="custom" {
-        unix-socket "/var/run/sentinel/my-agent.sock"
+        unix-socket "/var/run/zentinel/my-agent.sock"
         // Or for gRPC:
         // grpc "http://localhost:50051"
 
@@ -559,7 +559,7 @@ routes {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sentinel_agent_protocol::Decision;
+    use zentinel_agent_protocol::Decision;
 
     #[tokio::test]
     async fn test_allows_normal_requests() {
@@ -617,7 +617,7 @@ grpcurl -plaintext \
       "uri": "/api/test"
     }
   }' \
-  127.0.0.1:50051 sentinel.agent.v1.AgentProcessor/ProcessEvent
+  127.0.0.1:50051 zentinel.agent.v1.AgentProcessor/ProcessEvent
 ```
 
 ## Best Practices
@@ -681,7 +681,7 @@ package main
 import (
     "context"
     "net"
-    pb "github.com/your-org/sentinel-proto"
+    pb "github.com/your-org/zentinel-proto"
     "google.golang.org/grpc"
 )
 

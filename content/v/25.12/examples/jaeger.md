@@ -14,7 +14,7 @@ WebSocket proxying with frame inspection, security controls, and real-time monit
 
 ## Configuration
 
-Create `sentinel.kdl`:
+Create `zentinel.kdl`:
 
 ```kdl
 // WebSocket Configuration
@@ -30,8 +30,8 @@ listeners {
         address "0.0.0.0:8443"
         protocol "https"
         tls {
-            cert-file "/etc/sentinel/certs/ws.crt"
-            key-file "/etc/sentinel/certs/ws.key"
+            cert-file "/etc/zentinel/certs/ws.crt"
+            key-file "/etc/zentinel/certs/ws.key"
         }
     }
     listener "http" {
@@ -104,7 +104,7 @@ upstreams {
 agents {
     agent "ws-inspector" {
         transport "unix_socket" {
-            path "/var/run/sentinel/ws-inspector.sock"
+            path "/var/run/zentinel/ws-inspector.sock"
         }
         events ["websocket_frame"]
         timeout-ms 50
@@ -113,7 +113,7 @@ agents {
 
     agent "auth" {
         transport "unix_socket" {
-            path "/var/run/sentinel/auth.sock"
+            path "/var/run/zentinel/auth.sock"
         }
         events ["request_headers"]
         timeout-ms 50
@@ -138,14 +138,14 @@ observability {
 ### Install WebSocket Inspector
 
 ```bash
-cargo install sentinel-agent-websocket-inspector
+cargo install zentinel-agent-websocket-inspector
 ```
 
 ### Start WebSocket Inspector
 
 ```bash
-sentinel-agent-websocket-inspector \
-    --socket /var/run/sentinel/ws-inspector.sock \
+zentinel-agent-websocket-inspector \
+    --socket /var/run/zentinel/ws-inspector.sock \
     --xss-detection true \
     --sqli-detection true \
     --max-message-size 1048576 \
@@ -260,7 +260,7 @@ routes {
 
 ## Socket.io Support
 
-Sentinel supports Socket.io's WebSocket transport:
+Zentinel supports Socket.io's WebSocket transport:
 
 ```javascript
 import { io } from 'socket.io-client';
@@ -283,12 +283,12 @@ socket.on('connect', () => {
 Validate WebSocket messages against a JSON Schema:
 
 ```bash
-sentinel-agent-websocket-inspector \
-    --socket /var/run/sentinel/ws-inspector.sock \
-    --json-schema /etc/sentinel/ws-schema.json &
+zentinel-agent-websocket-inspector \
+    --socket /var/run/zentinel/ws-inspector.sock \
+    --json-schema /etc/zentinel/ws-schema.json &
 ```
 
-Create `/etc/sentinel/ws-schema.json`:
+Create `/etc/zentinel/ws-schema.json`:
 
 ```json
 {
@@ -333,16 +333,16 @@ Key WebSocket metrics:
 
 ```promql
 # Active connections
-sentinel_websocket_connections_active
+zentinel_websocket_connections_active
 
 # Messages per second
-rate(sentinel_websocket_messages_total[5m])
+rate(zentinel_websocket_messages_total[5m])
 
 # Connection duration
-histogram_quantile(0.95, sentinel_websocket_connection_duration_seconds_bucket)
+histogram_quantile(0.95, zentinel_websocket_connection_duration_seconds_bucket)
 
 # Blocked frames
-rate(sentinel_agent_ws_blocked_total[5m])
+rate(zentinel_agent_ws_blocked_total[5m])
 ```
 
 ## Multi-Room Chat Example
@@ -380,7 +380,7 @@ routes {
 agents {
     agent "ws-inspector" {
         transport "unix_socket" {
-            path "/var/run/sentinel/ws-inspector.sock"
+            path "/var/run/zentinel/ws-inspector.sock"
         }
         events ["websocket_frame"]
         timeout-ms 20

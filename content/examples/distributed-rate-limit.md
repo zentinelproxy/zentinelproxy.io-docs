@@ -3,11 +3,11 @@ title = "Distributed Rate Limiting"
 weight = 15
 +++
 
-Configure distributed rate limiting across multiple Sentinel instances using Redis or Memcached backends. This example shows how to implement consistent rate limiting in multi-instance deployments.
+Configure distributed rate limiting across multiple Zentinel instances using Redis or Memcached backends. This example shows how to implement consistent rate limiting in multi-instance deployments.
 
 ## Use Case
 
-- Rate limit across multiple Sentinel instances
+- Rate limit across multiple Zentinel instances
 - Per-client, per-API-key, or per-organization limits
 - Tiered rate limits for different user types
 - Graceful degradation with delay instead of reject
@@ -24,7 +24,7 @@ Configure distributed rate limiting across multiple Sentinel instances using Red
          │                   │                   │
          ▼                   ▼                   ▼
     ┌─────────┐        ┌─────────┐        ┌─────────┐
-    │Sentinel │        │Sentinel │        │Sentinel │
+    │Zentinel │        │Zentinel │        │Zentinel │
     │  :8080  │        │  :8080  │        │  :8080  │
     └────┬────┘        └────┬────┘        └────┬────┘
          │                  │                  │
@@ -38,7 +38,7 @@ Configure distributed rate limiting across multiple Sentinel instances using Red
 
 ## Configuration
 
-Create `sentinel.kdl`:
+Create `zentinel.kdl`:
 
 ```kdl
 // Distributed Rate Limiting Configuration
@@ -98,7 +98,7 @@ filters {
         // Redis backend for distributed counting
         backend "redis"
         redis-url "redis://redis-cluster.internal:6379"
-        redis-prefix "sentinel:ratelimit:"
+        redis-prefix "zentinel:ratelimit:"
         redis-pool-size 10
         redis-timeout-ms 50
         redis-fallback-local #true  // Fall back to local if Redis unavailable
@@ -115,7 +115,7 @@ filters {
 
         backend "redis"
         redis-url "redis://redis-cluster.internal:6379"
-        redis-prefix "sentinel:api-ratelimit:"
+        redis-prefix "zentinel:api-ratelimit:"
         redis-pool-size 20
         redis-timeout-ms 100
         redis-fallback-local #true
@@ -133,7 +133,7 @@ filters {
 
         backend "redis"
         redis-url "redis://redis-cluster.internal:6379"
-        redis-prefix "sentinel:delay-ratelimit:"
+        redis-prefix "zentinel:delay-ratelimit:"
         redis-pool-size 10
         redis-timeout-ms 50
         redis-fallback-local #true
@@ -148,7 +148,7 @@ filters {
         on-limit "reject"
         backend "redis"
         redis-url "redis://redis-cluster.internal:6379"
-        redis-prefix "sentinel:free:"
+        redis-prefix "zentinel:free:"
         redis-fallback-local #true
     }
 
@@ -160,7 +160,7 @@ filters {
         on-limit "reject"
         backend "redis"
         redis-url "redis://redis-cluster.internal:6379"
-        redis-prefix "sentinel:premium:"
+        redis-prefix "zentinel:premium:"
         redis-fallback-local #true
     }
 
@@ -296,10 +296,10 @@ observability {
         address "0.0.0.0:9090"
         path "/metrics"
         // Rate limit metrics:
-        // - sentinel_rate_limit_requests_total
-        // - sentinel_rate_limit_limited_total
-        // - sentinel_rate_limit_backend_latency_seconds
-        // - sentinel_rate_limit_fallback_total
+        // - zentinel_rate_limit_requests_total
+        // - zentinel_rate_limit_limited_total
+        // - zentinel_rate_limit_backend_latency_seconds
+        // - zentinel_rate_limit_fallback_total
     }
 
     logging {
@@ -308,7 +308,7 @@ observability {
 
         access-log {
             enabled #true
-            file "/var/log/sentinel/access.log"
+            file "/var/log/zentinel/access.log"
         }
     }
 }
@@ -334,10 +334,10 @@ docker run -d --name redis \
 docker-compose up -d redis-cluster
 ```
 
-### 2. Start Sentinel
+### 2. Start Zentinel
 
 ```bash
-sentinel -c sentinel.kdl
+zentinel -c zentinel.kdl
 ```
 
 ### 3. Start Backend Services
@@ -421,7 +421,7 @@ filter "memcached-rate-limit" {
 
     backend "memcached"
     memcached-url "memcache://memcached.internal:11211"
-    memcached-prefix "sentinel:ratelimit:"
+    memcached-prefix "zentinel:ratelimit:"
     memcached-pool-size 10
     memcached-timeout-ms 50
     memcached-fallback-local #true
@@ -463,7 +463,7 @@ filter "enterprise-tier-limit" {
 
     backend "redis"
     redis-url "redis://redis-cluster.internal:6379"
-    redis-prefix "sentinel:enterprise:"
+    redis-prefix "zentinel:enterprise:"
     redis-fallback-local #true
 }
 ```

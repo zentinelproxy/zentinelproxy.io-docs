@@ -3,44 +3,44 @@ title = "Kubernetes"
 weight = 5
 +++
 
-Kubernetes provides the most flexible deployment model for Sentinel, supporting multiple patterns from simple sidecar deployments to sophisticated service mesh integrations.
+Kubernetes provides the most flexible deployment model for Zentinel, supporting multiple patterns from simple sidecar deployments to sophisticated service mesh integrations.
 
 ## Deployment Patterns
 
 | Pattern | Description | Best For |
 |---------|-------------|----------|
-| **Sidecar** | Agents in same pod as Sentinel | Simple setups, low latency |
+| **Sidecar** | Agents in same pod as Zentinel | Simple setups, low latency |
 | **Service** | Agents as separate deployments | Shared agents, independent scaling |
-| **DaemonSet** | Sentinel on every node | Edge/gateway deployments |
+| **DaemonSet** | Zentinel on every node | Edge/gateway deployments |
 
 ## Pattern 1: Sidecar Deployment
 
-Agents run as sidecar containers in the same pod as Sentinel.
+Agents run as sidecar containers in the same pod as Zentinel.
 
 ```yaml
-# sentinel-deployment.yaml
+# zentinel-deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sentinel
+  name: zentinel
   labels:
-    app: sentinel
+    app: zentinel
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: sentinel
+      app: zentinel
   template:
     metadata:
       labels:
-        app: sentinel
+        app: zentinel
     spec:
       containers:
         # ─────────────────────────────────────────────────
-        # Sentinel Proxy
+        # Zentinel Proxy
         # ─────────────────────────────────────────────────
-        - name: sentinel
-          image: ghcr.io/raskell-io/sentinel:latest
+        - name: zentinel
+          image: ghcr.io/zentinelproxy/zentinel:latest
           ports:
             - name: http
               containerPort: 8080
@@ -48,10 +48,10 @@ spec:
               containerPort: 9090
           volumeMounts:
             - name: config
-              mountPath: /etc/sentinel
+              mountPath: /etc/zentinel
               readOnly: true
             - name: sockets
-              mountPath: /var/run/sentinel
+              mountPath: /var/run/zentinel
           resources:
             requests:
               cpu: "100m"
@@ -76,13 +76,13 @@ spec:
         # Auth Agent (sidecar)
         # ─────────────────────────────────────────────────
         - name: auth-agent
-          image: ghcr.io/raskell-io/sentinel-auth:latest
+          image: ghcr.io/zentinelproxy/zentinel-auth:latest
           args:
             - "--socket"
-            - "/var/run/sentinel/auth.sock"
+            - "/var/run/zentinel/auth.sock"
           volumeMounts:
             - name: sockets
-              mountPath: /var/run/sentinel
+              mountPath: /var/run/zentinel
             - name: auth-secrets
               mountPath: /etc/auth/secrets
               readOnly: true
@@ -90,7 +90,7 @@ spec:
             - name: AUTH_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: sentinel-secrets
+                  name: zentinel-secrets
                   key: auth-secret
           resources:
             requests:
@@ -104,7 +104,7 @@ spec:
         # WAF Agent (sidecar, gRPC)
         # ─────────────────────────────────────────────────
         - name: waf-agent
-          image: ghcr.io/raskell-io/sentinel-waf:latest
+          image: ghcr.io/zentinelproxy/zentinel-waf:latest
           args:
             - "--grpc"
             - "127.0.0.1:50051"
@@ -124,20 +124,20 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: sentinel-config
+            name: zentinel-config
         - name: sockets
           emptyDir: {}
         - name: auth-secrets
           secret:
-            secretName: sentinel-secrets
+            secretName: zentinel-secrets
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: sentinel
+  name: zentinel
 spec:
   selector:
-    app: sentinel
+    app: zentinel
   ports:
     - name: http
       port: 80
@@ -151,13 +151,13 @@ spec:
 ### ConfigMap
 
 ```yaml
-# sentinel-configmap.yaml
+# zentinel-configmap.yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: sentinel-config
+  name: zentinel-config
 data:
-  sentinel.kdl: |
+  zentinel.kdl: |
     server {
         listen "0.0.0.0:8080"
     }
@@ -168,7 +168,7 @@ data:
 
     agents {
         agent "auth" type="auth" {
-            unix-socket "/var/run/sentinel/auth.sock"
+            unix-socket "/var/run/zentinel/auth.sock"
             events "request_headers"
             timeout-ms 50
             failure-mode "closed"
@@ -200,11 +200,11 @@ data:
 ### Secrets
 
 ```yaml
-# sentinel-secrets.yaml
+# zentinel-secrets.yaml
 apiVersion: v1
 kind: Secret
 metadata:
-  name: sentinel-secrets
+  name: zentinel-secrets
 type: Opaque
 data:
   auth-secret: <base64-encoded-secret>
@@ -234,7 +234,7 @@ spec:
     spec:
       containers:
         - name: waf-agent
-          image: ghcr.io/raskell-io/sentinel-waf:latest
+          image: ghcr.io/zentinelproxy/zentinel-waf:latest
           args:
             - "--grpc"
             - "0.0.0.0:50051"
@@ -291,7 +291,7 @@ spec:
           averageUtilization: 70
 ```
 
-Update Sentinel config to use the service:
+Update Zentinel config to use the service:
 
 ```kdl
 agent "waf" type="waf" {
@@ -304,30 +304,30 @@ agent "waf" type="waf" {
 
 ## Pattern 3: DaemonSet (Edge Gateway)
 
-Run Sentinel on every node for edge/gateway scenarios.
+Run Zentinel on every node for edge/gateway scenarios.
 
 ```yaml
-# sentinel-daemonset.yaml
+# zentinel-daemonset.yaml
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: sentinel-edge
+  name: zentinel-edge
   labels:
-    app: sentinel-edge
+    app: zentinel-edge
 spec:
   selector:
     matchLabels:
-      app: sentinel-edge
+      app: zentinel-edge
   template:
     metadata:
       labels:
-        app: sentinel-edge
+        app: zentinel-edge
     spec:
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
       containers:
-        - name: sentinel
-          image: ghcr.io/raskell-io/sentinel:latest
+        - name: zentinel
+          image: ghcr.io/zentinelproxy/zentinel:latest
           ports:
             - name: http
               containerPort: 80
@@ -337,7 +337,7 @@ spec:
               hostPort: 443
           volumeMounts:
             - name: config
-              mountPath: /etc/sentinel
+              mountPath: /etc/zentinel
           securityContext:
             capabilities:
               add:
@@ -345,7 +345,7 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: sentinel-edge-config
+            name: zentinel-edge-config
       tolerations:
         - key: node-role.kubernetes.io/master
           effect: NoSchedule
@@ -353,23 +353,23 @@ spec:
 
 ## Helm Chart
 
-The official Helm chart provides the easiest way to deploy Sentinel on Kubernetes with production-ready defaults.
+The official Helm chart provides the easiest way to deploy Zentinel on Kubernetes with production-ready defaults.
 
-**Repository:** [github.com/raskell-io/sentinel-helm](https://github.com/raskell-io/sentinel-helm)
+**Repository:** [github.com/zentinelproxy/zentinel-helm](https://github.com/zentinelproxy/zentinel-helm)
 
 ### Installation
 
 ```bash
 # Install from source
-git clone https://github.com/raskell-io/sentinel-helm.git
-cd sentinel-helm
-helm install sentinel .
+git clone https://github.com/zentinelproxy/zentinel-helm.git
+cd zentinel-helm
+helm install zentinel .
 
 # Install with custom values
-helm install sentinel . -f my-values.yaml
+helm install zentinel . -f my-values.yaml
 
 # Upgrade
-helm upgrade sentinel . -f my-values.yaml
+helm upgrade zentinel . -f my-values.yaml
 ```
 
 ### Quick Start
@@ -415,8 +415,8 @@ config:
             address "0.0.0.0:443"
             protocol "https"
             tls {
-                cert "/etc/sentinel/certs/tls.crt"
-                key "/etc/sentinel/certs/tls.key"
+                cert "/etc/zentinel/certs/tls.crt"
+                key "/etc/zentinel/certs/tls.key"
             }
         }
     }
@@ -485,11 +485,11 @@ ingress:
 extraVolumes:
   - name: tls-certs
     secret:
-      secretName: sentinel-tls
+      secretName: zentinel-tls
 
 extraVolumeMounts:
   - name: tls-certs
-    mountPath: /etc/sentinel/certs
+    mountPath: /etc/zentinel/certs
     readOnly: true
 ```
 
@@ -499,8 +499,8 @@ If you manage configuration separately:
 
 ```yaml
 config:
-  existingConfigMap: my-sentinel-config
-  configKey: sentinel.kdl
+  existingConfigMap: my-zentinel-config
+  configKey: zentinel.kdl
 ```
 
 ### Chart Features
@@ -517,25 +517,25 @@ config:
 
 ### All Configuration Options
 
-See the [values.yaml](https://github.com/raskell-io/sentinel-helm/blob/main/values.yaml) for all available options.
+See the [values.yaml](https://github.com/zentinelproxy/zentinel-helm/blob/main/values.yaml) for all available options.
 
 ## Service Mesh Integration
 
 ### Istio
 
 ```yaml
-# sentinel-virtualservice.yaml
+# zentinel-virtualservice.yaml
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
-  name: sentinel
+  name: zentinel
 spec:
   hosts:
-    - sentinel
+    - zentinel
   http:
     - route:
         - destination:
-            host: sentinel
+            host: zentinel
             port:
               number: 8080
       timeout: 30s
@@ -546,9 +546,9 @@ spec:
 apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule
 metadata:
-  name: sentinel
+  name: zentinel
 spec:
-  host: sentinel
+  host: zentinel
   trafficPolicy:
     connectionPool:
       tcp:
@@ -573,17 +573,17 @@ metadata:
 ### Prometheus ServiceMonitor
 
 ```yaml
-# sentinel-servicemonitor.yaml
+# zentinel-servicemonitor.yaml
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: sentinel
+  name: zentinel
   labels:
-    app: sentinel
+    app: zentinel
 spec:
   selector:
     matchLabels:
-      app: sentinel
+      app: zentinel
   endpoints:
     - port: admin
       path: /metrics
@@ -593,23 +593,23 @@ spec:
 ### Grafana Dashboard
 
 ```yaml
-# sentinel-dashboard-configmap.yaml
+# zentinel-dashboard-configmap.yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: sentinel-dashboard
+  name: zentinel-dashboard
   labels:
     grafana_dashboard: "1"
 data:
-  sentinel.json: |
+  zentinel.json: |
     {
-      "title": "Sentinel Proxy",
+      "title": "Zentinel Proxy",
       "panels": [
         {
           "title": "Request Rate",
           "targets": [
             {
-              "expr": "rate(sentinel_requests_total[5m])"
+              "expr": "rate(zentinel_requests_total[5m])"
             }
           ]
         }
@@ -629,34 +629,34 @@ data:
   fluent.conf: |
     <source>
       @type tail
-      path /var/log/containers/sentinel*.log
-      pos_file /var/log/sentinel.pos
-      tag sentinel.*
+      path /var/log/containers/zentinel*.log
+      pos_file /var/log/zentinel.pos
+      tag zentinel.*
       <parse>
         @type json
       </parse>
     </source>
 
-    <match sentinel.**>
+    <match zentinel.**>
       @type elasticsearch
       host elasticsearch
       port 9200
-      index_name sentinel
+      index_name zentinel
     </match>
 ```
 
 ## Network Policies
 
 ```yaml
-# sentinel-networkpolicy.yaml
+# zentinel-networkpolicy.yaml
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: sentinel
+  name: zentinel
 spec:
   podSelector:
     matchLabels:
-      app: sentinel
+      app: zentinel
   policyTypes:
     - Ingress
     - Egress
@@ -719,13 +719,13 @@ spec:
 
 ```bash
 # Trigger rolling update
-kubectl set image deployment/sentinel sentinel=ghcr.io/raskell-io/sentinel:v1.2.0
+kubectl set image deployment/zentinel zentinel=ghcr.io/zentinelproxy/zentinel:v1.2.0
 
 # Watch rollout
-kubectl rollout status deployment/sentinel
+kubectl rollout status deployment/zentinel
 
 # Rollback if needed
-kubectl rollout undo deployment/sentinel
+kubectl rollout undo deployment/zentinel
 ```
 
 ## Troubleshooting
@@ -734,14 +734,14 @@ kubectl rollout undo deployment/sentinel
 
 ```bash
 # Check pod status
-kubectl get pods -l app=sentinel
+kubectl get pods -l app=zentinel
 
 # Describe pod
-kubectl describe pod sentinel-xxx
+kubectl describe pod zentinel-xxx
 
 # Check logs
-kubectl logs sentinel-xxx -c sentinel
-kubectl logs sentinel-xxx -c auth-agent
+kubectl logs zentinel-xxx -c zentinel
+kubectl logs zentinel-xxx -c auth-agent
 
 # Check events
 kubectl get events --sort-by='.lastTimestamp'
@@ -751,23 +751,23 @@ kubectl get events --sort-by='.lastTimestamp'
 
 ```bash
 # Check service discovery
-kubectl exec sentinel-xxx -c sentinel -- nslookup waf-agent
+kubectl exec zentinel-xxx -c zentinel -- nslookup waf-agent
 
 # Test gRPC connection
-kubectl exec sentinel-xxx -c sentinel -- grpcurl -plaintext waf-agent:50051 list
+kubectl exec zentinel-xxx -c zentinel -- grpcurl -plaintext waf-agent:50051 list
 
 # Check socket exists (sidecar)
-kubectl exec sentinel-xxx -c sentinel -- ls -la /var/run/sentinel/
+kubectl exec zentinel-xxx -c zentinel -- ls -la /var/run/zentinel/
 ```
 
 ### Resource Issues
 
 ```bash
 # Check resource usage
-kubectl top pods -l app=sentinel
+kubectl top pods -l app=zentinel
 
 # Check resource limits
-kubectl describe pod sentinel-xxx | grep -A5 Resources
+kubectl describe pod zentinel-xxx | grep -A5 Resources
 
 # Check OOMKilled
 kubectl get events | grep OOM
@@ -777,8 +777,8 @@ kubectl get events | grep OOM
 
 ```bash
 # Validate config
-kubectl exec sentinel-xxx -c sentinel -- sentinel --config /etc/sentinel/sentinel.kdl --dry-run
+kubectl exec zentinel-xxx -c zentinel -- zentinel --config /etc/zentinel/zentinel.kdl --dry-run
 
 # Check configmap
-kubectl get configmap sentinel-config -o yaml
+kubectl get configmap zentinel-config -o yaml
 ```

@@ -3,7 +3,7 @@ title = "Caching"
 weight = 7
 +++
 
-Sentinel provides HTTP response caching to reduce upstream load and improve response times. Caching is configured at two levels: global storage settings and per-route caching policies.
+Zentinel provides HTTP response caching to reduce upstream load and improve response times. Caching is configured at two levels: global storage settings and per-route caching policies.
 
 ## Global Cache Storage
 
@@ -50,7 +50,7 @@ cache {
     enabled #true
     backend "disk"
     max-size 1073741824        // 1GB
-    disk-path "/var/cache/sentinel"
+    disk-path "/var/cache/zentinel"
     disk-shards 16             // Parallelism
     lock-timeout 10
 }
@@ -65,7 +65,7 @@ cache {
     enabled #true
     backend "hybrid"
     max-size 1073741824        // 1GB total
-    disk-path "/var/cache/sentinel"
+    disk-path "/var/cache/zentinel"
     disk-shards 16
     lock-timeout 15
 }
@@ -271,7 +271,7 @@ cache {
     enabled #true
     backend "disk"
     max-size 10737418240   // 10GB
-    disk-path "/var/cache/sentinel/static"
+    disk-path "/var/cache/zentinel/static"
     disk-shards 32
 }
 
@@ -330,7 +330,7 @@ The cache key is generated from:
 
 ### Cache-Control Directives
 
-Sentinel respects Cache-Control headers from upstream:
+Zentinel respects Cache-Control headers from upstream:
 
 | Directive | Behavior |
 |-----------|----------|
@@ -362,12 +362,12 @@ Cache-related metrics:
 
 | Metric | Description |
 |--------|-------------|
-| `sentinel_cache_hits_total` | Total cache hits |
-| `sentinel_cache_misses_total` | Total cache misses |
-| `sentinel_cache_size_bytes` | Current cache size |
-| `sentinel_cache_entries` | Number of cached entries |
-| `sentinel_cache_evictions_total` | Total evictions |
-| `sentinel_cache_stale_served_total` | Stale responses served |
+| `zentinel_cache_hits_total` | Total cache hits |
+| `zentinel_cache_misses_total` | Total cache misses |
+| `zentinel_cache_size_bytes` | Current cache size |
+| `zentinel_cache_entries` | Number of cached entries |
+| `zentinel_cache_evictions_total` | Total evictions |
+| `zentinel_cache_stale_served_total` | Stale responses served |
 
 ## Best Practices
 

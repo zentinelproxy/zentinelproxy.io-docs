@@ -42,7 +42,7 @@ Organize resources using namespaces for multi-tenant or microservice architectur
 
 ## Configuration
 
-Create `sentinel.kdl`:
+Create `zentinel.kdl`:
 
 ```kdl
 // Namespaces and Hierarchical Configuration
@@ -68,8 +68,8 @@ listeners {
         protocol "https"
 
         tls {
-            cert-file "/etc/sentinel/certs/wildcard.crt"
-            key-file "/etc/sentinel/certs/wildcard.key"
+            cert-file "/etc/zentinel/certs/wildcard.crt"
+            key-file "/etc/zentinel/certs/wildcard.key"
             min-version "TLS1.2"
         }
     }
@@ -119,7 +119,7 @@ filters {
 agents {
     agent "waf-agent" {
         type "waf"
-        unix-socket path="/var/run/sentinel/waf.sock"
+        unix-socket path="/var/run/zentinel/waf.sock"
         events "request_headers" "request_body"
         timeout-ms 200
         failure-mode "closed"
@@ -173,7 +173,7 @@ namespace "platform" {
     agents {
         agent "auth-agent" {
             type "auth"
-            unix-socket path="/var/run/sentinel/platform-auth.sock"
+            unix-socket path="/var/run/zentinel/platform-auth.sock"
             events "request_headers"
             timeout-ms 100
             failure-mode "closed"
@@ -502,7 +502,7 @@ observability {
 
         access-log {
             enabled #true
-            file "/var/log/sentinel/access.log"
+            file "/var/log/zentinel/access.log"
             // Namespace and service fields included in logs
         }
     }
@@ -548,20 +548,20 @@ Limits cascade down with overrides:
 
 ## Setup
 
-### 1. Start Sentinel
+### 1. Start Zentinel
 
 ```bash
-sentinel -c sentinel.kdl
+zentinel -c zentinel.kdl
 ```
 
 ### 2. Verify Configuration
 
 ```bash
 # Validate config
-sentinel validate -c sentinel.kdl
+zentinel validate -c zentinel.kdl
 
 # Show resolved routes
-sentinel routes -c sentinel.kdl
+zentinel routes -c zentinel.kdl
 ```
 
 ## Testing

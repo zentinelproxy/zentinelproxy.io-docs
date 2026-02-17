@@ -3,11 +3,11 @@ title = "Basic Configuration"
 weight = 2
 +++
 
-Sentinel uses [KDL](https://kdl.dev) (KDL Document Language) as its primary configuration format. KDL is a human-friendly document language with a clean syntax that's easy to read and write.
+Zentinel uses [KDL](https://kdl.dev) (KDL Document Language) as its primary configuration format. KDL is a human-friendly document language with a clean syntax that's easy to read and write.
 
 ## Minimal Configuration
 
-Here's the simplest configuration that gets Sentinel running as a reverse proxy:
+Here's the simplest configuration that gets Zentinel running as a reverse proxy:
 
 ```kdl
 server {
@@ -42,13 +42,13 @@ upstreams {
 ```
 
 This configuration:
-- Starts Sentinel on port 8080
+- Starts Zentinel on port 8080
 - Forwards all requests to a backend service on port 3000
 - Uses automatic worker thread detection
 
 ## Configuration Sections
 
-A Sentinel configuration file consists of several top-level sections:
+A Zentinel configuration file consists of several top-level sections:
 
 | Section | Required | Description |
 |---------|----------|-------------|
@@ -86,7 +86,7 @@ server {
 
 ## Listeners
 
-Listeners define how Sentinel accepts incoming connections:
+Listeners define how Zentinel accepts incoming connections:
 
 ```kdl
 listeners {
@@ -120,8 +120,8 @@ listeners {
         protocol "https"
 
         tls {
-            cert-file "/etc/sentinel/certs/server.crt"
-            key-file "/etc/sentinel/certs/server.key"
+            cert-file "/etc/zentinel/certs/server.crt"
+            key-file "/etc/zentinel/certs/server.key"
             min-version "TLS1.2"
         }
     }
@@ -341,5 +341,5 @@ observability {
 ## Next Steps
 
 - [First Route](../first-route/) - Create your first routing rule
-- [Installation](../installation/) - Install Sentinel
+- [Installation](../installation/) - Install Zentinel
 - [Configuration Reference](/configuration/overview/) - Full configuration options

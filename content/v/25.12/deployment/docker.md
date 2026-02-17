@@ -3,23 +3,23 @@ title = "Docker Deployment"
 weight = 4
 +++
 
-Running Sentinel and agents in Docker containers.
+Running Zentinel and agents in Docker containers.
 
 ## Quick Start
 
-### Run Sentinel
+### Run Zentinel
 
 ```bash
 # Run with default configuration
 docker run -d \
-    --name sentinel \
+    --name zentinel \
     -p 8080:8080 \
     -p 9090:9090 \
-    -v $(pwd)/sentinel.kdl:/etc/sentinel/sentinel.kdl:ro \
-    ghcr.io/raskell-io/sentinel:latest
+    -v $(pwd)/zentinel.kdl:/etc/zentinel/zentinel.kdl:ro \
+    ghcr.io/zentinelproxy/zentinel:latest
 
 # Check status
-docker logs sentinel
+docker logs zentinel
 curl http://localhost:9090/health
 ```
 
@@ -27,22 +27,22 @@ curl http://localhost:9090/health
 
 ```bash
 # Create shared socket directory
-mkdir -p /tmp/sentinel-sockets
+mkdir -p /tmp/zentinel-sockets
 
 # Run WAF agent
 docker run -d \
     --name waf-agent \
-    -v /tmp/sentinel-sockets:/var/run/sentinel \
-    ghcr.io/raskell-io/sentinel-agent-waf:latest \
-    --socket /var/run/sentinel/waf.sock
+    -v /tmp/zentinel-sockets:/var/run/zentinel \
+    ghcr.io/zentinelproxy/zentinel-agent-waf:latest \
+    --socket /var/run/zentinel/waf.sock
 
-# Run Sentinel
+# Run Zentinel
 docker run -d \
-    --name sentinel \
+    --name zentinel \
     -p 8080:8080 \
-    -v $(pwd)/sentinel.kdl:/etc/sentinel/sentinel.kdl:ro \
-    -v /tmp/sentinel-sockets:/var/run/sentinel \
-    ghcr.io/raskell-io/sentinel:latest
+    -v $(pwd)/zentinel.kdl:/etc/zentinel/zentinel.kdl:ro \
+    -v /tmp/zentinel-sockets:/var/run/zentinel \
+    ghcr.io/zentinelproxy/zentinel:latest
 ```
 
 ## Container Configuration
@@ -51,43 +51,43 @@ docker run -d \
 
 ```bash
 docker run -d \
-    --name sentinel \
-    -e RUST_LOG=sentinel=info \
-    -e SENTINEL_WORKERS=4 \
+    --name zentinel \
+    -e RUST_LOG=zentinel=info \
+    -e ZENTINEL_WORKERS=4 \
     -e BACKEND_ADDR=api.example.com:443 \
     -p 8080:8080 \
-    -v $(pwd)/sentinel.kdl:/etc/sentinel/sentinel.kdl:ro \
-    ghcr.io/raskell-io/sentinel:latest
+    -v $(pwd)/zentinel.kdl:/etc/zentinel/zentinel.kdl:ro \
+    ghcr.io/zentinelproxy/zentinel:latest
 ```
 
 ### Volume Mounts
 
 | Mount | Purpose |
 |-------|---------|
-| `/etc/sentinel/sentinel.kdl` | Main configuration |
-| `/etc/sentinel/certs/` | TLS certificates |
-| `/var/run/sentinel/` | Unix sockets for agents |
-| `/var/log/sentinel/` | Log files (optional) |
+| `/etc/zentinel/zentinel.kdl` | Main configuration |
+| `/etc/zentinel/certs/` | TLS certificates |
+| `/var/run/zentinel/` | Unix sockets for agents |
+| `/var/log/zentinel/` | Log files (optional) |
 
 ```bash
 docker run -d \
-    --name sentinel \
-    -v $(pwd)/config:/etc/sentinel:ro \
-    -v $(pwd)/certs:/etc/sentinel/certs:ro \
-    -v sentinel-sockets:/var/run/sentinel \
-    -v sentinel-logs:/var/log/sentinel \
-    ghcr.io/raskell-io/sentinel:latest
+    --name zentinel \
+    -v $(pwd)/config:/etc/zentinel:ro \
+    -v $(pwd)/certs:/etc/zentinel/certs:ro \
+    -v zentinel-sockets:/var/run/zentinel \
+    -v zentinel-logs:/var/log/zentinel \
+    ghcr.io/zentinelproxy/zentinel:latest
 ```
 
 ### Port Mapping
 
 ```bash
 docker run -d \
-    --name sentinel \
+    --name zentinel \
     -p 80:8080 \      # HTTP
     -p 443:8443 \     # HTTPS
     -p 9090:9090 \    # Metrics
-    ghcr.io/raskell-io/sentinel:latest
+    ghcr.io/zentinelproxy/zentinel:latest
 ```
 
 ## Networking
@@ -96,16 +96,16 @@ docker run -d \
 
 ```bash
 # Create network
-docker network create sentinel-net
+docker network create zentinel-net
 
 # Run containers on network
-docker run -d --name backend --network sentinel-net nginx
+docker run -d --name backend --network zentinel-net nginx
 
 docker run -d \
-    --name sentinel \
-    --network sentinel-net \
+    --name zentinel \
+    --network zentinel-net \
     -p 8080:8080 \
-    ghcr.io/raskell-io/sentinel:latest
+    ghcr.io/zentinelproxy/zentinel:latest
 ```
 
 ### Host Network
@@ -114,9 +114,9 @@ For lowest latency (Linux only):
 
 ```bash
 docker run -d \
-    --name sentinel \
+    --name zentinel \
     --network host \
-    ghcr.io/raskell-io/sentinel:latest
+    ghcr.io/zentinelproxy/zentinel:latest
 ```
 
 ### Connecting to Host Services
@@ -124,11 +124,11 @@ docker run -d \
 ```bash
 # Linux
 docker run -d \
-    --name sentinel \
+    --name zentinel \
     --add-host=host.docker.internal:host-gateway \
-    ghcr.io/raskell-io/sentinel:latest
+    ghcr.io/zentinelproxy/zentinel:latest
 
-# In sentinel.kdl
+# In zentinel.kdl
 upstreams {
     upstream "backend" {
         targets {
@@ -145,9 +145,9 @@ upstreams {
 ```bash
 docker run -d \
     --name waf-agent \
-    -v sentinel-sockets:/var/run/sentinel \
-    ghcr.io/raskell-io/sentinel-agent-waf:latest \
-    --socket /var/run/sentinel/waf.sock \
+    -v zentinel-sockets:/var/run/zentinel \
+    ghcr.io/zentinelproxy/zentinel-agent-waf:latest \
+    --socket /var/run/zentinel/waf.sock \
     --paranoia-level 1 \
     --block-mode true
 ```
@@ -157,10 +157,10 @@ docker run -d \
 ```bash
 docker run -d \
     --name auth-agent \
-    -v sentinel-sockets:/var/run/sentinel \
+    -v zentinel-sockets:/var/run/zentinel \
     -e JWT_SECRET="${JWT_SECRET}" \
-    ghcr.io/raskell-io/sentinel-agent-auth:latest \
-    --socket /var/run/sentinel/auth.sock \
+    ghcr.io/zentinelproxy/zentinel-agent-auth:latest \
+    --socket /var/run/zentinel/auth.sock \
     --jwt-issuer api.example.com
 ```
 
@@ -169,9 +169,9 @@ docker run -d \
 ```bash
 docker run -d \
     --name ratelimit-agent \
-    -v sentinel-sockets:/var/run/sentinel \
-    ghcr.io/raskell-io/sentinel-agent-ratelimit:latest \
-    --socket /var/run/sentinel/ratelimit.sock \
+    -v zentinel-sockets:/var/run/zentinel \
+    ghcr.io/zentinelproxy/zentinel-agent-ratelimit:latest \
+    --socket /var/run/zentinel/ratelimit.sock \
     --requests-per-minute 100
 ```
 
@@ -180,10 +180,10 @@ docker run -d \
 ```bash
 docker run -d \
     --name js-agent \
-    -v sentinel-sockets:/var/run/sentinel \
+    -v zentinel-sockets:/var/run/zentinel \
     -v $(pwd)/scripts:/scripts:ro \
-    ghcr.io/raskell-io/sentinel-agent-js:latest \
-    --socket /var/run/sentinel/js.sock \
+    ghcr.io/zentinelproxy/zentinel-agent-js:latest \
+    --socket /var/run/zentinel/js.sock \
     --script /scripts/policy.js
 ```
 
@@ -193,20 +193,20 @@ docker run -d \
 
 ```bash
 docker run -d \
-    --name sentinel \
+    --name zentinel \
     --memory=512m \
     --memory-reservation=256m \
     --cpus=2 \
-    ghcr.io/raskell-io/sentinel:latest
+    ghcr.io/zentinelproxy/zentinel:latest
 ```
 
 ### File Descriptors
 
 ```bash
 docker run -d \
-    --name sentinel \
+    --name zentinel \
     --ulimit nofile=65536:65536 \
-    ghcr.io/raskell-io/sentinel:latest
+    ghcr.io/zentinelproxy/zentinel:latest
 ```
 
 ## Health Checks
@@ -215,23 +215,23 @@ docker run -d \
 
 ```bash
 docker run -d \
-    --name sentinel \
+    --name zentinel \
     --health-cmd="curl -f http://localhost:9090/health || exit 1" \
     --health-interval=30s \
     --health-timeout=3s \
     --health-retries=3 \
     --health-start-period=5s \
-    ghcr.io/raskell-io/sentinel:latest
+    ghcr.io/zentinelproxy/zentinel:latest
 ```
 
 ### Check Health Status
 
 ```bash
 # View health status
-docker inspect --format='{{.State.Health.Status}}' sentinel
+docker inspect --format='{{.State.Health.Status}}' zentinel
 
 # View health logs
-docker inspect --format='{{json .State.Health}}' sentinel | jq
+docker inspect --format='{{json .State.Health}}' zentinel | jq
 ```
 
 ## Logging
@@ -244,36 +244,36 @@ docker run -d \
     --log-driver json-file \
     --log-opt max-size=100m \
     --log-opt max-file=3 \
-    --name sentinel \
-    ghcr.io/raskell-io/sentinel:latest
+    --name zentinel \
+    ghcr.io/zentinelproxy/zentinel:latest
 
 # Syslog
 docker run -d \
     --log-driver syslog \
     --log-opt syslog-address=udp://loghost:514 \
-    --name sentinel \
-    ghcr.io/raskell-io/sentinel:latest
+    --name zentinel \
+    ghcr.io/zentinelproxy/zentinel:latest
 
 # Fluentd
 docker run -d \
     --log-driver fluentd \
     --log-opt fluentd-address=localhost:24224 \
-    --log-opt tag=sentinel \
-    --name sentinel \
-    ghcr.io/raskell-io/sentinel:latest
+    --log-opt tag=zentinel \
+    --name zentinel \
+    ghcr.io/zentinelproxy/zentinel:latest
 ```
 
 ### View Logs
 
 ```bash
 # Follow logs
-docker logs -f sentinel
+docker logs -f zentinel
 
 # Last 100 lines
-docker logs --tail 100 sentinel
+docker logs --tail 100 zentinel
 
 # With timestamps
-docker logs -t sentinel
+docker logs -t zentinel
 ```
 
 ## Security
@@ -282,32 +282,32 @@ docker logs -t sentinel
 
 ```bash
 docker run -d \
-    --name sentinel \
+    --name zentinel \
     --read-only \
     --tmpfs /tmp \
-    -v sentinel-sockets:/var/run/sentinel \
-    ghcr.io/raskell-io/sentinel:latest
+    -v zentinel-sockets:/var/run/zentinel \
+    ghcr.io/zentinelproxy/zentinel:latest
 ```
 
 ### Security Options
 
 ```bash
 docker run -d \
-    --name sentinel \
+    --name zentinel \
     --security-opt no-new-privileges:true \
     --cap-drop ALL \
     --cap-add NET_BIND_SERVICE \
-    ghcr.io/raskell-io/sentinel:latest
+    ghcr.io/zentinelproxy/zentinel:latest
 ```
 
 ### User Namespace
 
 ```bash
 docker run -d \
-    --name sentinel \
+    --name zentinel \
     --userns=host \
     --user 1000:1000 \
-    ghcr.io/raskell-io/sentinel:latest
+    ghcr.io/zentinelproxy/zentinel:latest
 ```
 
 ## Restart Policies
@@ -315,21 +315,21 @@ docker run -d \
 ```bash
 # Always restart
 docker run -d \
-    --name sentinel \
+    --name zentinel \
     --restart always \
-    ghcr.io/raskell-io/sentinel:latest
+    ghcr.io/zentinelproxy/zentinel:latest
 
 # Restart on failure (max 3 times)
 docker run -d \
-    --name sentinel \
+    --name zentinel \
     --restart on-failure:3 \
-    ghcr.io/raskell-io/sentinel:latest
+    ghcr.io/zentinelproxy/zentinel:latest
 
 # Unless stopped manually
 docker run -d \
-    --name sentinel \
+    --name zentinel \
     --restart unless-stopped \
-    ghcr.io/raskell-io/sentinel:latest
+    ghcr.io/zentinelproxy/zentinel:latest
 ```
 
 ## Configuration Reload
@@ -338,20 +338,20 @@ docker run -d \
 
 ```bash
 # Reload configuration
-docker exec sentinel kill -HUP 1
+docker exec zentinel kill -HUP 1
 
 # Or via admin API
-docker exec sentinel curl -X POST http://localhost:9090/admin/reload
+docker exec zentinel curl -X POST http://localhost:9090/admin/reload
 ```
 
 ### Updating Configuration
 
 ```bash
 # Update config file
-docker cp sentinel.kdl sentinel:/etc/sentinel/sentinel.kdl
+docker cp zentinel.kdl zentinel:/etc/zentinel/zentinel.kdl
 
 # Reload
-docker exec sentinel kill -HUP 1
+docker exec zentinel kill -HUP 1
 ```
 
 ## Debugging
@@ -360,12 +360,12 @@ docker exec sentinel kill -HUP 1
 
 ```bash
 # Start shell in running container
-docker exec -it sentinel /bin/sh
+docker exec -it zentinel /bin/sh
 
 # Start new container with shell
 docker run -it --rm \
-    -v $(pwd)/sentinel.kdl:/etc/sentinel/sentinel.kdl:ro \
-    ghcr.io/raskell-io/sentinel:latest \
+    -v $(pwd)/zentinel.kdl:/etc/zentinel/zentinel.kdl:ro \
+    ghcr.io/zentinelproxy/zentinel:latest \
     /bin/sh
 ```
 
@@ -373,23 +373,23 @@ docker run -it --rm \
 
 ```bash
 # View configuration
-docker inspect sentinel
+docker inspect zentinel
 
 # View mounts
-docker inspect --format='{{json .Mounts}}' sentinel | jq
+docker inspect --format='{{json .Mounts}}' zentinel | jq
 
 # View network settings
-docker inspect --format='{{json .NetworkSettings}}' sentinel | jq
+docker inspect --format='{{json .NetworkSettings}}' zentinel | jq
 ```
 
 ### Debug Mode
 
 ```bash
 docker run -d \
-    --name sentinel \
-    -e RUST_LOG=sentinel=debug,tower=debug \
+    --name zentinel \
+    -e RUST_LOG=zentinel=debug,tower=debug \
     -e RUST_BACKTRACE=1 \
-    ghcr.io/raskell-io/sentinel:latest
+    ghcr.io/zentinelproxy/zentinel:latest
 ```
 
 ## Production Checklist

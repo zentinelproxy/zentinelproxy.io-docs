@@ -3,7 +3,7 @@ title = "Metrics Reference"
 weight = 4
 +++
 
-Prometheus metrics exposed by Sentinel for monitoring and alerting.
+Prometheus metrics exposed by Zentinel for monitoring and alerting.
 
 ## Metrics Endpoint
 
@@ -36,7 +36,7 @@ routes {
 
 ## Request Metrics
 
-### sentinel_request_duration_seconds
+### zentinel_request_duration_seconds
 
 Request latency histogram.
 
@@ -49,19 +49,19 @@ Request latency histogram.
 **Example queries:**
 ```promql
 # Average latency by route
-rate(sentinel_request_duration_seconds_sum[5m])
-  / rate(sentinel_request_duration_seconds_count[5m])
+rate(zentinel_request_duration_seconds_sum[5m])
+  / rate(zentinel_request_duration_seconds_count[5m])
 
 # P99 latency
 histogram_quantile(0.99,
-  rate(sentinel_request_duration_seconds_bucket[5m]))
+  rate(zentinel_request_duration_seconds_bucket[5m]))
 
 # P95 latency by route
 histogram_quantile(0.95,
-  sum(rate(sentinel_request_duration_seconds_bucket[5m])) by (le, route))
+  sum(rate(zentinel_request_duration_seconds_bucket[5m])) by (le, route))
 ```
 
-### sentinel_requests_total
+### zentinel_requests_total
 
 Total request counter.
 
@@ -72,18 +72,18 @@ Total request counter.
 **Example queries:**
 ```promql
 # Requests per second
-rate(sentinel_requests_total[5m])
+rate(zentinel_requests_total[5m])
 
 # Error rate (5xx)
-sum(rate(sentinel_requests_total{status=~"5.."}[5m]))
-  / sum(rate(sentinel_requests_total[5m]))
+sum(rate(zentinel_requests_total{status=~"5.."}[5m]))
+  / sum(rate(zentinel_requests_total[5m]))
 
 # Success rate by route
-sum(rate(sentinel_requests_total{status="200"}[5m])) by (route)
-  / sum(rate(sentinel_requests_total[5m])) by (route)
+sum(rate(zentinel_requests_total{status="200"}[5m])) by (route)
+  / sum(rate(zentinel_requests_total[5m])) by (route)
 ```
 
-### sentinel_active_requests
+### zentinel_active_requests
 
 Currently active requests.
 
@@ -94,13 +94,13 @@ Currently active requests.
 **Example queries:**
 ```promql
 # Current active requests
-sentinel_active_requests
+zentinel_active_requests
 
 # Alert if too high
-sentinel_active_requests > 1000
+zentinel_active_requests > 1000
 ```
 
-### sentinel_request_body_size_bytes
+### zentinel_request_body_size_bytes
 
 Request body size histogram.
 
@@ -110,7 +110,7 @@ Request body size histogram.
 
 **Buckets:** 100B, 1KB, 10KB, 100KB, 1MB, 10MB, 100MB
 
-### sentinel_response_body_size_bytes
+### zentinel_response_body_size_bytes
 
 Response body size histogram.
 
@@ -120,7 +120,7 @@ Response body size histogram.
 
 ## Upstream Metrics
 
-### sentinel_upstream_attempts_total
+### zentinel_upstream_attempts_total
 
 Upstream connection attempts.
 
@@ -128,7 +128,7 @@ Upstream connection attempts.
 |------|--------|-------------|
 | Counter | `upstream`, `route` | Total connection attempts |
 
-### sentinel_upstream_failures_total
+### zentinel_upstream_failures_total
 
 Upstream connection failures.
 
@@ -147,14 +147,14 @@ Upstream connection failures.
 **Example queries:**
 ```promql
 # Failure rate by upstream
-sum(rate(sentinel_upstream_failures_total[5m])) by (upstream)
-  / sum(rate(sentinel_upstream_attempts_total[5m])) by (upstream)
+sum(rate(zentinel_upstream_failures_total[5m])) by (upstream)
+  / sum(rate(zentinel_upstream_attempts_total[5m])) by (upstream)
 
 # Connection refused errors
-sum(rate(sentinel_upstream_failures_total{reason="connection_refused"}[5m])) by (upstream)
+sum(rate(zentinel_upstream_failures_total{reason="connection_refused"}[5m])) by (upstream)
 ```
 
-### sentinel_circuit_breaker_state
+### zentinel_circuit_breaker_state
 
 Circuit breaker state.
 
@@ -165,15 +165,15 @@ Circuit breaker state.
 **Example queries:**
 ```promql
 # Open circuit breakers
-sentinel_circuit_breaker_state == 1
+zentinel_circuit_breaker_state == 1
 
 # Alert on circuit breaker open
-sentinel_circuit_breaker_state{component="upstream"} == 1
+zentinel_circuit_breaker_state{component="upstream"} == 1
 ```
 
 ## Agent Metrics
 
-### sentinel_agent_latency_seconds
+### zentinel_agent_latency_seconds
 
 Agent call latency histogram.
 
@@ -191,14 +191,14 @@ Agent call latency histogram.
 ```promql
 # P99 agent latency
 histogram_quantile(0.99,
-  rate(sentinel_agent_latency_seconds_bucket[5m]))
+  rate(zentinel_agent_latency_seconds_bucket[5m]))
 
 # Average latency by agent
-rate(sentinel_agent_latency_seconds_sum[5m])
-  / rate(sentinel_agent_latency_seconds_count[5m])
+rate(zentinel_agent_latency_seconds_sum[5m])
+  / rate(zentinel_agent_latency_seconds_count[5m])
 ```
 
-### sentinel_agent_timeouts_total
+### zentinel_agent_timeouts_total
 
 Agent call timeouts.
 
@@ -209,13 +209,13 @@ Agent call timeouts.
 **Example queries:**
 ```promql
 # Timeout rate by agent
-rate(sentinel_agent_timeouts_total[5m])
+rate(zentinel_agent_timeouts_total[5m])
 
 # Alert on high timeout rate
-rate(sentinel_agent_timeouts_total[5m]) > 0.1
+rate(zentinel_agent_timeouts_total[5m]) > 0.1
 ```
 
-### sentinel_blocked_requests_total
+### zentinel_blocked_requests_total
 
 Requests blocked by agents/WAF.
 
@@ -231,7 +231,7 @@ Requests blocked by agents/WAF.
 
 ## Connection Pool Metrics
 
-### sentinel_connection_pool_size
+### zentinel_connection_pool_size
 
 Total connections in pool.
 
@@ -239,7 +239,7 @@ Total connections in pool.
 |------|--------|-------------|
 | Gauge | `upstream` | Total connections |
 
-### sentinel_connection_pool_idle
+### zentinel_connection_pool_idle
 
 Idle connections in pool.
 
@@ -247,7 +247,7 @@ Idle connections in pool.
 |------|--------|-------------|
 | Gauge | `upstream` | Idle connections |
 
-### sentinel_connection_pool_acquired_total
+### zentinel_connection_pool_acquired_total
 
 Connections acquired from pool.
 
@@ -258,16 +258,16 @@ Connections acquired from pool.
 **Example queries:**
 ```promql
 # Pool utilization
-(sentinel_connection_pool_size - sentinel_connection_pool_idle)
-  / sentinel_connection_pool_size
+(zentinel_connection_pool_size - zentinel_connection_pool_idle)
+  / zentinel_connection_pool_size
 
 # Connection acquisition rate
-rate(sentinel_connection_pool_acquired_total[5m])
+rate(zentinel_connection_pool_acquired_total[5m])
 ```
 
 ## TLS Metrics
 
-### sentinel_tls_handshake_duration_seconds
+### zentinel_tls_handshake_duration_seconds
 
 TLS handshake duration.
 
@@ -279,7 +279,7 @@ TLS handshake duration.
 
 ## System Metrics
 
-### sentinel_memory_usage_bytes
+### zentinel_memory_usage_bytes
 
 Process memory usage.
 
@@ -287,7 +287,7 @@ Process memory usage.
 |------|--------|-------------|
 | Gauge | - | Memory usage in bytes |
 
-### sentinel_cpu_usage_percent
+### zentinel_cpu_usage_percent
 
 CPU usage percentage.
 
@@ -295,7 +295,7 @@ CPU usage percentage.
 |------|--------|-------------|
 | Gauge | - | CPU usage 0-100 |
 
-### sentinel_open_connections
+### zentinel_open_connections
 
 Open connections count.
 
@@ -309,7 +309,7 @@ Open connections count.
 
 ```yaml
 scrape_configs:
-  - job_name: 'sentinel'
+  - job_name: 'zentinel'
     static_configs:
       - targets: ['localhost:9090']
     scrape_interval: 15s
@@ -320,12 +320,12 @@ scrape_configs:
 
 ```yaml
 scrape_configs:
-  - job_name: 'sentinel'
+  - job_name: 'zentinel'
     kubernetes_sd_configs:
       - role: pod
     relabel_configs:
       - source_labels: [__meta_kubernetes_pod_label_app]
-        regex: sentinel
+        regex: zentinel
         action: keep
       - source_labels: [__meta_kubernetes_pod_container_port_name]
         regex: metrics
@@ -338,23 +338,23 @@ scrape_configs:
 
 ```yaml
 groups:
-  - name: sentinel
+  - name: zentinel
     rules:
       # High error rate
-      - alert: SentinelHighErrorRate
+      - alert: ZentinelHighErrorRate
         expr: |
-          sum(rate(sentinel_requests_total{status=~"5.."}[5m]))
-          / sum(rate(sentinel_requests_total[5m])) > 0.05
+          sum(rate(zentinel_requests_total{status=~"5.."}[5m]))
+          / sum(rate(zentinel_requests_total[5m])) > 0.05
         for: 5m
         labels:
           severity: critical
         annotations:
-          summary: "High error rate on Sentinel"
+          summary: "High error rate on Zentinel"
           description: "Error rate is {{ $value | humanizePercentage }}"
 
       # Circuit breaker open
-      - alert: SentinelCircuitBreakerOpen
-        expr: sentinel_circuit_breaker_state == 1
+      - alert: ZentinelCircuitBreakerOpen
+        expr: zentinel_circuit_breaker_state == 1
         for: 1m
         labels:
           severity: warning
@@ -363,10 +363,10 @@ groups:
           description: "Circuit breaker open for {{ $labels.component }}"
 
       # High latency
-      - alert: SentinelHighLatency
+      - alert: ZentinelHighLatency
         expr: |
           histogram_quantile(0.99,
-            rate(sentinel_request_duration_seconds_bucket[5m])) > 1
+            rate(zentinel_request_duration_seconds_bucket[5m])) > 1
         for: 5m
         labels:
           severity: warning
@@ -375,8 +375,8 @@ groups:
           description: "P99 latency is {{ $value }}s"
 
       # Agent timeouts
-      - alert: SentinelAgentTimeouts
-        expr: rate(sentinel_agent_timeouts_total[5m]) > 0.1
+      - alert: ZentinelAgentTimeouts
+        expr: rate(zentinel_agent_timeouts_total[5m]) > 0.1
         for: 5m
         labels:
           severity: warning
@@ -385,10 +385,10 @@ groups:
           description: "Agent {{ $labels.agent }} timing out"
 
       # No healthy upstreams
-      - alert: SentinelNoHealthyUpstreams
+      - alert: ZentinelNoHealthyUpstreams
         expr: |
-          sum(sentinel_circuit_breaker_state{component="upstream"})
-          == count(sentinel_circuit_breaker_state{component="upstream"})
+          sum(zentinel_circuit_breaker_state{component="upstream"})
+          == count(zentinel_circuit_breaker_state{component="upstream"})
         for: 1m
         labels:
           severity: critical
@@ -398,12 +398,12 @@ groups:
 
 ## Grafana Dashboard
 
-Key panels for a Sentinel dashboard:
+Key panels for a Zentinel dashboard:
 
-1. **Request Rate** - `rate(sentinel_requests_total[5m])`
+1. **Request Rate** - `rate(zentinel_requests_total[5m])`
 2. **Error Rate** - 5xx / total
 3. **Latency P50/P95/P99** - histogram_quantile
-4. **Active Requests** - `sentinel_active_requests`
+4. **Active Requests** - `zentinel_active_requests`
 5. **Upstream Health** - circuit breaker states
 6. **Agent Latency** - agent_latency histogram
 7. **Connection Pool** - size vs idle

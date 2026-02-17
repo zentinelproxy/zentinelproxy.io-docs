@@ -3,14 +3,14 @@ title = "Quick Start"
 weight = 0
 +++
 
-Get Sentinel up and running in under 5 minutes.
+Get Zentinel up and running in under 5 minutes.
 
-## 1. Install Sentinel
+## 1. Install Zentinel
 
 Run the install script:
 
 ```bash
-curl -fsSL https://getsentinel.raskell.io | sh
+curl -fsSL https://getzentinelproxy.io | sh
 ```
 
 Add to your PATH if needed:
@@ -22,12 +22,12 @@ export PATH="$HOME/.local/bin:$PATH"
 Verify it works:
 
 ```bash
-sentinel --version
+zentinel --version
 ```
 
 ## 2. Create a Configuration File
 
-Create `sentinel.kdl` in your current directory:
+Create `zentinel.kdl` in your current directory:
 
 ```kdl
 server {
@@ -96,16 +96,16 @@ python3 -m http.server 3000 &
 npx http-server -p 3000 &
 ```
 
-## 4. Run Sentinel
+## 4. Run Zentinel
 
 ```bash
-sentinel -c sentinel.kdl
+zentinel -c zentinel.kdl
 ```
 
 You should see:
 
 ```
-INFO sentinel starting up
+INFO zentinel starting up
 INFO listener http listening on 0.0.0.0:8080
 INFO metrics server listening on 0.0.0.0:9090
 ```
@@ -156,7 +156,7 @@ Reload the configuration:
 
 ```bash
 # Send SIGHUP to reload
-kill -HUP $(pgrep sentinel)
+kill -HUP $(pgrep zentinel)
 ```
 
 ## Add TLS
@@ -190,13 +190,13 @@ curl -k https://localhost:8443/
 
 ## Troubleshooting
 
-### "command not found: sentinel"
+### "command not found: zentinel"
 
 The install directory isn't in your PATH. Add it:
 
 ```bash
 # Check where it was installed
-ls ~/.local/bin/sentinel || ls /usr/local/bin/sentinel
+ls ~/.local/bin/zentinel || ls /usr/local/bin/zentinel
 
 # Add to PATH (add this to your ~/.bashrc or ~/.zshrc)
 export PATH="$HOME/.local/bin:$PATH"
@@ -211,7 +211,7 @@ The installer needs write access to `/usr/local/bin`:
 
 ```bash
 # Option 1: Use sudo (will prompt for password)
-curl -fsSL https://getsentinel.raskell.io | sudo sh
+curl -fsSL https://getzentinelproxy.io | sudo sh
 
 # Option 2: Install to user directory (no sudo needed)
 # The script will automatically fall back to ~/.local/bin
@@ -225,8 +225,8 @@ Another process is using port 8080:
 # Find what's using the port
 lsof -i :8080
 
-# Either stop that process, or change Sentinel's port
-# In sentinel.kdl, change:
+# Either stop that process, or change Zentinel's port
+# In zentinel.kdl, change:
 #   address "0.0.0.0:8080"
 # to:
 #   address "0.0.0.0:9000"
@@ -249,7 +249,7 @@ python3 -m http.server 3000
 Validate your config file:
 
 ```bash
-sentinel --config sentinel.kdl --check
+zentinel --config zentinel.kdl --check
 ```
 
 Common issues:

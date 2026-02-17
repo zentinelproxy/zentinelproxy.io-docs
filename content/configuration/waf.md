@@ -3,7 +3,7 @@ title = "WAF"
 weight = 10
 +++
 
-The `waf` block configures Sentinel's Web Application Firewall (WAF) settings. WAF protection is implemented via external agents, but this block provides global WAF configuration including engine selection, rule sets, and body inspection policies.
+The `waf` block configures Zentinel's Web Application Firewall (WAF) settings. WAF protection is implemented via external agents, but this block provides global WAF configuration including engine selection, rule sets, and body inspection policies.
 
 ## Basic Configuration
 
@@ -14,7 +14,7 @@ waf {
     audit-log #true
 
     ruleset {
-        paths "/etc/sentinel/waf/crs"
+        paths "/etc/zentinel/waf/crs"
         paranoia-level 2
     }
 
@@ -27,7 +27,7 @@ waf {
 
 ## Engine Selection
 
-Sentinel supports multiple WAF engines via external agents:
+Zentinel supports multiple WAF engines via external agents:
 
 ```kdl
 waf {
@@ -107,7 +107,7 @@ Logs are written in JSON format to the configured log output.
 ```kdl
 waf {
     ruleset {
-        paths "/etc/sentinel/waf/crs"
+        paths "/etc/zentinel/waf/crs"
         paranoia-level 1
     }
 }
@@ -120,7 +120,7 @@ Load rules from multiple directories:
 ```kdl
 waf {
     ruleset {
-        paths "/etc/sentinel/waf/crs" "/etc/sentinel/waf/custom"
+        paths "/etc/zentinel/waf/crs" "/etc/zentinel/waf/custom"
         paranoia-level 2
     }
 }
@@ -156,7 +156,7 @@ Exclude specific rules to reduce false positives:
 ```kdl
 waf {
     ruleset {
-        paths "/etc/sentinel/waf/crs"
+        paths "/etc/zentinel/waf/crs"
         paranoia-level 2
 
         exclusions {
@@ -253,7 +253,7 @@ waf {
     audit-log #true
 
     ruleset {
-        paths "/etc/sentinel/waf/crs" "/etc/sentinel/waf/custom-rules"
+        paths "/etc/zentinel/waf/crs" "/etc/zentinel/waf/custom-rules"
         paranoia-level 2
 
         exclusions {
@@ -293,14 +293,14 @@ waf {
     engine "coraza"
     mode "prevention"
     ruleset {
-        paths "/etc/sentinel/waf/crs"
+        paths "/etc/zentinel/waf/crs"
         paranoia-level 2
     }
 }
 
 agents {
     agent "waf-agent" type="waf" {
-        unix-socket "/var/run/sentinel/waf.sock"
+        unix-socket "/var/run/zentinel/waf.sock"
         events "request_headers" "request_body"
         timeout-ms 200
         failure-mode "closed"
@@ -324,10 +324,10 @@ WAF operations are tracked via Prometheus metrics:
 
 | Metric | Labels | Description |
 |--------|--------|-------------|
-| `sentinel_waf_requests_total` | `mode`, `decision` | Total WAF evaluations |
-| `sentinel_waf_blocked_total` | `rule_id` | Blocked requests by rule |
-| `sentinel_waf_detection_total` | `rule_id` | Detections (all modes) |
-| `sentinel_waf_latency_seconds` | | WAF evaluation latency |
+| `zentinel_waf_requests_total` | `mode`, `decision` | Total WAF evaluations |
+| `zentinel_waf_blocked_total` | `rule_id` | Blocked requests by rule |
+| `zentinel_waf_detection_total` | `rule_id` | Detections (all modes) |
+| `zentinel_waf_latency_seconds` | | WAF evaluation latency |
 
 ## Default Values
 

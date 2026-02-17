@@ -3,14 +3,14 @@ title = "Agents"
 weight = 9
 +++
 
-Agents are external processes that extend Sentinel's functionality. They handle security policies, authentication, rate limiting, and custom business logic. The `agents` block configures how Sentinel connects to and communicates with these agents.
+Agents are external processes that extend Zentinel's functionality. They handle security policies, authentication, rate limiting, and custom business logic. The `agents` block configures how Zentinel connects to and communicates with these agents.
 
 ## Basic Configuration
 
 ```kdl
 agents {
     agent "waf-agent" type="waf" {
-        unix-socket "/var/run/sentinel/waf.sock"
+        unix-socket "/var/run/zentinel/waf.sock"
         events "request_headers" "request_body"
         timeout-ms 200
         failure-mode "closed"
@@ -46,7 +46,7 @@ Low-latency local communication:
 
 ```kdl
 agent "local-agent" type="auth" {
-    unix-socket "/var/run/sentinel/agent.sock"
+    unix-socket "/var/run/zentinel/agent.sock"
     events "request_headers"
     timeout-ms 100
 }
@@ -69,9 +69,9 @@ With TLS:
 ```kdl
 agent "secure-agent" type="auth" {
     grpc "https://auth-service:50051" {
-        ca-cert "/etc/sentinel/ca.crt"
-        client-cert "/etc/sentinel/client.crt"
-        client-key "/etc/sentinel/client.key"
+        ca-cert "/etc/zentinel/ca.crt"
+        client-cert "/etc/zentinel/client.crt"
+        client-key "/etc/zentinel/client.key"
     }
     events "request_headers"
 }
@@ -96,7 +96,7 @@ agent "http-agent" type="custom" {
 ```kdl
 agent "secure-http-agent" type="auth" {
     http "https://auth-service:8443/agent" {
-        ca-cert "/etc/sentinel/certs/ca.crt"
+        ca-cert "/etc/zentinel/certs/ca.crt"
     }
     events "request_headers"
     timeout-ms 100
@@ -108,9 +108,9 @@ agent "secure-http-agent" type="auth" {
 ```kdl
 agent "mtls-agent" type="waf" {
     http "https://waf-service:8443/agent" {
-        ca-cert "/etc/sentinel/certs/ca.crt"
-        client-cert "/etc/sentinel/certs/client.crt"
-        client-key "/etc/sentinel/certs/client.key"
+        ca-cert "/etc/zentinel/certs/ca.crt"
+        client-cert "/etc/zentinel/certs/client.crt"
+        client-key "/etc/zentinel/certs/client.key"
     }
     events "request_headers" "request_body"
     timeout-ms 200
@@ -119,13 +119,13 @@ agent "mtls-agent" type="waf" {
 
 #### HTTP Protocol
 
-Sentinel sends events as JSON POST requests:
+Zentinel sends events as JSON POST requests:
 
 ```http
 POST /agent HTTP/1.1
 Host: policy-service:8080
 Content-Type: application/json
-X-Sentinel-Protocol-Version: 1
+X-Zentinel-Protocol-Version: 1
 
 {
   "version": 1,
@@ -190,7 +190,7 @@ Specify which lifecycle events the agent handles:
 
 ```kdl
 agent "waf-agent" type="waf" {
-    unix-socket "/var/run/sentinel/waf.sock"
+    unix-socket "/var/run/zentinel/waf.sock"
     events "request_headers" "request_body" "response_headers"
 }
 ```
@@ -303,7 +303,7 @@ agent "hybrid-agent" type="custom" {
 
 ## WAF Body Inspection
 
-For WAF agents that need to inspect request bodies, Sentinel provides a dedicated body inspection pipeline with security controls.
+For WAF agents that need to inspect request bodies, Zentinel provides a dedicated body inspection pipeline with security controls.
 
 ### WAF Configuration Block
 
@@ -342,7 +342,7 @@ Default content types for inspection:
 
 ### Body Decompression
 
-When `decompress` is enabled, Sentinel automatically decompresses request bodies before sending them to WAF agents. This allows WAF rules to inspect the actual content of compressed payloads.
+When `decompress` is enabled, Zentinel automatically decompresses request bodies before sending them to WAF agents. This allows WAF rules to inspect the actual content of compressed payloads.
 
 **Supported encodings:**
 - `gzip` - Most common compression
@@ -381,8 +381,8 @@ Decompression operations are tracked via Prometheus metrics:
 
 | Metric | Labels | Description |
 |--------|--------|-------------|
-| `sentinel_decompression_total` | `encoding`, `result` | Total decompression operations |
-| `sentinel_decompression_ratio` | `encoding` | Histogram of compression ratios |
+| `zentinel_decompression_total` | `encoding`, `result` | Total decompression operations |
+| `zentinel_decompression_ratio` | `encoding` | Histogram of compression ratios |
 
 Result labels: `success`, `ratio_exceeded`, `size_exceeded`, `invalid_data`, `io_error`
 
@@ -401,7 +401,7 @@ waf {
 
 agents {
     agent "modsecurity" type="waf" {
-        unix-socket "/var/run/sentinel/modsec.sock"
+        unix-socket "/var/run/zentinel/modsec.sock"
         events "request_headers" "request_body"
         timeout-ms 200
         failure-mode "closed"
@@ -444,9 +444,9 @@ Pass configuration to agents via the `config` block:
 
 ```kdl
 agent "waf-agent" type="waf" {
-    unix-socket "/var/run/sentinel/waf.sock"
+    unix-socket "/var/run/zentinel/waf.sock"
     config {
-        rules-path "/etc/sentinel/waf-rules"
+        rules-path "/etc/zentinel/waf-rules"
         paranoia-level 2
         block-suspicious #true
     }
@@ -485,7 +485,7 @@ filters {
 ```kdl
 agents {
     agent "modsecurity" type="waf" {
-        unix-socket "/var/run/sentinel/modsec.sock"
+        unix-socket "/var/run/zentinel/modsec.sock"
         events "request_headers" "request_body"
         timeout-ms 200
         failure-mode "closed"
@@ -574,7 +574,7 @@ Verify the agent's identity using TLS:
 ```kdl
 agent "secure-agent" type="auth" {
     grpc "https://auth-service.internal:50051" {
-        ca-cert "/etc/sentinel/certs/ca.crt"
+        ca-cert "/etc/zentinel/certs/ca.crt"
     }
     events "request_headers"
     timeout-ms 100
@@ -582,20 +582,20 @@ agent "secure-agent" type="auth" {
 ```
 
 This configuration:
-- Encrypts traffic between Sentinel and the agent
+- Encrypts traffic between Zentinel and the agent
 - Verifies the agent's certificate against the provided CA
 - Automatically extracts domain name for SNI from the address
 
 ### Mutual TLS (mTLS)
 
-For bidirectional authentication where both Sentinel and the agent verify each other:
+For bidirectional authentication where both Zentinel and the agent verify each other:
 
 ```kdl
 agent "secure-waf" type="waf" {
     grpc "https://waf-service.internal:50051" {
-        ca-cert "/etc/sentinel/certs/ca.crt"
-        client-cert "/etc/sentinel/certs/sentinel-client.crt"
-        client-key "/etc/sentinel/certs/sentinel-client.key"
+        ca-cert "/etc/zentinel/certs/ca.crt"
+        client-cert "/etc/zentinel/certs/zentinel-client.crt"
+        client-key "/etc/zentinel/certs/zentinel-client.key"
     }
     events "request_headers" "request_body"
     timeout-ms 200
@@ -606,12 +606,12 @@ agent "secure-waf" type="waf" {
 This configuration:
 - Encrypts traffic with TLS
 - Verifies the agent's certificate against the CA
-- Presents Sentinel's client certificate to the agent for verification
+- Presents Zentinel's client certificate to the agent for verification
 - Provides strong mutual authentication for security-sensitive agents
 
 ### Using System CA Store
 
-When no `ca-cert` is specified, Sentinel uses the system's native certificate store for server verification:
+When no `ca-cert` is specified, Zentinel uses the system's native certificate store for server verification:
 
 ```kdl
 agent "public-agent" type="custom" {
@@ -635,7 +635,7 @@ agent "dev-agent" type="custom" {
 }
 ```
 
-When enabled, Sentinel logs a security warning:
+When enabled, Zentinel logs a security warning:
 ```
 WARN: TLS certificate verification disabled for agent connection
 ```
@@ -648,7 +648,7 @@ WARN: TLS certificate verification disabled for agent connection
 # Create CA
 openssl genrsa -out ca.key 4096
 openssl req -new -x509 -days 3650 -key ca.key -out ca.crt \
-    -subj "/CN=Sentinel Agent CA"
+    -subj "/CN=Zentinel Agent CA"
 
 # Create agent server certificate
 openssl genrsa -out agent.key 2048
@@ -657,20 +657,20 @@ openssl req -new -key agent.key -out agent.csr \
 openssl x509 -req -days 365 -in agent.csr -CA ca.crt -CAkey ca.key \
     -CAcreateserial -out agent.crt
 
-# Create Sentinel client certificate (for mTLS)
-openssl genrsa -out sentinel-client.key 2048
-openssl req -new -key sentinel-client.key -out sentinel-client.csr \
-    -subj "/CN=sentinel-proxy"
-openssl x509 -req -days 365 -in sentinel-client.csr -CA ca.crt -CAkey ca.key \
-    -CAcreateserial -out sentinel-client.crt
+# Create Zentinel client certificate (for mTLS)
+openssl genrsa -out zentinel-client.key 2048
+openssl req -new -key zentinel-client.key -out zentinel-client.csr \
+    -subj "/CN=zentinel-proxy"
+openssl x509 -req -days 365 -in zentinel-client.csr -CA ca.crt -CAkey ca.key \
+    -CAcreateserial -out zentinel-client.crt
 ```
 
 #### File Permissions
 
 ```bash
 # Secure the private keys
-chmod 600 /etc/sentinel/certs/*.key
-chown sentinel:sentinel /etc/sentinel/certs/*
+chmod 600 /etc/zentinel/certs/*.key
+chown zentinel:zentinel /etc/zentinel/certs/*
 ```
 
 ### Complete Secure Agent Example
@@ -680,9 +680,9 @@ agents {
     // WAF with mTLS - highest security
     agent "modsecurity" type="waf" {
         grpc "https://waf.internal:50051" {
-            ca-cert "/etc/sentinel/certs/ca.crt"
-            client-cert "/etc/sentinel/certs/sentinel-client.crt"
-            client-key "/etc/sentinel/certs/sentinel-client.key"
+            ca-cert "/etc/zentinel/certs/ca.crt"
+            client-cert "/etc/zentinel/certs/zentinel-client.crt"
+            client-key "/etc/zentinel/certs/zentinel-client.key"
         }
         events "request_headers" "request_body"
         timeout-ms 200
@@ -696,7 +696,7 @@ agents {
     // Auth with server-only TLS
     agent "jwt-auth" type="auth" {
         grpc "https://auth.internal:50051" {
-            ca-cert "/etc/sentinel/certs/ca.crt"
+            ca-cert "/etc/zentinel/certs/ca.crt"
         }
         events "request_headers"
         timeout-ms 50
@@ -743,15 +743,15 @@ Agent-related metrics:
 
 | Metric | Description |
 |--------|-------------|
-| `sentinel_agent_requests_total` | Agent calls by agent and status |
-| `sentinel_agent_duration_seconds` | Agent call latency |
-| `sentinel_agent_errors_total` | Agent errors |
-| `sentinel_agent_timeouts_total` | Agent timeouts |
-| `sentinel_agent_circuit_breaker_state` | Circuit breaker state |
+| `zentinel_agent_requests_total` | Agent calls by agent and status |
+| `zentinel_agent_duration_seconds` | Agent call latency |
+| `zentinel_agent_errors_total` | Agent errors |
+| `zentinel_agent_timeouts_total` | Agent timeouts |
+| `zentinel_agent_circuit_breaker_state` | Circuit breaker state |
 
 ## Configuration Validation
 
-Sentinel validates agent configuration at startup:
+Zentinel validates agent configuration at startup:
 
 ### Transport Validation
 
@@ -764,7 +764,7 @@ Sentinel validates agent configuration at startup:
 Example validation errors:
 
 ```
-Error: Agent 'auth' socket path '/var/run/sentinel/auth.sock' does not exist
+Error: Agent 'auth' socket path '/var/run/zentinel/auth.sock' does not exist
 Error: Agent 'waf' path '/tmp/not-a-socket' exists but is not a socket
 Error: Agent 'remote' gRPC address 'invalid-url' is not a valid URL
 ```
@@ -774,7 +774,7 @@ Error: Agent 'remote' gRPC address 'invalid-url' is not a valid URL
 Run validation before deployment:
 
 ```bash
-sentinel --config sentinel.kdl --validate
+zentinel --config zentinel.kdl --validate
 ```
 
 This checks:

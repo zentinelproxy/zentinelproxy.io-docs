@@ -3,14 +3,14 @@ title = "Changelog"
 weight = 1
 +++
 
-All notable changes to Sentinel and official agents.
+All notable changes to Zentinel and official agents.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Crate versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-> **Note:** Sentinel uses dual versioning. See [Versioning](../versioning/) for how crate versions (0.2.0) map to release versions (25.12).
+> **Note:** Zentinel uses dual versioning. See [Versioning](../versioning/) for how crate versions (0.2.0) map to release versions (25.12).
 
-## Sentinel Proxy
+## Zentinel Proxy
 
 ### [Unreleased]
 
@@ -105,7 +105,7 @@ Release candidate.
 
 ## Official Agents
 
-### sentinel-agent-waf
+### zentinel-agent-waf
 
 #### [1.0.0] - 2024-12-15
 
@@ -124,7 +124,7 @@ Initial release.
 
 ---
 
-### sentinel-agent-modsec
+### zentinel-agent-modsec
 
 #### [1.0.0] - 2024-12-15
 
@@ -140,7 +140,7 @@ Initial release.
 
 ---
 
-### sentinel-agent-auth
+### zentinel-agent-auth
 
 #### [1.0.0] - 2024-12-15
 
@@ -156,7 +156,7 @@ Initial release.
 
 ---
 
-### sentinel-agent-ratelimit
+### zentinel-agent-ratelimit
 
 #### [1.0.0] - 2024-12-15
 
@@ -171,7 +171,7 @@ Initial release.
 
 ---
 
-### sentinel-agent-js
+### zentinel-agent-js
 
 #### [1.0.0] - 2024-12-15
 
@@ -187,7 +187,7 @@ Initial release.
 
 ---
 
-### sentinel-agent-ai-gateway
+### zentinel-agent-ai-gateway
 
 #### [1.0.0] - 2024-12-20
 
@@ -204,7 +204,7 @@ Initial release.
 
 ---
 
-### sentinel-agent-websocket-inspector
+### zentinel-agent-websocket-inspector
 
 #### [1.0.0] - 2024-12-28
 
@@ -225,7 +225,7 @@ Initial release.
 
 ## Protocol
 
-### sentinel-agent-protocol
+### zentinel-agent-protocol
 
 #### [0.1.0] - 2024-12-15
 
@@ -250,18 +250,18 @@ No breaking changes. Direct upgrade supported.
 
 ```bash
 # Stop current version
-systemctl stop sentinel
+systemctl stop zentinel
 
 # Install new version
-curl -Lo /usr/local/bin/sentinel \
-    https://github.com/raskell-io/sentinel/releases/download/v1.0.0/sentinel
-chmod +x /usr/local/bin/sentinel
+curl -Lo /usr/local/bin/zentinel \
+    https://github.com/zentinelproxy/zentinel/releases/download/v1.0.0/zentinel
+chmod +x /usr/local/bin/zentinel
 
 # Validate configuration
-sentinel validate -c /etc/sentinel/sentinel.kdl
+zentinel validate -c /etc/zentinel/zentinel.kdl
 
 # Start new version
-systemctl start sentinel
+systemctl start zentinel
 ```
 
 ### From 0.8.x to 0.9.x
@@ -285,12 +285,12 @@ Configuration changes required:
    ```
 
 2. **Agent socket paths**:
-   - Default path changed from `/tmp/sentinel-*.sock` to `/var/run/sentinel/*.sock`
+   - Default path changed from `/tmp/zentinel-*.sock` to `/var/run/zentinel/*.sock`
 
 ---
 
 ## Links
 
-- [GitHub Releases](https://github.com/raskell-io/sentinel/releases)
+- [GitHub Releases](https://github.com/zentinelproxy/zentinel/releases)
 - [Migration Guides](../migration/)
 - [Release Process](/development/releases/)

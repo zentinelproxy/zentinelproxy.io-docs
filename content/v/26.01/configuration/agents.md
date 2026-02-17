@@ -3,14 +3,14 @@ title = "Agents"
 weight = 9
 +++
 
-Agents are external processes that extend Sentinel's functionality. They handle security policies, authentication, rate limiting, and custom business logic. The `agents` block configures how Sentinel connects to and communicates with these agents.
+Agents are external processes that extend Zentinel's functionality. They handle security policies, authentication, rate limiting, and custom business logic. The `agents` block configures how Zentinel connects to and communicates with these agents.
 
 ## Basic Configuration
 
 ```kdl
 agents {
     agent "waf-agent" type="waf" {
-        unix-socket "/var/run/sentinel/waf.sock"
+        unix-socket "/var/run/zentinel/waf.sock"
         events "request_headers" "request_body"
         timeout-ms 200
         failure-mode "closed"
@@ -46,7 +46,7 @@ Low-latency local communication:
 
 ```kdl
 agent "local-agent" type="auth" {
-    unix-socket "/var/run/sentinel/agent.sock"
+    unix-socket "/var/run/zentinel/agent.sock"
     events "request_headers"
     timeout-ms 100
 }
@@ -69,9 +69,9 @@ With TLS:
 ```kdl
 agent "secure-agent" type="auth" {
     grpc "https://auth-service:50051" {
-        ca-cert "/etc/sentinel/ca.crt"
-        client-cert "/etc/sentinel/client.crt"
-        client-key "/etc/sentinel/client.key"
+        ca-cert "/etc/zentinel/ca.crt"
+        client-cert "/etc/zentinel/client.crt"
+        client-key "/etc/zentinel/client.key"
     }
     events "request_headers"
 }
@@ -97,7 +97,7 @@ Specify which lifecycle events the agent handles:
 
 ```kdl
 agent "waf-agent" type="waf" {
-    unix-socket "/var/run/sentinel/waf.sock"
+    unix-socket "/var/run/zentinel/waf.sock"
     events "request_headers" "request_body" "response_headers"
 }
 ```
@@ -210,7 +210,7 @@ agent "hybrid-agent" type="custom" {
 
 ## WAF Body Inspection
 
-For WAF agents that need to inspect request bodies, Sentinel provides a dedicated body inspection pipeline with security controls.
+For WAF agents that need to inspect request bodies, Zentinel provides a dedicated body inspection pipeline with security controls.
 
 ### WAF Configuration Block
 
@@ -249,7 +249,7 @@ Default content types for inspection:
 
 ### Body Decompression
 
-When `decompress` is enabled, Sentinel automatically decompresses request bodies before sending them to WAF agents. This allows WAF rules to inspect the actual content of compressed payloads.
+When `decompress` is enabled, Zentinel automatically decompresses request bodies before sending them to WAF agents. This allows WAF rules to inspect the actual content of compressed payloads.
 
 **Supported encodings:**
 - `gzip` - Most common compression
@@ -288,8 +288,8 @@ Decompression operations are tracked via Prometheus metrics:
 
 | Metric | Labels | Description |
 |--------|--------|-------------|
-| `sentinel_decompression_total` | `encoding`, `result` | Total decompression operations |
-| `sentinel_decompression_ratio` | `encoding` | Histogram of compression ratios |
+| `zentinel_decompression_total` | `encoding`, `result` | Total decompression operations |
+| `zentinel_decompression_ratio` | `encoding` | Histogram of compression ratios |
 
 Result labels: `success`, `ratio_exceeded`, `size_exceeded`, `invalid_data`, `io_error`
 
@@ -308,7 +308,7 @@ waf {
 
 agents {
     agent "modsecurity" type="waf" {
-        unix-socket "/var/run/sentinel/modsec.sock"
+        unix-socket "/var/run/zentinel/modsec.sock"
         events "request_headers" "request_body"
         timeout-ms 200
         failure-mode "closed"
@@ -351,9 +351,9 @@ Pass configuration to agents via the `config` block:
 
 ```kdl
 agent "waf-agent" type="waf" {
-    unix-socket "/var/run/sentinel/waf.sock"
+    unix-socket "/var/run/zentinel/waf.sock"
     config {
-        rules-path "/etc/sentinel/waf-rules"
+        rules-path "/etc/zentinel/waf-rules"
         paranoia-level 2
         block-suspicious #true
     }
@@ -392,7 +392,7 @@ filters {
 ```kdl
 agents {
     agent "modsecurity" type="waf" {
-        unix-socket "/var/run/sentinel/modsec.sock"
+        unix-socket "/var/run/zentinel/modsec.sock"
         events "request_headers" "request_body"
         timeout-ms 200
         failure-mode "closed"
@@ -468,9 +468,9 @@ agents {
 ```kdl
 agent "secure-agent" type="waf" {
     grpc "https://waf-service:50051" {
-        ca-cert "/etc/sentinel/ca.crt"
-        client-cert "/etc/sentinel/client.crt"
-        client-key "/etc/sentinel/client.key"
+        ca-cert "/etc/zentinel/ca.crt"
+        client-cert "/etc/zentinel/client.crt"
+        client-key "/etc/zentinel/client.key"
     }
 }
 ```
@@ -505,11 +505,11 @@ Agent-related metrics:
 
 | Metric | Description |
 |--------|-------------|
-| `sentinel_agent_requests_total` | Agent calls by agent and status |
-| `sentinel_agent_duration_seconds` | Agent call latency |
-| `sentinel_agent_errors_total` | Agent errors |
-| `sentinel_agent_timeouts_total` | Agent timeouts |
-| `sentinel_agent_circuit_breaker_state` | Circuit breaker state |
+| `zentinel_agent_requests_total` | Agent calls by agent and status |
+| `zentinel_agent_duration_seconds` | Agent call latency |
+| `zentinel_agent_errors_total` | Agent errors |
+| `zentinel_agent_timeouts_total` | Agent timeouts |
+| `zentinel_agent_circuit_breaker_state` | Circuit breaker state |
 
 ## Next Steps
 

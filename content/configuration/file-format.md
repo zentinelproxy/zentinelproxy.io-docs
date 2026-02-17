@@ -3,7 +3,7 @@ title = "File Format"
 weight = 1
 +++
 
-Sentinel uses [KDL](https://kdl.dev/) as its primary configuration format. KDL is a human-friendly document language that's easy to read, write, and diff.
+Zentinel uses [KDL](https://kdl.dev/) as its primary configuration format. KDL is a human-friendly document language that's easy to read, write, and diff.
 
 ## Why KDL?
 
@@ -55,7 +55,7 @@ health-check type="http" interval-secs=10
 ### Data Types
 
 ```kdl
-// Example showing KDL data types in Sentinel config
+// Example showing KDL data types in Zentinel config
 
 system {
     // Numbers (integer)
@@ -114,7 +114,7 @@ system {
 
 ## File Structure
 
-A typical Sentinel configuration has these top-level blocks:
+A typical Zentinel configuration has these top-level blocks:
 
 ```kdl
 // System settings (use "system", not "server")
@@ -174,7 +174,7 @@ namespace "api" {
 
 ## Schema Versioning
 
-Sentinel configurations include a schema version for compatibility checking. This helps catch configuration issues when upgrading Sentinel.
+Zentinel configurations include a schema version for compatibility checking. This helps catch configuration issues when upgrading Zentinel.
 
 ```kdl
 // Declare schema version at the top of your config
@@ -197,17 +197,17 @@ Schema versions use `major.minor` format:
 
 ### Compatibility Behavior
 
-| Config Version vs Sentinel | Result |
+| Config Version vs Zentinel | Result |
 |---------------------------|--------|
 | Exact match | ✓ Loads normally |
 | Config older but supported | ✓ Loads normally |
-| Config newer than Sentinel | ⚠ Loads with warning (some features may not work) |
+| Config newer than Zentinel | ⚠ Loads with warning (some features may not work) |
 | Config older than minimum | ✗ Rejected with error |
 | Invalid format | ✗ Rejected with error |
 
 ### Omitting Version
 
-If `schema-version` is not specified, Sentinel assumes the current version. For production deployments, explicitly specifying the version is recommended:
+If `schema-version` is not specified, Zentinel assumes the current version. For production deployments, explicitly specifying the version is recommended:
 
 ```kdl
 // Explicit version (recommended for production)
@@ -216,12 +216,12 @@ schema-version "1.0"
 system { /* ... */ }
 ```
 
-This ensures configuration files remain compatible when upgrading Sentinel, and provides clear error messages if migration is needed.
+This ensures configuration files remain compatible when upgrading Zentinel, and provides clear error messages if migration is needed.
 
 ## Complete Example
 
 ```kdl
-// Sentinel Configuration
+// Zentinel Configuration
 // Production API Gateway
 
 schema-version "1.0"
@@ -237,8 +237,8 @@ listeners {
         address "0.0.0.0:443"
         protocol "https"
         tls {
-            cert-file "/etc/sentinel/certs/server.crt"
-            key-file "/etc/sentinel/certs/server.key"
+            cert-file "/etc/zentinel/certs/server.crt"
+            key-file "/etc/zentinel/certs/server.key"
             min-version "1.2"
         }
     }
@@ -291,7 +291,7 @@ agents {
     agent "auth" {
         type "auth"
         transport "unix_socket" {
-            path "/var/run/sentinel/auth.sock"
+            path "/var/run/zentinel/auth.sock"
         }
         timeout-ms 100
         failure-mode "closed"
@@ -300,7 +300,7 @@ agents {
     agent "ratelimit" {
         type "rate_limit"
         transport "unix_socket" {
-            path "/var/run/sentinel/ratelimit.sock"
+            path "/var/run/zentinel/ratelimit.sock"
         }
         timeout-ms 50
         failure-mode "open"
@@ -316,7 +316,7 @@ limits {
 
 ## Alternative Formats
 
-Sentinel also supports JSON and TOML for programmatic generation:
+Zentinel also supports JSON and TOML for programmatic generation:
 
 ### JSON
 
@@ -359,8 +359,8 @@ File format is auto-detected by extension:
 For complex deployments, split configuration across multiple files:
 
 ```
-/etc/sentinel/
-├── sentinel.kdl        # Main config (includes others)
+/etc/zentinel/
+├── zentinel.kdl        # Main config (includes others)
 ├── routes/
 │   ├── api.kdl
 │   ├── static.kdl
@@ -375,13 +375,13 @@ For complex deployments, split configuration across multiple files:
 Use directory loading:
 
 ```bash
-sentinel --config-dir /etc/sentinel/
+zentinel --config-dir /etc/zentinel/
 ```
 
 Or explicit includes in your main config:
 
 ```kdl
-// sentinel.kdl
+// zentinel.kdl
 include "routes/*.kdl"
 include "upstreams/*.kdl"
 include "agents/*.kdl"
@@ -393,10 +393,10 @@ Validate configuration before applying:
 
 ```bash
 # Check syntax and semantics
-sentinel --config sentinel.kdl --validate
+zentinel --config zentinel.kdl --validate
 
 # Dry-run mode
-sentinel --config sentinel.kdl --dry-run
+zentinel --config zentinel.kdl --dry-run
 ```
 
 Common validation errors:
@@ -410,11 +410,11 @@ Common validation errors:
 
 ## Hot Reload
 
-Sentinel supports configuration reload without restart:
+Zentinel supports configuration reload without restart:
 
 ```bash
 # Send SIGHUP to reload
-kill -HUP $(cat /var/run/sentinel.pid)
+kill -HUP $(cat /var/run/zentinel.pid)
 
 # Or use the admin endpoint
 curl -X POST http://localhost:9090/admin/reload

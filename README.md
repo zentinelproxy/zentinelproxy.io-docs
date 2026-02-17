@@ -1,8 +1,8 @@
-# sentinel.raskell.io-docs
+# zentinelproxy.io-docs
 
-Documentation site for [Sentinel](https://github.com/raskell-io/sentinel).
+Documentation site for [Zentinel](https://github.com/zentinelproxy/zentinel).
 
-**Live:** https://sentinel.raskell.io/docs
+**Live:** https://zentinelproxy.io/docs
 
 ## Quick Start
 
@@ -28,7 +28,7 @@ Visit http://127.0.0.1:1111
 ## Structure
 
 ```
-sentinel.raskell.io-docs/
+zentinelproxy.io-docs/
 ├── config.toml           # Zola configuration
 ├── content/
 │   ├── _index.md         # Introduction
@@ -77,9 +77,9 @@ server {
 
 ## Related
 
-- [sentinel](https://github.com/raskell-io/sentinel) — Main repository
-- [sentinel.raskell.io](https://github.com/raskell-io/sentinel.raskell.io) — Marketing site
-- [Discussions](https://github.com/raskell-io/sentinel/discussions) — Questions and ideas
+- [zentinel](https://github.com/zentinelproxy/zentinel) — Main repository
+- [zentinelproxy.io](https://github.com/zentinelproxy/zentinelproxy.io) — Marketing site
+- [Discussions](https://github.com/zentinelproxy/zentinel/discussions) — Questions and ideas
 
 ## License
 

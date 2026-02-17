@@ -3,17 +3,17 @@ title = "Deployment Architecture"
 weight = 1
 +++
 
-This page explains Sentinel's deployment philosophy and why agents are managed externally.
+This page explains Zentinel's deployment philosophy and why agents are managed externally.
 
-## Why Sentinel Doesn't Manage Agents
+## Why Zentinel Doesn't Manage Agents
 
-A natural question: *"Why doesn't Sentinel just spawn and supervise agents itself?"*
+A natural question: *"Why doesn't Zentinel just spawn and supervise agents itself?"*
 
 We considered this approach but rejected it for several reasons:
 
 ### 1. Dataplane Stays Boring
 
-Sentinel's core proxy must be predictable and stable. Adding process management would:
+Zentinel's core proxy must be predictable and stable. Adding process management would:
 - Increase complexity and potential failure modes
 - Create coupling between proxy and agent lifecycles
 - Make the proxy harder to reason about under load
@@ -39,7 +39,7 @@ Process supervision is a solved problem:
 - **Docker/K8s** add containerization, scaling, health checks
 - Reinventing this would be worse than using battle-tested tools
 
-## The Sentinel Model
+## The Zentinel Model
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -55,7 +55,7 @@ Process supervision is a solved problem:
 │           │                        │                             │
 │           ▼                        ▼                             │
 │  ┌─────────────────┐      ┌─────────────────┐                   │
-│  │    Sentinel     │◄────►│   Auth Agent    │                   │
+│  │    Zentinel     │◄────►│   Auth Agent    │                   │
 │  │    (proxy)      │ UDS  │   (process)     │                   │
 │  │                 │      └─────────────────┘                   │
 │  │                 │                                             │
@@ -68,7 +68,7 @@ Process supervision is a solved problem:
 ```
 
 Key points:
-- Sentinel connects to agents, doesn't spawn them
+- Zentinel connects to agents, doesn't spawn them
 - Each component has its own supervisor
 - Failure in one component doesn't cascade
 - Components can be updated independently
@@ -77,8 +77,8 @@ Key points:
 
 ### Connection Behavior
 
-When Sentinel starts:
-1. Reads agent configuration from `sentinel.kdl`
+When Zentinel starts:
+1. Reads agent configuration from `zentinel.kdl`
 2. Attempts to connect to each configured agent
 3. For missing agents, behavior depends on `failure-mode`:
    - `failure-mode "open"` — Requests proceed without agent
@@ -86,11 +86,11 @@ When Sentinel starts:
 
 ### Health Checking
 
-Sentinel monitors agent health for circuit breaking (not supervision):
+Zentinel monitors agent health for circuit breaking (not supervision):
 
 ```kdl
 agent "auth" type="auth" {
-    unix-socket "/run/sentinel/auth.sock"
+    unix-socket "/run/zentinel/auth.sock"
 
     health-check {
         enabled #true
@@ -138,7 +138,7 @@ Best for: Single-server deployments, development
 ┌─────────────────────────────────────────┐
 │              Single Host                │
 │  ┌──────────┐  ┌──────────┐            │
-│  │ Sentinel │──│ Agent 1  │ (UDS)      │
+│  │ Zentinel │──│ Agent 1  │ (UDS)      │
 │  │          │  └──────────┘            │
 │  │          │  ┌──────────┐            │
 │  │          │──│ Agent 2  │ (UDS)      │
@@ -154,7 +154,7 @@ Best for: Kubernetes, Docker Compose
 ┌─────────────────────────────────────────┐
 │                  Pod                    │
 │  ┌──────────┐  ┌──────────┐            │
-│  │ Sentinel │──│ Agent    │ (localhost)│
+│  │ Zentinel │──│ Agent    │ (localhost)│
 │  │          │  │ sidecar  │            │
 │  └──────────┘  └──────────┘            │
 └─────────────────────────────────────────┘
@@ -166,10 +166,10 @@ Best for: Shared agents, high availability, scaling
 
 ```
 ┌──────────────┐        ┌──────────────────────┐
-│   Sentinel   │        │   Agent Service      │
+│   Zentinel   │        │   Agent Service      │
 │   Pod 1      │───────▶│   (3 replicas)       │
 ├──────────────┤  gRPC  │   ┌────┐ ┌────┐     │
-│   Sentinel   │───────▶│   │ R1 │ │ R2 │ ... │
+│   Zentinel   │───────▶│   │ R1 │ │ R2 │ ... │
 │   Pod 2      │        │   └────┘ └────┘     │
 └──────────────┘        └──────────────────────┘
 ```
@@ -182,7 +182,7 @@ Best for: Shared agents, high availability, scaling
 agents {
     // Unix socket (local)
     agent "auth" type="auth" {
-        unix-socket "/run/sentinel/auth.sock"
+        unix-socket "/run/zentinel/auth.sock"
         timeout-ms 100
         failure-mode "closed"
     }
@@ -207,7 +207,7 @@ agents {
 
 ```kdl
 agent "auth" type="auth" {
-    unix-socket "/run/sentinel/auth.sock"
+    unix-socket "/run/zentinel/auth.sock"
 
     // Per-request timeout
     timeout-ms 100
@@ -230,7 +230,7 @@ agent "auth" type="auth" {
 ```kdl
 // Good: Explicit failure handling
 agent "auth" type="auth" {
-    unix-socket "/run/sentinel/auth.sock"
+    unix-socket "/run/zentinel/auth.sock"
     failure-mode "closed"  // Security: fail closed
 }
 
@@ -259,7 +259,7 @@ Prevent cascade failures when agents are degraded:
 
 ```kdl
 agent "auth" type="auth" {
-    unix-socket "/run/sentinel/auth.sock"
+    unix-socket "/run/zentinel/auth.sock"
 
     circuit-breaker {
         failure-threshold 5      // Open after 5 failures
@@ -274,13 +274,13 @@ agent "auth" type="auth" {
 Export metrics for alerting:
 
 ```
-# HELP sentinel_agent_health Agent health status
-# TYPE sentinel_agent_health gauge
-sentinel_agent_health{agent="auth"} 1
-sentinel_agent_health{agent="waf"} 0
+# HELP zentinel_agent_health Agent health status
+# TYPE zentinel_agent_health gauge
+zentinel_agent_health{agent="auth"} 1
+zentinel_agent_health{agent="waf"} 0
 
-# HELP sentinel_agent_latency_seconds Agent call latency
-# TYPE sentinel_agent_latency_seconds histogram
-sentinel_agent_latency_seconds_bucket{agent="auth",le="0.01"} 9823
-sentinel_agent_latency_seconds_bucket{agent="auth",le="0.05"} 9901
+# HELP zentinel_agent_latency_seconds Agent call latency
+# TYPE zentinel_agent_latency_seconds histogram
+zentinel_agent_latency_seconds_bucket{agent="auth",le="0.01"} 9823
+zentinel_agent_latency_seconds_bucket{agent="auth",le="0.05"} 9901
 ```

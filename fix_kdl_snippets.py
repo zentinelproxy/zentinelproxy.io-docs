@@ -6,7 +6,7 @@ Fix invalid KDL snippets by wrapping them in minimal valid configurations.
 import re
 from pathlib import Path
 
-DOCS_DIR = Path("/Users/zara/Development/github.com/raskell-io/sentinel.raskell.io-docs/content")
+DOCS_DIR = Path("/Users/zara/Development/github.com/zentinelproxy/zentinelproxy.io-docs/content")
 
 # Minimal boilerplate for wrapping snippets
 MINIMAL_WRAPPER = """system {{

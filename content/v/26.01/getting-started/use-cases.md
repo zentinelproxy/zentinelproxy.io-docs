@@ -3,7 +3,7 @@ title = "Use Cases"
 weight = 5
 +++
 
-Sentinel is a secure, high-performance reverse proxy with programmable security controls. Here are common scenarios where Sentinel excels, from enterprise deployments to personal projects.
+Zentinel is a secure, high-performance reverse proxy with programmable security controls. Here are common scenarios where Zentinel excels, from enterprise deployments to personal projects.
 
 ## Reverse Proxy & Load Balancer
 
@@ -15,8 +15,8 @@ listeners {
         address "0.0.0.0:443"
         protocol "https"
         tls {
-            cert "/etc/sentinel/certs/server.crt"
-            key "/etc/sentinel/certs/server.key"
+            cert "/etc/zentinel/certs/server.crt"
+            key "/etc/zentinel/certs/server.key"
         }
     }
 }
@@ -70,7 +70,7 @@ routes {
 
 agents {
     agent "auth" type="auth" {
-        unix-socket "/var/run/sentinel/auth.sock"
+        unix-socket "/var/run/zentinel/auth.sock"
         config {
             jwt-secret "${JWT_SECRET}"
             required-claims "sub" "exp"
@@ -78,7 +78,7 @@ agents {
     }
 
     agent "ratelimit" type="ratelimit" {
-        unix-socket "/var/run/sentinel/ratelimit.sock"
+        unix-socket "/var/run/zentinel/ratelimit.sock"
         config {
             requests-per-minute 100
             burst 20
@@ -156,7 +156,7 @@ routes {
 
 agents {
     agent "waf" type="waf" {
-        unix-socket "/var/run/sentinel/waf.sock"
+        unix-socket "/var/run/zentinel/waf.sock"
         events "request_headers" "request_body"
         config {
             paranoia-level 2
@@ -192,7 +192,7 @@ routes {
 
 agents {
     agent "ai-gateway" type="ai-gateway" {
-        unix-socket "/var/run/sentinel/ai-gateway.sock"
+        unix-socket "/var/run/zentinel/ai-gateway.sock"
         events "request_headers" "request_body"
         config {
             detect-prompt-injection true
@@ -279,7 +279,7 @@ routes {
 
 agents {
     agent "denylist" type="denylist" {
-        unix-socket "/var/run/sentinel/denylist.sock"
+        unix-socket "/var/run/zentinel/denylist.sock"
         config {
             block-ips "10.0.0.0/8"
             block-countries "XX" "YY"
@@ -287,14 +287,14 @@ agents {
     }
 
     agent "waf" type="waf" {
-        unix-socket "/var/run/sentinel/waf.sock"
+        unix-socket "/var/run/zentinel/waf.sock"
         config {
             paranoia-level 3
         }
     }
 
     agent "auth" type="auth" {
-        unix-socket "/var/run/sentinel/auth.sock"
+        unix-socket "/var/run/zentinel/auth.sock"
         config {
             provider "oidc"
             issuer "https://auth.example.com"
@@ -315,14 +315,14 @@ Implement business-specific logic with the JavaScript agent.
 ```kdl
 agents {
     agent "custom" type="js" {
-        unix-socket "/var/run/sentinel/js.sock"
-        script "/etc/sentinel/scripts/custom.js"
+        unix-socket "/var/run/zentinel/js.sock"
+        script "/etc/zentinel/scripts/custom.js"
     }
 }
 ```
 
 ```javascript
-// /etc/sentinel/scripts/custom.js
+// /etc/zentinel/scripts/custom.js
 function onRequest(request) {
     // Add tenant context from subdomain
     const host = request.headers["host"] || "";
@@ -363,8 +363,8 @@ listeners {
         address "0.0.0.0:443"
         protocol "https"
         tls {
-            cert "/etc/sentinel/certs/wildcard.crt"
-            key "/etc/sentinel/certs/wildcard.key"
+            cert "/etc/zentinel/certs/wildcard.crt"
+            key "/etc/zentinel/certs/wildcard.key"
         }
     }
 }

@@ -3,11 +3,11 @@ title = "Namespaces & Services"
 weight = 11
 +++
 
-Namespaces and services provide hierarchical organization for Sentinel configuration, enabling multi-tenant deployments with runtime isolation.
+Namespaces and services provide hierarchical organization for Zentinel configuration, enabling multi-tenant deployments with runtime isolation.
 
 ## Overview
 
-Sentinel supports three scope levels:
+Zentinel supports three scope levels:
 
 | Scope | Description | Use Case |
 |-------|-------------|----------|
@@ -110,8 +110,8 @@ namespace "payments" {
             address "0.0.0.0:8443"
             protocol "https"
             tls {
-                cert-file "/etc/sentinel/certs/checkout.crt"
-                key-file "/etc/sentinel/certs/checkout.key"
+                cert-file "/etc/zentinel/certs/checkout.crt"
+                key-file "/etc/zentinel/certs/checkout.key"
             }
         }
 
@@ -157,7 +157,7 @@ namespace "payments" {
 
 ## Scope Resolution
 
-When a route references an upstream, Sentinel resolves it in order:
+When a route references an upstream, Zentinel resolves it in order:
 
 1. **Service scope** - Resources in the same service
 2. **Namespace scope** - Resources in the parent namespace
@@ -340,10 +340,10 @@ namespace "best-effort" {
 Scoped metrics include `namespace` and `service` labels:
 
 ```
-sentinel_scoped_requests_total{namespace="api", service="users", route="list", status="200"}
-sentinel_scoped_request_duration_seconds{namespace="api", service="users", route="list"}
-sentinel_scoped_rate_limit_hits_total{namespace="api", service="public", route="main"}
-sentinel_scoped_circuit_breaker_state{namespace="payments", service="checkout", upstream="backend"}
+zentinel_scoped_requests_total{namespace="api", service="users", route="list", status="200"}
+zentinel_scoped_request_duration_seconds{namespace="api", service="users", route="list"}
+zentinel_scoped_rate_limit_hits_total{namespace="api", service="public", route="main"}
+zentinel_scoped_circuit_breaker_state{namespace="payments", service="checkout", upstream="backend"}
 ```
 
 ### Access Logs
@@ -507,8 +507,8 @@ namespace "web" {
             address "0.0.0.0:443"
             protocol "https"
             tls {
-                cert-file "/etc/sentinel/certs/web.crt"
-                key-file "/etc/sentinel/certs/web.key"
+                cert-file "/etc/zentinel/certs/web.crt"
+                key-file "/etc/zentinel/certs/web.key"
             }
         }
     }
@@ -549,7 +549,7 @@ observability {
 
 ## Validation
 
-Sentinel validates namespace configuration:
+Zentinel validates namespace configuration:
 
 - Unique IDs within each scope
 - Valid cross-namespace references
@@ -557,7 +557,7 @@ Sentinel validates namespace configuration:
 - Reserved character (`:`) not used in resource IDs
 
 ```bash
-sentinel --config sentinel.kdl --validate
+zentinel --config zentinel.kdl --validate
 ```
 
 ## Best Practices

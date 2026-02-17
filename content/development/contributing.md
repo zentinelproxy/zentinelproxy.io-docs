@@ -3,7 +3,7 @@ title = "Contributing"
 weight = 4
 +++
 
-Guide to contributing to Sentinel and its ecosystem.
+Guide to contributing to Zentinel and its ecosystem.
 
 ## Ways to Contribute
 
@@ -27,7 +27,7 @@ Guide to contributing to Sentinel and its ecosystem.
 
 ### 1. Find an Issue
 
-Browse [GitHub Issues](https://github.com/raskell-io/sentinel/issues):
+Browse [GitHub Issues](https://github.com/zentinelproxy/zentinel/issues):
 
 - `good first issue` - Suitable for newcomers
 - `help wanted` - Community contributions welcome
@@ -38,11 +38,11 @@ Browse [GitHub Issues](https://github.com/raskell-io/sentinel/issues):
 
 ```bash
 # Fork on GitHub, then clone
-git clone https://github.com/YOUR_USERNAME/sentinel.git
-cd sentinel
+git clone https://github.com/YOUR_USERNAME/zentinel.git
+cd zentinel
 
 # Add upstream remote
-git remote add upstream https://github.com/raskell-io/sentinel.git
+git remote add upstream https://github.com/zentinelproxy/zentinel.git
 ```
 
 ### 3. Create a Branch
@@ -230,13 +230,13 @@ Add entries under `[Unreleased]`:
 
 ```toml
 [dependencies]
-sentinel-agent-protocol = "0.1"
+zentinel-agent-protocol = "0.1"
 ```
 
 2. Implement the handler trait:
 
 ```rust
-use sentinel_agent_protocol::{AgentHandler, RequestHeadersEvent};
+use zentinel_agent_protocol::{AgentHandler, RequestHeadersEvent};
 
 pub struct MyAgent { }
 
@@ -259,7 +259,7 @@ impl AgentHandler for MyAgent {
 New agent repositories should include:
 
 ```
-sentinel-agent-xyz/
+zentinel-agent-xyz/
 ├── Cargo.toml
 ├── README.md
 ├── LICENSE
@@ -304,9 +304,9 @@ By contributing, you agree that your contributions will be licensed under the sa
 
 ## Getting Help
 
-- **Discussions**: [GitHub Discussions](https://github.com/raskell-io/sentinel/discussions)
+- **Discussions**: [GitHub Discussions](https://github.com/zentinelproxy/zentinel/discussions)
 - **Chat**: Discord (link in README)
-- **Issues**: [GitHub Issues](https://github.com/raskell-io/sentinel/issues)
+- **Issues**: [GitHub Issues](https://github.com/zentinelproxy/zentinel/issues)
 
 ## Next Steps
 

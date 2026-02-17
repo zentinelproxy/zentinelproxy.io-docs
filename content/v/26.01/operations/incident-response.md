@@ -3,7 +3,7 @@ title = "Incident Response"
 weight = 4
 +++
 
-Procedures for responding to production incidents affecting Sentinel.
+Procedures for responding to production incidents affecting Zentinel.
 
 ## Incident Classification
 
@@ -49,10 +49,10 @@ curl -s localhost:9090/metrics | grep 'requests_total' | \
     awk '/5[0-9][0-9]/ {sum+=$2} END {print "5xx errors:", sum}'
 
 # Check process status
-systemctl status sentinel
+systemctl status zentinel
 
 # Check recent logs for errors
-journalctl -u sentinel --since "5 minutes ago" | grep -i error | tail -20
+journalctl -u zentinel --since "5 minutes ago" | grep -i error | tail -20
 
 # Check upstream health
 curl -s localhost:9090/metrics | grep upstream_health
@@ -82,18 +82,18 @@ Is the proxy process running?
 
 ### Process Crash
 
-**Symptoms**: Sentinel process not running, connections refused
+**Symptoms**: Zentinel process not running, connections refused
 
 **Immediate Actions**:
 ```bash
 # 1. Attempt restart
-systemctl restart sentinel
+systemctl restart zentinel
 
 # 2. Check if it stays up
-sleep 5 && systemctl status sentinel
+sleep 5 && systemctl status zentinel
 
 # 3. If still failing, check logs for crash reason
-journalctl -u sentinel --since "10 minutes ago" | tail -100
+journalctl -u zentinel --since "10 minutes ago" | tail -100
 
 # 4. Check for resource exhaustion
 dmesg | grep -i "oom\|killed" | tail -10
@@ -105,7 +105,7 @@ df -h /var /tmp
 
 | Cause | Diagnostic | Fix |
 |-------|------------|-----|
-| OOM killed | `dmesg \| grep oom` shows sentinel | Increase memory limits |
+| OOM killed | `dmesg \| grep oom` shows zentinel | Increase memory limits |
 | Config error | Logs show parse/validation error | Restore previous config |
 | Disk full | `df -h` shows 100% | Clear logs, increase disk |
 | Port conflict | Logs show "address in use" | Kill conflicting process |
@@ -114,8 +114,8 @@ df -h /var /tmp
 **Rollback**:
 ```bash
 # Restore last known good config
-cp /etc/sentinel/config.kdl.backup /etc/sentinel/config.kdl
-systemctl restart sentinel
+cp /etc/zentinel/config.kdl.backup /etc/zentinel/config.kdl
+systemctl restart zentinel
 ```
 
 ### Upstream Failure
@@ -153,7 +153,7 @@ traceroute -n <upstream_ip>
 curl -s localhost:9090/metrics | grep 'requests_total.*status="5' | sort -t'"' -k4
 
 # 2. Check for specific error types
-journalctl -u sentinel --since "5 minutes ago" | \
+journalctl -u zentinel --since "5 minutes ago" | \
     grep -oP 'error[^,]*' | sort | uniq -c | sort -rn | head
 
 # 3. Check upstream latency
@@ -194,7 +194,7 @@ limits {
 }
 ```
 
-Then reload with `kill -HUP $(cat /var/run/sentinel.pid)`.
+Then reload with `kill -HUP $(cat /var/run/zentinel.pid)`.
 
 ### TLS/Certificate Issues
 
@@ -203,10 +203,10 @@ Then reload with `kill -HUP $(cat /var/run/sentinel.pid)`.
 **Diagnostic Commands**:
 ```bash
 # Check certificate expiration
-openssl x509 -in /etc/sentinel/certs/server.crt -noout -dates
+openssl x509 -in /etc/zentinel/certs/server.crt -noout -dates
 
 # Verify certificate chain
-openssl verify -CAfile /etc/sentinel/certs/ca.crt /etc/sentinel/certs/server.crt
+openssl verify -CAfile /etc/zentinel/certs/ca.crt /etc/zentinel/certs/server.crt
 
 # Check certificate matches key
 diff <(openssl x509 -in server.crt -noout -modulus) \
@@ -219,12 +219,12 @@ openssl s_client -connect localhost:443 -servername your.domain.com </dev/null
 **Certificate Renewal**:
 ```bash
 # Deploy new certificate
-cp /path/to/new/cert.crt /etc/sentinel/certs/server.crt
-cp /path/to/new/key.key /etc/sentinel/certs/server.key
-chmod 600 /etc/sentinel/certs/server.key
+cp /path/to/new/cert.crt /etc/zentinel/certs/server.crt
+cp /path/to/new/key.key /etc/zentinel/certs/server.key
+chmod 600 /etc/zentinel/certs/server.key
 
 # Reload (zero-downtime)
-kill -HUP $(cat /var/run/sentinel.pid)
+kill -HUP $(cat /var/run/zentinel.pid)
 ```
 
 ### DDoS/Attack Response
@@ -234,11 +234,11 @@ kill -HUP $(cat /var/run/sentinel.pid)
 **Immediate Actions**:
 ```bash
 # Identify top client IPs
-journalctl -u sentinel --since "5 minutes ago" -o json | \
+journalctl -u zentinel --since "5 minutes ago" -o json | \
     jq -r '.client_ip' | sort | uniq -c | sort -rn | head -20
 
 # Check for attack patterns
-journalctl -u sentinel --since "5 minutes ago" | \
+journalctl -u zentinel --since "5 minutes ago" | \
     grep -oP 'path="[^"]*"' | sort | uniq -c | sort -rn | head -20
 ```
 
@@ -262,18 +262,18 @@ journalctl -u sentinel --since "5 minutes ago" | \
 
 ```bash
 INCIDENT_ID="INC-$(date +%Y%m%d)-001"
-mkdir -p /var/log/sentinel/incidents/$INCIDENT_ID
+mkdir -p /var/log/zentinel/incidents/$INCIDENT_ID
 
 # Save logs
-journalctl -u sentinel --since "1 hour ago" > \
-    /var/log/sentinel/incidents/$INCIDENT_ID/sentinel.log
+journalctl -u zentinel --since "1 hour ago" > \
+    /var/log/zentinel/incidents/$INCIDENT_ID/zentinel.log
 
 # Save metrics snapshot
 curl -s localhost:9090/metrics > \
-    /var/log/sentinel/incidents/$INCIDENT_ID/metrics.txt
+    /var/log/zentinel/incidents/$INCIDENT_ID/metrics.txt
 
 # Save config at time of incident
-cp /etc/sentinel/config.kdl /var/log/sentinel/incidents/$INCIDENT_ID/
+cp /etc/zentinel/config.kdl /var/log/zentinel/incidents/$INCIDENT_ID/
 ```
 
 ### Post-Mortem Template
@@ -318,13 +318,13 @@ cp /etc/sentinel/config.kdl /var/log/sentinel/incidents/$INCIDENT_ID/
 curl -sf localhost:8080/health
 
 # Reload config
-kill -HUP $(cat /var/run/sentinel.pid)
+kill -HUP $(cat /var/run/zentinel.pid)
 
 # Graceful restart
-systemctl restart sentinel
+systemctl restart zentinel
 
 # View errors
-journalctl -u sentinel | grep ERROR | tail -20
+journalctl -u zentinel | grep ERROR | tail -20
 
 # Check upstreams
 curl -s localhost:9090/metrics | grep upstream_health
@@ -332,11 +332,11 @@ curl -s localhost:9090/metrics | grep upstream_health
 
 ### Key Metrics to Check First
 
-1. `sentinel_requests_total{status="5xx"}` - Error count
-2. `sentinel_upstream_health` - Upstream availability
-3. `sentinel_request_duration_seconds` - Latency
-4. `sentinel_open_connections` - Connection count
-5. `sentinel_circuit_breaker_state` - Circuit breaker status
+1. `zentinel_requests_total{status="5xx"}` - Error count
+2. `zentinel_upstream_health` - Upstream availability
+3. `zentinel_request_duration_seconds` - Latency
+4. `zentinel_open_connections` - Connection count
+5. `zentinel_circuit_breaker_state` - Circuit breaker status
 
 ## See Also
 

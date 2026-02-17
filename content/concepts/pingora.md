@@ -3,7 +3,7 @@ title = "Pingora Foundation"
 weight = 4
 +++
 
-Sentinel is built on [Cloudflare's Pingora](https://github.com/cloudflare/pingora), a battle-tested HTTP proxy framework written in Rust. This page explains what Pingora provides and how Sentinel extends it.
+Zentinel is built on [Cloudflare's Pingora](https://github.com/cloudflare/pingora), a battle-tested HTTP proxy framework written in Rust. This page explains what Pingora provides and how Zentinel extends it.
 
 ## What is Pingora?
 
@@ -16,7 +16,7 @@ Pingora is an open-source proxy framework that Cloudflare uses to handle **over 
 - **Zero-copy buffer management** for efficiency
 - **Graceful shutdown and upgrades**
 
-Sentinel uses Pingora as its foundation, adding routing, load balancing, agent coordination, and configuration management on top.
+Zentinel uses Pingora as its foundation, adding routing, load balancing, agent coordination, and configuration management on top.
 
 ## Why Pingora?
 
@@ -103,11 +103,11 @@ Pingora maintains connection pools to peers for efficiency.
 
 ## The ProxyHttp Trait
 
-The `ProxyHttp` trait is the heart of Pingora's extensibility. Sentinel implements this trait to inject custom logic at each stage of request processing:
+The `ProxyHttp` trait is the heart of Pingora's extensibility. Zentinel implements this trait to inject custom logic at each stage of request processing:
 
 ```rust
 #[async_trait]
-impl ProxyHttp for SentinelProxy {
+impl ProxyHttp for ZentinelProxy {
     type CTX = RequestContext;
 
     // Create per-request context
@@ -165,11 +165,11 @@ pub struct RequestContext {
 }
 ```
 
-## How Sentinel Uses Pingora
+## How Zentinel Uses Pingora
 
 ### 1. Route Matching (`upstream_peer`)
 
-When a request arrives, Sentinel matches it to a route and selects an upstream:
+When a request arrives, Zentinel matches it to a route and selects an upstream:
 
 ```
 Request arrives
@@ -199,7 +199,7 @@ Request arrives
 
 ### 2. Request Processing (`request_filter`)
 
-Before forwarding, Sentinel applies filters and calls agents:
+Before forwarding, Zentinel applies filters and calls agents:
 
 ```rust
 async fn request_filter(&self, session: &mut Session, ctx: &mut Self::CTX)
@@ -217,7 +217,7 @@ async fn request_filter(&self, session: &mut Session, ctx: &mut Self::CTX)
 
     // Add tracing headers
     req_header.insert_header("X-Correlation-Id", &ctx.trace_id)?;
-    req_header.insert_header("X-Forwarded-By", "Sentinel")?;
+    req_header.insert_header("X-Forwarded-By", "Zentinel")?;
 
     // Call external agents
     self.process_agents(session, ctx).await?;
@@ -292,7 +292,7 @@ Pingora automatically pools connections to upstream servers:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                   Sentinel Proxy                         │
+│                   Zentinel Proxy                         │
 │  ┌───────────────────────────────────────────────────┐  │
 │  │              Connection Pool Manager               │  │
 │  │  ┌─────────────┐  ┌─────────────┐  ┌───────────┐ │  │
@@ -343,7 +343,7 @@ On SIGTERM/SIGINT:
 3. Close connection pools
 4. Exit cleanly
 
-Sentinel extends this with reload coordination:
+Zentinel extends this with reload coordination:
 
 ```rust
 pub struct GracefulReloadCoordinator {
@@ -374,7 +374,7 @@ pub enum ErrorType {
 }
 ```
 
-Sentinel maps these to appropriate HTTP responses:
+Zentinel maps these to appropriate HTTP responses:
 
 | Error Type | HTTP Status | Response |
 |------------|-------------|----------|
@@ -396,7 +396,7 @@ Pingora's architecture enables:
 
 ## Dependencies
 
-Sentinel uses these Pingora crates:
+Zentinel uses these Pingora crates:
 
 ```toml
 [dependencies]
@@ -408,10 +408,10 @@ pingora-load-balancing = "0.7"
 pingora-timeout = "0.7"
 ```
 
-> **Note:** Sentinel uses a fork (`raskell-io/pingora`) that disables the prometheus protobuf default feature to remove the RUSTSEC-2024-0437 vulnerability. The fork tracks upstream Pingora 0.7 with this single change.
+> **Note:** Zentinel uses a fork (`raskell-io/pingora`) that disables the prometheus protobuf default feature to remove the RUSTSEC-2024-0437 vulnerability. The fork tracks upstream Pingora 0.7 with this single change.
 
 ## Next Steps
 
 - [Architecture Overview](../architecture/) - High-level design
-- [Component Design](../components/) - Sentinel's crate structure
+- [Component Design](../components/) - Zentinel's crate structure
 - [Request Flow](../request-flow/) - Detailed request lifecycle

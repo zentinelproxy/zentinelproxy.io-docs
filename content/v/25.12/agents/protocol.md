@@ -3,7 +3,7 @@ title = "Protocol Specification"
 weight = 5
 +++
 
-This document defines the Sentinel Agent Protocol v1—the wire format for communication between Sentinel and external agents.
+This document defines the Zentinel Agent Protocol v1—the wire format for communication between Zentinel and external agents.
 
 ## Overview
 
@@ -12,7 +12,7 @@ The protocol supports two encodings:
 | Transport | Encoding | Schema |
 |-----------|----------|--------|
 | Unix Socket | JSON | Informal (see below) |
-| gRPC | Protocol Buffers | `sentinel.agent.v1` |
+| gRPC | Protocol Buffers | `zentinel.agent.v1` |
 
 Both encodings represent the same logical protocol. Agents can implement either or both.
 
@@ -21,11 +21,11 @@ Both encodings represent the same logical protocol. Agents can implement either 
 ## Protocol Buffers Definition
 
 ```protobuf
-// Sentinel Agent Protocol - gRPC Definition
-// Package: sentinel.agent.v1
+// Zentinel Agent Protocol - gRPC Definition
+// Package: zentinel.agent.v1
 
 syntax = "proto3";
-package sentinel.agent.v1;
+package zentinel.agent.v1;
 
 // ============================================================================
 // Event Types
@@ -475,7 +475,7 @@ This ensures predictable behavior regardless of the order in the array.
 
 ### Timeout Behavior
 
-When an agent times out, Sentinel applies the configured `failure-mode`:
+When an agent times out, Zentinel applies the configured `failure-mode`:
 
 - `failure-mode "open"` → Allow request
 - `failure-mode "closed"` → Block request (503)
@@ -590,6 +590,6 @@ const proto = grpc.loadPackageDefinition(packageDefinition);
 
 ## Reference
 
-- **Proto file:** [`crates/agent-protocol/proto/agent.proto`](https://github.com/raskell-io/sentinel/tree/main/crates/agent-protocol/proto/agent.proto)
-- **Rust SDK:** [`sentinel-agent-protocol`](https://crates.io/crates/sentinel-agent-protocol)
-- **Example agents:** [`agents/`](https://github.com/raskell-io/sentinel/tree/main/agents)
+- **Proto file:** [`crates/agent-protocol/proto/agent.proto`](https://github.com/zentinelproxy/zentinel/tree/main/crates/agent-protocol/proto/agent.proto)
+- **Rust SDK:** [`zentinel-agent-protocol`](https://crates.io/crates/zentinel-agent-protocol)
+- **Example agents:** [`agents/`](https://github.com/zentinelproxy/zentinel/tree/main/agents)

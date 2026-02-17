@@ -3,7 +3,7 @@ title = "Static Site"
 weight = 4
 +++
 
-Serve static files with Sentinel including caching, compression, SPA support, and CDN-like features.
+Serve static files with Zentinel including caching, compression, SPA support, and CDN-like features.
 
 ## Use Case
 
@@ -14,7 +14,7 @@ Serve static files with Sentinel including caching, compression, SPA support, an
 
 ## Configuration
 
-Create `sentinel.kdl`:
+Create `zentinel.kdl`:
 
 ```kdl
 // Static Site Configuration
@@ -30,8 +30,8 @@ listeners {
         address "0.0.0.0:8443"
         protocol "https"
         tls {
-            cert-file "/etc/sentinel/certs/site.crt"
-            key-file "/etc/sentinel/certs/site.key"
+            cert-file "/etc/zentinel/certs/site.crt"
+            key-file "/etc/zentinel/certs/site.key"
         }
     }
     listener "http" {
@@ -201,10 +201,10 @@ cp -r dist/* /var/www/site/
 cp -r public/* /var/www/site/
 ```
 
-### 3. Run Sentinel
+### 3. Run Zentinel
 
 ```bash
-sentinel -c sentinel.kdl
+zentinel -c zentinel.kdl
 ```
 
 ## Testing
@@ -305,7 +305,7 @@ upstreams {
 
 ## Multi-Site Hosting
 
-Host multiple sites on the same Sentinel instance:
+Host multiple sites on the same Zentinel instance:
 
 ```kdl
 routes {
@@ -413,7 +413,7 @@ static-files {
 2. **Precompress files** (`.gz`, `.br`) for faster response times
 3. **Separate routes** for different cache policies
 4. **Enable HTTP/2** for multiplexing
-5. **Use CDN** in front of Sentinel for global distribution
+5. **Use CDN** in front of Zentinel for global distribution
 
 ## Next Steps
 

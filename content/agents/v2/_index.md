@@ -32,7 +32,7 @@ Agent Protocol v2 is the recommended protocol for new agent deployments. It prov
 ## Quick Start
 
 ```rust
-use sentinel_agent_protocol::v2::{AgentPool, AgentPoolConfig, LoadBalanceStrategy};
+use zentinel_agent_protocol::v2::{AgentPool, AgentPoolConfig, LoadBalanceStrategy};
 use std::time::Duration;
 
 let config = AgentPoolConfig {

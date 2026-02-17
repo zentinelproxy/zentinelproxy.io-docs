@@ -3,13 +3,13 @@ title = "Comparison with Alternatives"
 weight = 6
 +++
 
-How Sentinel compares to other popular reverse proxies and load balancers.
+How Zentinel compares to other popular reverse proxies and load balancers.
 
 ## Overview
 
-Sentinel occupies a unique position in the reverse proxy landscape. Rather than competing directly with established proxies on feature breadth, it focuses on security-first design, operational predictability, and an extensible agent architecture.
+Zentinel occupies a unique position in the reverse proxy landscape. Rather than competing directly with established proxies on feature breadth, it focuses on security-first design, operational predictability, and an extensible agent architecture.
 
-| Feature | Sentinel | Envoy | HAProxy | Nginx |
+| Feature | Zentinel | Envoy | HAProxy | Nginx |
 |---------|----------|-------|---------|-------|
 | **Language** | Rust | C++ | C | C |
 | **Memory Safety** | Yes (Rust) | No | No | No |
@@ -18,13 +18,13 @@ Sentinel occupies a unique position in the reverse proxy landscape. Rather than 
 | **Extension Model** | External agents | Filters (C++/Wasm) | Lua/SPOE | Modules/Lua |
 | **Primary Use Case** | Security gateway | Service mesh | Load balancing | Web server/proxy |
 
-## Sentinel vs Envoy
+## Zentinel vs Envoy
 
 ### Architecture Philosophy
 
 **Envoy** is designed as a universal data plane for service mesh architectures. It provides extensive protocol support, advanced traffic management, and deep observability through a filter chain architecture.
 
-**Sentinel** is designed as a security-focused edge proxy with an external agent model. Rather than embedding security logic in filters, agents run as isolated processes that can be updated, rate-limited, or disabled independently.
+**Zentinel** is designed as a security-focused edge proxy with an external agent model. Rather than embedding security logic in filters, agents run as isolated processes that can be updated, rate-limited, or disabled independently.
 
 ### When to Choose Envoy
 
@@ -33,7 +33,7 @@ Sentinel occupies a unique position in the reverse proxy landscape. Rather than 
 - Require xDS-based dynamic configuration from a control plane
 - Want a mature, battle-tested proxy at massive scale
 
-### When to Choose Sentinel
+### When to Choose Zentinel
 
 - Need a security gateway with WAF, auth, and rate limiting
 - Want isolated security agents that can fail independently
@@ -82,7 +82,7 @@ static_resources:
                       port_value: 3000
 ```
 
-**Sentinel** (KDL):
+**Zentinel** (KDL):
 ```kdl
 listeners {
     listener "http" {
@@ -113,19 +113,19 @@ upstreams {
 
 **Envoy filters** are compiled into the binary (C++) or loaded as Wasm modules. They run in-process and have access to the full request/response lifecycle.
 
-**Sentinel agents** are external processes that communicate via Unix sockets or gRPC. This provides:
+**Zentinel agents** are external processes that communicate via Unix sockets or gRPC. This provides:
 - Process isolation (agent crash doesn't crash proxy)
 - Independent deployment and updates
 - Language flexibility (any language that speaks the protocol)
 - Resource limits per agent
 
-## Sentinel vs HAProxy
+## Zentinel vs HAProxy
 
 ### Architecture Philosophy
 
 **HAProxy** is the gold standard for high-performance TCP/HTTP load balancing. It's known for reliability, performance, and a powerful ACL system for traffic management.
 
-**Sentinel** shares HAProxy's focus on reliability but adds a security-first architecture with external agents for policy enforcement.
+**Zentinel** shares HAProxy's focus on reliability but adds a security-first architecture with external agents for policy enforcement.
 
 ### When to Choose HAProxy
 
@@ -134,7 +134,7 @@ upstreams {
 - TCP-level proxying (databases, message queues)
 - Established operational expertise with HAProxy
 
-### When to Choose Sentinel
+### When to Choose Zentinel
 
 - Security controls are a primary requirement
 - Want to implement custom policies without Lua
@@ -155,7 +155,7 @@ backend http_back
     server backend2 127.0.0.1:3001 check
 ```
 
-**Sentinel** (KDL):
+**Zentinel** (KDL):
 ```kdl
 listeners {
     listener "http" {
@@ -188,20 +188,20 @@ upstreams {
 
 ### Extension Comparison
 
-| Aspect | HAProxy | Sentinel |
+| Aspect | HAProxy | Zentinel |
 |--------|---------|----------|
 | Scripting | Lua (embedded) | External agents |
 | External calls | SPOE protocol | Agent protocol |
 | Isolation | In-process | Process-level |
 | Hot reload | Requires restart | Independent |
 
-## Sentinel vs Nginx
+## Zentinel vs Nginx
 
 ### Architecture Philosophy
 
 **Nginx** started as a high-performance web server and evolved into a versatile reverse proxy. It excels at serving static content, SSL termination, and basic proxying with an extensive module ecosystem.
 
-**Sentinel** is purpose-built as a security-focused reverse proxy without web server capabilities. It focuses on the proxy use case with deep integration for security agents.
+**Zentinel** is purpose-built as a security-focused reverse proxy without web server capabilities. It focuses on the proxy use case with deep integration for security agents.
 
 ### When to Choose Nginx
 
@@ -210,7 +210,7 @@ upstreams {
 - Using OpenResty for Lua-based customization
 - Established Nginx operational expertise
 
-### When to Choose Sentinel
+### When to Choose Zentinel
 
 - Pure reverse proxy (no static file serving needed)
 - Security controls are the primary requirement
@@ -237,7 +237,7 @@ server {
 }
 ```
 
-**Sentinel** (KDL):
+**Zentinel** (KDL):
 ```kdl
 listeners {
     listener "http" {
@@ -265,7 +265,7 @@ upstreams {
 
 ### Security Features
 
-| Feature | Nginx | Sentinel |
+| Feature | Nginx | Zentinel |
 |---------|-------|----------|
 | WAF | ModSecurity module | Native WAF agent |
 | Rate limiting | ngx_http_limit_req | Rate limit agent |
@@ -276,7 +276,7 @@ upstreams {
 
 ### Core Proxy Features
 
-| Feature | Sentinel | Envoy | HAProxy | Nginx |
+| Feature | Zentinel | Envoy | HAProxy | Nginx |
 |---------|:--------:|:-----:|:-------:|:-----:|
 | HTTP/1.1 | ✓ | ✓ | ✓ | ✓ |
 | HTTP/2 | ✓ | ✓ | ✓ | ✓ |
@@ -289,7 +289,7 @@ upstreams {
 
 ### Load Balancing
 
-| Feature | Sentinel | Envoy | HAProxy | Nginx |
+| Feature | Zentinel | Envoy | HAProxy | Nginx |
 |---------|:--------:|:-----:|:-------:|:-----:|
 | Round robin | ✓ | ✓ | ✓ | ✓ |
 | Least connections | ✓ | ✓ | ✓ | ✓ |
@@ -303,7 +303,7 @@ upstreams {
 
 ### Security Features
 
-| Feature | Sentinel | Envoy | HAProxy | Nginx |
+| Feature | Zentinel | Envoy | HAProxy | Nginx |
 |---------|:--------:|:-----:|:-------:|:-----:|
 | Native WAF | ✓ (agent) | - | - | - |
 | ModSecurity | ✓ (agent) | - | ✓ (SPOE) | ✓ (module) |
@@ -314,7 +314,7 @@ upstreams {
 
 ### Observability
 
-| Feature | Sentinel | Envoy | HAProxy | Nginx |
+| Feature | Zentinel | Envoy | HAProxy | Nginx |
 |---------|:--------:|:-----:|:-------:|:-----:|
 | Prometheus metrics | ✓ | ✓ | ✓ | ✓* |
 | Distributed tracing | ✓ | ✓ | ✓ | ✓* |
@@ -325,7 +325,7 @@ upstreams {
 
 ### Operations
 
-| Feature | Sentinel | Envoy | HAProxy | Nginx |
+| Feature | Zentinel | Envoy | HAProxy | Nginx |
 |---------|:--------:|:-----:|:-------:|:-----:|
 | Hot reload config | ✓ | ✓ | ✓ | ✓ |
 | Zero-downtime restart | ✓ | ✓ | ✓ | ✓ |
@@ -336,11 +336,11 @@ upstreams {
 
 ## Memory Safety
 
-A key differentiator for Sentinel is memory safety through Rust:
+A key differentiator for Zentinel is memory safety through Rust:
 
 | Proxy | Language | Memory Safe | CVEs (2020-2024) |
 |-------|----------|:-----------:|:----------------:|
-| Sentinel | Rust | ✓ | 0 |
+| Zentinel | Rust | ✓ | 0 |
 | Envoy | C++ | - | 30+ |
 | HAProxy | C | - | 15+ |
 | Nginx | C | - | 25+ |
@@ -355,7 +355,7 @@ Memory safety eliminates entire classes of vulnerabilities:
 
 All four proxies are capable of handling high traffic loads. The primary differences are:
 
-| Aspect | Sentinel | Envoy | HAProxy | Nginx |
+| Aspect | Zentinel | Envoy | HAProxy | Nginx |
 |--------|----------|-------|---------|-------|
 | Latency | Low | Low | Very low | Low |
 | Throughput | High | High | Very high | High |
@@ -366,7 +366,7 @@ All four proxies are capable of handling high traffic loads. The primary differe
 
 ### Agent Overhead
 
-Sentinel's agent model adds latency for agent calls:
+Zentinel's agent model adds latency for agent calls:
 - Unix socket: ~50-200µs per agent
 - gRPC: ~200-500µs per agent
 
@@ -374,7 +374,7 @@ This overhead is acceptable for security use cases where the alternative is in-p
 
 ## Migration Paths
 
-### From Nginx to Sentinel
+### From Nginx to Zentinel
 
 1. Map `server` blocks to `listeners`
 2. Convert `location` blocks to `routes`
@@ -383,14 +383,14 @@ This overhead is acceptable for security use cases where the alternative is in-p
 
 See the [Migration Guide](/operations/migration/) for detailed examples.
 
-### From HAProxy to Sentinel
+### From HAProxy to Zentinel
 
 1. Map `frontend` to `listeners`
 2. Convert `backend` to `upstreams`
 3. Translate ACLs to route matching
 4. Replace Lua/SPOE with agents
 
-### From Envoy to Sentinel
+### From Envoy to Zentinel
 
 1. Simplify listener configuration
 2. Convert clusters to upstreams
@@ -399,7 +399,7 @@ See the [Migration Guide](/operations/migration/) for detailed examples.
 
 ## Summary
 
-Choose **Sentinel** when:
+Choose **Zentinel** when:
 - Security is a primary concern
 - You want isolated, updateable security components
 - Memory safety matters for your threat model
@@ -426,6 +426,6 @@ Choose **Nginx** when:
 
 ## Next Steps
 
-- [Architecture](../architecture/) - Understand Sentinel's design
+- [Architecture](../architecture/) - Understand Zentinel's design
 - [Agents](/agents/) - Explore the agent ecosystem
 - [Migration Guide](/operations/migration/) - Migrate from other proxies

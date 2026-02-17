@@ -3,7 +3,7 @@ title = "Inference Routing"
 weight = 18
 +++
 
-Configure Sentinel for LLM/AI inference endpoints with token-based rate limiting, model routing, cost tracking, and intelligent load balancing. This example demonstrates how to build a production-ready AI gateway.
+Configure Zentinel for LLM/AI inference endpoints with token-based rate limiting, model routing, cost tracking, and intelligent load balancing. This example demonstrates how to build a production-ready AI gateway.
 
 ## Use Case
 
@@ -22,7 +22,7 @@ Configure Sentinel for LLM/AI inference endpoints with token-based rate limiting
                     └────────┬────────┘
                              │
                     ┌────────▼────────┐
-                    │    Sentinel     │
+                    │    Zentinel     │
                     │  AI Gateway     │
                     │                 │
                     │ - Token counting│
@@ -41,7 +41,7 @@ Configure Sentinel for LLM/AI inference endpoints with token-based rate limiting
 
 ## Configuration
 
-Create `sentinel.kdl`:
+Create `zentinel.kdl`:
 
 ```kdl
 // Inference Routing Configuration
@@ -363,11 +363,11 @@ observability {
         address "0.0.0.0:9090"
         path "/metrics"
         // Inference-specific metrics:
-        // - sentinel_inference_tokens_total (by model, type)
-        // - sentinel_inference_latency_seconds
-        // - sentinel_inference_queue_depth
-        // - sentinel_inference_cost_dollars
-        // - sentinel_inference_budget_remaining
+        // - zentinel_inference_tokens_total (by model, type)
+        // - zentinel_inference_latency_seconds
+        // - zentinel_inference_queue_depth
+        // - zentinel_inference_cost_dollars
+        // - zentinel_inference_budget_remaining
     }
 
     logging {
@@ -376,7 +376,7 @@ observability {
 
         access-log {
             enabled #true
-            file "/var/log/sentinel/inference-access.log"
+            file "/var/log/zentinel/inference-access.log"
             include-trace-id #true
             // Token counts included in access logs
         }
@@ -448,10 +448,10 @@ model-routing {
 
 ## Setup
 
-### 1. Start Sentinel
+### 1. Start Zentinel
 
 ```bash
-sentinel -c sentinel.kdl
+zentinel -c zentinel.kdl
 ```
 
 ### 2. Set Up API Keys
@@ -471,7 +471,7 @@ Use an agent to inject provider API keys:
 agents {
     agent "api-key-inject" {
         type "header-inject"
-        unix-socket path="/var/run/sentinel/api-key.sock"
+        unix-socket path="/var/run/zentinel/api-key.sock"
         events "request_headers"
     }
 }
@@ -500,8 +500,8 @@ curl http://localhost:9090/metrics | grep inference_tokens
 
 Output:
 ```
-sentinel_inference_tokens_total{model="gpt-4",type="input"} 15
-sentinel_inference_tokens_total{model="gpt-4",type="output"} 42
+zentinel_inference_tokens_total{model="gpt-4",type="input"} 15
+zentinel_inference_tokens_total{model="gpt-4",type="output"} 42
 ```
 
 ### Check Budget
@@ -512,7 +512,7 @@ curl http://localhost:9090/metrics | grep budget
 
 Output:
 ```
-sentinel_inference_budget_remaining{org="org-456"} 9999943
+zentinel_inference_budget_remaining{org="org-456"} 9999943
 ```
 
 ### Local Inference

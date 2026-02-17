@@ -3,13 +3,13 @@ title = "Versioning"
 weight = 2
 +++
 
-How Sentinel versions work, mapping between release and crate versions, and changelogs.
+How Zentinel versions work, mapping between release and crate versions, and changelogs.
 
 > **Note:** You are viewing documentation for release **25.12**. See the [latest documentation](/) for the current release.
 
 ## Dual Versioning Scheme
 
-Sentinel uses two versioning systems for different purposes:
+Zentinel uses two versioning systems for different purposes:
 
 | System | Format | Example | Used For |
 |--------|--------|---------|----------|
@@ -57,16 +57,16 @@ This table maps public release versions to their corresponding crate versions:
 **From the binary:**
 
 ```bash
-sentinel --version
-# sentinel 0.2.0 (release 25.12)
+zentinel --version
+# zentinel 0.2.0 (release 25.12)
 ```
 
 **From Cargo.toml:**
 
 ```toml
 [dependencies]
-sentinel = "0.2"
-sentinel-agent-protocol = "0.1"
+zentinel = "0.2"
+zentinel-agent-protocol = "0.1"
 ```
 
 **From the documentation URL:**
@@ -131,13 +131,13 @@ sentinel-agent-protocol = "0.1"
 
 ### Agent Compatibility
 
-| Sentinel Release | Protocol | Compatible Agent Versions |
+| Zentinel Release | Protocol | Compatible Agent Versions |
 |------------------|----------|---------------------------|
 | 25.12 | `0.1.0` | Agents built with protocol `0.1.x` |
 
 ### Rust Toolchain
 
-| Sentinel Release | Minimum Rust Version | Recommended |
+| Zentinel Release | Minimum Rust Version | Recommended |
 |------------------|----------------------|-------------|
 | 25.12 | 1.70.0 | 1.75.0+ |
 
@@ -145,7 +145,7 @@ sentinel-agent-protocol = "0.1"
 
 ## Release Schedule
 
-Sentinel follows a monthly release cadence:
+Zentinel follows a monthly release cadence:
 
 - **Feature releases:** First week of each month
 - **Patch releases:** As needed for security or critical bugs
@@ -161,5 +161,5 @@ Sentinel follows a monthly release cadence:
 ## See Also
 
 - [Release Process](/development/releases/) — How releases are made
-- [GitHub Releases](https://github.com/raskell-io/sentinel/releases) — Download binaries
-- [crates.io](https://crates.io/crates/sentinel) — Rust crate registry
+- [GitHub Releases](https://github.com/zentinelproxy/zentinel/releases) — Download binaries
+- [crates.io](https://crates.io/crates/zentinel) — Rust crate registry

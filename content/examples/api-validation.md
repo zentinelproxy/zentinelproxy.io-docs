@@ -18,7 +18,7 @@ Validate API requests and responses against JSON schemas or OpenAPI specificatio
 
 ```
                     ┌─────────────────────┐
-                    │     Sentinel        │
+                    │     Zentinel        │
                     │  Schema Validator   │
                     └──────────┬──────────┘
                                │
@@ -38,7 +38,7 @@ Validate API requests and responses against JSON schemas or OpenAPI specificatio
 
 ### OpenAPI/Swagger File Reference
 
-Create `sentinel.kdl` with schema file reference:
+Create `zentinel.kdl` with schema file reference:
 
 ```kdl
 // API Validation with OpenAPI Specification
@@ -73,7 +73,7 @@ routes {
 
         // Reference OpenAPI 3.0 specification
         api-schema {
-            schema-file "/etc/sentinel/schemas/api-v1.yaml"
+            schema-file "/etc/zentinel/schemas/api-v1.yaml"
             validate-requests #true
             validate-responses #false
             strict-mode #true
@@ -388,7 +388,7 @@ routes {
 
 ## OpenAPI Specification Example
 
-Create `/etc/sentinel/schemas/api-v1.yaml`:
+Create `/etc/zentinel/schemas/api-v1.yaml`:
 
 ```yaml
 openapi: 3.0.0
@@ -617,7 +617,7 @@ error-pages {
 Organize schemas by API version:
 
 ```
-/etc/sentinel/schemas/
+/etc/zentinel/schemas/
 ├── api-v1.yaml
 ├── api-v2.yaml
 └── api-v3.yaml
@@ -631,7 +631,7 @@ route "api-v2" {
         path-prefix "/api/v2"
     }
     api-schema {
-        schema-file "/etc/sentinel/schemas/api-v2.yaml"
+        schema-file "/etc/zentinel/schemas/api-v2.yaml"
     }
 }
 ```

@@ -3,15 +3,15 @@ title = "Configuration Management"
 weight = 1
 +++
 
-Managing Sentinel configurations across environments.
+Managing Zentinel configurations across environments.
 
 ## Configuration Files
 
 ### File Structure
 
 ```
-/etc/sentinel/
-├── sentinel.kdl           # Main configuration
+/etc/zentinel/
+├── zentinel.kdl           # Main configuration
 ├── certs/
 │   ├── server.crt         # TLS certificate
 │   ├── server.key         # TLS private key
@@ -29,7 +29,7 @@ Managing Sentinel configurations across environments.
 Split large configurations into modules:
 
 ```kdl
-// sentinel.kdl
+// zentinel.kdl
 include "includes/routes.kdl"
 include "includes/upstreams.kdl"
 
@@ -42,8 +42,8 @@ listeners {
         address "0.0.0.0:8443"
         protocol "https"
         tls {
-            cert-file "/etc/sentinel/certs/server.crt"
-            key-file "/etc/sentinel/certs/server.key"
+            cert-file "/etc/zentinel/certs/server.crt"
+            key-file "/etc/zentinel/certs/server.key"
         }
     }
 }
@@ -56,17 +56,17 @@ listeners {
 ```
 configs/
 ├── base/
-│   ├── sentinel.kdl       # Shared configuration
+│   ├── zentinel.kdl       # Shared configuration
 │   ├── routes.kdl
 │   └── upstreams.kdl
 ├── development/
-│   ├── sentinel.kdl       # Dev overrides
+│   ├── zentinel.kdl       # Dev overrides
 │   └── upstreams.kdl      # Local backends
 ├── staging/
-│   ├── sentinel.kdl
+│   ├── zentinel.kdl
 │   └── upstreams.kdl
 └── production/
-    ├── sentinel.kdl
+    ├── zentinel.kdl
     └── upstreams.kdl
 ```
 
@@ -108,13 +108,13 @@ Validate configuration before deployment:
 
 ```bash
 # Validate syntax
-sentinel validate -c /etc/sentinel/sentinel.kdl
+zentinel validate -c /etc/zentinel/zentinel.kdl
 
 # Check with environment variables
-BACKEND_ADDR=api.example.com:443 sentinel validate -c sentinel.kdl
+BACKEND_ADDR=api.example.com:443 zentinel validate -c zentinel.kdl
 
 # Dry run (parse and show resolved config)
-sentinel config show -c sentinel.kdl
+zentinel config show -c zentinel.kdl
 ```
 
 ## Secrets Management
@@ -208,8 +208,8 @@ For production secrets management:
 
 ```bash
 # Fetch secrets at startup
-export JWT_SECRET=$(vault kv get -field=jwt-secret secret/sentinel)
-export TLS_CERT=$(vault kv get -field=cert secret/sentinel/tls)
+export JWT_SECRET=$(vault kv get -field=jwt-secret secret/zentinel)
+export TLS_CERT=$(vault kv get -field=cert secret/zentinel/tls)
 
 # Or use Vault Agent for automatic injection
 vault agent -config=vault-agent.hcl
@@ -221,7 +221,7 @@ vault agent -config=vault-agent.hcl
 apiVersion: v1
 kind: Secret
 metadata:
-  name: sentinel-tls
+  name: zentinel-tls
 type: kubernetes.io/tls
 data:
   tls.crt: <base64-encoded-cert>
@@ -231,15 +231,15 @@ apiVersion: v1
 kind: Pod
 spec:
   containers:
-    - name: sentinel
+    - name: zentinel
       volumeMounts:
         - name: tls
-          mountPath: /etc/sentinel/certs
+          mountPath: /etc/zentinel/certs
           readOnly: true
   volumes:
     - name: tls
       secret:
-        secretName: sentinel-tls
+        secretName: zentinel-tls
 ```
 
 ## Configuration Templating
@@ -248,7 +248,7 @@ spec:
 
 ```bash
 # Template file
-cat > sentinel.kdl.template << 'EOF'
+cat > zentinel.kdl.template << 'EOF'
 system {
     worker-threads ${WORKERS}
 }
@@ -263,29 +263,29 @@ EOF
 
 # Generate config
 export WORKERS=4 BACKEND_HOST=api.example.com BACKEND_PORT=443
-envsubst < sentinel.kdl.template > sentinel.kdl
+envsubst < zentinel.kdl.template > zentinel.kdl
 ```
 
 ### Using Jinja2 (Ansible)
 
 ```yaml
-# templates/sentinel.kdl.j2
+# templates/zentinel.kdl.j2
 system {
-    worker-threads {{ sentinel_workers | default(0) }}
+    worker-threads {{ zentinel_workers | default(0) }}
 }
 
 listeners {
     listener "https" {
-        address "0.0.0.0:{{ sentinel_https_port }}"
+        address "0.0.0.0:{{ zentinel_https_port }}"
         tls {
-            cert-file "{{ sentinel_cert_path }}"
-            key-file "{{ sentinel_key_path }}"
+            cert-file "{{ zentinel_cert_path }}"
+            key-file "{{ zentinel_key_path }}"
         }
     }
 }
 
 upstreams {
-{% for upstream in sentinel_upstreams %}
+{% for upstream in zentinel_upstreams %}
     upstream "{{ upstream.name }}" {
         targets {
 {% for target in upstream.targets %}
@@ -304,9 +304,9 @@ upstreams {
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: sentinel-config
+  name: zentinel-config
 data:
-  sentinel.kdl: |
+  zentinel.kdl: |
     server {
         worker-threads {{ .Values.workers }}
     }
@@ -334,12 +334,12 @@ data:
 
 ```
 infrastructure/
-├── sentinel/
+├── zentinel/
 │   ├── base/
 │   │   ├── kustomization.yaml
 │   │   ├── deployment.yaml
 │   │   └── config/
-│   │       └── sentinel.kdl
+│   │       └── zentinel.kdl
 │   └── overlays/
 │       ├── staging/
 │       │   ├── kustomization.yaml
@@ -362,17 +362,17 @@ kind: Kustomization
 resources:
   - ../../base
 
-namespace: sentinel-prod
+namespace: zentinel-prod
 
 patches:
   - path: patches/replicas.yaml
   - path: patches/resources.yaml
 
 configMapGenerator:
-  - name: sentinel-config
+  - name: zentinel-config
     behavior: replace
     files:
-      - config/sentinel.kdl
+      - config/zentinel.kdl
 ```
 
 ### ArgoCD Application
@@ -381,17 +381,17 @@ configMapGenerator:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: sentinel
+  name: zentinel
   namespace: argocd
 spec:
   project: default
   source:
     repoURL: https://github.com/org/infrastructure
     targetRevision: main
-    path: sentinel/overlays/production
+    path: zentinel/overlays/production
   destination:
     server: https://kubernetes.default.svc
-    namespace: sentinel
+    namespace: zentinel
   syncPolicy:
     automated:
       prune: true
@@ -402,11 +402,11 @@ spec:
 
 ### Hot Reload
 
-Sentinel supports configuration reload without restart:
+Zentinel supports configuration reload without restart:
 
 ```bash
 # Send SIGHUP to reload configuration
-kill -HUP $(pidof sentinel)
+kill -HUP $(pidof zentinel)
 
 # Or use the admin API
 curl -X POST http://localhost:9090/admin/reload
@@ -427,13 +427,13 @@ curl -X POST http://localhost:9090/admin/reload
 
 ```bash
 # 1. Validate new config
-sentinel validate -c /etc/sentinel/sentinel.kdl.new
+zentinel validate -c /etc/zentinel/zentinel.kdl.new
 
 # 2. Replace config
-mv /etc/sentinel/sentinel.kdl.new /etc/sentinel/sentinel.kdl
+mv /etc/zentinel/zentinel.kdl.new /etc/zentinel/zentinel.kdl
 
 # 3. Reload
-kill -HUP $(pidof sentinel)
+kill -HUP $(pidof zentinel)
 
 # 4. Verify
 curl -s http://localhost:9090/health
@@ -445,21 +445,21 @@ curl -s http://localhost:9090/health
 
 ```bash
 #!/bin/bash
-# backup-sentinel.sh
+# backup-zentinel.sh
 
-BACKUP_DIR="/var/backups/sentinel"
+BACKUP_DIR="/var/backups/zentinel"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 mkdir -p "$BACKUP_DIR"
 
 # Backup configuration
-tar -czf "$BACKUP_DIR/sentinel-config-$TIMESTAMP.tar.gz" \
-    /etc/sentinel/
+tar -czf "$BACKUP_DIR/zentinel-config-$TIMESTAMP.tar.gz" \
+    /etc/zentinel/
 
 # Backup certificates (encrypted)
-tar -czf - /etc/sentinel/certs/ | \
+tar -czf - /etc/zentinel/certs/ | \
     gpg --symmetric --cipher-algo AES256 \
-    > "$BACKUP_DIR/sentinel-certs-$TIMESTAMP.tar.gz.gpg"
+    > "$BACKUP_DIR/zentinel-certs-$TIMESTAMP.tar.gz.gpg"
 
 # Keep last 30 days
 find "$BACKUP_DIR" -mtime +30 -delete
@@ -469,21 +469,21 @@ find "$BACKUP_DIR" -mtime +30 -delete
 
 ```bash
 #!/bin/bash
-# restore-sentinel.sh
+# restore-zentinel.sh
 
 BACKUP_FILE=$1
 
-# Stop sentinel
-systemctl stop sentinel
+# Stop zentinel
+systemctl stop zentinel
 
 # Restore config
 tar -xzf "$BACKUP_FILE" -C /
 
 # Validate
-sentinel validate -c /etc/sentinel/sentinel.kdl
+zentinel validate -c /etc/zentinel/zentinel.kdl
 
 # Restart
-systemctl start sentinel
+systemctl start zentinel
 ```
 
 ## Configuration Drift Detection
@@ -502,9 +502,9 @@ aide --check
 
 ```bash
 # Track config in Git
-cd /etc/sentinel
+cd /etc/zentinel
 git init
-git add sentinel.kdl
+git add zentinel.kdl
 git commit -m "Initial config"
 
 # Detect drift
@@ -528,11 +528,11 @@ jobs:
     steps:
       - name: Fetch running config
         run: |
-          ssh sentinel-prod "cat /etc/sentinel/sentinel.kdl" > running.kdl
+          ssh zentinel-prod "cat /etc/zentinel/zentinel.kdl" > running.kdl
 
       - name: Compare with source
         run: |
-          diff -u production/sentinel.kdl running.kdl || \
+          diff -u production/zentinel.kdl running.kdl || \
             echo "::warning::Configuration drift detected"
 ```
 

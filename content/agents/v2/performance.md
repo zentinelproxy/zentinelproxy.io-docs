@@ -232,7 +232,7 @@ Enable binary transport for body-heavy workloads:
 ```kdl
 agents {
     agent "waf" type="waf" {
-        binary-uds "/var/run/sentinel/waf.sock"
+        binary-uds "/var/run/zentinel/waf.sock"
         events "request_headers" "request_body"
         buffer-size 65536
     }
@@ -249,4 +249,4 @@ These benchmarks were collected on:
 - **Rust:** 1.92.0 (release build, LTO enabled)
 - **Tool:** Criterion with 100 samples per benchmark
 
-For detailed methodology and raw data, see the [benchmark source code](https://github.com/raskell-io/sentinel/tree/main/crates/agent-protocol/benches).
+For detailed methodology and raw data, see the [benchmark source code](https://github.com/zentinelproxy/zentinel/tree/main/crates/agent-protocol/benches).

@@ -3,7 +3,7 @@ title = "Error Codes"
 weight = 3
 +++
 
-HTTP status codes and error responses returned by Sentinel.
+HTTP status codes and error responses returned by Zentinel.
 
 ## HTTP Status Codes
 
@@ -215,7 +215,7 @@ curl -i https://api.example.com/endpoint
 # X-Correlation-Id: 2kF8xQw4BnM
 
 # Search logs by correlation ID
-grep "2kF8xQw4BnM" /var/log/sentinel/access.log
+grep "2kF8xQw4BnM" /var/log/zentinel/access.log
 ```
 
 ## Client-Safe Messages
@@ -269,10 +269,10 @@ Errors are logged with structured fields:
 Error-related metrics:
 
 ```
-sentinel_requests_total{route="api", status="502"}
-sentinel_upstream_failures_total{upstream="backend", reason="connection_refused"}
-sentinel_blocked_requests_total{reason="waf"}
-sentinel_circuit_breaker_state{component="upstream", route="api"}
+zentinel_requests_total{route="api", status="502"}
+zentinel_upstream_failures_total{upstream="backend", reason="connection_refused"}
+zentinel_blocked_requests_total{reason="waf"}
+zentinel_circuit_breaker_state{component="upstream", route="api"}
 ```
 
 ## See Also

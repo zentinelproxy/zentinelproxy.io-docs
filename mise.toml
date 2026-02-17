@@ -1,11 +1,11 @@
-# Sentinel Documentation - mise configuration
+# Zentinel Documentation - mise configuration
 # Built with Zola and Tanuki theme
 
 [tools]
 zola = "0.19.2"
 
-# Sentinel for local serving (optional)
-# Install: curl -fsSL https://getsentinel.raskell.io | sh
+# Zentinel for local serving (optional)
+# Install: curl -fsSL https://getzentinelproxy.io | sh
 
 [tasks.default]
 description = "Show available tasks"
@@ -29,7 +29,7 @@ description = "Build documentation site"
 run = """
 #!/usr/bin/env bash
 set -e
-echo "Building Sentinel documentation..."
+echo "Building Zentinel documentation..."
 zola build
 echo "Build complete! Output in public/"
 """

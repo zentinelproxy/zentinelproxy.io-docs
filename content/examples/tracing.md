@@ -7,14 +7,14 @@ Complete distributed tracing setup with Jaeger or Grafana Tempo for end-to-end r
 
 ## Use Case
 
-- Trace requests through Sentinel to upstream services
+- Trace requests through Zentinel to upstream services
 - Debug latency issues across service boundaries
 - Correlate logs with traces for faster troubleshooting
 - Monitor agent processing time in traces
 
 ## Prerequisites
 
-Build Sentinel with the OpenTelemetry feature:
+Build Zentinel with the OpenTelemetry feature:
 
 ```bash
 cargo build --release --features opentelemetry
@@ -33,9 +33,9 @@ docker run -d --name jaeger \
   jaegertracing/all-in-one:latest
 ```
 
-### 2. Configure Sentinel
+### 2. Configure Zentinel
 
-Create `sentinel.kdl`:
+Create `zentinel.kdl`:
 
 ```kdl
 // Distributed Tracing Configuration
@@ -82,7 +82,7 @@ observability {
             endpoint "http://localhost:4317"
         }
         sampling-rate 1.0    // 100% for testing
-        service-name "sentinel"
+        service-name "zentinel"
     }
 
     logging {
@@ -101,10 +101,10 @@ observability {
 }
 ```
 
-### 3. Start Sentinel
+### 3. Start Zentinel
 
 ```bash
-./target/release/sentinel --config sentinel.kdl
+./target/release/zentinel --config zentinel.kdl
 ```
 
 ### 4. Generate Traffic
@@ -120,7 +120,7 @@ curl -X POST http://localhost:8080/api/orders -d '{"item": "widget"}'
 
 Open Jaeger UI: http://localhost:16686
 
-1. Select "sentinel" from the Service dropdown
+1. Select "zentinel" from the Service dropdown
 2. Click "Find Traces"
 3. Click on a trace to see the full request timeline
 
@@ -134,14 +134,14 @@ For production, use Grafana Tempo with Grafana for visualization:
 version: '3.8'
 
 services:
-  sentinel:
-    image: ghcr.io/raskell-io/sentinel:latest-otel
+  zentinel:
+    image: ghcr.io/zentinelproxy/zentinel:latest-otel
     ports:
       - "8080:8080"
       - "9090:9090"
     volumes:
-      - ./sentinel.kdl:/etc/sentinel/sentinel.kdl
-    command: ["--config", "/etc/sentinel/sentinel.kdl"]
+      - ./zentinel.kdl:/etc/zentinel/zentinel.kdl
+    command: ["--config", "/etc/zentinel/zentinel.kdl"]
     depends_on:
       - tempo
 
@@ -224,7 +224,7 @@ datasources:
     isDefault: true
 ```
 
-### sentinel.kdl (for Tempo)
+### zentinel.kdl (for Tempo)
 
 ```kdl
 system {
@@ -269,13 +269,13 @@ upstreams {
 
 agents {
     agent "auth" {
-        unix-socket path="/var/run/sentinel/auth.sock"
+        unix-socket path="/var/run/zentinel/auth.sock"
         events "request_headers"
         timeout-ms 50
     }
 
     agent "ratelimit" {
-        unix-socket path="/var/run/sentinel/ratelimit.sock"
+        unix-socket path="/var/run/zentinel/ratelimit.sock"
         events "request_headers"
         timeout-ms 20
     }
@@ -287,7 +287,7 @@ observability {
             endpoint "http://tempo:4317"
         }
         sampling-rate 0.1    // 10% in production
-        service-name "sentinel"
+        service-name "zentinel"
     }
 
     logging {
@@ -367,7 +367,7 @@ Trace everything for debugging:
 tracing {
     backend "otlp" { endpoint "http://jaeger:4317" }
     sampling-rate 1.0
-    service-name "sentinel-dev"
+    service-name "zentinel-dev"
 }
 ```
 
@@ -379,7 +379,7 @@ Balance visibility with overhead:
 tracing {
     backend "otlp" { endpoint "http://tempo:4317" }
     sampling-rate 0.05   // 5% of requests
-    service-name "sentinel-prod"
+    service-name "zentinel-prod"
 }
 ```
 

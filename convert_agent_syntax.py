@@ -9,8 +9,8 @@ import subprocess
 import tempfile
 import os
 
-DOCS_DIR = Path("/Users/zara/Development/github.com/raskell-io/sentinel.raskell.io-docs/content")
-SENTINEL_BIN = "/Users/zara/.cargo/bin/sentinel"
+DOCS_DIR = Path("/Users/zara/Development/github.com/zentinelproxy/zentinelproxy.io-docs/content")
+ZENTINEL_BIN = "/Users/zara/.cargo/bin/zentinel"
 
 def test_config(config_text):
     """Test if a config is valid."""
@@ -19,7 +19,7 @@ def test_config(config_text):
         temp_file = f.name
     try:
         result = subprocess.run(
-            [SENTINEL_BIN, '--conf', temp_file, '--test'],
+            [ZENTINEL_BIN, '--conf', temp_file, '--test'],
             capture_output=True,
             timeout=3
         )

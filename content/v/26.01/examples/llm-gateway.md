@@ -3,7 +3,7 @@ title = "LLM Gateway"
 weight = 60
 +++
 
-This example demonstrates configuring Sentinel as an LLM API gateway with token-based rate limiting, budget management, and cost attribution.
+This example demonstrates configuring Zentinel as an LLM API gateway with token-based rate limiting, budget management, and cost attribution.
 
 ## Use Case
 
@@ -17,7 +17,7 @@ You want to:
 ## Configuration
 
 ```kdl
-// sentinel.kdl
+// zentinel.kdl
 
 version "1.0"
 
@@ -34,8 +34,8 @@ listeners {
     listener "llm-gateway-tls" {
         bind-address "0.0.0.0:8443"
         tls {
-            certificate "/etc/sentinel/certs/llm-gateway.crt"
-            private-key "/etc/sentinel/certs/llm-gateway.key"
+            certificate "/etc/zentinel/certs/llm-gateway.crt"
+            private-key "/etc/zentinel/certs/llm-gateway.key"
         }
     }
 }
@@ -287,22 +287,22 @@ Query these metrics to monitor usage and costs:
 
 ```promql
 # Total tokens used per client today
-sum(sentinel_inference_budget_used_total{route="openai-api"}) by (tenant)
+sum(zentinel_inference_budget_used_total{route="openai-api"}) by (tenant)
 
 # Remaining budget percentage
-sentinel_inference_budget_remaining / sentinel_inference_budget_limit * 100
+zentinel_inference_budget_remaining / zentinel_inference_budget_limit * 100
 
 # Total cost by model (last 24h)
-increase(sentinel_inference_cost_total[24h])
+increase(zentinel_inference_cost_total[24h])
 
 # Average cost per request by model
-rate(sentinel_inference_cost_total[1h]) / rate(sentinel_http_requests_total[1h])
+rate(zentinel_inference_cost_total[1h]) / rate(zentinel_http_requests_total[1h])
 
 # Budget exhaustion events
-increase(sentinel_inference_budget_exhausted_total[24h])
+increase(zentinel_inference_budget_exhausted_total[24h])
 
 # Alert threshold crossings
-increase(sentinel_inference_budget_alerts_total[24h])
+increase(zentinel_inference_budget_alerts_total[24h])
 ```
 
 ## Grafana Dashboard Queries
@@ -311,22 +311,22 @@ increase(sentinel_inference_budget_alerts_total[24h])
 
 ```promql
 # Total spend by provider (last 30 days)
-sum(increase(sentinel_inference_cost_total[30d])) by (route)
+sum(increase(zentinel_inference_cost_total[30d])) by (route)
 ```
 
 ### Budget Utilization Panel
 
 ```promql
 # Current budget utilization percentage
-(sentinel_inference_budget_limit - sentinel_inference_budget_remaining)
-  / sentinel_inference_budget_limit * 100
+(zentinel_inference_budget_limit - zentinel_inference_budget_remaining)
+  / zentinel_inference_budget_limit * 100
 ```
 
 ### Top Spenders Panel
 
 ```promql
 # Top 10 clients by spend
-topk(10, sum(increase(sentinel_inference_cost_total[24h])) by (tenant))
+topk(10, sum(increase(zentinel_inference_cost_total[24h])) by (tenant))
 ```
 
 ## Usage Examples
@@ -371,7 +371,7 @@ curl -X POST https://llm-gateway.example.com/v1/openai/chat/completions \
   }'
 ```
 
-Sentinel will:
+Zentinel will:
 - Parse each SSE chunk to extract content
 - Accumulate the full response text
 - Count tokens using tiktoken (or use API-provided usage if available)
@@ -387,8 +387,8 @@ groups:
     rules:
       - alert: BudgetNearlyExhausted
         expr: |
-          sentinel_inference_budget_remaining
-            / sentinel_inference_budget_limit < 0.1
+          zentinel_inference_budget_remaining
+            / zentinel_inference_budget_limit < 0.1
         for: 5m
         labels:
           severity: warning
@@ -398,7 +398,7 @@ groups:
 
       - alert: HighInferenceCost
         expr: |
-          increase(sentinel_inference_cost_total[1h]) > 100
+          increase(zentinel_inference_cost_total[1h]) > 100
         for: 5m
         labels:
           severity: warning
@@ -408,7 +408,7 @@ groups:
 
       - alert: BudgetExhaustionSpike
         expr: |
-          increase(sentinel_inference_budget_exhausted_total[5m]) > 10
+          increase(zentinel_inference_budget_exhausted_total[5m]) > 10
         labels:
           severity: critical
         annotations:

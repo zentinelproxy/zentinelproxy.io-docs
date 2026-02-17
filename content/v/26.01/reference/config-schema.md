@@ -3,7 +3,7 @@ title = "Configuration Schema"
 weight = 5
 +++
 
-Quick reference for all Sentinel configuration options.
+Quick reference for all Zentinel configuration options.
 
 ## Top-Level Blocks
 
@@ -28,10 +28,10 @@ server {
 
     // Process management
     daemon false
-    pid-file "/var/run/sentinel.pid"
-    user "sentinel"
-    group "sentinel"
-    working-directory "/var/lib/sentinel"
+    pid-file "/var/run/zentinel.pid"
+    user "zentinel"
+    group "zentinel"
+    working-directory "/var/lib/zentinel"
 }
 ```
 
@@ -367,9 +367,9 @@ server {
     graceful-shutdown-timeout-secs 60
     auto-reload true
     daemon true
-    pid-file "/var/run/sentinel.pid"
-    user "sentinel"
-    group "sentinel"
+    pid-file "/var/run/zentinel.pid"
+    user "zentinel"
+    group "zentinel"
 }
 
 listeners {
@@ -377,8 +377,8 @@ listeners {
         address "0.0.0.0:443"
         protocol "https"
         tls {
-            cert-file "/etc/sentinel/certs/server.crt"
-            key-file "/etc/sentinel/certs/server.key"
+            cert-file "/etc/zentinel/certs/server.crt"
+            key-file "/etc/zentinel/certs/server.key"
             min-version "1.2"
         }
     }
