@@ -366,7 +366,7 @@ agents {
 
 ## Custom Logic with Rust SDK
 
-Build custom agents in Rust with the [Zentinel Agent SDK](https://github.com/zentinelproxy/zentinel-agent-sdk):
+Build custom agents in Rust with the [Zentinel Agent SDK](https://github.com/zentinelproxy/zentinel-agent-rust-sdk):
 
 ```rust
 use zentinel_agent_sdk::prelude::*;
@@ -495,7 +495,7 @@ upstreams {
 | Web Application | waf, denylist |
 | AI/LLM APIs | ai-gateway, ratelimit |
 | Microservices | auth, ratelimit |
-| Custom Logic (Rust) | [SDK](https://github.com/zentinelproxy/zentinel-agent-sdk) |
+| Custom Logic (Rust) | [SDK](https://github.com/zentinelproxy/zentinel-agent-rust-sdk) |
 | Custom Logic (Scripting) | js, lua, wasm |
 | Full OWASP CRS | modsec |
 | Homelab | (none needed - just routing) |
