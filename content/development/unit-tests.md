@@ -3,7 +3,7 @@ title = "Unit Tests"
 weight = 6
 +++
 
-Writing effective unit tests for Sentinel components.
+Writing effective unit tests for Zentinel components.
 
 ## Unit Test Basics
 

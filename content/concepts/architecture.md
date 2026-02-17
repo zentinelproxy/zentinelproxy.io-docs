@@ -3,11 +3,11 @@ title = "Architecture Overview"
 weight = 1
 +++
 
-Sentinel is a security-first reverse proxy built on [Cloudflare's Pingora](https://github.com/cloudflare/pingora) framework. This page explains the high-level architecture and design philosophy.
+Zentinel is a security-first reverse proxy built on [Cloudflare's Pingora](https://github.com/cloudflare/pingora) framework. This page explains the high-level architecture and design philosophy.
 
 ## Design Philosophy
 
-Sentinel follows four core principles:
+Zentinel follows four core principles:
 
 ### Sleepable Operations
 
@@ -54,7 +54,7 @@ Features ship only when they're production-ready:
                                          │ UDS │     │
 ┌──────────┐     ┌──────────────────────┼─────┼─────┼────────────────┐
 │          │     │                      │     │     │                │
-│  Client  │────▶│   Sentinel Proxy     ▼     ▼     ▼                │
+│  Client  │────▶│   Zentinel Proxy     ▼     ▼     ▼                │
 │          │     │  ┌─────────────────────────────────────────────┐  │
 └──────────┘     │  │              Agent Manager                  │  │
                  │  └─────────────────────────────────────────────┘  │
@@ -85,7 +85,7 @@ The foundation is Cloudflare's Pingora library, providing:
 - HTTP/1.1 and HTTP/2 support
 - Zero-copy buffer management
 
-Sentinel extends Pingora with routing, load balancing, and agent coordination.
+Zentinel extends Pingora with routing, load balancing, and agent coordination.
 
 ### 2. Route Matcher
 
@@ -174,7 +174,7 @@ Declarative configuration with:
 
 ## Extension Model
 
-Sentinel's extension model keeps complexity out of the dataplane:
+Zentinel's extension model keeps complexity out of the dataplane:
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
@@ -264,7 +264,7 @@ Per-route configuration:
 ```
 ┌──────────────┐
 │  Config File │
-│  (sentinel.  │
+│  (zentinel.  │
 │   kdl)       │
 └──────┬───────┘
        │
@@ -299,4 +299,4 @@ Per-route configuration:
 
 - [Component Design](../components/) - Deep dive into each component
 - [Request Flow](../request-flow/) - Detailed request lifecycle
-- [Pingora Foundation](../pingora/) - How Sentinel uses Pingora
+- [Pingora Foundation](../pingora/) - How Zentinel uses Pingora

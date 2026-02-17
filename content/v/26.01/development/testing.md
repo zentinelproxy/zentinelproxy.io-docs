@@ -3,7 +3,7 @@ title = "Testing"
 weight = 5
 +++
 
-Testing strategy and philosophy for Sentinel development.
+Testing strategy and philosophy for Zentinel development.
 
 ## Testing Philosophy
 
@@ -59,7 +59,7 @@ cargo test route
 cargo test config::tests
 
 # Single package in workspace
-cargo test -p sentinel-agent-waf
+cargo test -p zentinel-agent-waf
 ```
 
 ### Test Options
@@ -137,7 +137,7 @@ In `tests/` directory:
 ```rust
 // tests/proxy_test.rs
 
-use sentinel::test_utils::TestServer;
+use zentinel::test_utils::TestServer;
 
 #[tokio::test]
 async fn test_proxy_forwards_request() {
@@ -329,7 +329,7 @@ use tempfile::{tempdir, NamedTempFile};
 #[test]
 fn test_config_file() {
     let dir = tempdir().unwrap();
-    let config_path = dir.path().join("sentinel.kdl");
+    let config_path = dir.path().join("zentinel.kdl");
 
     std::fs::write(&config_path, "server { }").unwrap();
 
@@ -373,7 +373,7 @@ cargo tarpaulin --out Html
 cargo tarpaulin --out Html --ignore-tests
 
 # Only specific packages
-cargo tarpaulin -p sentinel-core --out Html
+cargo tarpaulin -p zentinel-core --out Html
 ```
 
 ### Using cargo-llvm-cov

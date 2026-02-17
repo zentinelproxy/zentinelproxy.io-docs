@@ -5,14 +5,14 @@ sort_by = "weight"
 template = "section.html"
 +++
 
-Guide for contributors and developers working on Sentinel and its ecosystem.
+Guide for contributors and developers working on Zentinel and its ecosystem.
 
 ## Quick Start
 
 ```bash
 # Clone and build
-git clone https://github.com/raskell-io/sentinel.git
-cd sentinel
+git clone https://github.com/zentinelproxy/zentinel.git
+cd zentinel
 cargo build --release
 
 # Run tests
@@ -27,7 +27,7 @@ cargo clippy
 
 | Guide | Description |
 |-------|-------------|
-| [Building from Source](building/) | Compile Sentinel and agents from source |
+| [Building from Source](building/) | Compile Zentinel and agents from source |
 | [Development Setup](setup/) | IDE configuration, recommended tools |
 | [Code Style](code-style/) | Formatting, naming conventions, best practices |
 | [Testing](testing/) | Testing strategy and philosophy |
@@ -41,7 +41,7 @@ cargo clippy
 ## Repository Structure
 
 ```
-sentinel/
+zentinel/
 ├── src/
 │   ├── main.rs              # Entry point
 │   ├── config/              # KDL configuration parsing
@@ -64,13 +64,13 @@ Each agent is maintained in its own repository:
 
 | Agent | Repository |
 |-------|------------|
-| WAF | [sentinel-agent-waf](https://github.com/raskell-io/sentinel-agent-waf) |
-| ModSecurity | [sentinel-agent-modsec](https://github.com/raskell-io/sentinel-agent-modsec) |
-| Auth | [sentinel-agent-auth](https://github.com/raskell-io/sentinel-agent-auth) |
-| Rate Limit | [sentinel-agent-ratelimit](https://github.com/raskell-io/sentinel-agent-ratelimit) |
-| JavaScript | [sentinel-agent-js](https://github.com/raskell-io/sentinel-agent-js) |
-| AI Gateway | [sentinel-agent-ai-gateway](https://github.com/raskell-io/sentinel-agent-ai-gateway) |
-| WebSocket Inspector | [sentinel-agent-websocket-inspector](https://github.com/raskell-io/sentinel-agent-websocket-inspector) |
+| WAF | [zentinel-agent-waf](https://github.com/zentinelproxy/zentinel-agent-waf) |
+| ModSecurity | [zentinel-agent-modsec](https://github.com/zentinelproxy/zentinel-agent-modsec) |
+| Auth | [zentinel-agent-auth](https://github.com/zentinelproxy/zentinel-agent-auth) |
+| Rate Limit | [zentinel-agent-ratelimit](https://github.com/zentinelproxy/zentinel-agent-ratelimit) |
+| JavaScript | [zentinel-agent-js](https://github.com/zentinelproxy/zentinel-agent-js) |
+| AI Gateway | [zentinel-agent-ai-gateway](https://github.com/zentinelproxy/zentinel-agent-ai-gateway) |
+| WebSocket Inspector | [zentinel-agent-websocket-inspector](https://github.com/zentinelproxy/zentinel-agent-websocket-inspector) |
 
 ## Agent Protocol
 
@@ -78,7 +78,7 @@ All agents use the shared protocol library:
 
 ```toml
 [dependencies]
-sentinel-agent-protocol = "0.1"
+zentinel-agent-protocol = "0.1"
 ```
 
 See [Agent Development](/agents/custom/) for creating custom agents.

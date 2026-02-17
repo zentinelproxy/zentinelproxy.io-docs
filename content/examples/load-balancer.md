@@ -16,7 +16,7 @@ A load balancer configuration distributing traffic across multiple backend serve
 
 ```
                          ┌─────────────────┐
-                         │    Sentinel     │
+                         │    Zentinel     │
                          │  Load Balancer  │
                          └────────┬────────┘
                                   │
@@ -31,7 +31,7 @@ A load balancer configuration distributing traffic across multiple backend serve
 
 ## Configuration
 
-Create `sentinel.kdl`:
+Create `zentinel.kdl`:
 
 ```kdl
 // Load Balancer Configuration
@@ -51,8 +51,8 @@ listeners {
         address "0.0.0.0:8443"
         protocol "https"
         tls {
-            cert-file "/etc/sentinel/certs/lb.crt"
-            key-file "/etc/sentinel/certs/lb.key"
+            cert-file "/etc/zentinel/certs/lb.crt"
+            key-file "/etc/zentinel/certs/lb.key"
         }
     }
 }
@@ -367,7 +367,7 @@ routes {
 Switch traffic by updating `upstream "app-blue"` to `upstream "app-green"` and reloading:
 
 ```bash
-kill -HUP $(pgrep sentinel)
+kill -HUP $(pgrep zentinel)
 ```
 
 ### Canary Deployment
@@ -462,15 +462,15 @@ curl -H "X-Admin-Key: $ADMIN_KEY" http://localhost:8080/admin/upstreams
 Key load balancer metrics:
 
 ```bash
-curl http://localhost:9090/metrics | grep -E "sentinel_(upstream|connections)"
+curl http://localhost:9090/metrics | grep -E "zentinel_(upstream|connections)"
 ```
 
 | Metric | Description |
 |--------|-------------|
-| `sentinel_upstream_health` | Health status per target (1=healthy, 0=unhealthy) |
-| `sentinel_upstream_connections_active` | Active connections per target |
-| `sentinel_upstream_requests_total` | Requests per target |
-| `sentinel_upstream_latency_seconds` | Latency per target |
+| `zentinel_upstream_health` | Health status per target (1=healthy, 0=unhealthy) |
+| `zentinel_upstream_connections_active` | Active connections per target |
+| `zentinel_upstream_requests_total` | Requests per target |
+| `zentinel_upstream_latency_seconds` | Latency per target |
 
 ## Customizations
 

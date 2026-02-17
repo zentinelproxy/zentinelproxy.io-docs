@@ -374,9 +374,9 @@ upstream "mtls-backend" {
     }
     tls {
         sni "secure.internal"
-        client-cert "/etc/sentinel/certs/client.crt"
-        client-key "/etc/sentinel/certs/client.key"
-        ca-cert "/etc/sentinel/certs/backend-ca.crt"
+        client-cert "/etc/zentinel/certs/client.crt"
+        client-key "/etc/zentinel/certs/client.key"
+        ca-cert "/etc/zentinel/certs/backend-ca.crt"
     }
 }
 ```
@@ -502,9 +502,9 @@ upstreams {
         }
         tls {
             sni "payment.internal"
-            client-cert "/etc/sentinel/certs/sentinel-client.crt"
-            client-key "/etc/sentinel/certs/sentinel-client.key"
-            ca-cert "/etc/sentinel/certs/internal-ca.crt"
+            client-cert "/etc/zentinel/certs/zentinel-client.crt"
+            client-key "/etc/zentinel/certs/zentinel-client.key"
+            ca-cert "/etc/zentinel/certs/internal-ca.crt"
         }
         health-check {
             type "http" {
@@ -601,7 +601,7 @@ Discover backends from Kubernetes Endpoints. Supports both in-cluster and kubeco
 
 #### In-Cluster Configuration
 
-When running inside Kubernetes, Sentinel automatically uses the pod's service account:
+When running inside Kubernetes, Zentinel automatically uses the pod's service account:
 
 ```kdl
 upstream "k8s-backend" {
@@ -640,7 +640,7 @@ upstream "k8s-backend" {
 
 #### Kubeconfig Authentication Methods
 
-Sentinel supports multiple authentication methods from kubeconfig:
+Zentinel supports multiple authentication methods from kubeconfig:
 
 **Token Authentication:**
 ```yaml

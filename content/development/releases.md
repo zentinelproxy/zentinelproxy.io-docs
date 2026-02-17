@@ -9,7 +9,7 @@ Versioning, release workflow, and publishing.
 
 ### Semantic Versioning
 
-Sentinel follows [Semantic Versioning](https://semver.org/):
+Zentinel follows [Semantic Versioning](https://semver.org/):
 
 ```
 MAJOR.MINOR.PATCH
@@ -122,7 +122,7 @@ git push upstream v1.2.0
 
 ```bash
 gh release create v1.2.0 \
-    --title "Sentinel v1.2.0" \
+    --title "Zentinel v1.2.0" \
     --notes-file release-notes.md
 ```
 
@@ -173,14 +173,14 @@ jobs:
       - name: Package
         run: |
           mkdir -p dist
-          cp target/${{ matrix.target }}/release/sentinel dist/
-          tar -czvf sentinel-${{ matrix.target }}.tar.gz -C dist .
+          cp target/${{ matrix.target }}/release/zentinel dist/
+          tar -czvf zentinel-${{ matrix.target }}.tar.gz -C dist .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: sentinel-${{ matrix.target }}
-          path: sentinel-${{ matrix.target }}.tar.gz
+          name: zentinel-${{ matrix.target }}
+          path: zentinel-${{ matrix.target }}.tar.gz
 
   release:
     needs: build
@@ -220,9 +220,9 @@ cargo publish --dry-run
 cargo publish
 
 # For workspace packages, publish in order:
-cargo publish -p sentinel-agent-protocol
-cargo publish -p sentinel-core
-cargo publish -p sentinel
+cargo publish -p zentinel-agent-protocol
+cargo publish -p zentinel-core
+cargo publish -p zentinel
 ```
 
 ### Yanking
@@ -249,8 +249,8 @@ COPY . .
 RUN cargo build --release
 
 FROM debian:bookworm-slim
-COPY --from=builder /app/target/release/sentinel /usr/local/bin/
-ENTRYPOINT ["sentinel"]
+COPY --from=builder /app/target/release/zentinel /usr/local/bin/
+ENTRYPOINT ["zentinel"]
 ```
 
 ### Publishing to GHCR
@@ -262,24 +262,24 @@ ENTRYPOINT ["sentinel"]
   with:
     push: true
     tags: |
-      ghcr.io/raskell-io/sentinel:${{ github.ref_name }}
-      ghcr.io/raskell-io/sentinel:latest
+      ghcr.io/zentinelproxy/zentinel:${{ github.ref_name }}
+      ghcr.io/zentinelproxy/zentinel:latest
 ```
 
 ## Agent Releases
 
 ### Coordinated Releases
 
-When Sentinel protocol changes:
+When Zentinel protocol changes:
 
-1. Release `sentinel-agent-protocol` first
+1. Release `zentinel-agent-protocol` first
 2. Update agents to use new protocol
 3. Release agents
-4. Release Sentinel
+4. Release Zentinel
 
 ### Agent Version Matrix
 
-| Sentinel | Protocol | WAF | Auth | JS |
+| Zentinel | Protocol | WAF | Auth | JS |
 |----------|----------|-----|------|----|
 | 1.2.0 | 0.2.0 | 0.3.0 | 0.2.0 | 0.2.0 |
 | 1.1.0 | 0.1.0 | 0.2.0 | 0.1.0 | 0.1.0 |

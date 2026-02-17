@@ -69,15 +69,15 @@ impl TestProxy {
     pub async fn start(config: &str) -> Self {
         // Write config to temp file
         let dir = tempfile::tempdir().unwrap();
-        let config_path = dir.path().join("sentinel.kdl");
+        let config_path = dir.path().join("zentinel.kdl");
         std::fs::write(&config_path, config).unwrap();
 
-        // Start sentinel
+        // Start zentinel
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
 
         let handle = tokio::spawn(async move {
-            sentinel::run(config_path).await
+            zentinel::run(config_path).await
         });
 
         // Wait for server to be ready
@@ -164,7 +164,7 @@ async fn test_proxy_adds_headers() {
                 upstream "backend"
                 policies {{
                     request-headers {{
-                        set {{ "X-Proxy" "sentinel" }}
+                        set {{ "X-Proxy" "zentinel" }}
                     }}
                 }}
             }}
@@ -178,7 +178,7 @@ async fn test_proxy_adds_headers() {
     let body: serde_json::Value = response.json().await.unwrap();
 
     // Echo server returns headers in response
-    assert_eq!(body["headers"]["x-proxy"], "sentinel");
+    assert_eq!(body["headers"]["x-proxy"], "zentinel");
 }
 ```
 
@@ -217,7 +217,7 @@ async fn test_upstream_unavailable() {
 ### Agent Test Infrastructure
 
 ```rust
-use sentinel_agent_protocol::{AgentClient, AgentServer};
+use zentinel_agent_protocol::{AgentClient, AgentServer};
 
 pub struct TestAgent {
     pub socket_path: PathBuf,
@@ -487,7 +487,7 @@ async fn get_free_port() -> u16 {
 // Use unique socket paths
 fn unique_socket_path() -> PathBuf {
     let id = uuid::Uuid::new_v4();
-    std::env::temp_dir().join(format!("sentinel-test-{}.sock", id))
+    std::env::temp_dir().join(format!("zentinel-test-{}.sock", id))
 }
 ```
 
@@ -530,7 +530,7 @@ async fn test_with_timeout() {
 async fn test_with_logging() {
     // Initialize logging for test
     let _ = tracing_subscriber::fmt()
-        .with_env_filter("sentinel=debug")
+        .with_env_filter("zentinel=debug")
         .try_init();
 
     // Test code

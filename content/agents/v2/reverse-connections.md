@@ -124,7 +124,7 @@ Agent                                                     Proxy
 ### Basic Setup
 
 ```rust
-use sentinel_agent_protocol::v2::{
+use zentinel_agent_protocol::v2::{
     ReverseConnectionListener,
     ReverseConnectionConfig,
 };
@@ -139,7 +139,7 @@ let config = ReverseConnectionConfig {
 
 // UDS listener for local agents
 let listener = ReverseConnectionListener::bind_uds(
-    "/var/run/sentinel/agents.sock",
+    "/var/run/zentinel/agents.sock",
     config.clone(),
 ).await?;
 
@@ -189,7 +189,7 @@ let config = ReverseConnectionConfig {
 ```rust
 let pool = AgentPool::new();
 let listener = ReverseConnectionListener::bind_uds(
-    "/var/run/sentinel/agents.sock",
+    "/var/run/zentinel/agents.sock",
     ReverseConnectionConfig::default(),
 ).await?;
 
@@ -260,7 +260,7 @@ async fn run_accept_loop(
 
 ```rust
 use tokio::net::UnixStream;
-use sentinel_agent_protocol::v2::reverse::{
+use zentinel_agent_protocol::v2::reverse::{
     RegistrationRequest,
     RegistrationResponse,
     write_registration_request,
@@ -396,7 +396,7 @@ loop {
 ```rust
 // Agent side: maintain 4 connections for load distribution
 let manager = AgentConnectionManager::new(
-    "/var/run/sentinel/agents.sock",
+    "/var/run/zentinel/agents.sock",
     "waf-worker-1",
     Some("auth-token".to_string()),
     4,  // target connections
@@ -455,11 +455,11 @@ loop {
 
 ## KDL Configuration
 
-Configure reverse connection listener in your Sentinel config:
+Configure reverse connection listener in your Zentinel config:
 
 ```kdl
 reverse-listener {
-    path "/var/run/sentinel/agents.sock"
+    path "/var/run/zentinel/agents.sock"
     max-connections-per-agent 4
     handshake-timeout "10s"
 

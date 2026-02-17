@@ -3,22 +3,22 @@ title = "Migration Guide"
 weight = 3
 +++
 
-Guides for migrating to Sentinel from other reverse proxies.
+Guides for migrating to Zentinel from other reverse proxies.
 
 ## Migration Overview
 
 ### General Steps
 
 1. **Audit current configuration** - Document routes, upstreams, TLS settings
-2. **Create Sentinel config** - Translate configuration to KDL
-3. **Test in parallel** - Run Sentinel alongside existing proxy
+2. **Create Zentinel config** - Translate configuration to KDL
+3. **Test in parallel** - Run Zentinel alongside existing proxy
 4. **Gradual cutover** - Shift traffic incrementally
 5. **Monitor and validate** - Compare metrics and behavior
 6. **Decommission old proxy** - Remove after validation period
 
 ### Key Differences
 
-| Feature | nginx | HAProxy | Traefik | Sentinel |
+| Feature | nginx | HAProxy | Traefik | Zentinel |
 |---------|-------|---------|---------|----------|
 | Config format | nginx.conf | haproxy.cfg | YAML/TOML | KDL |
 | Hot reload | `nginx -s reload` | `kill -USR2` | Automatic | `SIGHUP` |
@@ -48,7 +48,7 @@ server {
 }
 ```
 
-**Sentinel:**
+**Zentinel:**
 ```kdl
 listeners {
     listener "http" {
@@ -103,15 +103,15 @@ server {
 }
 ```
 
-**Sentinel:**
+**Zentinel:**
 ```kdl
 listeners {
     listener "https" {
         address "0.0.0.0:443"
         protocol "https"
         tls {
-            cert-file "/etc/sentinel/certs/server.crt"
-            key-file "/etc/sentinel/certs/server.key"
+            cert-file "/etc/zentinel/certs/server.crt"
+            key-file "/etc/zentinel/certs/server.key"
             min-version "1.2"
         }
     }
@@ -130,7 +130,7 @@ upstream backend {
 }
 ```
 
-**Sentinel:**
+**Zentinel:**
 ```kdl
 upstreams {
     upstream "backend" {
@@ -156,7 +156,7 @@ location /api/ {
 }
 ```
 
-**Sentinel:**
+**Zentinel:**
 ```kdl
 routes {
     route "api" {
@@ -177,7 +177,7 @@ routes {
 
 ### nginx Mapping Table
 
-| nginx | Sentinel |
+| nginx | Zentinel |
 |-------|----------|
 | `listen 80` | `address "0.0.0.0:80"` |
 | `server_name` | `matches { host "..." }` |
@@ -208,7 +208,7 @@ backend http_back
     server server2 10.0.1.2:8080 check
 ```
 
-**Sentinel:**
+**Zentinel:**
 ```kdl
 listeners {
     listener "http" {
@@ -259,7 +259,7 @@ frontend http_front
     default_backend default_back
 ```
 
-**Sentinel:**
+**Zentinel:**
 ```kdl
 routes {
     route "api" {
@@ -301,7 +301,7 @@ backend http_back
     server server1 10.0.1.1:8080 check inter 10s fall 3 rise 2
 ```
 
-**Sentinel:**
+**Zentinel:**
 ```kdl
 upstreams {
     upstream "backend" {
@@ -320,7 +320,7 @@ upstreams {
 
 ### HAProxy Mapping Table
 
-| HAProxy | Sentinel |
+| HAProxy | Zentinel |
 |---------|----------|
 | `frontend` | `listeners { listener }` |
 | `backend` | `upstreams { upstream }` |
@@ -365,7 +365,7 @@ http:
           - url: "http://10.0.1.2:8080"
 ```
 
-**Sentinel:**
+**Zentinel:**
 ```kdl
 listeners {
     listener "http" {
@@ -376,8 +376,8 @@ listeners {
         address "0.0.0.0:443"
         protocol "https"
         tls {
-            cert-file "/etc/sentinel/certs/server.crt"
-            key-file "/etc/sentinel/certs/server.key"
+            cert-file "/etc/zentinel/certs/server.crt"
+            key-file "/etc/zentinel/certs/server.key"
         }
     }
 }
@@ -424,7 +424,7 @@ http:
       service: api-service
 ```
 
-**Sentinel:**
+**Zentinel:**
 ```kdl
 routes {
     route "api" {
@@ -449,7 +449,7 @@ routes {
 
 ### Traefik Mapping Table
 
-| Traefik | Sentinel |
+| Traefik | Zentinel |
 |---------|----------|
 | `entryPoints` | `listeners` |
 | `routers` | `routes` |
@@ -485,15 +485,15 @@ routes {
 ### Parallel Running
 
 ```bash
-# Run Sentinel on different port
-sentinel --config sentinel.kdl  # Listens on 8080
+# Run Zentinel on different port
+zentinel --config zentinel.kdl  # Listens on 8080
 
 # Test both proxies
 curl http://localhost:80/api/test    # Old proxy
-curl http://localhost:8080/api/test  # Sentinel
+curl http://localhost:8080/api/test  # Zentinel
 
 # Compare responses
-diff <(curl -s old-proxy/api/test) <(curl -s sentinel/api/test)
+diff <(curl -s old-proxy/api/test) <(curl -s zentinel/api/test)
 ```
 
 ## See Also

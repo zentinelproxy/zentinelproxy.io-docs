@@ -3,7 +3,7 @@ title = "First Route"
 weight = 3
 +++
 
-Routes are the core of Sentinel's traffic management. They match incoming requests and direct them to the appropriate backend.
+Routes are the core of Zentinel's traffic management. They match incoming requests and direct them to the appropriate backend.
 
 ## Anatomy of a Route
 
@@ -356,7 +356,7 @@ upstreams {
 Validate your configuration before deploying:
 
 ```bash
-sentinel -c sentinel.kdl --test
+zentinel -c zentinel.kdl --test
 ```
 
 Test specific routes with curl:

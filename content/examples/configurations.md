@@ -17,7 +17,7 @@ Secure proxy for AI/LLM APIs with prompt injection detection, PII filtering, rat
 
 ```
                       ┌─────────────────┐
-                      │    Sentinel     │
+                      │    Zentinel     │
                       │   AI Gateway    │
                       └────────┬────────┘
                                │
@@ -37,7 +37,7 @@ Secure proxy for AI/LLM APIs with prompt injection detection, PII filtering, rat
 
 ## Configuration
 
-Create `sentinel.kdl`:
+Create `zentinel.kdl`:
 
 ```kdl
 // AI Gateway Configuration
@@ -53,8 +53,8 @@ listeners {
         address "0.0.0.0:8443"
         protocol "https"
         tls {
-            cert-file "/etc/sentinel/certs/ai.crt"
-            key-file "/etc/sentinel/certs/ai.key"
+            cert-file "/etc/zentinel/certs/ai.crt"
+            key-file "/etc/zentinel/certs/ai.key"
         }
     }
 }
@@ -145,21 +145,21 @@ upstreams {
 
 agents {
     agent "ai-gateway" type="custom" {
-        unix-socket "/var/run/sentinel/ai-gateway.sock"
+        unix-socket "/var/run/zentinel/ai-gateway.sock"
         events "request_headers" "request_body"
         timeout-ms 100
         failure-mode "closed"
     }
 
     agent "auth" type="auth" {
-        unix-socket "/var/run/sentinel/auth.sock"
+        unix-socket "/var/run/zentinel/auth.sock"
         events "request_headers"
         timeout-ms 50
         failure-mode "closed"
     }
 
     agent "ratelimit" type="rate_limit" {
-        unix-socket "/var/run/sentinel/ratelimit.sock"
+        unix-socket "/var/run/zentinel/ratelimit.sock"
         events "request_headers"
         timeout-ms 20
         failure-mode "open"
@@ -183,14 +183,14 @@ observability {
 ### Install AI Gateway Agent
 
 ```bash
-cargo install sentinel-agent-ai-gateway
+cargo install zentinel-agent-ai-gateway
 ```
 
 ### Start AI Gateway Agent
 
 ```bash
-sentinel-agent-ai-gateway \
-    --socket /var/run/sentinel/ai-gateway.sock \
+zentinel-agent-ai-gateway \
+    --socket /var/run/zentinel/ai-gateway.sock \
     --prompt-injection true \
     --pii-detection true \
     --pii-action block \
@@ -329,8 +329,8 @@ The AI Gateway agent adds informational headers:
 ### Token-Based Rate Limiting
 
 ```bash
-sentinel-agent-ai-gateway \
-    --socket /var/run/sentinel/ai-gateway.sock \
+zentinel-agent-ai-gateway \
+    --socket /var/run/zentinel/ai-gateway.sock \
     --rate-limit-tokens 100000 &  # 100K tokens/min per client
 ```
 
@@ -350,14 +350,14 @@ Configure different limits for different API key tiers:
 
 ```bash
 # Free tier
-sentinel-agent-ratelimit \
-    --socket /var/run/sentinel/ratelimit-free.sock \
+zentinel-agent-ratelimit \
+    --socket /var/run/zentinel/ratelimit-free.sock \
     --requests-per-minute 10 \
     --tokens-per-minute 10000 &
 
 # Pro tier
-sentinel-agent-ratelimit \
-    --socket /var/run/sentinel/ratelimit-pro.sock \
+zentinel-agent-ratelimit \
+    --socket /var/run/zentinel/ratelimit-pro.sock \
     --requests-per-minute 100 \
     --tokens-per-minute 100000 &
 ```
@@ -368,13 +368,13 @@ Monitor AI API costs with Prometheus:
 
 ```promql
 # Cost per hour
-sum(rate(sentinel_ai_gateway_cost_usd_total[1h])) * 3600
+sum(rate(zentinel_ai_gateway_cost_usd_total[1h])) * 3600
 
 # Cost by model
-sum by (model) (rate(sentinel_ai_gateway_cost_usd_total[1h])) * 3600
+sum by (model) (rate(zentinel_ai_gateway_cost_usd_total[1h])) * 3600
 
 # Token usage by client
-sum by (client_id) (rate(sentinel_ai_gateway_tokens_total[1h])) * 3600
+sum by (client_id) (rate(zentinel_ai_gateway_tokens_total[1h])) * 3600
 ```
 
 ## Client Configuration

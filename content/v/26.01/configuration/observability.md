@@ -3,7 +3,7 @@ title = "Observability"
 weight = 8
 +++
 
-Sentinel provides comprehensive observability through metrics, logging, and distributed tracing. All observability features are configured in the `observability` block.
+Zentinel provides comprehensive observability through metrics, logging, and distributed tracing. All observability features are configured in the `observability` block.
 
 ## Basic Configuration
 
@@ -15,19 +15,19 @@ observability {
 
         access-log {
             enabled #true
-            file "/var/log/sentinel/access.log"
+            file "/var/log/zentinel/access.log"
             format "json"
         }
 
         error-log {
             enabled #true
-            file "/var/log/sentinel/error.log"
+            file "/var/log/zentinel/error.log"
             level "warn"
         }
 
         audit-log {
             enabled #true
-            file "/var/log/sentinel/audit.log"
+            file "/var/log/zentinel/audit.log"
             log-blocked #true
             log-agent-decisions #true
             log-waf-events #true
@@ -45,7 +45,7 @@ observability {
             endpoint "http://jaeger:4317"
         }
         sampling-rate 0.01
-        service-name "sentinel"
+        service-name "zentinel"
     }
 }
 ```
@@ -62,7 +62,7 @@ observability {
         level "info"           // Log level
         format "json"          // Log format
         timestamps #true       // Include timestamps
-        file "/var/log/sentinel/app.log"  // Optional file path
+        file "/var/log/zentinel/app.log"  // Optional file path
     }
 }
 ```
@@ -93,7 +93,7 @@ observability {
     logging {
         access-log {
             enabled #true
-            file "/var/log/sentinel/access.log"
+            file "/var/log/zentinel/access.log"
             format "json"
             buffer-size 8192
             include-trace-id #true
@@ -107,7 +107,7 @@ observability {
 | Option | Default | Description |
 |--------|---------|-------------|
 | `enabled` | `true` | Enable access logging |
-| `file` | `/var/log/sentinel/access.log` | Log file path |
+| `file` | `/var/log/zentinel/access.log` | Log file path |
 | `format` | `json` | Log format (`json`, `combined`, `custom`) |
 | `buffer-size` | `8192` | Write buffer size |
 | `include-trace-id` | `true` | Include trace ID in logs |
@@ -142,7 +142,7 @@ observability {
     logging {
         error-log {
             enabled #true
-            file "/var/log/sentinel/error.log"
+            file "/var/log/zentinel/error.log"
             level "warn"
             buffer-size 8192
         }
@@ -155,7 +155,7 @@ observability {
 | Option | Default | Description |
 |--------|---------|-------------|
 | `enabled` | `true` | Enable error logging |
-| `file` | `/var/log/sentinel/error.log` | Log file path |
+| `file` | `/var/log/zentinel/error.log` | Log file path |
 | `level` | `warn` | Minimum level to log |
 | `buffer-size` | `8192` | Write buffer size |
 
@@ -168,7 +168,7 @@ observability {
     logging {
         audit-log {
             enabled #true
-            file "/var/log/sentinel/audit.log"
+            file "/var/log/zentinel/audit.log"
             buffer-size 8192
             log-blocked #true
             log-agent-decisions #true
@@ -183,7 +183,7 @@ observability {
 | Option | Default | Description |
 |--------|---------|-------------|
 | `enabled` | `true` | Enable audit logging |
-| `file` | `/var/log/sentinel/audit.log` | Log file path |
+| `file` | `/var/log/zentinel/audit.log` | Log file path |
 | `buffer-size` | `8192` | Write buffer size |
 | `log-blocked` | `true` | Log blocked requests |
 | `log-agent-decisions` | `true` | Log agent allow/deny decisions |
@@ -239,66 +239,66 @@ observability {
 
 | Metric | Type | Description |
 |--------|------|-------------|
-| `sentinel_requests_total` | Counter | Total requests by route, method, status |
-| `sentinel_request_duration_seconds` | Histogram | Request latency distribution |
-| `sentinel_request_size_bytes` | Histogram | Request body size |
-| `sentinel_response_size_bytes` | Histogram | Response body size |
-| `sentinel_active_requests` | Gauge | Currently active requests |
+| `zentinel_requests_total` | Counter | Total requests by route, method, status |
+| `zentinel_request_duration_seconds` | Histogram | Request latency distribution |
+| `zentinel_request_size_bytes` | Histogram | Request body size |
+| `zentinel_response_size_bytes` | Histogram | Response body size |
+| `zentinel_active_requests` | Gauge | Currently active requests |
 
 #### Upstream Metrics
 
 | Metric | Type | Description |
 |--------|------|-------------|
-| `sentinel_upstream_requests_total` | Counter | Requests to upstreams |
-| `sentinel_upstream_duration_seconds` | Histogram | Upstream latency |
-| `sentinel_upstream_healthy_backends` | Gauge | Healthy backends per upstream |
-| `sentinel_upstream_connections` | Gauge | Active upstream connections |
-| `sentinel_upstream_retries_total` | Counter | Retry attempts |
+| `zentinel_upstream_requests_total` | Counter | Requests to upstreams |
+| `zentinel_upstream_duration_seconds` | Histogram | Upstream latency |
+| `zentinel_upstream_healthy_backends` | Gauge | Healthy backends per upstream |
+| `zentinel_upstream_connections` | Gauge | Active upstream connections |
+| `zentinel_upstream_retries_total` | Counter | Retry attempts |
 
 #### Cache Metrics
 
 | Metric | Type | Description |
 |--------|------|-------------|
-| `sentinel_cache_hits_total` | Counter | Cache hits |
-| `sentinel_cache_misses_total` | Counter | Cache misses |
-| `sentinel_cache_size_bytes` | Gauge | Current cache size |
-| `sentinel_cache_entries` | Gauge | Number of cached entries |
-| `sentinel_cache_evictions_total` | Counter | Cache evictions |
+| `zentinel_cache_hits_total` | Counter | Cache hits |
+| `zentinel_cache_misses_total` | Counter | Cache misses |
+| `zentinel_cache_size_bytes` | Gauge | Current cache size |
+| `zentinel_cache_entries` | Gauge | Number of cached entries |
+| `zentinel_cache_evictions_total` | Counter | Cache evictions |
 
 #### Rate Limiting Metrics
 
 | Metric | Type | Description |
 |--------|------|-------------|
-| `sentinel_rate_limit_hits_total` | Counter | Rate limit triggers |
-| `sentinel_rate_limit_allowed_total` | Counter | Allowed requests |
-| `sentinel_rate_limit_delayed_total` | Counter | Delayed requests |
+| `zentinel_rate_limit_hits_total` | Counter | Rate limit triggers |
+| `zentinel_rate_limit_allowed_total` | Counter | Allowed requests |
+| `zentinel_rate_limit_delayed_total` | Counter | Delayed requests |
 
 #### Agent Metrics
 
 | Metric | Type | Description |
 |--------|------|-------------|
-| `sentinel_agent_requests_total` | Counter | Agent call count |
-| `sentinel_agent_duration_seconds` | Histogram | Agent call latency |
-| `sentinel_agent_errors_total` | Counter | Agent errors |
-| `sentinel_agent_timeouts_total` | Counter | Agent timeouts |
-| `sentinel_agent_circuit_breaker_state` | Gauge | Circuit breaker state (0=closed, 1=open, 2=half-open) |
+| `zentinel_agent_requests_total` | Counter | Agent call count |
+| `zentinel_agent_duration_seconds` | Histogram | Agent call latency |
+| `zentinel_agent_errors_total` | Counter | Agent errors |
+| `zentinel_agent_timeouts_total` | Counter | Agent timeouts |
+| `zentinel_agent_circuit_breaker_state` | Gauge | Circuit breaker state (0=closed, 1=open, 2=half-open) |
 
 #### Connection Metrics
 
 | Metric | Type | Description |
 |--------|------|-------------|
-| `sentinel_connections_total` | Counter | Total connections |
-| `sentinel_active_connections` | Gauge | Current connections |
-| `sentinel_connection_duration_seconds` | Histogram | Connection lifetime |
-| `sentinel_tls_handshake_duration_seconds` | Histogram | TLS handshake time |
+| `zentinel_connections_total` | Counter | Total connections |
+| `zentinel_active_connections` | Gauge | Current connections |
+| `zentinel_connection_duration_seconds` | Histogram | Connection lifetime |
+| `zentinel_tls_handshake_duration_seconds` | Histogram | TLS handshake time |
 
 ### Prometheus Scrape Config
 
 ```yaml
 scrape_configs:
-  - job_name: 'sentinel'
+  - job_name: 'zentinel'
     static_configs:
-      - targets: ['sentinel:9090']
+      - targets: ['zentinel:9090']
     scrape_interval: 15s
     metrics_path: /metrics
 ```
@@ -314,7 +314,7 @@ observability {
             endpoint "http://jaeger:4317"
         }
         sampling-rate 0.01     // 1% of requests
-        service-name "sentinel"
+        service-name "zentinel"
     }
 }
 ```
@@ -356,17 +356,17 @@ tracing {
 | Option | Default | Description |
 |--------|---------|-------------|
 | `sampling-rate` | `0.01` | Fraction of requests to trace (0.0-1.0) |
-| `service-name` | `sentinel` | Service name in traces |
+| `service-name` | `zentinel` | Service name in traces |
 
 ### Trace Context
 
-Sentinel propagates W3C Trace Context headers:
+Zentinel propagates W3C Trace Context headers:
 
 | Header | Description |
 |--------|-------------|
 | `traceparent` | W3C trace context parent |
 | `tracestate` | W3C trace context state |
-| `X-Request-ID` | Sentinel's trace ID |
+| `X-Request-ID` | Zentinel's trace ID |
 
 ### Span Attributes
 
@@ -378,8 +378,8 @@ Each request span includes:
 | `http.url` | Request URL |
 | `http.status_code` | Response status |
 | `http.route` | Route ID |
-| `sentinel.upstream` | Upstream name |
-| `sentinel.cache_status` | Cache hit/miss |
+| `zentinel.upstream` | Upstream name |
+| `zentinel.cache_status` | Cache hit/miss |
 
 ## Trace ID Format
 
@@ -411,20 +411,20 @@ observability {
 
         access-log {
             enabled #true
-            file "/var/log/sentinel/access.log"
+            file "/var/log/zentinel/access.log"
             format "json"
             include-trace-id #true
         }
 
         error-log {
             enabled #true
-            file "/var/log/sentinel/error.log"
+            file "/var/log/zentinel/error.log"
             level "warn"
         }
 
         audit-log {
             enabled #true
-            file "/var/log/sentinel/audit.log"
+            file "/var/log/zentinel/audit.log"
             log-blocked #true
             log-agent-decisions #true
         }
@@ -441,17 +441,17 @@ observability {
             endpoint "http://otel-collector:4317"
         }
         sampling-rate 0.05
-        service-name "sentinel-prod"
+        service-name "zentinel-prod"
     }
 }
 ```
 
 ## Log Rotation
 
-Sentinel logs are designed for external rotation. Use logrotate or similar:
+Zentinel logs are designed for external rotation. Use logrotate or similar:
 
 ```
-/var/log/sentinel/*.log {
+/var/log/zentinel/*.log {
     daily
     rotate 30
     compress

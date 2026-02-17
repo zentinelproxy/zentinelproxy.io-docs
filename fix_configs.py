@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Fix invalid KDL configs in Sentinel documentation:
+Fix invalid KDL configs in Zentinel documentation:
 1. Replace deprecated 'server' with 'system'
 2. Wrap partial snippets in minimal valid configs
 """
@@ -8,7 +8,7 @@ Fix invalid KDL configs in Sentinel documentation:
 import re
 from pathlib import Path
 
-DOCS_DIR = Path("/Users/zara/Development/github.com/raskell-io/sentinel.raskell.io-docs/content")
+DOCS_DIR = Path("/Users/zara/Development/github.com/zentinelproxy/zentinelproxy.io-docs/content")
 
 # Minimal wrapper for incomplete snippets
 MINIMAL_WRAPPER_TEMPLATE = """// Documentation example - wrapped in minimal config for validation

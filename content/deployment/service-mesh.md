@@ -3,7 +3,7 @@ title = "Service Mesh Integration"
 weight = 7
 +++
 
-Sentinel integrates with service mesh environments through dynamic service discovery and mTLS support. While not a service mesh itself, Sentinel can serve as an ingress gateway or edge proxy in mesh deployments.
+Zentinel integrates with service mesh environments through dynamic service discovery and mTLS support. While not a service mesh itself, Zentinel can serve as an ingress gateway or edge proxy in mesh deployments.
 
 ## Integration Patterns
 
@@ -14,7 +14,7 @@ Sentinel integrates with service mesh environments through dynamic service disco
 │                                                                      │
 │  Pattern 1: Ingress Gateway                                          │
 │  ┌──────────┐      ┌──────────┐      ┌──────────┐                   │
-│  │ Internet │─────▶│ Sentinel │─────▶│ Mesh     │                   │
+│  │ Internet │─────▶│ Zentinel │─────▶│ Mesh     │                   │
 │  │          │      │ (edge)   │      │ Services │                   │
 │  └──────────┘      └──────────┘      └──────────┘                   │
 │                          │                                           │
@@ -25,7 +25,7 @@ Sentinel integrates with service mesh environments through dynamic service disco
 │  ┌──────────┐      ┌──────────────────────────┐                     │
 │  │ Internet │─────▶│ Pod                       │                     │
 │  │          │      │ ┌────────┐  ┌──────────┐ │                     │
-│  └──────────┘      │ │Sentinel│─▶│ Sidecar  │ │                     │
+│  └──────────┘      │ │Zentinel│─▶│ Sidecar  │ │                     │
 │                    │ │        │  │(Envoy/   │ │                     │
 │                    │ └────────┘  │ Linkerd) │ │                     │
 │                    └─────────────┴──────────┴─┘                     │
@@ -35,7 +35,7 @@ Sentinel integrates with service mesh environments through dynamic service disco
 
 ## Service Discovery Methods
 
-Sentinel supports multiple discovery backends that integrate with service mesh control planes:
+Zentinel supports multiple discovery backends that integrate with service mesh control planes:
 
 | Method | Mesh Compatibility | Use Case |
 |--------|-------------------|----------|
@@ -121,7 +121,7 @@ upstreams {
 
 #### Consul Connect Integration
 
-When using Consul Connect (service mesh), Sentinel can discover services but connects directly (not through Connect proxies). For full Connect mTLS:
+When using Consul Connect (service mesh), Zentinel can discover services but connects directly (not through Connect proxies). For full Connect mTLS:
 
 ```kdl
 system {
@@ -218,17 +218,17 @@ upstream "backend" {
 
 ## Istio Integration
 
-Sentinel works alongside Istio as an ingress gateway or within the mesh.
+Zentinel works alongside Istio as an ingress gateway or within the mesh.
 
 ### As Istio Ingress Gateway
 
-Deploy Sentinel outside the mesh to handle external traffic:
+Deploy Zentinel outside the mesh to handle external traffic:
 
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sentinel-gateway
+  name: zentinel-gateway
   namespace: istio-system
 spec:
   template:
@@ -237,11 +237,11 @@ spec:
         sidecar.istio.io/inject: "false"  # No Istio sidecar
     spec:
       containers:
-      - name: sentinel
-        image: ghcr.io/raskell-io/sentinel:latest
+      - name: zentinel
+        image: ghcr.io/zentinelproxy/zentinel:latest
 ```
 
-Configure Sentinel to discover Istio services:
+Configure Zentinel to discover Istio services:
 
 ```kdl
 upstream "frontend" {
@@ -256,13 +256,13 @@ upstream "frontend" {
 
 ### Within Istio Mesh
 
-Deploy Sentinel with Istio sidecar injection:
+Deploy Zentinel with Istio sidecar injection:
 
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sentinel
+  name: zentinel
 spec:
   template:
     metadata:
@@ -270,11 +270,11 @@ spec:
         sidecar.istio.io/inject: "true"
     spec:
       containers:
-      - name: sentinel
+      - name: zentinel
         # Traffic flows through Envoy sidecar
 ```
 
-In this mode, Sentinel routes to `localhost` and Istio handles service discovery:
+In this mode, Zentinel routes to `localhost` and Istio handles service discovery:
 
 ```kdl
 upstream "backend" {
@@ -287,7 +287,7 @@ upstream "backend" {
 
 ## Linkerd Integration
 
-Linkerd uses a transparent proxy model. Sentinel works naturally within Linkerd-meshed namespaces.
+Linkerd uses a transparent proxy model. Zentinel works naturally within Linkerd-meshed namespaces.
 
 ### Meshed Deployment
 
@@ -295,17 +295,17 @@ Linkerd uses a transparent proxy model. Sentinel works naturally within Linkerd-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sentinel
+  name: zentinel
   annotations:
     linkerd.io/inject: enabled
 spec:
   template:
     spec:
       containers:
-      - name: sentinel
+      - name: zentinel
 ```
 
-Sentinel discovers services normally; Linkerd handles mTLS:
+Zentinel discovers services normally; Linkerd handles mTLS:
 
 ```kdl
 upstream "api" {
@@ -352,9 +352,9 @@ upstream "secure-backend" {
     }
     tls {
         sni "secure-api.production.svc.cluster.local"
-        client-cert "/etc/sentinel/certs/client.crt"
-        client-key "/etc/sentinel/certs/client.key"
-        ca-cert "/etc/sentinel/certs/ca.crt"
+        client-cert "/etc/zentinel/certs/client.crt"
+        client-key "/etc/zentinel/certs/client.key"
+        ca-cert "/etc/zentinel/certs/ca.crt"
     }
 }
 ```
@@ -374,14 +374,14 @@ Example with cert-manager:
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: sentinel-client-cert
+  name: zentinel-client-cert
 spec:
-  secretName: sentinel-client-tls
+  secretName: zentinel-client-tls
   issuerRef:
     name: mesh-ca
     kind: ClusterIssuer
   dnsNames:
-  - sentinel.default.svc.cluster.local
+  - zentinel.default.svc.cluster.local
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -391,12 +391,12 @@ spec:
       volumes:
       - name: client-certs
         secret:
-          secretName: sentinel-client-tls
+          secretName: zentinel-client-tls
       containers:
-      - name: sentinel
+      - name: zentinel
         volumeMounts:
         - name: client-certs
-          mountPath: /etc/sentinel/certs
+          mountPath: /etc/zentinel/certs
 ```
 
 ## Health Checks
@@ -420,11 +420,11 @@ upstream "backend" {
 }
 ```
 
-Sentinel health checks run independently of mesh health checks, providing defense in depth.
+Zentinel health checks run independently of mesh health checks, providing defense in depth.
 
 ## Load Balancing
 
-Sentinel performs client-side load balancing across discovered endpoints:
+Zentinel performs client-side load balancing across discovered endpoints:
 
 ```kdl
 upstream "api" {
@@ -444,11 +444,11 @@ upstream "api" {
 | `random` | All |
 | `power_of_two_choices` | All |
 
-**Note:** When running inside a mesh with sidecar, the sidecar may also perform load balancing. Consider using `round_robin` in Sentinel to avoid double load balancing.
+**Note:** When running inside a mesh with sidecar, the sidecar may also perform load balancing. Consider using `round_robin` in Zentinel to avoid double load balancing.
 
 ## Observability
 
-Sentinel exposes metrics compatible with mesh observability:
+Zentinel exposes metrics compatible with mesh observability:
 
 ```kdl
 observability {
@@ -463,10 +463,10 @@ observability {
 
 | Metric | Description |
 |--------|-------------|
-| `sentinel_upstream_healthy_backends` | Healthy endpoints per upstream |
-| `sentinel_upstream_attempts_total` | Connection attempts |
-| `sentinel_upstream_failures_total` | Failed connections by reason |
-| `sentinel_requests_total` | Request count by route/status |
+| `zentinel_upstream_healthy_backends` | Healthy endpoints per upstream |
+| `zentinel_upstream_attempts_total` | Connection attempts |
+| `zentinel_upstream_failures_total` | Failed connections by reason |
+| `zentinel_requests_total` | Request count by route/status |
 
 Integrate with mesh observability:
 - **Prometheus**: Scrape `/metrics` endpoint
@@ -481,7 +481,7 @@ Current service mesh integration limitations:
 |---------|--------|-------|
 | xDS API (Envoy config) | Not supported | No Istio control plane integration |
 | Automatic mTLS rotation | Manual | Use cert-manager or Vault |
-| Traffic policies from mesh | Not supported | Configure in Sentinel directly |
+| Traffic policies from mesh | Not supported | Configure in Zentinel directly |
 | SPIFFE identity | Not supported | Use standard X.509 certs |
 | Canary/subset routing | Manual | Configure via route weights |
 
@@ -493,8 +493,8 @@ Current service mesh integration limitations:
 - Use SIGHUP to reload certificates
 
 **For traffic policies:**
-- Configure timeouts, retries, and circuit breakers in Sentinel
-- Use Sentinel's rate limiting instead of mesh rate limiting
+- Configure timeouts, retries, and circuit breakers in Zentinel
+- Use Zentinel's rate limiting instead of mesh rate limiting
 
 ## Complete Example
 
@@ -504,9 +504,9 @@ Full Kubernetes deployment with Consul discovery:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: sentinel-config
+  name: zentinel-config
 data:
-  sentinel.kdl: |
+  zentinel.kdl: |
     listener "http" {
         address "0.0.0.0:8080"
     }
@@ -535,25 +535,25 @@ data:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sentinel
+  name: zentinel
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: sentinel
+      app: zentinel
   template:
     metadata:
       labels:
-        app: sentinel
+        app: zentinel
     spec:
       containers:
-      - name: sentinel
-        image: ghcr.io/raskell-io/sentinel:latest
+      - name: zentinel
+        image: ghcr.io/zentinelproxy/zentinel:latest
         ports:
         - containerPort: 8080
         volumeMounts:
         - name: config
-          mountPath: /etc/sentinel
+          mountPath: /etc/zentinel
         readinessProbe:
           httpGet:
             path: /_/health
@@ -561,18 +561,18 @@ spec:
       volumes:
       - name: config
         configMap:
-          name: sentinel-config
+          name: zentinel-config
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: sentinel
+  name: zentinel
 spec:
   ports:
   - port: 80
     targetPort: 8080
   selector:
-    app: sentinel
+    app: zentinel
 ```
 
 ## Next Steps

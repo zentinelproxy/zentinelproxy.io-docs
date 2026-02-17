@@ -22,7 +22,7 @@ Configure HTTP response caching with different storage backends and per-route ca
                     └────────┬────────┘
                              │
                     ┌────────▼────────┐
-                    │    Sentinel     │
+                    │    Zentinel     │
                     │   ┌─────────┐   │
                     │   │  Cache  │   │
                     │   │ (memory)│   │
@@ -40,7 +40,7 @@ Configure HTTP response caching with different storage backends and per-route ca
 
 ## Configuration
 
-Create `sentinel.kdl`:
+Create `zentinel.kdl`:
 
 ```kdl
 // HTTP Caching Configuration
@@ -340,12 +340,12 @@ observability {
         address "0.0.0.0:9090"
         path "/metrics"
         // Cache metrics:
-        // - sentinel_cache_hits_total
-        // - sentinel_cache_misses_total
-        // - sentinel_cache_stale_hits_total
-        // - sentinel_cache_size_bytes
-        // - sentinel_cache_entries_count
-        // - sentinel_cache_evictions_total
+        // - zentinel_cache_hits_total
+        // - zentinel_cache_misses_total
+        // - zentinel_cache_stale_hits_total
+        // - zentinel_cache_size_bytes
+        // - zentinel_cache_entries_count
+        // - zentinel_cache_evictions_total
     }
 
     logging {
@@ -354,7 +354,7 @@ observability {
 
         access-log {
             enabled #true
-            file "/var/log/sentinel/access.log"
+            file "/var/log/zentinel/access.log"
             // Cache status in logs: HIT, MISS, STALE, BYPASS
         }
     }
@@ -369,10 +369,10 @@ limits {
 
 ## Setup
 
-### 1. Start Sentinel
+### 1. Start Zentinel
 
 ```bash
-sentinel -c sentinel.kdl
+zentinel -c zentinel.kdl
 ```
 
 ### 2. Start Backend Services
@@ -454,7 +454,7 @@ cache {
     enabled #true
 
     backend "disk" {
-        path "/var/cache/sentinel"
+        path "/var/cache/zentinel"
         max-size-mb 10240  // 10GB
         shards 16
     }
@@ -469,7 +469,7 @@ cache {
 
     backend "hybrid" {
         memory-max-size-mb 512
-        disk-path "/var/cache/sentinel"
+        disk-path "/var/cache/zentinel"
         disk-max-size-mb 10240
     }
 }

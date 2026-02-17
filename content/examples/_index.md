@@ -5,7 +5,7 @@ sort_by = "weight"
 template = "section.html"
 +++
 
-Complete, production-ready configuration examples for common Sentinel use cases. Each example includes the full configuration file, setup instructions, and testing commands.
+Complete, production-ready configuration examples for common Zentinel use cases. Each example includes the full configuration file, setup instructions, and testing commands.
 
 ## Quick Reference
 
@@ -28,35 +28,35 @@ Complete, production-ready configuration examples for common Sentinel use cases.
 Each example follows this structure:
 
 1. **Overview** - What the example demonstrates
-2. **Configuration** - Complete `sentinel.kdl` file
+2. **Configuration** - Complete `zentinel.kdl` file
 3. **Setup** - How to run the example
 4. **Testing** - Commands to verify it works
 5. **Customization** - Common modifications
 
 ## Running Examples
 
-All examples assume Sentinel is installed:
+All examples assume Zentinel is installed:
 
 ```bash
-# Install Sentinel
-cargo install sentinel-proxy
+# Install Zentinel
+cargo install zentinel-proxy
 
 # Run with a configuration
-sentinel -c sentinel.kdl
+zentinel -c zentinel.kdl
 ```
 
 For examples using agents, install the required agents first:
 
 ```bash
 # Example: Install WAF and auth agents
-cargo install sentinel-agent-waf sentinel-agent-auth
+cargo install zentinel-agent-waf zentinel-agent-auth
 ```
 
 ## Example Files
 
-All configuration files in these examples are available in the [sentinel-examples](https://github.com/raskell-io/sentinel-examples) repository:
+All configuration files in these examples are available in the [zentinel-examples](https://github.com/zentinelproxy/zentinel-examples) repository:
 
 ```bash
-git clone https://github.com/raskell-io/sentinel-examples
-cd sentinel-examples
+git clone https://github.com/zentinelproxy/zentinel-examples
+cd zentinel-examples
 ```

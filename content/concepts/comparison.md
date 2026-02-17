@@ -3,13 +3,13 @@ title = "Comparison with Alternatives"
 weight = 6
 +++
 
-How Sentinel compares to other popular reverse proxies and load balancers.
+How Zentinel compares to other popular reverse proxies and load balancers.
 
 ## Overview
 
-Sentinel occupies a unique position in the reverse proxy landscape. Rather than competing directly with established proxies on feature breadth, it focuses on security-first design, operational predictability, and an extensible agent architecture.
+Zentinel occupies a unique position in the reverse proxy landscape. Rather than competing directly with established proxies on feature breadth, it focuses on security-first design, operational predictability, and an extensible agent architecture.
 
-| Feature | Sentinel | Envoy | HAProxy | Nginx | Traefik | Caddy |
+| Feature | Zentinel | Envoy | HAProxy | Nginx | Traefik | Caddy |
 |---------|----------|-------|---------|-------|---------|-------|
 | **Language** | Rust | C++ | C | C | Go | Go |
 | **Memory Safety** | Yes | No | No | No | Yes | Yes |
@@ -19,13 +19,13 @@ Sentinel occupies a unique position in the reverse proxy landscape. Rather than 
 | **Auto HTTPS** | Planned | No | No | No | Yes | Yes |
 | **Primary Use Case** | Security gateway | Service mesh | Load balancing | Web server/proxy | Cloud-native edge | Simple web server |
 
-## Sentinel vs Envoy
+## Zentinel vs Envoy
 
 ### Architecture Philosophy
 
 **Envoy** is designed as a universal data plane for service mesh architectures. It provides extensive protocol support, advanced traffic management, and deep observability through a filter chain architecture.
 
-**Sentinel** is designed as a security-focused edge proxy with an external agent model. Rather than embedding security logic in filters, agents run as isolated processes that can be updated, rate-limited, or disabled independently.
+**Zentinel** is designed as a security-focused edge proxy with an external agent model. Rather than embedding security logic in filters, agents run as isolated processes that can be updated, rate-limited, or disabled independently.
 
 ### When to Choose Envoy
 
@@ -34,7 +34,7 @@ Sentinel occupies a unique position in the reverse proxy landscape. Rather than 
 - Require xDS-based dynamic configuration from a control plane
 - Want a mature, battle-tested proxy at massive scale
 
-### When to Choose Sentinel
+### When to Choose Zentinel
 
 - Need a security gateway with WAF, auth, and rate limiting
 - Want isolated security agents that can fail independently
@@ -83,7 +83,7 @@ static_resources:
                       port_value: 3000
 ```
 
-**Sentinel** (KDL):
+**Zentinel** (KDL):
 ```kdl
 listeners {
     listener "http" {
@@ -114,19 +114,19 @@ upstreams {
 
 **Envoy filters** are compiled into the binary (C++) or loaded as Wasm modules. They run in-process and have access to the full request/response lifecycle.
 
-**Sentinel agents** are external processes that communicate via Unix sockets or gRPC. This provides:
+**Zentinel agents** are external processes that communicate via Unix sockets or gRPC. This provides:
 - Process isolation (agent crash doesn't crash proxy)
 - Independent deployment and updates
 - Language flexibility (any language that speaks the protocol)
 - Resource limits per agent
 
-## Sentinel vs HAProxy
+## Zentinel vs HAProxy
 
 ### Architecture Philosophy
 
 **HAProxy** is the gold standard for high-performance TCP/HTTP load balancing. It's known for reliability, performance, and a powerful ACL system for traffic management.
 
-**Sentinel** shares HAProxy's focus on reliability but adds a security-first architecture with external agents for policy enforcement.
+**Zentinel** shares HAProxy's focus on reliability but adds a security-first architecture with external agents for policy enforcement.
 
 ### When to Choose HAProxy
 
@@ -135,7 +135,7 @@ upstreams {
 - TCP-level proxying (databases, message queues)
 - Established operational expertise with HAProxy
 
-### When to Choose Sentinel
+### When to Choose Zentinel
 
 - Security controls are a primary requirement
 - Want to implement custom policies without Lua
@@ -156,7 +156,7 @@ backend http_back
     server backend2 127.0.0.1:3001 check
 ```
 
-**Sentinel** (KDL):
+**Zentinel** (KDL):
 ```kdl
 listeners {
     listener "http" {
@@ -189,20 +189,20 @@ upstreams {
 
 ### Extension Comparison
 
-| Aspect | HAProxy | Sentinel |
+| Aspect | HAProxy | Zentinel |
 |--------|---------|----------|
 | Scripting | Lua (embedded) | External agents |
 | External calls | SPOE protocol | Agent protocol |
 | Isolation | In-process | Process-level |
 | Hot reload | Requires restart | Independent |
 
-## Sentinel vs Nginx
+## Zentinel vs Nginx
 
 ### Architecture Philosophy
 
 **Nginx** started as a high-performance web server and evolved into a versatile reverse proxy. It excels at serving static content, SSL termination, and basic proxying with an extensive module ecosystem.
 
-**Sentinel** is purpose-built as a security-focused reverse proxy without web server capabilities. It focuses on the proxy use case with deep integration for security agents.
+**Zentinel** is purpose-built as a security-focused reverse proxy without web server capabilities. It focuses on the proxy use case with deep integration for security agents.
 
 ### When to Choose Nginx
 
@@ -211,7 +211,7 @@ upstreams {
 - Using OpenResty for Lua-based customization
 - Established Nginx operational expertise
 
-### When to Choose Sentinel
+### When to Choose Zentinel
 
 - Security controls are the primary requirement
 - Want isolated, updateable security components
@@ -238,7 +238,7 @@ server {
 }
 ```
 
-**Sentinel** (KDL):
+**Zentinel** (KDL):
 ```kdl
 listeners {
     listener "http" {
@@ -266,20 +266,20 @@ upstreams {
 
 ### Security Features
 
-| Feature | Nginx | Sentinel |
+| Feature | Nginx | Zentinel |
 |---------|-------|----------|
 | WAF | ModSecurity module | Native WAF agent |
 | Rate limiting | ngx_http_limit_req | Rate limit agent |
 | Authentication | Third-party modules | Auth agent |
 | Custom logic | Lua/njs | Any language via agents |
 
-## Sentinel vs Traefik
+## Zentinel vs Traefik
 
 ### Architecture Philosophy
 
 **Traefik** is a modern, cloud-native edge router designed for automatic service discovery and configuration. It excels in dynamic environments like Docker and Kubernetes where services come and go frequently.
 
-**Sentinel** focuses on explicit configuration and security-first design. While it supports service discovery (Consul, Kubernetes), it emphasizes predictable behavior over automatic configuration.
+**Zentinel** focuses on explicit configuration and security-first design. While it supports service discovery (Consul, Kubernetes), it emphasizes predictable behavior over automatic configuration.
 
 ### When to Choose Traefik
 
@@ -288,7 +288,7 @@ upstreams {
 - Kubernetes Ingress controller use case
 - Prefer dynamic, auto-discovered configuration
 
-### When to Choose Sentinel
+### When to Choose Zentinel
 
 - Security agents are a primary requirement
 - Want explicit, auditable configuration
@@ -322,7 +322,7 @@ http:
           - url: "http://127.0.0.1:3000"
 ```
 
-**Sentinel** (KDL):
+**Zentinel** (KDL):
 ```kdl
 listeners {
     listener "http" {
@@ -351,7 +351,7 @@ upstreams {
 
 ### Key Differences
 
-| Aspect | Traefik | Sentinel |
+| Aspect | Traefik | Zentinel |
 |--------|---------|----------|
 | Configuration | Dynamic (labels, API) | Explicit (KDL files) |
 | Let's Encrypt | Built-in | Planned |
@@ -359,13 +359,13 @@ upstreams {
 | Extension model | Plugins (Go) | Agents (any language) |
 | Isolation | In-process | Process-level |
 
-## Sentinel vs Caddy
+## Zentinel vs Caddy
 
 ### Architecture Philosophy
 
 **Caddy** is known for its simplicity and automatic HTTPS. It pioneered zero-config TLS with built-in Let's Encrypt integration and uses a human-friendly Caddyfile syntax.
 
-**Sentinel** shares Caddy's focus on simplicity but prioritizes security extensibility over automatic configuration. The agent model provides flexibility that Caddy's module system cannot match for security use cases.
+**Zentinel** shares Caddy's focus on simplicity but prioritizes security extensibility over automatic configuration. The agent model provides flexibility that Caddy's module system cannot match for security use cases.
 
 ### When to Choose Caddy
 
@@ -374,7 +374,7 @@ upstreams {
 - Prefer minimal configuration
 - Need the extensive Caddy module ecosystem
 
-### When to Choose Sentinel
+### When to Choose Zentinel
 
 - Need isolated security agents (WAF, auth, rate limiting)
 - Building custom security controls
@@ -396,14 +396,14 @@ static.example.com {
 }
 ```
 
-**Sentinel** (KDL):
+**Zentinel** (KDL):
 ```kdl
 listeners {
     listener "https" {
         address "0.0.0.0:443"
         tls {
-            cert-path "/etc/sentinel/certs/app.crt"
-            key-path "/etc/sentinel/certs/app.key"
+            cert-path "/etc/zentinel/certs/app.crt"
+            key-path "/etc/zentinel/certs/app.key"
         }
     }
 }
@@ -435,7 +435,7 @@ upstreams {
 
 ### Key Differences
 
-| Aspect | Caddy | Sentinel |
+| Aspect | Caddy | Zentinel |
 |--------|-------|----------|
 | Automatic HTTPS | Built-in | Planned |
 | Configuration | Caddyfile/JSON | KDL |
@@ -445,13 +445,13 @@ upstreams {
 
 ## Agent Protocol Comparison
 
-Beyond proxy-level comparisons, it's important to understand how Sentinel's Agent Protocol V2 compares to extension mechanisms in other proxies. This is critical for security use cases where external processing is required.
+Beyond proxy-level comparisons, it's important to understand how Zentinel's Agent Protocol V2 compares to extension mechanisms in other proxies. This is critical for security use cases where external processing is required.
 
 ### Agent Protocol V2 vs Envoy ext_proc
 
-[Envoy's External Processing filter](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_filters/ext_proc_filter) (ext_proc) is the closest analog to Sentinel's agent protocol. Both enable external services to inspect and modify requests/responses.
+[Envoy's External Processing filter](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_filters/ext_proc_filter) (ext_proc) is the closest analog to Zentinel's agent protocol. Both enable external services to inspect and modify requests/responses.
 
-| Aspect | Envoy ext_proc | Sentinel Agent Protocol V2 |
+| Aspect | Envoy ext_proc | Zentinel Agent Protocol V2 |
 |--------|---------------|---------------------------|
 | **Transport** | gRPC only | gRPC, UDS Binary, Reverse Connections |
 | **Connection model** | Per-request stream | Pooled connections (reused) |
@@ -463,12 +463,12 @@ Beyond proxy-level comparisons, it's important to understand how Sentinel's Agen
 | **Circuit breaker** | Via Envoy config | Built into protocol |
 | **NAT traversal** | Not supported | Reverse connections |
 
-**Where Sentinel wins:**
+**Where Zentinel wins:**
 
-- **3 transport options** — ext_proc is gRPC-only; Sentinel supports UDS for same-host deployment (0.4ms vs 1.2ms latency) and reverse connections for agents behind NAT/firewalls
-- **Connection pooling** — ext_proc creates a new gRPC stream per request; Sentinel reuses pooled connections with configurable strategies (RoundRobin, LeastConnections, HealthBased)
-- **Flow control** — ext_proc is [still developing this](https://github.com/envoyproxy/envoy/issues/33319); Sentinel has working pause/resume signals with backpressure
-- **Performance** — Sentinel's hot path completes in ~230ns; ext_proc typically adds 1-6ms
+- **3 transport options** — ext_proc is gRPC-only; Zentinel supports UDS for same-host deployment (0.4ms vs 1.2ms latency) and reverse connections for agents behind NAT/firewalls
+- **Connection pooling** — ext_proc creates a new gRPC stream per request; Zentinel reuses pooled connections with configurable strategies (RoundRobin, LeastConnections, HealthBased)
+- **Flow control** — ext_proc is [still developing this](https://github.com/envoyproxy/envoy/issues/33319); Zentinel has working pause/resume signals with backpressure
+- **Performance** — Zentinel's hot path completes in ~230ns; ext_proc typically adds 1-6ms
 - **Simpler configuration** — KDL vs complex protobuf/YAML with Envoy's filter chain
 
 **Where ext_proc wins:**
@@ -482,7 +482,7 @@ Beyond proxy-level comparisons, it's important to understand how Sentinel's Agen
 
 [HAProxy's Stream Processing Offload Engine](https://www.haproxy.com/blog/extending-haproxy-with-the-stream-processing-offload-engine) (SPOE) enables external agents to process traffic. It uses a custom binary protocol (SPOP) over TCP.
 
-| Aspect | HAProxy SPOE | Sentinel Agent Protocol V2 |
+| Aspect | HAProxy SPOE | Zentinel Agent Protocol V2 |
 |--------|-------------|---------------------------|
 | **Protocol** | Custom binary (SPOP) | gRPC + MessagePack + JSON |
 | **Matured in** | HAProxy 1.8 (2017) | 2025-2026 |
@@ -493,10 +493,10 @@ Beyond proxy-level comparisons, it's important to understand how Sentinel's Agen
 | **Metrics** | Via HAProxy stats | Built-in Prometheus export |
 | **Circuit breaker** | Via HAProxy config | Built into protocol |
 
-**Where Sentinel wins:**
+**Where Zentinel wins:**
 
 - **Standard protocols** — gRPC and MessagePack vs custom binary; easier to implement agents in any language with existing libraries
-- **Full body streaming** — SPOE is primarily designed for header inspection; Sentinel has zero-copy body chunks with 62 GiB/s throughput
+- **Full body streaming** — SPOE is primarily designed for header inspection; Zentinel has zero-copy body chunks with 62 GiB/s throughput
 - **Built-in observability** — Protocol-level metrics (counters, histograms, gauges) with native Prometheus export
 - **Modern features** — Health-based load balancing, connection affinity for streaming requests, NAT traversal
 
@@ -511,7 +511,7 @@ Beyond proxy-level comparisons, it's important to understand how Sentinel's Agen
 
 [NGINX njs](https://nginx.org/en/docs/njs/) is a JavaScript runtime embedded in NGINX for request processing. Unlike external agents, njs runs in-process.
 
-| Aspect | NGINX njs | Sentinel Agent Protocol V2 |
+| Aspect | NGINX njs | Zentinel Agent Protocol V2 |
 |--------|----------|---------------------------|
 | **Execution model** | In-process JavaScript | External process (any language) |
 | **Isolation** | None (crash = NGINX crash) | Full process isolation |
@@ -522,7 +522,7 @@ Beyond proxy-level comparisons, it's important to understand how Sentinel's Agen
 | **Hot reload** | Requires NGINX reload | Independent agent updates |
 | **Throughput** | Limited by JS overhead | 62 GiB/s body streaming |
 
-**Where Sentinel wins:**
+**Where Zentinel wins:**
 
 - **Process isolation** — A buggy or crashing agent cannot take down the proxy; njs errors can crash NGINX
 - **Language flexibility** — Write agents in Rust, Go, Python, Java, or any language; njs is JavaScript-only
@@ -541,7 +541,7 @@ Beyond proxy-level comparisons, it's important to understand how Sentinel's Agen
 
 ### Protocol Feature Matrix
 
-| Feature | Sentinel V2 | Envoy ext_proc | HAProxy SPOE | NGINX njs |
+| Feature | Zentinel V2 | Envoy ext_proc | HAProxy SPOE | NGINX njs |
 |---------|:-----------:|:--------------:|:------------:|:---------:|
 | Process isolation | ✓ | ✓ | ✓ | ✗ |
 | Multiple transports | ✓ (3) | ✗ (gRPC only) | ✗ (TCP only) | N/A |
@@ -559,7 +559,7 @@ Beyond proxy-level comparisons, it's important to understand how Sentinel's Agen
 
 Based on benchmarks run on the same hardware:
 
-| Metric | Sentinel V2 | Typical ext_proc | SPOE | njs |
+| Metric | Zentinel V2 | Typical ext_proc | SPOE | njs |
 |--------|-------------|------------------|------|-----|
 | Hot path latency | ~230ns | 1-6ms | ~500μs | ~100μs |
 | Body throughput | 62 GiB/s | N/A | Limited | ~1 GiB/s |
@@ -572,24 +572,24 @@ Based on benchmarks run on the same hardware:
 
 | Use Case | Recommended |
 |----------|-------------|
-| Security gateway with WAF/auth | **Sentinel V2** |
+| Security gateway with WAF/auth | **Zentinel V2** |
 | Service mesh sidecar | Envoy ext_proc |
 | Simple header inspection | HAProxy SPOE |
 | Lightweight request transforms | NGINX njs |
-| High-throughput body processing | **Sentinel V2** |
-| Agents behind NAT/firewall | **Sentinel V2** |
+| High-throughput body processing | **Zentinel V2** |
+| Agents behind NAT/firewall | **Zentinel V2** |
 | Maximum ecosystem maturity | Envoy ext_proc |
 | Minimal operational complexity | NGINX njs |
 
 ---
 
-## Sentinel Unique Features
+## Zentinel Unique Features
 
-Beyond standard proxy capabilities, Sentinel offers features designed for modern workloads:
+Beyond standard proxy capabilities, Zentinel offers features designed for modern workloads:
 
 ### Inference/LLM Gateway
 
-Sentinel has first-class support for LLM and inference workloads:
+Zentinel has first-class support for LLM and inference workloads:
 
 | Feature | Description |
 |---------|-------------|
@@ -604,7 +604,7 @@ No other reverse proxy offers these capabilities natively.
 
 ### External Agent Architecture
 
-Sentinel's agent model provides unique isolation guarantees:
+Zentinel's agent model provides unique isolation guarantees:
 
 | Capability | Benefit |
 |------------|---------|
@@ -641,7 +641,7 @@ Built-in discovery for dynamic environments:
 
 ### Core Proxy Features
 
-| Feature | Sentinel | Envoy | HAProxy | Nginx | Traefik | Caddy |
+| Feature | Zentinel | Envoy | HAProxy | Nginx | Traefik | Caddy |
 |---------|:--------:|:-----:|:-------:|:-----:|:-------:|:-----:|
 | HTTP/1.1 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | HTTP/2 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -656,7 +656,7 @@ Built-in discovery for dynamic environments:
 
 ### Load Balancing
 
-| Feature | Sentinel | Envoy | HAProxy | Nginx | Traefik | Caddy |
+| Feature | Zentinel | Envoy | HAProxy | Nginx | Traefik | Caddy |
 |---------|:--------:|:-----:|:-------:|:-----:|:-------:|:-----:|
 | Round robin | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Least connections | ✓ | ✓ | ✓ | ✓ | - | ✓ |
@@ -672,7 +672,7 @@ Built-in discovery for dynamic environments:
 
 ### Security & Extensions
 
-| Feature | Sentinel | Envoy | HAProxy | Nginx | Traefik | Caddy |
+| Feature | Zentinel | Envoy | HAProxy | Nginx | Traefik | Caddy |
 |---------|:--------:|:-----:|:-------:|:-----:|:-------:|:-----:|
 | External agents | ✓ | - | SPOE | - | - | - |
 | WASM extensions | ✓ | ✓ | - | - | ✓ | - |
@@ -686,7 +686,7 @@ Built-in discovery for dynamic environments:
 
 ### Observability
 
-| Feature | Sentinel | Envoy | HAProxy | Nginx | Traefik | Caddy |
+| Feature | Zentinel | Envoy | HAProxy | Nginx | Traefik | Caddy |
 |---------|:--------:|:-----:|:-------:|:-----:|:-------:|:-----:|
 | Prometheus metrics | ✓ | ✓ | ✓ | Module | ✓ | ✓ |
 | Distributed tracing | ✓ | ✓ | ✓ | Module | ✓ | ✓ |
@@ -695,7 +695,7 @@ Built-in discovery for dynamic environments:
 
 ### Operations
 
-| Feature | Sentinel | Envoy | HAProxy | Nginx | Traefik | Caddy |
+| Feature | Zentinel | Envoy | HAProxy | Nginx | Traefik | Caddy |
 |---------|:--------:|:-----:|:-------:|:-----:|:-------:|:-----:|
 | Hot reload config | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Zero-downtime restart | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -706,11 +706,11 @@ Built-in discovery for dynamic environments:
 
 ## Memory Safety
 
-A key differentiator for Sentinel is memory safety through Rust:
+A key differentiator for Zentinel is memory safety through Rust:
 
 | Proxy | Language | Memory Safe | CVEs (2020-2024) |
 |-------|----------|:-----------:|:----------------:|
-| Sentinel | Rust | ✓ | 0 |
+| Zentinel | Rust | ✓ | 0 |
 | Envoy | C++ | - | 30+ |
 | HAProxy | C | - | 15+ |
 | Nginx | C | - | 25+ |
@@ -727,7 +727,7 @@ Memory safety eliminates entire classes of vulnerabilities:
 
 All six proxies are capable of handling high traffic loads. The primary differences are:
 
-| Aspect | Sentinel | Envoy | HAProxy | Nginx | Traefik | Caddy |
+| Aspect | Zentinel | Envoy | HAProxy | Nginx | Traefik | Caddy |
 |--------|----------|-------|---------|-------|---------|-------|
 | Latency | Low | Low | Very low | Low | Low | Low |
 | Throughput | High | High | Very high | High | High | High |
@@ -738,7 +738,7 @@ All six proxies are capable of handling high traffic loads. The primary differen
 
 ### Agent Overhead
 
-Sentinel's agent model adds latency for agent calls:
+Zentinel's agent model adds latency for agent calls:
 - Unix socket: ~50-200µs per agent
 - gRPC: ~200-500µs per agent
 
@@ -746,7 +746,7 @@ This overhead is acceptable for security use cases where the alternative is in-p
 
 ## Migration Paths
 
-### From Nginx to Sentinel
+### From Nginx to Zentinel
 
 1. Map `server` blocks to `listeners`
 2. Convert `location` blocks to `routes`
@@ -755,21 +755,21 @@ This overhead is acceptable for security use cases where the alternative is in-p
 
 See the [Migration Guide](/operations/migration/) for detailed examples.
 
-### From HAProxy to Sentinel
+### From HAProxy to Zentinel
 
 1. Map `frontend` to `listeners`
 2. Convert `backend` to `upstreams`
 3. Translate ACLs to route matching
 4. Replace Lua/SPOE with agents
 
-### From Envoy to Sentinel
+### From Envoy to Zentinel
 
 1. Simplify listener configuration
 2. Convert clusters to upstreams
 3. Replace filters with agents
 4. Remove xDS dependency (if applicable)
 
-### From Traefik to Sentinel
+### From Traefik to Zentinel
 
 1. Convert routers to `routes` blocks
 2. Map services to `upstreams`
@@ -777,7 +777,7 @@ See the [Migration Guide](/operations/migration/) for detailed examples.
 4. Move from Docker labels to KDL files
 5. Replace automatic HTTPS with manual certs (ACME support planned)
 
-### From Caddy to Sentinel
+### From Caddy to Zentinel
 
 1. Convert Caddyfile blocks to KDL
 2. Map `reverse_proxy` to routes + upstreams
@@ -786,7 +786,7 @@ See the [Migration Guide](/operations/migration/) for detailed examples.
 
 ## Summary
 
-Choose **Sentinel** when:
+Choose **Zentinel** when:
 - Security is a primary concern
 - You want isolated, updateable security components
 - Memory safety matters for your threat model
@@ -826,6 +826,6 @@ Choose **Caddy** when:
 
 ## Next Steps
 
-- [Architecture](../architecture/) - Understand Sentinel's design
+- [Architecture](../architecture/) - Understand Zentinel's design
 - [Agents](/agents/) - Explore the agent ecosystem
 - [Migration Guide](/operations/migration/) - Migrate from other proxies

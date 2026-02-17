@@ -32,7 +32,7 @@ gRPC over HTTP/2 is the best choice for:
 ### Client Setup
 
 ```rust
-use sentinel_agent_protocol::v2::AgentClientV2;
+use zentinel_agent_protocol::v2::AgentClientV2;
 use std::time::Duration;
 
 // Basic connection
@@ -43,7 +43,7 @@ let client = AgentClientV2::connect(
 ).await?;
 
 // With TLS
-use sentinel_agent_protocol::v2::TlsConfig;
+use zentinel_agent_protocol::v2::TlsConfig;
 
 let tls_config = TlsConfig {
     ca_cert: Some("/path/to/ca.crt".into()),
@@ -101,12 +101,12 @@ UDS binary transport is the best choice for:
 ### Client Setup
 
 ```rust
-use sentinel_agent_protocol::v2::AgentClientV2Uds;
+use zentinel_agent_protocol::v2::AgentClientV2Uds;
 use std::time::Duration;
 
 let client = AgentClientV2Uds::connect(
     "auth-agent",
-    "/var/run/sentinel/auth.sock",
+    "/var/run/zentinel/auth.sock",
     Duration::from_secs(30),
 ).await?;
 
@@ -128,7 +128,7 @@ Proxy                                              Agent
   │ ──── HandshakeRequest ─────────────────────────► │
   │      {                                           │
   │        protocol_version: 2,                      │
-  │        client_name: "sentinel-proxy",            │
+  │        client_name: "zentinel-proxy",            │
   │        supported_features: ["streaming", ...]    │
   │      }                                           │
   │                                                  │
@@ -166,7 +166,7 @@ UDS supports MessagePack encoding for improved performance over JSON. Encoding i
 **Enable in Cargo.toml:**
 
 ```toml
-sentinel-agent-protocol = { version = "0.3", features = ["binary-uds"] }
+zentinel-agent-protocol = { version = "0.3", features = ["binary-uds"] }
 ```
 
 **Handshake with encoding negotiation:**
@@ -195,7 +195,7 @@ Proxy                                              Agent
 For large request/response bodies, use binary body chunk methods to avoid base64 encoding overhead:
 
 ```rust
-use sentinel_agent_protocol::{BinaryRequestBodyChunkEvent, Bytes};
+use zentinel_agent_protocol::{BinaryRequestBodyChunkEvent, Bytes};
 
 // Create binary body chunk (no base64)
 let chunk = BinaryRequestBodyChunkEvent::new(
@@ -254,7 +254,7 @@ Agent                          Proxy
 ### Listener Setup
 
 ```rust
-use sentinel_agent_protocol::v2::{
+use zentinel_agent_protocol::v2::{
     ReverseConnectionListener,
     ReverseConnectionConfig,
 };
@@ -268,7 +268,7 @@ let config = ReverseConnectionConfig {
 
 // UDS listener for local agents
 let listener = ReverseConnectionListener::bind_uds(
-    "/var/run/sentinel/agents.sock",
+    "/var/run/zentinel/agents.sock",
     config,
 ).await?;
 
@@ -288,7 +288,7 @@ See [Reverse Connections](reverse-connections/) for detailed setup instructions.
 The `V2Transport` enum provides a unified interface across all transport types:
 
 ```rust
-use sentinel_agent_protocol::v2::V2Transport;
+use zentinel_agent_protocol::v2::V2Transport;
 
 pub enum V2Transport {
     Grpc(AgentClientV2),

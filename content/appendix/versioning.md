@@ -3,18 +3,18 @@ title = "Versioning"
 weight = 2
 +++
 
-How Sentinel versions work, mapping between release and crate versions, and changelogs.
+How Zentinel versions work, mapping between release and crate versions, and changelogs.
 
 ## Dual Versioning Scheme
 
-Sentinel uses two versioning systems for different audiences:
+Zentinel uses two versioning systems for different audiences:
 
 | System | Format | Example | Audience | Used For |
 |--------|--------|---------|----------|----------|
 | **Release Version** | CalVer (`YY.MM_PATCH`) | `26.01_0` | Operators, enterprise, docs | Downloads, release tags, LTS windows, support contracts |
 | **Crate Version** | SemVer (`MAJOR.MINOR.PATCH`) | `0.3.0` | Library consumers | Cargo.toml, crates.io, dependency management |
 
-**CalVer is the primary version.** When you deploy Sentinel, report issues, reference documentation, or verify supply chain artifacts, use the CalVer release version. SemVer exists solely for Rust's package ecosystem.
+**CalVer is the primary version.** When you deploy Zentinel, report issues, reference documentation, or verify supply chain artifacts, use the CalVer release version. SemVer exists solely for Rust's package ecosystem.
 
 ### Release Version (CalVer)
 
@@ -38,7 +38,7 @@ This provides:
 
 ### Crate Version (SemVer)
 
-Rust crates published to crates.io use [Semantic Versioning](https://semver.org/). This is an implementation detail for library consumers using Sentinel crates as dependencies. Operators do not need to track SemVer.
+Rust crates published to crates.io use [Semantic Versioning](https://semver.org/). This is an implementation detail for library consumers using Zentinel crates as dependencies. Operators do not need to track SemVer.
 
 ```
 MAJOR.MINOR.PATCH
@@ -56,11 +56,11 @@ MAJOR.MINOR.PATCH
 | Context | Use |
 |---------|-----|
 | Downloading binaries | CalVer (`26.01_0`) |
-| Docker image tags | CalVer (`ghcr.io/raskell-io/sentinel:26.01_0`) |
+| Docker image tags | CalVer (`ghcr.io/zentinelproxy/zentinel:26.01_0`) |
 | Filing issues / support tickets | CalVer |
 | Verifying supply chain signatures | CalVer (matches release tag) |
 | LTS / support contracts | CalVer series (`26.01 LTS`) |
-| Cargo.toml dependencies | SemVer (`sentinel = "0.3"`) |
+| Cargo.toml dependencies | SemVer (`zentinel = "0.3"`) |
 | crates.io | SemVer |
 
 ## Version Mapping
@@ -79,8 +79,8 @@ This table maps CalVer release versions to their corresponding crate versions:
 **From the binary:**
 
 ```bash
-sentinel --version
-# sentinel 26.02_4 (0.4.10)
+zentinel --version
+# zentinel 26.02_4 (0.4.10)
 ```
 
 The CalVer release version is shown first, with the crate SemVer in parentheses.
@@ -88,7 +88,7 @@ The CalVer release version is shown first, with the crate SemVer in parentheses.
 **From Docker:**
 
 ```bash
-docker inspect ghcr.io/raskell-io/sentinel:26.02_4 --format '{{ index .Config.Labels "org.opencontainers.image.version" }}'
+docker inspect ghcr.io/zentinelproxy/zentinel:26.02_4 --format '{{ index .Config.Labels "org.opencontainers.image.version" }}'
 # 26.02_4
 ```
 
@@ -134,7 +134,7 @@ For the full changelog with all patch releases, see [Changelog](../changelog/).
 
 - Prevent single connection failure from permanently marking upstream target unhealthy
 - 16 rustdoc warnings across 10 files
-- Example configs now pass `sentinel test` validation
+- Example configs now pass `zentinel test` validation
 
 ---
 
@@ -226,20 +226,20 @@ No breaking changes. Direct upgrade supported.
 
 ```bash
 # Stop current version
-systemctl stop sentinel
+systemctl stop zentinel
 
 # Install new version
 VERSION="26.02_4"
-curl -Lo /usr/local/bin/sentinel \
-    "https://github.com/raskell-io/sentinel/releases/download/${VERSION}/sentinel-${VERSION}-linux-amd64.tar.gz"
-tar -xzf "sentinel-${VERSION}-linux-amd64.tar.gz"
-chmod +x sentinel && sudo mv sentinel /usr/local/bin/
+curl -Lo /usr/local/bin/zentinel \
+    "https://github.com/zentinelproxy/zentinel/releases/download/${VERSION}/zentinel-${VERSION}-linux-amd64.tar.gz"
+tar -xzf "zentinel-${VERSION}-linux-amd64.tar.gz"
+chmod +x zentinel && sudo mv zentinel /usr/local/bin/
 
 # Validate configuration
-sentinel validate -c /etc/sentinel/sentinel.kdl
+zentinel validate -c /etc/zentinel/zentinel.kdl
 
 # Start new version
-systemctl start sentinel
+systemctl start zentinel
 ```
 
 **New features to consider:**
@@ -263,7 +263,7 @@ No breaking changes. Direct upgrade supported.
 
 ### Agent Compatibility
 
-| Sentinel Release | Protocol | Compatible Agent Versions |
+| Zentinel Release | Protocol | Compatible Agent Versions |
 |------------------|----------|---------------------------|
 | 26.02 | `0.2.0` | Agents built with protocol `0.2.x` |
 | 26.01 | `0.2.0` | Agents built with protocol `0.2.x` |
@@ -271,7 +271,7 @@ No breaking changes. Direct upgrade supported.
 
 ### Rust Toolchain
 
-| Sentinel Release | Minimum Rust Version | Recommended |
+| Zentinel Release | Minimum Rust Version | Recommended |
 |------------------|----------------------|-------------|
 | 26.02 | 1.85.0 | 1.85.0+ |
 | 26.01 | 1.75.0 | 1.83.0+ |
@@ -281,7 +281,7 @@ No breaking changes. Direct upgrade supported.
 
 ## Release Schedule
 
-Sentinel follows a monthly release cadence:
+Zentinel follows a monthly release cadence:
 
 - **Feature releases:** First week of each month (e.g., `26.02_0`)
 - **Patch releases:** As needed for security or critical bugs (e.g., `26.01_1`, `26.01_2`)
@@ -317,5 +317,5 @@ LTS is available through the [Enterprise Builds](/support/) offering. See [Suppl
 ## See Also
 
 - [Release Process](/development/releases/) — How releases are made
-- [GitHub Releases](https://github.com/raskell-io/sentinel/releases) — Download binaries
-- [crates.io](https://crates.io/crates/sentinel) — Rust crate registry
+- [GitHub Releases](https://github.com/zentinelproxy/zentinel/releases) — Download binaries
+- [crates.io](https://crates.io/crates/zentinel) — Rust crate registry

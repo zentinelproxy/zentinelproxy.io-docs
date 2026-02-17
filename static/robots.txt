@@ -1,12 +1,12 @@
-# Sentinel Documentation - robots.txt
-# https://sentinel.raskell.io/docs/
+# Zentinel Documentation - robots.txt
+# https://zentinelproxy.io/docs/
 
 # Allow all standard crawlers
 User-agent: *
 Allow: /
 
 # Sitemap location
-Sitemap: https://sentinel.raskell.io/docs/sitemap.xml
+Sitemap: https://zentinelproxy.io/docs/sitemap.xml
 
 # AI Crawlers - Welcome to index our documentation
 User-agent: GPTBot
@@ -50,4 +50,4 @@ User-agent: PerplexityBot
 Crawl-delay: 1
 
 # AI context file for documentation
-# See: https://sentinel.raskell.io/docs/llms.txt
+# See: https://zentinelproxy.io/docs/llms.txt

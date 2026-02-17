@@ -82,7 +82,7 @@ filter "distributed-limiter" {
     burst 100
     backend "redis" {
         url "redis://127.0.0.1:6379"
-        key-prefix "sentinel:ratelimit:"
+        key-prefix "zentinel:ratelimit:"
         pool-size 10
         timeout-ms 50
         fallback-local #true
@@ -127,7 +127,7 @@ filter "security-headers" {
 
     // Add headers (preserves existing)
     add {
-        "X-Request-ID" "sentinel-generated"
+        "X-Request-ID" "zentinel-generated"
     }
 
     // Remove headers
@@ -189,7 +189,7 @@ Filter requests based on geographic location:
 // Block mode - block specific countries
 filter "block-countries" {
     type "geo"
-    database-path "/etc/sentinel/GeoLite2-Country.mmdb"
+    database-path "/etc/zentinel/GeoLite2-Country.mmdb"
     action "block"
     countries "RU" "CN" "KP" "IR"
     on-failure "closed"    // Block if lookup fails
@@ -200,7 +200,7 @@ filter "block-countries" {
 // Allow mode - allow only specific countries
 filter "us-only" {
     type "geo"
-    database-path "/etc/sentinel/GeoLite2-Country.mmdb"
+    database-path "/etc/zentinel/GeoLite2-Country.mmdb"
     action "allow"
     countries "US" "CA"
     status-code 451        // Unavailable for legal reasons
@@ -209,7 +209,7 @@ filter "us-only" {
 // Log-only mode - tag requests with country
 filter "geo-tagging" {
     type "geo"
-    database-path "/etc/sentinel/GeoLite2-Country.mmdb"
+    database-path "/etc/zentinel/GeoLite2-Country.mmdb"
     action "log-only"
     add-country-header #true
 }
@@ -339,7 +339,7 @@ filters {
     // Geo-blocking
     filter "geo-block" {
         type "geo"
-        database-path "/etc/sentinel/GeoLite2-Country.mmdb"
+        database-path "/etc/zentinel/GeoLite2-Country.mmdb"
         action "block"
         countries "RU" "CN"
         on-failure "open"

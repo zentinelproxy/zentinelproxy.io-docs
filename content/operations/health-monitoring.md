@@ -3,13 +3,13 @@ title = "Health Monitoring"
 weight = 2
 +++
 
-Monitoring Sentinel health, readiness, and upstream status.
+Monitoring Zentinel health, readiness, and upstream status.
 
 ## Health Endpoints
 
 ### Liveness Check
 
-The `/health` endpoint returns 200 OK if Sentinel is running:
+The `/health` endpoint returns 200 OK if Zentinel is running:
 
 ```bash
 curl http://localhost:9090/health
@@ -103,7 +103,7 @@ Response:
 
 ### Liveness Probe
 
-Detect if Sentinel needs restart:
+Detect if Zentinel needs restart:
 
 ```yaml
 livenessProbe:
@@ -118,7 +118,7 @@ livenessProbe:
 
 ### Readiness Probe
 
-Detect if Sentinel is ready to receive traffic:
+Detect if Zentinel is ready to receive traffic:
 
 ```yaml
 readinessProbe:
@@ -151,20 +151,20 @@ startupProbe:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sentinel
+  name: zentinel
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: sentinel
+      app: zentinel
   template:
     metadata:
       labels:
-        app: sentinel
+        app: zentinel
     spec:
       containers:
-        - name: sentinel
-          image: sentinel:latest
+        - name: zentinel
+          image: zentinel:latest
           ports:
             - name: http
               containerPort: 8080
@@ -210,7 +210,7 @@ Success codes: 200
 
 ```yaml
 healthChecks:
-  - name: sentinel-health
+  - name: zentinel-health
     type: HTTP
     httpHealthCheck:
       port: 9090
@@ -224,11 +224,11 @@ healthChecks:
 ### HAProxy Backend Check
 
 ```
-backend sentinel_backend
+backend zentinel_backend
     option httpchk GET /health
     http-check expect status 200
-    server sentinel1 10.0.1.1:8080 check port 9090
-    server sentinel2 10.0.1.2:8080 check port 9090
+    server zentinel1 10.0.1.1:8080 check port 9090
+    server zentinel2 10.0.1.2:8080 check port 9090
 ```
 
 ## Upstream Health Checks
@@ -302,43 +302,43 @@ upstreams {
 
 ```promql
 # Request rate
-rate(sentinel_requests_total[5m])
+rate(zentinel_requests_total[5m])
 
 # Error rate
-sum(rate(sentinel_requests_total{status=~"5.."}[5m]))
-  / sum(rate(sentinel_requests_total[5m]))
+sum(rate(zentinel_requests_total{status=~"5.."}[5m]))
+  / sum(rate(zentinel_requests_total[5m]))
 
 # P99 latency
 histogram_quantile(0.99,
-  rate(sentinel_request_duration_seconds_bucket[5m]))
+  rate(zentinel_request_duration_seconds_bucket[5m]))
 ```
 
 ### Upstream Metrics
 
 ```promql
 # Upstream failure rate
-sum(rate(sentinel_upstream_failures_total[5m])) by (upstream)
-  / sum(rate(sentinel_upstream_attempts_total[5m])) by (upstream)
+sum(rate(zentinel_upstream_failures_total[5m])) by (upstream)
+  / sum(rate(zentinel_upstream_attempts_total[5m])) by (upstream)
 
 # Circuit breaker status (1 = open)
-sentinel_circuit_breaker_state{component="upstream"}
+zentinel_circuit_breaker_state{component="upstream"}
 
 # Connection pool utilization
-(sentinel_connection_pool_size - sentinel_connection_pool_idle)
-  / sentinel_connection_pool_size
+(zentinel_connection_pool_size - zentinel_connection_pool_idle)
+  / zentinel_connection_pool_size
 ```
 
 ### System Metrics
 
 ```promql
 # Memory usage
-sentinel_memory_usage_bytes
+zentinel_memory_usage_bytes
 
 # Active connections
-sentinel_open_connections
+zentinel_open_connections
 
 # Active requests
-sentinel_active_requests
+zentinel_active_requests
 ```
 
 ## Alerting
@@ -347,51 +347,51 @@ sentinel_active_requests
 
 ```yaml
 groups:
-  - name: sentinel-critical
+  - name: zentinel-critical
     rules:
       # High error rate
-      - alert: SentinelHighErrorRate
+      - alert: ZentinelHighErrorRate
         expr: |
-          sum(rate(sentinel_requests_total{status=~"5.."}[5m]))
-          / sum(rate(sentinel_requests_total[5m])) > 0.05
+          sum(rate(zentinel_requests_total{status=~"5.."}[5m]))
+          / sum(rate(zentinel_requests_total[5m])) > 0.05
         for: 2m
         labels:
           severity: critical
         annotations:
-          summary: "Sentinel error rate above 5%"
+          summary: "Zentinel error rate above 5%"
 
       # All upstreams unhealthy
-      - alert: SentinelNoHealthyUpstreams
+      - alert: ZentinelNoHealthyUpstreams
         expr: |
-          sum(sentinel_circuit_breaker_state{component="upstream"})
-          == count(sentinel_circuit_breaker_state{component="upstream"})
+          sum(zentinel_circuit_breaker_state{component="upstream"})
+          == count(zentinel_circuit_breaker_state{component="upstream"})
         for: 1m
         labels:
           severity: critical
         annotations:
           summary: "No healthy upstream servers"
 
-      # Sentinel down
-      - alert: SentinelDown
-        expr: up{job="sentinel"} == 0
+      # Zentinel down
+      - alert: ZentinelDown
+        expr: up{job="zentinel"} == 0
         for: 1m
         labels:
           severity: critical
         annotations:
-          summary: "Sentinel instance down"
+          summary: "Zentinel instance down"
 ```
 
 ### Warning Alerts
 
 ```yaml
 groups:
-  - name: sentinel-warning
+  - name: zentinel-warning
     rules:
       # High latency
-      - alert: SentinelHighLatency
+      - alert: ZentinelHighLatency
         expr: |
           histogram_quantile(0.99,
-            rate(sentinel_request_duration_seconds_bucket[5m])) > 1
+            rate(zentinel_request_duration_seconds_bucket[5m])) > 1
         for: 5m
         labels:
           severity: warning
@@ -399,8 +399,8 @@ groups:
           summary: "P99 latency above 1 second"
 
       # Circuit breaker open
-      - alert: SentinelCircuitBreakerOpen
-        expr: sentinel_circuit_breaker_state == 1
+      - alert: ZentinelCircuitBreakerOpen
+        expr: zentinel_circuit_breaker_state == 1
         for: 2m
         labels:
           severity: warning
@@ -408,9 +408,9 @@ groups:
           summary: "Circuit breaker open for {{ $labels.component }}"
 
       # High memory usage
-      - alert: SentinelHighMemory
+      - alert: ZentinelHighMemory
         expr: |
-          sentinel_memory_usage_bytes
+          zentinel_memory_usage_bytes
           / on() node_memory_MemTotal_bytes > 0.8
         for: 5m
         labels:
@@ -450,13 +450,13 @@ datasource: prometheus
 
 # Variables
 - name: instance
-  query: label_values(sentinel_requests_total, instance)
+  query: label_values(zentinel_requests_total, instance)
 
 - name: route
-  query: label_values(sentinel_requests_total, route)
+  query: label_values(zentinel_requests_total, route)
 
 - name: upstream
-  query: label_values(sentinel_upstream_attempts_total, upstream)
+  query: label_values(zentinel_upstream_attempts_total, upstream)
 ```
 
 ## External Health Monitoring

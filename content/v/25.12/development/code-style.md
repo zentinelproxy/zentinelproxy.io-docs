@@ -3,7 +3,7 @@ title = "Code Style"
 weight = 3
 +++
 
-Formatting conventions and best practices for Sentinel codebase.
+Formatting conventions and best practices for Zentinel codebase.
 
 ## Formatting
 

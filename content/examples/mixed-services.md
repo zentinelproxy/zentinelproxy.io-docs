@@ -3,7 +3,7 @@ title = "Microservices"
 weight = 5
 +++
 
-Route traffic to multiple backend services based on path, headers, and other criteria. This example demonstrates a microservices architecture with Sentinel as the API gateway.
+Route traffic to multiple backend services based on path, headers, and other criteria. This example demonstrates a microservices architecture with Zentinel as the API gateway.
 
 ## Use Case
 
@@ -16,7 +16,7 @@ Route traffic to multiple backend services based on path, headers, and other cri
 
 ```
                               ┌─────────────────┐
-                              │    Sentinel     │
+                              │    Zentinel     │
                               │   API Gateway   │
                               └────────┬────────┘
                                        │
@@ -31,7 +31,7 @@ Route traffic to multiple backend services based on path, headers, and other cri
 
 ## Configuration
 
-Create `sentinel.kdl`:
+Create `zentinel.kdl`:
 
 ```kdl
 // Microservices Gateway Configuration
@@ -47,8 +47,8 @@ listeners {
         address "0.0.0.0:8443"
         protocol "https"
         tls {
-            cert-file "/etc/sentinel/certs/api.crt"
-            key-file "/etc/sentinel/certs/api.key"
+            cert-file "/etc/zentinel/certs/api.crt"
+            key-file "/etc/zentinel/certs/api.key"
         }
     }
     listener "http" {
@@ -263,14 +263,14 @@ upstreams {
 
 agents {
     agent "auth" {
-        unix-socket path="/var/run/sentinel/auth.sock"
+        unix-socket path="/var/run/zentinel/auth.sock"
         events "request_headers"
         timeout-ms 50
         failure-mode "closed"
     }
 
     agent "ratelimit" {
-        unix-socket path="/var/run/sentinel/ratelimit.sock"
+        unix-socket path="/var/run/zentinel/ratelimit.sock"
         events "request_headers"
         timeout-ms 20
         failure-mode "open"
@@ -411,13 +411,13 @@ route "api" {
 
 ```bash
 # User service: 100 req/min
-sentinel-agent-ratelimit \
-    --socket /var/run/sentinel/ratelimit-users.sock \
+zentinel-agent-ratelimit \
+    --socket /var/run/zentinel/ratelimit-users.sock \
     --requests-per-minute 100 &
 
 # Search service: 1000 req/min
-sentinel-agent-ratelimit \
-    --socket /var/run/sentinel/ratelimit-search.sock \
+zentinel-agent-ratelimit \
+    --socket /var/run/zentinel/ratelimit-search.sock \
     --requests-per-minute 1000 &
 ```
 

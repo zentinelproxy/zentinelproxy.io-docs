@@ -3,11 +3,11 @@ title = "Supply Chain Security"
 weight = 8
 +++
 
-Verifying the authenticity and integrity of Sentinel releases before deploying to production.
+Verifying the authenticity and integrity of Zentinel releases before deploying to production.
 
 ## Overview
 
-Sentinel sits at the edge of your network and handles all inbound traffic. Verifying that the binary or container image you deploy is the exact artifact built by the Sentinel CI pipeline is a critical operational practice.
+Zentinel sits at the edge of your network and handles all inbound traffic. Verifying that the binary or container image you deploy is the exact artifact built by the Zentinel CI pipeline is a critical operational practice.
 
 > Examples on this page use [CalVer](/docs/appendix/versioning/) release versions (e.g., `26.01_0`). Replace with your target version. See [Versioning](/docs/appendix/versioning/) for the full versioning scheme and LTS windows.
 
@@ -27,22 +27,22 @@ Every release archive has a corresponding `.sha256` file. This is the simplest v
 ```bash
 # Download binary and checksum
 VERSION="26.01_0"
-curl -LO "https://github.com/raskell-io/sentinel/releases/download/${VERSION}/sentinel-${VERSION}-linux-amd64.tar.gz"
-curl -LO "https://github.com/raskell-io/sentinel/releases/download/${VERSION}/sentinel-${VERSION}-linux-amd64.tar.gz.sha256"
+curl -LO "https://github.com/zentinelproxy/zentinel/releases/download/${VERSION}/zentinel-${VERSION}-linux-amd64.tar.gz"
+curl -LO "https://github.com/zentinelproxy/zentinel/releases/download/${VERSION}/zentinel-${VERSION}-linux-amd64.tar.gz.sha256"
 
 # Verify checksum
-sha256sum -c "sentinel-${VERSION}-linux-amd64.tar.gz.sha256"
+sha256sum -c "zentinel-${VERSION}-linux-amd64.tar.gz.sha256"
 ```
 
 Expected output:
 
 ```
-sentinel-26.01_0-linux-amd64.tar.gz: OK
+zentinel-26.01_0-linux-amd64.tar.gz: OK
 ```
 
 ### Cosign Signature Verification
 
-Cosign keyless signatures prove the binary was built by the Sentinel GitHub Actions pipeline, not by a third party.
+Cosign keyless signatures prove the binary was built by the Zentinel GitHub Actions pipeline, not by a third party.
 
 #### Install cosign
 
@@ -62,10 +62,10 @@ brew install cosign
 VERSION="26.01_0"
 
 cosign verify-blob \
-  --bundle "sentinel-${VERSION}-linux-amd64.tar.gz.bundle" \
-  --certificate-identity-regexp "github.com/raskell-io/sentinel" \
+  --bundle "zentinel-${VERSION}-linux-amd64.tar.gz.bundle" \
+  --certificate-identity-regexp "github.com/zentinelproxy/zentinel" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-  "sentinel-${VERSION}-linux-amd64.tar.gz"
+  "zentinel-${VERSION}-linux-amd64.tar.gz"
 ```
 
 Expected output:
@@ -76,7 +76,7 @@ Verified OK
 
 **What this proves:**
 
-- The binary was built by a GitHub Actions workflow in the `raskell-io/sentinel` repository
+- The binary was built by a GitHub Actions workflow in the `zentinelproxy/zentinel` repository
 - The signature is recorded in the Sigstore transparency log (Rekor) and is publicly auditable
 - No private keys are involved — the signing identity is the GitHub Actions OIDC token
 
@@ -86,8 +86,8 @@ Verified OK
 
 ```bash
 cosign verify \
-  ghcr.io/raskell-io/sentinel:26.01_0 \
-  --certificate-identity-regexp "github.com/raskell-io/sentinel" \
+  ghcr.io/zentinelproxy/zentinel:26.01_0 \
+  --certificate-identity-regexp "github.com/zentinelproxy/zentinel" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
 ```
 
@@ -98,9 +98,9 @@ The container SBOM is attached as a cosign attestation:
 ```bash
 cosign verify-attestation \
   --type cyclonedx \
-  --certificate-identity-regexp "github.com/raskell-io/sentinel" \
+  --certificate-identity-regexp "github.com/zentinelproxy/zentinel" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-  ghcr.io/raskell-io/sentinel:26.01_0 | jq -r '.payload' | base64 -d | jq .
+  ghcr.io/zentinelproxy/zentinel:26.01_0 | jq -r '.payload' | base64 -d | jq .
 ```
 
 ## SLSA Provenance Verification
@@ -125,9 +125,9 @@ brew install slsa-verifier
 VERSION="26.01_0"
 
 slsa-verifier verify-artifact \
-  "sentinel-${VERSION}-linux-amd64.tar.gz" \
-  --provenance-path "sentinel-${VERSION}-linux-amd64.tar.gz.intoto.jsonl" \
-  --source-uri github.com/raskell-io/sentinel
+  "zentinel-${VERSION}-linux-amd64.tar.gz" \
+  --provenance-path "zentinel-${VERSION}-linux-amd64.tar.gz.intoto.jsonl" \
+  --source-uri github.com/zentinelproxy/zentinel
 ```
 
 **What SLSA Level 3 guarantees:**
@@ -144,8 +144,8 @@ Each release includes two SBOM formats:
 
 | Format | File | Use Case |
 |--------|------|----------|
-| CycloneDX 1.5 | `sentinel-VERSION-sbom.cdx.json` | Preferred for vulnerability scanning |
-| SPDX 2.3 | `sentinel-VERSION-sbom.spdx.json` | Preferred for license compliance |
+| CycloneDX 1.5 | `zentinel-VERSION-sbom.cdx.json` | Preferred for vulnerability scanning |
+| SPDX 2.3 | `zentinel-VERSION-sbom.spdx.json` | Preferred for license compliance |
 
 ### Where to Find SBOMs
 
@@ -158,20 +158,20 @@ Scan SBOMs for known vulnerabilities using standard tools:
 
 ```bash
 # Using grype (Anchore)
-grype sbom:sentinel-26.01_0-sbom.cdx.json
+grype sbom:zentinel-26.01_0-sbom.cdx.json
 
 # Using trivy (Aqua Security)
-trivy sbom sentinel-26.01_0-sbom.cdx.json
+trivy sbom zentinel-26.01_0-sbom.cdx.json
 
 # Using osv-scanner (Google)
-osv-scanner --sbom sentinel-26.01_0-sbom.cdx.json
+osv-scanner --sbom zentinel-26.01_0-sbom.cdx.json
 ```
 
 ### License Analysis
 
 ```bash
 # List all dependency licenses
-cat sentinel-26.01_0-sbom.cdx.json | jq '[.components[].licenses[]?.license.id] | group_by(.) | map({license: .[0], count: length}) | sort_by(-.count)'
+cat zentinel-26.01_0-sbom.cdx.json | jq '[.components[].licenses[]?.license.id] | group_by(.) | map({license: .[0], count: length}) | sort_by(-.count)'
 ```
 
 ## Building from Source
@@ -181,14 +181,14 @@ You can independently verify that a release binary matches a build from source:
 ```bash
 # Clone at the release tag
 VERSION="26.01_0"
-git clone --depth 1 --branch "$VERSION" https://github.com/raskell-io/sentinel.git
-cd sentinel
+git clone --depth 1 --branch "$VERSION" https://github.com/zentinelproxy/zentinel.git
+cd zentinel
 
 # Build
 cargo build --release
 
 # Compare checksum
-sha256sum target/release/sentinel
+sha256sum target/release/zentinel
 ```
 
 > **Note:** Exact byte-for-byte reproducibility depends on the Rust compiler version, target triple, and build environment matching the CI pipeline. The release notes include the Rust version used.
@@ -197,29 +197,29 @@ sha256sum target/release/sentinel
 
 ### GitHub Actions
 
-Verify the Sentinel container image before deploying:
+Verify the Zentinel container image before deploying:
 
 ```yaml
 - name: Install cosign
   uses: sigstore/cosign-installer@v3
 
-- name: Verify Sentinel image
+- name: Verify Zentinel image
   run: |
     cosign verify \
-      ghcr.io/raskell-io/sentinel:26.01_0 \
-      --certificate-identity-regexp "github.com/raskell-io/sentinel" \
+      ghcr.io/zentinelproxy/zentinel:26.01_0 \
+      --certificate-identity-regexp "github.com/zentinelproxy/zentinel" \
       --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
 ```
 
 ### Kubernetes Admission Control (Kyverno)
 
-Enforce cosign verification on Sentinel images in your cluster:
+Enforce cosign verification on Zentinel images in your cluster:
 
 ```yaml
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
-  name: verify-sentinel-images
+  name: verify-zentinel-images
 spec:
   validationFailureAction: Enforce
   rules:
@@ -231,11 +231,11 @@ spec:
                 - Pod
       verifyImages:
         - imageReferences:
-            - "ghcr.io/raskell-io/sentinel*"
+            - "ghcr.io/zentinelproxy/zentinel*"
           attestors:
             - entries:
                 - keyless:
-                    subject: "https://github.com/raskell-io/sentinel/*"
+                    subject: "https://github.com/zentinelproxy/zentinel/*"
                     issuer: "https://token.actions.githubusercontent.com"
                     rekor:
                       url: "https://rekor.sigstore.dev"
@@ -267,7 +267,7 @@ spec:
         package cosignverification
         violation[{"msg": msg}] {
           container := input.review.object.spec.containers[_]
-          startswith(container.image, "ghcr.io/raskell-io/sentinel")
+          startswith(container.image, "ghcr.io/zentinelproxy/zentinel")
           not external_data({"provider": "cosign-verifier", "keys": [container.image]})
           msg := sprintf("Image %v failed cosign verification", [container.image])
         }
@@ -275,7 +275,7 @@ spec:
 
 ## Compliance Notes
 
-Sentinel's supply chain security practices align with the following standards and frameworks:
+Zentinel's supply chain security practices align with the following standards and frameworks:
 
 | Standard | Coverage |
 |----------|----------|
@@ -290,4 +290,4 @@ For organizations requiring specific compliance documentation, see the [Enterpri
 
 - [Versioning](/docs/appendix/versioning/) — CalVer/SemVer scheme, LTS windows, version mapping
 - [Security Hardening](../security-hardening/) — Production security best practices
-- [Installation](/docs/getting-started/installation/) — Download and verify Sentinel
+- [Installation](/docs/getting-started/installation/) — Download and verify Zentinel

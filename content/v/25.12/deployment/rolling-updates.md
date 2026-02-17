@@ -3,7 +3,7 @@ title = "Rolling Updates"
 weight = 7
 +++
 
-Zero-downtime deployment strategies for Sentinel.
+Zero-downtime deployment strategies for Zentinel.
 
 ## Update Strategies
 
@@ -24,7 +24,7 @@ Zero-downtime deployment strategies for Sentinel.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sentinel
+  name: zentinel
 spec:
   replicas: 3
   strategy:
@@ -35,8 +35,8 @@ spec:
   template:
     spec:
       containers:
-        - name: sentinel
-          image: ghcr.io/raskell-io/sentinel:1.2.0
+        - name: zentinel
+          image: ghcr.io/zentinelproxy/zentinel:1.2.0
           readinessProbe:
             httpGet:
               path: /health
@@ -55,14 +55,14 @@ Update:
 
 ```bash
 # Update image
-kubectl set image deployment/sentinel \
-    sentinel=ghcr.io/raskell-io/sentinel:1.3.0
+kubectl set image deployment/zentinel \
+    zentinel=ghcr.io/zentinelproxy/zentinel:1.3.0
 
 # Watch rollout
-kubectl rollout status deployment/sentinel
+kubectl rollout status deployment/zentinel
 
 # Rollback if needed
-kubectl rollout undo deployment/sentinel
+kubectl rollout undo deployment/zentinel
 ```
 
 ### Docker Swarm
@@ -72,8 +72,8 @@ kubectl rollout undo deployment/sentinel
 version: '3.8'
 
 services:
-  sentinel:
-    image: ghcr.io/raskell-io/sentinel:1.2.0
+  zentinel:
+    image: ghcr.io/zentinelproxy/zentinel:1.2.0
     deploy:
       replicas: 3
       update_config:
@@ -97,14 +97,14 @@ Update:
 ```bash
 # Update service
 docker service update \
-    --image ghcr.io/raskell-io/sentinel:1.3.0 \
-    sentinel
+    --image ghcr.io/zentinelproxy/zentinel:1.3.0 \
+    zentinel
 
 # Watch update
-docker service ps sentinel
+docker service ps zentinel
 
 # Rollback
-docker service rollback sentinel
+docker service rollback zentinel
 ```
 
 ### systemd
@@ -116,23 +116,23 @@ docker service rollback sentinel
 set -e
 
 NEW_VERSION=$1
-OLD_BINARY="/usr/local/bin/sentinel"
-NEW_BINARY="/usr/local/bin/sentinel.new"
+OLD_BINARY="/usr/local/bin/zentinel"
+NEW_BINARY="/usr/local/bin/zentinel.new"
 
 # Download new version
 curl -Lo "$NEW_BINARY" \
-    "https://github.com/raskell-io/sentinel/releases/download/v${NEW_VERSION}/sentinel"
+    "https://github.com/zentinelproxy/zentinel/releases/download/v${NEW_VERSION}/zentinel"
 chmod +x "$NEW_BINARY"
 
 # Validate new binary
-$NEW_BINARY validate -c /etc/sentinel/sentinel.kdl
+$NEW_BINARY validate -c /etc/zentinel/zentinel.kdl
 
 # Swap binaries
 mv "$OLD_BINARY" "${OLD_BINARY}.old"
 mv "$NEW_BINARY" "$OLD_BINARY"
 
 # Graceful restart
-systemctl reload sentinel
+systemctl reload zentinel
 
 # Wait for health
 for i in {1..30}; do
@@ -147,7 +147,7 @@ done
 # Rollback on failure
 echo "Update failed, rolling back"
 mv "${OLD_BINARY}.old" "$OLD_BINARY"
-systemctl reload sentinel
+systemctl reload zentinel
 exit 1
 ```
 
@@ -175,58 +175,58 @@ exit 1
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sentinel-blue
+  name: zentinel-blue
   labels:
-    app: sentinel
+    app: zentinel
     version: blue
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: sentinel
+      app: zentinel
       version: blue
   template:
     metadata:
       labels:
-        app: sentinel
+        app: zentinel
         version: blue
     spec:
       containers:
-        - name: sentinel
-          image: ghcr.io/raskell-io/sentinel:1.2.0
+        - name: zentinel
+          image: ghcr.io/zentinelproxy/zentinel:1.2.0
 ---
 # green-deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sentinel-green
+  name: zentinel-green
   labels:
-    app: sentinel
+    app: zentinel
     version: green
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: sentinel
+      app: zentinel
       version: green
   template:
     metadata:
       labels:
-        app: sentinel
+        app: zentinel
         version: green
     spec:
       containers:
-        - name: sentinel
-          image: ghcr.io/raskell-io/sentinel:1.3.0
+        - name: zentinel
+          image: ghcr.io/zentinelproxy/zentinel:1.3.0
 ---
 # service.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: sentinel
+  name: zentinel
 spec:
   selector:
-    app: sentinel
+    app: zentinel
     version: blue  # Switch to 'green' for cutover
   ports:
     - port: 8080
@@ -240,16 +240,16 @@ Switch traffic:
 kubectl apply -f green-deployment.yaml
 
 # Wait for ready
-kubectl rollout status deployment/sentinel-green
+kubectl rollout status deployment/zentinel-green
 
 # Switch traffic
-kubectl patch service sentinel -p '{"spec":{"selector":{"version":"green"}}}'
+kubectl patch service zentinel -p '{"spec":{"selector":{"version":"green"}}}'
 
 # Verify
-kubectl get endpoints sentinel
+kubectl get endpoints zentinel
 
 # Remove blue after verification
-kubectl delete deployment sentinel-blue
+kubectl delete deployment zentinel-blue
 ```
 
 ### Docker Compose
@@ -259,15 +259,15 @@ kubectl delete deployment sentinel-blue
 version: '3.8'
 
 services:
-  sentinel-blue:
-    image: ghcr.io/raskell-io/sentinel:1.2.0
+  zentinel-blue:
+    image: ghcr.io/zentinelproxy/zentinel:1.2.0
     networks:
-      - sentinel-net
+      - zentinel-net
 
-  sentinel-green:
-    image: ghcr.io/raskell-io/sentinel:1.3.0
+  zentinel-green:
+    image: ghcr.io/zentinelproxy/zentinel:1.3.0
     networks:
-      - sentinel-net
+      - zentinel-net
     profiles:
       - green  # Only start with --profile green
 
@@ -278,7 +278,7 @@ services:
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
     networks:
-      - sentinel-net
+      - zentinel-net
 ```
 
 ## Canary Deployment
@@ -290,24 +290,24 @@ services:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sentinel-canary
+  name: zentinel-canary
 spec:
   replicas: 1  # Small number for canary
   template:
     metadata:
       labels:
-        app: sentinel
+        app: zentinel
         track: canary
     spec:
       containers:
-        - name: sentinel
-          image: ghcr.io/raskell-io/sentinel:1.3.0
+        - name: zentinel
+          image: ghcr.io/zentinelproxy/zentinel:1.3.0
 ---
 # Split traffic with Ingress annotations (NGINX)
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: sentinel-canary
+  name: zentinel-canary
   annotations:
     nginx.ingress.kubernetes.io/canary: "true"
     nginx.ingress.kubernetes.io/canary-weight: "10"  # 10% to canary
@@ -319,7 +319,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: sentinel-canary
+                name: zentinel-canary
                 port:
                   number: 8080
 ```
@@ -328,24 +328,24 @@ Progressive rollout:
 
 ```bash
 # Start with 10%
-kubectl annotate ingress sentinel-canary \
+kubectl annotate ingress zentinel-canary \
     nginx.ingress.kubernetes.io/canary-weight="10" --overwrite
 
 # Monitor metrics, increase to 25%
-kubectl annotate ingress sentinel-canary \
+kubectl annotate ingress zentinel-canary \
     nginx.ingress.kubernetes.io/canary-weight="25" --overwrite
 
 # Continue to 50%, then 100%
-kubectl annotate ingress sentinel-canary \
+kubectl annotate ingress zentinel-canary \
     nginx.ingress.kubernetes.io/canary-weight="100" --overwrite
 
 # Promote canary to stable
-kubectl set image deployment/sentinel-stable \
-    sentinel=ghcr.io/raskell-io/sentinel:1.3.0
+kubectl set image deployment/zentinel-stable \
+    zentinel=ghcr.io/zentinelproxy/zentinel:1.3.0
 
 # Remove canary
-kubectl delete deployment sentinel-canary
-kubectl delete ingress sentinel-canary
+kubectl delete deployment zentinel-canary
+kubectl delete ingress zentinel-canary
 ```
 
 ### Istio Traffic Splitting
@@ -354,27 +354,27 @@ kubectl delete ingress sentinel-canary
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
-  name: sentinel
+  name: zentinel
 spec:
   hosts:
-    - sentinel
+    - zentinel
   http:
     - route:
         - destination:
-            host: sentinel
+            host: zentinel
             subset: stable
           weight: 90
         - destination:
-            host: sentinel
+            host: zentinel
             subset: canary
           weight: 10
 ---
 apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule
 metadata:
-  name: sentinel
+  name: zentinel
 spec:
-  host: sentinel
+  host: zentinel
   subsets:
     - name: stable
       labels:
@@ -407,7 +407,7 @@ server {
 spec:
   terminationGracePeriodSeconds: 60
   containers:
-    - name: sentinel
+    - name: zentinel
       lifecycle:
         preStop:
           exec:
@@ -454,30 +454,30 @@ livenessProbe:
 
 ```bash
 # View rollout history
-kubectl rollout history deployment/sentinel
+kubectl rollout history deployment/zentinel
 
 # Rollback to previous
-kubectl rollout undo deployment/sentinel
+kubectl rollout undo deployment/zentinel
 
 # Rollback to specific revision
-kubectl rollout undo deployment/sentinel --to-revision=2
+kubectl rollout undo deployment/zentinel --to-revision=2
 ```
 
 ### Docker Swarm
 
 ```bash
-docker service rollback sentinel
+docker service rollback zentinel
 ```
 
 ### Manual Binary Rollback
 
 ```bash
 # Keep old binary
-mv /usr/local/bin/sentinel /usr/local/bin/sentinel.new
-mv /usr/local/bin/sentinel.old /usr/local/bin/sentinel
+mv /usr/local/bin/zentinel /usr/local/bin/zentinel.new
+mv /usr/local/bin/zentinel.old /usr/local/bin/zentinel
 
 # Restart
-systemctl restart sentinel
+systemctl restart zentinel
 ```
 
 ## Automated Rollback
@@ -489,7 +489,7 @@ systemctl restart sentinel
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
-  name: sentinel
+  name: zentinel
 spec:
   strategy:
     canary:
@@ -518,8 +518,8 @@ spec:
         prometheus:
           address: http://prometheus:9090
           query: |
-            sum(rate(sentinel_requests_total{status!~"5.."}[5m]))
-            / sum(rate(sentinel_requests_total[5m]))
+            sum(rate(zentinel_requests_total{status!~"5.."}[5m]))
+            / sum(rate(zentinel_requests_total[5m]))
 ```
 
 ## Pre-Update Checklist
@@ -538,10 +538,10 @@ spec:
 curl http://localhost:9090/health
 
 # Verify metrics
-curl http://localhost:9090/metrics | grep sentinel_requests
+curl http://localhost:9090/metrics | grep zentinel_requests
 
 # Check logs for errors
-kubectl logs -l app=sentinel --tail=100 | grep -i error
+kubectl logs -l app=zentinel --tail=100 | grep -i error
 
 # Verify routing
 curl -v http://localhost:8080/api/test

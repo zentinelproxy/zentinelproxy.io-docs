@@ -3,7 +3,7 @@ title = "License"
 weight = 4
 +++
 
-Sentinel is licensed under the Apache License, Version 2.0.
+Zentinel is licensed under the Apache License, Version 2.0.
 
 ## Apache License
 
@@ -81,17 +81,17 @@ While redistributing the Work or Derivative Works thereof, You may choose to off
 
 ## Third-Party Licenses
 
-Sentinel uses the following open source components:
+Zentinel uses the following open source components:
 
 ### Pingora
 
-Sentinel is built on [Pingora](https://github.com/cloudflare/pingora), licensed under the Apache License 2.0.
+Zentinel is built on [Pingora](https://github.com/cloudflare/pingora), licensed under the Apache License 2.0.
 
 Copyright 2024 Cloudflare, Inc.
 
 ### Other Dependencies
 
-For a complete list of dependencies and their licenses, see the `Cargo.lock` file in the Sentinel repository or run:
+For a complete list of dependencies and their licenses, see the `Cargo.lock` file in the Zentinel repository or run:
 
 ```bash
 cargo license

@@ -5,18 +5,18 @@ sort_by = "weight"
 template = "section.html"
 +++
 
-Get up and running with Sentinel in minutes.
+Get up and running with Zentinel in minutes.
 
 ## Quick Start
 
-The fastest way to try Sentinel:
+The fastest way to try Zentinel:
 
 ```bash
 # Install
-curl -fsSL https://getsentinel.raskell.io | sh
+curl -fsSL https://getzentinelproxy.io | sh
 
 # Run with a simple config
-sentinel -c sentinel.kdl
+zentinel -c zentinel.kdl
 ```
 
 ## Prerequisites
@@ -29,7 +29,7 @@ sentinel -c sentinel.kdl
 
 | Step | Page | Description |
 |------|------|-------------|
-| 1 | [Installation](installation/) | Download and install Sentinel |
+| 1 | [Installation](installation/) | Download and install Zentinel |
 | 2 | [Quick Start](quick-start/) | Run your first proxy in 5 minutes |
 | 3 | [First Route](first-route/) | Configure routing to your backend |
 | 4 | [Basic Configuration](basic-configuration/) | Understand the configuration file |
@@ -40,7 +40,7 @@ sentinel -c sentinel.kdl
 
 After completing the getting started guide:
 
-- Learn about [Core Concepts](/concepts/) to understand how Sentinel works
+- Learn about [Core Concepts](/concepts/) to understand how Zentinel works
 - Explore [Agents](/agents/) for security controls and custom logic
 - Read [Configuration Reference](/configuration/) for all options
 - See [Examples](/examples/) for common use cases
@@ -48,6 +48,6 @@ After completing the getting started guide:
 ## Need Help?
 
 - [FAQ](/appendix/faq/) - Common questions and answers
-- [GitHub Issues](https://github.com/raskell-io/sentinel/issues) - Bug reports and feature requests
-- [Discussions](https://github.com/raskell-io/sentinel/discussions) - Community Q&A
+- [GitHub Issues](https://github.com/zentinelproxy/zentinel/issues) - Bug reports and feature requests
+- [Discussions](https://github.com/zentinelproxy/zentinel/discussions) - Community Q&A
 

@@ -5,7 +5,7 @@ sort_by = "weight"
 template = "section.html"
 +++
 
-Sentinel uses KDL (a human-friendly document language) for configuration. This section covers all configuration options organized by component.
+Zentinel uses KDL (a human-friendly document language) for configuration. This section covers all configuration options organized by component.
 
 ## Configuration Blocks
 
@@ -36,8 +36,8 @@ listeners {
         address "0.0.0.0:443"
         protocol "https"
         tls {
-            cert-file "/etc/sentinel/certs/server.crt"
-            key-file "/etc/sentinel/certs/server.key"
+            cert-file "/etc/zentinel/certs/server.crt"
+            key-file "/etc/zentinel/certs/server.key"
             min-version "1.2"
         }
     }
@@ -117,7 +117,7 @@ limits {
 Always validate configuration before applying:
 
 ```bash
-sentinel --config sentinel.kdl --validate
+zentinel --config zentinel.kdl --validate
 ```
 
 ## Hot Reload
@@ -125,7 +125,7 @@ sentinel --config sentinel.kdl --validate
 Reload configuration without restart:
 
 ```bash
-kill -HUP $(cat /var/run/sentinel.pid)
+kill -HUP $(cat /var/run/zentinel.pid)
 # or
 curl -X POST http://localhost:9090/admin/reload
 ```

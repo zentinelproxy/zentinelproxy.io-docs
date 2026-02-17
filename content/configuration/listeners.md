@@ -3,7 +3,7 @@ title = "Listeners"
 weight = 3
 +++
 
-The `listeners` block defines network endpoints where Sentinel accepts incoming connections. Each listener binds to an address, specifies a protocol, and optionally configures TLS.
+The `listeners` block defines network endpoints where Zentinel accepts incoming connections. Each listener binds to an address, specifies a protocol, and optionally configures TLS.
 
 ## Basic Configuration
 
@@ -18,8 +18,8 @@ listeners {
         address "0.0.0.0:443"
         protocol "https"
         tls {
-            cert-file "/etc/sentinel/certs/server.crt"
-            key-file "/etc/sentinel/certs/server.key"
+            cert-file "/etc/zentinel/certs/server.crt"
+            key-file "/etc/zentinel/certs/server.key"
         }
     }
 }
@@ -93,8 +93,8 @@ listener "h2" {
     protocol "h2"
     max-concurrent-streams 100
     tls {
-        cert-file "/etc/sentinel/certs/server.crt"
-        key-file "/etc/sentinel/certs/server.key"
+        cert-file "/etc/zentinel/certs/server.crt"
+        key-file "/etc/zentinel/certs/server.key"
     }
 }
 ```
@@ -113,7 +113,7 @@ listener "api" {
 }
 ```
 
-Route to use when no other route matches. If not set and no route matches, Sentinel returns 404.
+Route to use when no other route matches. If not set and no route matches, Zentinel returns 404.
 
 ## TLS Configuration
 
@@ -124,8 +124,8 @@ listener "https" {
     address "0.0.0.0:443"
     protocol "https"
     tls {
-        cert-file "/etc/sentinel/certs/server.crt"
-        key-file "/etc/sentinel/certs/server.key"
+        cert-file "/etc/zentinel/certs/server.crt"
+        key-file "/etc/zentinel/certs/server.key"
     }
 }
 ```
@@ -208,9 +208,9 @@ listener "internal-api" {
     address "0.0.0.0:8443"
     protocol "https"
     tls {
-        cert-file "/etc/sentinel/certs/server.crt"
-        key-file "/etc/sentinel/certs/server.key"
-        ca-file "/etc/sentinel/certs/client-ca.crt"
+        cert-file "/etc/zentinel/certs/server.crt"
+        key-file "/etc/zentinel/certs/server.key"
+        ca-file "/etc/zentinel/certs/client-ca.crt"
         client-auth #true
     }
 }
@@ -333,27 +333,27 @@ listener "https" {
     protocol "https"
     tls {
         // Default certificate (when no SNI match)
-        cert-file "/etc/sentinel/certs/default.crt"
-        key-file "/etc/sentinel/certs/default.key"
+        cert-file "/etc/zentinel/certs/default.crt"
+        key-file "/etc/zentinel/certs/default.key"
 
         // Additional certificates for SNI
         additional-certs {
             sni-cert {
                 hostnames "example.com" "www.example.com"
-                cert-file "/etc/sentinel/certs/example.crt"
-                key-file "/etc/sentinel/certs/example.key"
+                cert-file "/etc/zentinel/certs/example.crt"
+                key-file "/etc/zentinel/certs/example.key"
             }
 
             sni-cert {
                 hostnames "api.example.com"
-                cert-file "/etc/sentinel/certs/api.crt"
-                key-file "/etc/sentinel/certs/api.key"
+                cert-file "/etc/zentinel/certs/api.crt"
+                key-file "/etc/zentinel/certs/api.key"
             }
 
             sni-cert {
                 hostnames "*.staging.example.com"
-                cert-file "/etc/sentinel/certs/staging-wildcard.crt"
-                key-file "/etc/sentinel/certs/staging-wildcard.key"
+                cert-file "/etc/zentinel/certs/staging-wildcard.crt"
+                key-file "/etc/zentinel/certs/staging-wildcard.key"
             }
         }
     }
@@ -383,36 +383,36 @@ listener "https" {
     protocol "https"
     tls {
         // Default for unmatched hostnames
-        cert-file "/etc/sentinel/certs/default.crt"
-        key-file "/etc/sentinel/certs/default.key"
+        cert-file "/etc/zentinel/certs/default.crt"
+        key-file "/etc/zentinel/certs/default.key"
 
         additional-certs {
             // Production domains
             sni-cert {
                 hostnames "myapp.com" "www.myapp.com"
-                cert-file "/etc/sentinel/certs/myapp.crt"
-                key-file "/etc/sentinel/certs/myapp.key"
+                cert-file "/etc/zentinel/certs/myapp.crt"
+                key-file "/etc/zentinel/certs/myapp.key"
             }
 
             // API subdomain with separate cert
             sni-cert {
                 hostnames "api.myapp.com"
-                cert-file "/etc/sentinel/certs/api.myapp.crt"
-                key-file "/etc/sentinel/certs/api.myapp.key"
+                cert-file "/etc/zentinel/certs/api.myapp.crt"
+                key-file "/etc/zentinel/certs/api.myapp.key"
             }
 
             // Customer domains
             sni-cert {
                 hostnames "customer1.myapp.com" "customer1-custom.com"
-                cert-file "/etc/sentinel/certs/customer1.crt"
-                key-file "/etc/sentinel/certs/customer1.key"
+                cert-file "/etc/zentinel/certs/customer1.crt"
+                key-file "/etc/zentinel/certs/customer1.key"
             }
 
             // Wildcard for all other subdomains
             sni-cert {
                 hostnames "*.myapp.com"
-                cert-file "/etc/sentinel/certs/wildcard.myapp.crt"
-                key-file "/etc/sentinel/certs/wildcard.myapp.key"
+                cert-file "/etc/zentinel/certs/wildcard.myapp.crt"
+                key-file "/etc/zentinel/certs/wildcard.myapp.key"
             }
         }
     }
@@ -425,18 +425,18 @@ All SNI certificates are reloaded during configuration reload:
 
 ```bash
 # Update certificates
-cp new-cert.crt /etc/sentinel/certs/example.crt
-cp new-key.key /etc/sentinel/certs/example.key
+cp new-cert.crt /etc/zentinel/certs/example.crt
+cp new-key.key /etc/zentinel/certs/example.key
 
 # Reload configuration (graceful)
-kill -HUP $(cat /var/run/sentinel.pid)
+kill -HUP $(cat /var/run/zentinel.pid)
 ```
 
 Connections in progress continue with old certificates. New connections use updated certificates.
 
 ## ACME (Automatic Certificate Management)
 
-Sentinel supports automatic TLS certificate management using the ACME protocol (RFC 8555). This eliminates manual certificate management by automatically requesting, validating, and renewing certificates from Let's Encrypt.
+Zentinel supports automatic TLS certificate management using the ACME protocol (RFC 8555). This eliminates manual certificate management by automatically requesting, validating, and renewing certificates from Let's Encrypt.
 
 ### Basic ACME Configuration
 
@@ -453,7 +453,7 @@ listener "https" {
 }
 ```
 
-With ACME enabled, Sentinel will:
+With ACME enabled, Zentinel will:
 1. Create or restore a Let's Encrypt account
 2. Request certificates for configured domains
 3. Complete HTTP-01 domain validation automatically
@@ -475,7 +475,7 @@ listener "https" {
 
             // Optional
             staging false                           // Use staging environment for testing
-            storage "/var/lib/sentinel/acme"        // Certificate storage directory
+            storage "/var/lib/zentinel/acme"        // Certificate storage directory
             renew-before-days 30                    // Days before expiry to renew
         }
     }
@@ -487,18 +487,18 @@ listener "https" {
 | `email` | string | **required** | Contact email for Let's Encrypt account |
 | `domains` | string[] | **required** | Domains to include in certificate |
 | `staging` | bool | `false` | Use Let's Encrypt staging environment |
-| `storage` | path | `/var/lib/sentinel/acme` | Directory for certificates and credentials |
+| `storage` | path | `/var/lib/zentinel/acme` | Directory for certificates and credentials |
 | `renew-before-days` | u32 | `30` | Days before expiry to trigger renewal |
 | `challenge-type` | string | `"http-01"` | Challenge type: `http-01` or `dns-01` |
 | `dns-provider` | block | - | DNS provider config (required for `dns-01`) |
 
 ### HTTP-01 Challenge (Default)
 
-ACME uses HTTP-01 challenges to validate domain ownership. Sentinel automatically handles these challenges by serving responses at `/.well-known/acme-challenge/`.
+ACME uses HTTP-01 challenges to validate domain ownership. Zentinel automatically handles these challenges by serving responses at `/.well-known/acme-challenge/`.
 
 **Requirements:**
 - Port 80 must be accessible from the internet
-- DNS must point to the server running Sentinel
+- DNS must point to the server running Zentinel
 - Firewall must allow incoming HTTP traffic
 
 For HTTP-01 challenges to work, you typically need an HTTP listener on port 80:
@@ -541,7 +541,7 @@ listener "https" {
 
             dns-provider {
                 type "hetzner"
-                credentials-file "/etc/sentinel/secrets/hetzner-dns.json"
+                credentials-file "/etc/zentinel/secrets/hetzner-dns.json"
                 api-timeout-secs 30
 
                 propagation {
@@ -557,7 +557,7 @@ listener "https" {
 ```
 
 **DNS-01 Flow:**
-1. Sentinel creates a TXT record at `_acme-challenge.example.com`
+1. Zentinel creates a TXT record at `_acme-challenge.example.com`
 2. Waits for DNS propagation (checks against configured nameservers)
 3. Notifies Let's Encrypt to validate
 4. Cleans up TXT records after validation
@@ -574,7 +574,7 @@ listener "https" {
 ```kdl
 dns-provider {
     type "hetzner"
-    credentials-file "/etc/sentinel/secrets/hetzner.json"
+    credentials-file "/etc/zentinel/secrets/hetzner.json"
     // or
     credentials-env "HETZNER_DNS_TOKEN"
 }
@@ -594,7 +594,7 @@ dns-provider {
     type "webhook"
     url "https://dns-api.internal/v1"
     auth-header "X-API-Key"
-    credentials-file "/etc/sentinel/secrets/webhook.json"
+    credentials-file "/etc/zentinel/secrets/webhook.json"
 }
 ```
 
@@ -668,7 +668,7 @@ Staging has much higher limits for testing.
 ACME stores certificates and account credentials on disk:
 
 ```
-/var/lib/sentinel/acme/
+/var/lib/zentinel/acme/
 ├── credentials.json      # ACME account credentials (keep secure)
 ├── account.json          # Account metadata
 └── domains/
@@ -702,8 +702,8 @@ listener "https" {
     protocol "https"
     tls {
         // Manual certificates (takes precedence if both exist)
-        cert-file "/etc/sentinel/certs/manual.crt"
-        key-file "/etc/sentinel/certs/manual.key"
+        cert-file "/etc/zentinel/certs/manual.crt"
+        key-file "/etc/zentinel/certs/manual.key"
 
         // ACME for automatic management
         acme {
@@ -715,8 +715,8 @@ listener "https" {
         additional-certs {
             sni-cert {
                 hostnames "api.example.com"
-                cert-file "/etc/sentinel/certs/api.crt"
-                key-file "/etc/sentinel/certs/api.key"
+                cert-file "/etc/zentinel/certs/api.crt"
+                key-file "/etc/zentinel/certs/api.key"
             }
         }
     }
@@ -769,19 +769,19 @@ Error: Rate limit exceeded
 Error: Permission denied writing to storage directory
 ```
 
-- Ensure the Sentinel process has write access to the storage directory
-- Check directory ownership: `chown sentinel:sentinel /var/lib/sentinel/acme`
+- Ensure the Zentinel process has write access to the storage directory
+- Check directory ownership: `chown zentinel:zentinel /var/lib/zentinel/acme`
 - Verify parent directories exist and are accessible
 
 #### Certificate Not Renewing
 
-Check the Sentinel logs for renewal status. Renewals are attempted:
+Check the Zentinel logs for renewal status. Renewals are attempted:
 - Every 12 hours (check interval)
 - When certificate is within `renew-before-days` of expiry
 
 Manually trigger a reload to force renewal check:
 ```bash
-kill -HUP $(cat /var/run/sentinel.pid)
+kill -HUP $(cat /var/run/zentinel.pid)
 ```
 
 ## Multiple Listeners
@@ -796,8 +796,8 @@ listeners {
         protocol "https"
         request-timeout-secs 30
         tls {
-            cert-file "/etc/sentinel/certs/public.crt"
-            key-file "/etc/sentinel/certs/public.key"
+            cert-file "/etc/zentinel/certs/public.crt"
+            key-file "/etc/zentinel/certs/public.key"
             min-version "1.2"
         }
     }
@@ -820,9 +820,9 @@ listeners {
         address "10.0.0.5:8443"
         protocol "https"
         tls {
-            cert-file "/etc/sentinel/certs/internal.crt"
-            key-file "/etc/sentinel/certs/internal.key"
-            ca-file "/etc/sentinel/certs/internal-ca.crt"
+            cert-file "/etc/zentinel/certs/internal.crt"
+            key-file "/etc/zentinel/certs/internal.key"
+            ca-file "/etc/zentinel/certs/internal-ca.crt"
             client-auth #true
         }
     }
@@ -833,10 +833,10 @@ listeners {
 
 ### Certificate Formats
 
-Sentinel accepts PEM-encoded certificates and keys:
+Zentinel accepts PEM-encoded certificates and keys:
 
 ```
-/etc/sentinel/certs/
+/etc/zentinel/certs/
 ├── server.crt      # Certificate (PEM)
 ├── server.key      # Private key (PEM)
 ├── chain.crt       # Intermediate certificates (optional)
@@ -855,8 +855,8 @@ Then reference the full chain:
 
 ```kdl
 tls {
-    cert-file "/etc/sentinel/certs/fullchain.crt"
-    key-file "/etc/sentinel/certs/server.key"
+    cert-file "/etc/zentinel/certs/fullchain.crt"
+    key-file "/etc/zentinel/certs/server.key"
 }
 ```
 
@@ -866,9 +866,9 @@ Certificates are reloaded on configuration reload (SIGHUP):
 
 ```bash
 # Update certificates, then reload
-cp new-cert.crt /etc/sentinel/certs/server.crt
-cp new-key.key /etc/sentinel/certs/server.key
-kill -HUP $(cat /var/run/sentinel.pid)
+cp new-cert.crt /etc/zentinel/certs/server.crt
+cp new-key.key /etc/zentinel/certs/server.key
+kill -HUP $(cat /var/run/zentinel.pid)
 ```
 
 ## Complete Example
@@ -883,8 +883,8 @@ listeners {
     listener "https" {
 
                 tls {
-                    cert-file "/etc/sentinel/certs/fullchain.crt"
-                    key-file "/etc/sentinel/certs/server.key"
+                    cert-file "/etc/zentinel/certs/fullchain.crt"
+                    key-file "/etc/zentinel/certs/server.key"
                     min-version "1.2"
                     max-version "1.3"
                     ocsp-stapling #true
@@ -943,7 +943,7 @@ upstreams {
 | `tls.session-resumption` | `true` |
 | `tls.client-auth` | `false` |
 | `tls.acme.staging` | `false` |
-| `tls.acme.storage` | `/var/lib/sentinel/acme` |
+| `tls.acme.storage` | `/var/lib/zentinel/acme` |
 | `tls.acme.renew-before-days` | `30` |
 | `tls.acme.challenge-type` | `"http-01"` |
 | `tls.acme.dns-provider.api-timeout-secs` | `30` |
@@ -978,15 +978,15 @@ Ports below 1024 require root or capabilities:
 
 ```bash
 # Option 1: Run as root (not recommended)
-sudo sentinel
+sudo zentinel
 
 # Option 2: Grant capability (recommended)
-sudo setcap cap_net_bind_service=+ep /usr/local/bin/sentinel
+sudo setcap cap_net_bind_service=+ep /usr/local/bin/zentinel
 
 # Option 3: Use user/group in config
 system {
-    user "sentinel"
-    group "sentinel"
+    user "zentinel"
+    group "zentinel"
 }
 ```
 

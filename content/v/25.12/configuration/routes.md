@@ -374,7 +374,7 @@ route "api" {
             }
             "503" {
                 format "html"
-                template "/etc/sentinel/errors/503.html"
+                template "/etc/zentinel/errors/503.html"
             }
         }
     }

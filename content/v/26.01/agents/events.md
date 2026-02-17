@@ -68,7 +68,7 @@ The configuration comes from the `config` block in KDL:
 
 ```kdl
 agent "waf" type="waf" {
-    unix-socket "/var/run/sentinel/waf.sock"
+    unix-socket "/var/run/zentinel/waf.sock"
     events "request_headers" "request_body"
     config {
         paranoia-level 2
@@ -231,7 +231,7 @@ agent "waf" type="waf" {
 
 ### Body Decompression
 
-When `decompress: true` is set in the WAF `body-inspection` config, Sentinel automatically decompresses request bodies before sending to agents:
+When `decompress: true` is set in the WAF `body-inspection` config, Zentinel automatically decompresses request bodies before sending to agents:
 
 ```kdl
 waf {

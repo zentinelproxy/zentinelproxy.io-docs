@@ -3,13 +3,13 @@ title = "Security Hardening"
 weight = 5
 +++
 
-Best practices for securing Sentinel deployments in production.
+Best practices for securing Zentinel deployments in production.
 
 ## Security Baseline
 
 ### Defense in Depth
 
-Sentinel follows a defense-in-depth approach:
+Zentinel follows a defense-in-depth approach:
 
 1. **Network layer**: Firewall rules, network segmentation
 2. **Transport layer**: TLS, certificate validation
@@ -18,7 +18,7 @@ Sentinel follows a defense-in-depth approach:
 
 ### Secure Defaults
 
-Sentinel ships with secure defaults:
+Zentinel ships with secure defaults:
 
 ```kdl
 security {
@@ -58,8 +58,8 @@ listeners {
         protocol "https"
 
         tls {
-            cert-file "/etc/sentinel/certs/server.crt"
-            key-file "/etc/sentinel/certs/server.key"
+            cert-file "/etc/zentinel/certs/server.crt"
+            key-file "/etc/zentinel/certs/server.key"
 
             // Minimum TLS 1.2 (TLS 1.3 preferred)
             min-version "1.2"
@@ -111,10 +111,10 @@ openssl s_client -connect localhost:443 -tls1_2 </dev/null 2>/dev/null | grep "C
 
 ### HSTS Validation
 
-Sentinel automatically warns if TLS is enabled but no HSTS (HTTP Strict Transport Security) header is configured:
+Zentinel automatically warns if TLS is enabled but no HSTS (HTTP Strict Transport Security) header is configured:
 
 ```bash
-sentinel --config sentinel.kdl --validate
+zentinel --config zentinel.kdl --validate
 # Warning: TLS is enabled but no HSTS header is configured
 ```
 
@@ -189,9 +189,9 @@ upstreams {
         }
         tls {
             sni "backend.internal"
-            client-cert "/etc/sentinel/certs/client.crt"
-            client-key "/etc/sentinel/certs/client.key"
-            ca-cert "/etc/sentinel/certs/backend-ca.crt"
+            client-cert "/etc/zentinel/certs/client.crt"
+            client-key "/etc/zentinel/certs/client.key"
+            ca-cert "/etc/zentinel/certs/backend-ca.crt"
         }
     }
 }
@@ -330,7 +330,7 @@ upstreams {
 
 agents {
     agent "auth" type="auth" {
-        unix-socket "/var/run/sentinel/auth.sock"
+        unix-socket "/var/run/zentinel/auth.sock"
         events "request_headers"
         timeout-ms 50
         failure-mode "closed"
@@ -384,7 +384,7 @@ upstreams {
 agents {
     // Standard rate limiting: 100 req/min
     agent "ratelimit" type="rate_limit" {
-        unix-socket "/var/run/sentinel/ratelimit.sock"
+        unix-socket "/var/run/zentinel/ratelimit.sock"
         events "request_headers"
         timeout-ms 20
         failure-mode "open"
@@ -392,7 +392,7 @@ agents {
 
     // Strict rate limiting for login: 5 req/min
     agent "ratelimit-strict" type="rate_limit" {
-        unix-socket "/var/run/sentinel/ratelimit-strict.sock"
+        unix-socket "/var/run/zentinel/ratelimit-strict.sock"
         events "request_headers"
         timeout-ms 20
         failure-mode "closed"
@@ -450,17 +450,17 @@ Security events are logged automatically when agents block requests or when rate
 ### Log Rotation
 
 ```bash
-# /etc/logrotate.d/sentinel
-/var/log/sentinel/*.log {
+# /etc/logrotate.d/zentinel
+/var/log/zentinel/*.log {
     daily
     rotate 30
     compress
     delaycompress
     missingok
     notifempty
-    create 0640 sentinel sentinel
+    create 0640 zentinel zentinel
     postrotate
-        kill -USR1 $(cat /var/run/sentinel.pid) 2>/dev/null || true
+        kill -USR1 $(cat /var/run/zentinel.pid) 2>/dev/null || true
     endscript
 }
 ```
@@ -470,56 +470,56 @@ Security events are logged automatically when agents block requests or when rate
 ### Directory Structure
 
 ```
-/etc/sentinel/
-├── config.kdl              # 0640 sentinel:sentinel
+/etc/zentinel/
+├── config.kdl              # 0640 zentinel:zentinel
 ├── certs/
-│   ├── server.crt          # 0644 sentinel:sentinel
-│   ├── server.key          # 0600 sentinel:sentinel
-│   ├── client.crt          # 0644 sentinel:sentinel
-│   └── client.key          # 0600 sentinel:sentinel
+│   ├── server.crt          # 0644 zentinel:zentinel
+│   ├── server.key          # 0600 zentinel:zentinel
+│   ├── client.crt          # 0644 zentinel:zentinel
+│   └── client.key          # 0600 zentinel:zentinel
 └── geoip/
-    └── GeoLite2-Country.mmdb  # 0644 sentinel:sentinel
+    └── GeoLite2-Country.mmdb  # 0644 zentinel:zentinel
 
-/var/log/sentinel/          # 0750 sentinel:sentinel
-/var/run/sentinel/          # 0755 sentinel:sentinel
+/var/log/zentinel/          # 0750 zentinel:zentinel
+/var/run/zentinel/          # 0755 zentinel:zentinel
 ```
 
 ### Permission Hardening
 
 ```bash
 #!/bin/bash
-SENTINEL_USER="sentinel"
-SENTINEL_GROUP="sentinel"
+ZENTINEL_USER="zentinel"
+ZENTINEL_GROUP="zentinel"
 
 # Configuration
-chown -R root:$SENTINEL_GROUP /etc/sentinel
-chmod 750 /etc/sentinel
-chmod 640 /etc/sentinel/config.kdl
+chown -R root:$ZENTINEL_GROUP /etc/zentinel
+chmod 750 /etc/zentinel
+chmod 640 /etc/zentinel/config.kdl
 
 # Certificates
-chmod 644 /etc/sentinel/certs/*.crt
-chmod 600 /etc/sentinel/certs/*.key
+chmod 644 /etc/zentinel/certs/*.crt
+chmod 600 /etc/zentinel/certs/*.key
 
 # Logs
-chown -R $SENTINEL_USER:$SENTINEL_GROUP /var/log/sentinel
-chmod 750 /var/log/sentinel
+chown -R $ZENTINEL_USER:$ZENTINEL_GROUP /var/log/zentinel
+chmod 750 /var/log/zentinel
 ```
 
 ### Systemd Security Options
 
 ```ini
-# /etc/systemd/system/sentinel.service
+# /etc/systemd/system/zentinel.service
 [Service]
-User=sentinel
-Group=sentinel
+User=zentinel
+Group=zentinel
 
 # Security hardening
 NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=strict
 ProtectHome=yes
-ReadWritePaths=/var/log/sentinel /var/run/sentinel
-ReadOnlyPaths=/etc/sentinel
+ReadWritePaths=/var/log/zentinel /var/run/zentinel
+ReadOnlyPaths=/etc/zentinel
 
 # Capabilities
 CapabilityBoundingSet=CAP_NET_BIND_SERVICE

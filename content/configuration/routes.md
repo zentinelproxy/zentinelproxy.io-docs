@@ -199,7 +199,7 @@ route "api-v1" {
     upstream "api-backend"
     service-type "api"
     api-schema {
-        schema-file "/etc/sentinel/schemas/api-v1-openapi.yaml"
+        schema-file "/etc/zentinel/schemas/api-v1-openapi.yaml"
         validate-requests #true
         validate-responses #false
         strict-mode #false
@@ -475,7 +475,7 @@ route "create-order" {
 
 ##### Validation Error Responses
 
-When validation fails, Sentinel returns a structured JSON error response:
+When validation fails, Zentinel returns a structured JSON error response:
 
 ```json
 {
@@ -499,7 +499,7 @@ When validation fails, Sentinel returns a structured JSON error response:
 
 ##### JSON Schema Support
 
-Sentinel supports JSON Schema Draft 7 with the following features:
+Zentinel supports JSON Schema Draft 7 with the following features:
 
 - **Types**: `string`, `number`, `integer`, `boolean`, `array`, `object`, `null`
 - **String validation**: `minLength`, `maxLength`, `pattern`, `format` (email, uri, uuid, date-time, etc.)
@@ -511,7 +511,7 @@ Sentinel supports JSON Schema Draft 7 with the following features:
 
 ##### OpenAPI Integration
 
-When using `schema-file`, Sentinel:
+When using `schema-file`, Zentinel:
 
 1. Loads the OpenAPI/Swagger specification at startup
 2. Extracts schemas for each path and HTTP method
@@ -553,7 +553,7 @@ route "user-api" {
 
     // Schema validation
     api-schema {
-        schema-file "/etc/sentinel/schemas/user-api-v2.yaml"
+        schema-file "/etc/zentinel/schemas/user-api-v2.yaml"
         validate-requests #true
         validate-responses #false
         strict-mode #true
@@ -914,7 +914,7 @@ shadow {
 
 ### Metrics
 
-Sentinel exposes Prometheus metrics for shadow traffic monitoring:
+Zentinel exposes Prometheus metrics for shadow traffic monitoring:
 
 ```prometheus
 # Total shadow requests sent (labels: route, upstream, result)
@@ -1023,7 +1023,7 @@ route "api" {
             }
             "503" {
                 format "html"
-                template "/etc/sentinel/errors/503.html"
+                template "/etc/zentinel/errors/503.html"
             }
         }
     }

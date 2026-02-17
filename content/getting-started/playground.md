@@ -3,11 +3,11 @@ title = "Configuration Playground"
 weight = 6
 +++
 
-Try Sentinel configurations in your browser without installing anything.
+Try Zentinel configurations in your browser without installing anything.
 
 ## What is the Playground?
 
-The Sentinel Configuration Playground is a browser-based tool that lets you:
+The Zentinel Configuration Playground is a browser-based tool that lets you:
 
 - **Validate configurations** - Check syntax and catch errors before deploying
 - **Simulate routing** - Test which route matches a given request
@@ -21,7 +21,7 @@ The playground runs entirely in your browser using WebAssembly - no data is sent
 
 Visit the playground at:
 
-**[sentinel.raskell.io/playground](https://sentinel.raskell.io/playground)**
+**[zentinelproxy.io/playground](https://zentinelproxy.io/playground)**
 
 ## Quick Example
 
@@ -111,7 +111,7 @@ Click **Simulate** to see:
 
 ## Understanding the Match Trace
 
-The match trace shows how Sentinel evaluates routes:
+The match trace shows how Zentinel evaluates routes:
 
 ```
 Route: health (priority: high)
@@ -301,11 +301,11 @@ The playground simulates routing logic but cannot:
 - Execute agent logic
 - Test TLS certificates
 
-For full integration testing, use Sentinel's `--dry-run` mode or a staging environment.
+For full integration testing, use Zentinel's `--dry-run` mode or a staging environment.
 
 ## Building from Source
 
-The playground is built from the `sentinel-playground-wasm` crate:
+The playground is built from the `zentinel-playground-wasm` crate:
 
 ```bash
 # Install wasm-pack
@@ -317,9 +317,9 @@ wasm-pack build --target web
 
 # Output is in pkg/
 ls pkg/
-# sentinel_playground_wasm.js
-# sentinel_playground_wasm_bg.wasm
-# sentinel_playground_wasm.d.ts
+# zentinel_playground_wasm.js
+# zentinel_playground_wasm_bg.wasm
+# zentinel_playground_wasm.d.ts
 ```
 
 ## API Reference
@@ -337,7 +337,7 @@ For embedding the playground or building tools, the WASM module exports:
 ### JavaScript Example
 
 ```javascript
-import init, { validate, simulate } from 'sentinel-playground-wasm';
+import init, { validate, simulate } from 'zentinel-playground-wasm';
 
 await init();
 

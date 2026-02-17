@@ -3,7 +3,7 @@ title = "Building from Source"
 weight = 1
 +++
 
-Compile Sentinel and agents from source code.
+Compile Zentinel and agents from source code.
 
 ## Prerequisites
 
@@ -53,13 +53,13 @@ brew install libmodsecurity
 sudo apt install libmodsecurity-dev
 ```
 
-## Building Sentinel
+## Building Zentinel
 
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/raskell-io/sentinel.git
-cd sentinel
+git clone https://github.com/zentinelproxy/zentinel.git
+cd zentinel
 ```
 
 ### Debug Build
@@ -68,7 +68,7 @@ cd sentinel
 cargo build
 ```
 
-Binary location: `target/debug/sentinel`
+Binary location: `target/debug/zentinel`
 
 ### Release Build
 
@@ -76,7 +76,7 @@ Binary location: `target/debug/sentinel`
 cargo build --release
 ```
 
-Binary location: `target/release/sentinel`
+Binary location: `target/release/zentinel`
 
 ### Build with Features
 
@@ -103,8 +103,8 @@ cargo build --release --features "metrics,tracing"
 ### WAF Agent
 
 ```bash
-git clone https://github.com/raskell-io/sentinel-agent-waf.git
-cd sentinel-agent-waf
+git clone https://github.com/zentinelproxy/zentinel-agent-waf.git
+cd zentinel-agent-waf
 cargo build --release
 ```
 
@@ -113,8 +113,8 @@ cargo build --release
 Requires libmodsecurity:
 
 ```bash
-git clone https://github.com/raskell-io/sentinel-agent-modsec.git
-cd sentinel-agent-modsec
+git clone https://github.com/zentinelproxy/zentinel-agent-modsec.git
+cd zentinel-agent-modsec
 
 # Set library paths if needed (macOS)
 export CPLUS_INCLUDE_PATH=/opt/homebrew/include
@@ -126,24 +126,24 @@ cargo build --release
 ### JavaScript Agent
 
 ```bash
-git clone https://github.com/raskell-io/sentinel-agent-js.git
-cd sentinel-agent-js
+git clone https://github.com/zentinelproxy/zentinel-agent-js.git
+cd zentinel-agent-js
 cargo build --release
 ```
 
 ### AI Gateway Agent
 
 ```bash
-git clone https://github.com/raskell-io/sentinel-agent-ai-gateway.git
-cd sentinel-agent-ai-gateway
+git clone https://github.com/zentinelproxy/zentinel-agent-ai-gateway.git
+cd zentinel-agent-ai-gateway
 cargo build --release
 ```
 
 ### WebSocket Inspector
 
 ```bash
-git clone https://github.com/raskell-io/sentinel-agent-websocket-inspector.git
-cd sentinel-agent-websocket-inspector
+git clone https://github.com/zentinelproxy/zentinel-agent-websocket-inspector.git
+cd zentinel-agent-websocket-inspector
 cargo build --release
 ```
 
@@ -212,13 +212,13 @@ cargo build --profile release-debug
 
 ```bash
 # Version
-./target/release/sentinel --version
+./target/release/zentinel --version
 
 # Help
-./target/release/sentinel --help
+./target/release/zentinel --help
 
 # Validate config
-./target/release/sentinel validate -c sentinel.kdl
+./target/release/zentinel validate -c zentinel.kdl
 ```
 
 ### Run Tests

@@ -4,13 +4,13 @@ weight = 0
 sort_by = "weight"
 template = "section.html"
 +++
-Welcome to **Sentinel** documentation version **25.12**.
+Welcome to **Zentinel** documentation version **25.12**.
 
 > **Note**: You are viewing an archived version of the documentation. For the latest documentation, visit the [current version](/).
 
 ---
 
-Welcome to **Sentinel**, a high-performance **reverse proxy** platform built on [Cloudflare's Pingora](https://github.com/cloudflare/pingora) framework. Sentinel extends Pingora's robust foundation with enterprise-grade features designed for modern web infrastructure.
+Welcome to **Zentinel**, a high-performance **reverse proxy** platform built on [Cloudflare's Pingora](https://github.com/cloudflare/pingora) framework. Zentinel extends Pingora's robust foundation with enterprise-grade features designed for modern web infrastructure.
 
 ## Documentation Sections
 

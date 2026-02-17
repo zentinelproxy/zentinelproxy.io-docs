@@ -3,7 +3,7 @@ title = "Capacity Planning"
 weight = 6
 +++
 
-Guide for sizing and scaling Sentinel deployments.
+Guide for sizing and scaling Zentinel deployments.
 
 ## Resource Requirements
 
@@ -163,31 +163,31 @@ curl -s localhost:9090/metrics | grep 'request_duration.*quantile'
 
 ```yaml
 groups:
-  - name: sentinel-capacity
+  - name: zentinel-capacity
     rules:
-      - alert: SentinelHighCPU
-        expr: rate(process_cpu_seconds_total{job="sentinel"}[5m]) > 0.7
+      - alert: ZentinelHighCPU
+        expr: rate(process_cpu_seconds_total{job="zentinel"}[5m]) > 0.7
         for: 5m
         labels:
           severity: warning
         annotations:
-          summary: "Sentinel CPU usage > 70%"
+          summary: "Zentinel CPU usage > 70%"
 
-      - alert: SentinelConnectionsHigh
-        expr: sentinel_open_connections / sentinel_max_connections > 0.7
+      - alert: ZentinelConnectionsHigh
+        expr: zentinel_open_connections / zentinel_max_connections > 0.7
         for: 2m
         labels:
           severity: warning
         annotations:
-          summary: "Sentinel approaching connection limit"
+          summary: "Zentinel approaching connection limit"
 
-      - alert: SentinelLatencyHigh
-        expr: histogram_quantile(0.99, rate(sentinel_request_duration_seconds_bucket[5m])) > 0.1
+      - alert: ZentinelLatencyHigh
+        expr: histogram_quantile(0.99, rate(zentinel_request_duration_seconds_bucket[5m])) > 0.1
         for: 5m
         labels:
           severity: warning
         annotations:
-          summary: "Sentinel p99 latency > 100ms"
+          summary: "Zentinel p99 latency > 100ms"
 ```
 
 ## Scaling Strategies
@@ -223,7 +223,7 @@ server {
       ┌───────────────┼───────────────┐
       │               │               │
  ┌────▼────┐    ┌────▼────┐    ┌────▼────┐
- │Sentinel │    │Sentinel │    │Sentinel │
+ │Zentinel │    │Zentinel │    │Zentinel │
  │   #1    │    │   #2    │    │   #3    │
  └─────────┘    └─────────┘    └─────────┘
 ```
@@ -246,12 +246,12 @@ Instances = (50,000 × 1.5) / 15,000 = 5 instances
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: sentinel-hpa
+  name: zentinel-hpa
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: sentinel
+    name: zentinel
   minReplicas: 3
   maxReplicas: 20
   metrics:
@@ -264,7 +264,7 @@ spec:
     - type: Pods
       pods:
         metric:
-          name: sentinel_requests_per_second
+          name: zentinel_requests_per_second
         target:
           type: AverageValue
           averageValue: "10000"
@@ -276,10 +276,10 @@ spec:
 
 ```bash
 # Simple throughput test with wrk
-wrk -t12 -c400 -d30s http://sentinel:8080/health
+wrk -t12 -c400 -d30s http://zentinel:8080/health
 
 # Latency-focused test
-wrk -t4 -c50 -d60s --latency http://sentinel:8080/api/endpoint
+wrk -t4 -c50 -d60s --latency http://zentinel:8080/api/endpoint
 ```
 
 ### Capacity Test Script
@@ -291,7 +291,7 @@ wrk -t4 -c50 -d60s --latency http://sentinel:8080/api/endpoint
 for CONNECTIONS in 100 500 1000 2000 5000 10000; do
     echo "Testing with $CONNECTIONS connections..."
 
-    wrk -t12 -c$CONNECTIONS -d60s --latency http://sentinel:8080/api \
+    wrk -t12 -c$CONNECTIONS -d60s --latency http://zentinel:8080/api \
         > results-${CONNECTIONS}c.txt 2>&1
 
     # Check for errors or degradation

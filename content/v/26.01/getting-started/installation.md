@@ -3,14 +3,14 @@ title = "Installation"
 weight = 1
 +++
 
-Sentinel can be installed via the install script, from pre-built binaries, built from source, or run as an OCI container.
+Zentinel can be installed via the install script, from pre-built binaries, built from source, or run as an OCI container.
 
 ## Install Script (Recommended)
 
-The easiest way to install Sentinel is using the install script, which automatically detects your OS and architecture:
+The easiest way to install Zentinel is using the install script, which automatically detects your OS and architecture:
 
 ```bash
-curl -fsSL https://getsentinel.raskell.io | sh
+curl -fsSL https://getzentinelproxy.io | sh
 ```
 
 The script downloads the appropriate binary and installs it to `~/.local/bin`. You may need to add this to your PATH:
@@ -24,35 +24,35 @@ Add this line to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.) to make it p
 ### Verify Installation
 
 ```bash
-sentinel --version
+zentinel --version
 ```
 
 ## Pre-built Binaries
 
-Alternatively, download binaries manually from [GitHub Releases](https://github.com/raskell-io/sentinel/releases).
+Alternatively, download binaries manually from [GitHub Releases](https://github.com/zentinelproxy/zentinel/releases).
 
 ### Linux (amd64)
 
 ```bash
-curl -LO https://github.com/raskell-io/sentinel/releases/latest/download/sentinel-linux-amd64.tar.gz
-tar xzf sentinel-linux-amd64.tar.gz
-sudo mv sentinel /usr/local/bin/
+curl -LO https://github.com/zentinelproxy/zentinel/releases/latest/download/zentinel-linux-amd64.tar.gz
+tar xzf zentinel-linux-amd64.tar.gz
+sudo mv zentinel /usr/local/bin/
 ```
 
 ### macOS (Apple Silicon)
 
 ```bash
-curl -LO https://github.com/raskell-io/sentinel/releases/latest/download/sentinel-darwin-arm64.tar.gz
-tar xzf sentinel-darwin-arm64.tar.gz
-sudo mv sentinel /usr/local/bin/
+curl -LO https://github.com/zentinelproxy/zentinel/releases/latest/download/zentinel-darwin-arm64.tar.gz
+tar xzf zentinel-darwin-arm64.tar.gz
+sudo mv zentinel /usr/local/bin/
 ```
 
 ### macOS (Intel)
 
 ```bash
-curl -LO https://github.com/raskell-io/sentinel/releases/latest/download/sentinel-darwin-amd64.tar.gz
-tar xzf sentinel-darwin-amd64.tar.gz
-sudo mv sentinel /usr/local/bin/
+curl -LO https://github.com/zentinelproxy/zentinel/releases/latest/download/zentinel-darwin-amd64.tar.gz
+tar xzf zentinel-darwin-amd64.tar.gz
+sudo mv zentinel /usr/local/bin/
 ```
 
 ## Build from Source
@@ -72,31 +72,31 @@ rustup update stable
 ### Clone and Build
 
 ```bash
-git clone https://github.com/raskell-io/sentinel.git
-cd sentinel
+git clone https://github.com/zentinelproxy/zentinel.git
+cd zentinel
 cargo build --release
 ```
 
-The binary will be at `target/release/sentinel`.
+The binary will be at `target/release/zentinel`.
 
 ### Install System-wide
 
 ```bash
-sudo cp target/release/sentinel /usr/local/bin/
+sudo cp target/release/zentinel /usr/local/bin/
 ```
 
 ## OCI Container
 
-Sentinel provides official OCI container images.
+Zentinel provides official OCI container images.
 
 ### Pull the Image
 
 ```bash
 # Using Docker
-docker pull ghcr.io/raskell-io/sentinel:latest
+docker pull ghcr.io/zentinelproxy/zentinel:latest
 
 # Using Podman
-podman pull ghcr.io/raskell-io/sentinel:latest
+podman pull ghcr.io/zentinelproxy/zentinel:latest
 ```
 
 ### Run the Container
@@ -104,19 +104,19 @@ podman pull ghcr.io/raskell-io/sentinel:latest
 ```bash
 # Using Docker
 docker run -d \
-  --name sentinel \
+  --name zentinel \
   -p 8080:8080 \
   -p 9090:9090 \
-  -v $(pwd)/sentinel.kdl:/etc/sentinel/sentinel.kdl:ro \
-  ghcr.io/raskell-io/sentinel:latest
+  -v $(pwd)/zentinel.kdl:/etc/zentinel/zentinel.kdl:ro \
+  ghcr.io/zentinelproxy/zentinel:latest
 
 # Using Podman
 podman run -d \
-  --name sentinel \
+  --name zentinel \
   -p 8080:8080 \
   -p 9090:9090 \
-  -v $(pwd)/sentinel.kdl:/etc/sentinel/sentinel.kdl:ro \
-  ghcr.io/raskell-io/sentinel:latest
+  -v $(pwd)/zentinel.kdl:/etc/zentinel/zentinel.kdl:ro \
+  ghcr.io/zentinelproxy/zentinel:latest
 ```
 
 ### Compose File
@@ -127,14 +127,14 @@ Works with both Docker Compose and Podman Compose:
 version: '3.8'
 
 services:
-  sentinel:
-    image: ghcr.io/raskell-io/sentinel:latest
+  zentinel:
+    image: ghcr.io/zentinelproxy/zentinel:latest
     ports:
       - "8080:8080"   # HTTP proxy
       - "9090:9090"   # Metrics
     volumes:
-      - ./sentinel.kdl:/etc/sentinel/sentinel.kdl:ro
-      - ./certs:/etc/sentinel/certs:ro
+      - ./zentinel.kdl:/etc/zentinel/zentinel.kdl:ro
+      - ./certs:/etc/zentinel/certs:ro
     restart: unless-stopped
 ```
 
@@ -150,17 +150,17 @@ podman-compose up -d
 
 ## Configuration File Location
 
-By default, Sentinel looks for configuration in these locations:
+By default, Zentinel looks for configuration in these locations:
 
 1. Path specified with `-c` or `--config` flag
-2. `./sentinel.kdl` (current directory)
-3. `/etc/sentinel/sentinel.kdl`
+2. `./zentinel.kdl` (current directory)
+3. `/etc/zentinel/zentinel.kdl`
 
 ### Create a Basic Config
 
 ```bash
-mkdir -p /etc/sentinel
-cat > /etc/sentinel/sentinel.kdl << 'EOF'
+mkdir -p /etc/zentinel
+cat > /etc/zentinel/zentinel.kdl << 'EOF'
 server {
     worker-threads 0
 }
@@ -193,22 +193,22 @@ upstreams {
 EOF
 ```
 
-## Running Sentinel
+## Running Zentinel
 
 ### Basic Usage
 
 ```bash
 # Run with default config location
-sentinel
+zentinel
 
 # Run with specific config file
-sentinel -c /path/to/sentinel.kdl
+zentinel -c /path/to/zentinel.kdl
 
 # Validate config without running
-sentinel -c sentinel.kdl --test
+zentinel -c zentinel.kdl --test
 
 # Run with verbose logging
-sentinel -c sentinel.kdl --log-level debug
+zentinel -c zentinel.kdl --log-level debug
 ```
 
 ### Command Line Options
@@ -226,16 +226,16 @@ sentinel -c sentinel.kdl --log-level debug
 For production deployments on Linux, create a systemd service:
 
 ```bash
-sudo cat > /etc/systemd/system/sentinel.service << 'EOF'
+sudo cat > /etc/systemd/system/zentinel.service << 'EOF'
 [Unit]
-Description=Sentinel Reverse Proxy
+Description=Zentinel Reverse Proxy
 After=network.target
 
 [Service]
 Type=simple
-User=sentinel
-Group=sentinel
-ExecStart=/usr/local/bin/sentinel -c /etc/sentinel/sentinel.kdl
+User=zentinel
+Group=zentinel
+ExecStart=/usr/local/bin/zentinel -c /etc/zentinel/zentinel.kdl
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=always
 RestartSec=5
@@ -245,37 +245,37 @@ LimitNOFILE=65535
 WantedBy=multi-user.target
 EOF
 
-# Create sentinel user
-sudo useradd -r -s /sbin/nologin sentinel
+# Create zentinel user
+sudo useradd -r -s /sbin/nologin zentinel
 
 # Set permissions
-sudo chown -R sentinel:sentinel /etc/sentinel
+sudo chown -R zentinel:zentinel /etc/zentinel
 
 # Enable and start
 sudo systemctl daemon-reload
-sudo systemctl enable sentinel
-sudo systemctl start sentinel
+sudo systemctl enable zentinel
+sudo systemctl start zentinel
 ```
 
 ### Managing the Service
 
 ```bash
 # Check status
-sudo systemctl status sentinel
+sudo systemctl status zentinel
 
 # View logs
-sudo journalctl -u sentinel -f
+sudo journalctl -u zentinel -f
 
 # Reload configuration (graceful)
-sudo systemctl reload sentinel
+sudo systemctl reload zentinel
 
 # Restart
-sudo systemctl restart sentinel
+sudo systemctl restart zentinel
 ```
 
 ## Verifying the Installation
 
-After starting Sentinel, verify it's running:
+After starting Zentinel, verify it's running:
 
 ```bash
 # Check if listening

@@ -3,11 +3,11 @@ title = "Monitoring Setup"
 weight = 6
 +++
 
-Production monitoring and observability for Sentinel deployments.
+Production monitoring and observability for Zentinel deployments.
 
 ## Metrics Endpoint
 
-Sentinel exposes Prometheus metrics on the configured address:
+Zentinel exposes Prometheus metrics on the configured address:
 
 ```kdl
 observability {
@@ -35,23 +35,23 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  # Sentinel proxy
-  - job_name: 'sentinel'
+  # Zentinel proxy
+  - job_name: 'zentinel'
     static_configs:
-      - targets: ['sentinel:9090']
+      - targets: ['zentinel:9090']
     relabel_configs:
       - source_labels: [__address__]
         target_label: instance
         regex: '([^:]+):\d+'
         replacement: '${1}'
 
-  # Sentinel agents
-  - job_name: 'sentinel-agents'
+  # Zentinel agents
+  - job_name: 'zentinel-agents'
     static_configs:
       - targets:
-          - 'sentinel-waf:9091'
-          - 'sentinel-auth:9092'
-          - 'sentinel-ratelimit:9093'
+          - 'zentinel-waf:9091'
+          - 'zentinel-auth:9092'
+          - 'zentinel-ratelimit:9093'
 ```
 
 ### Docker Compose
@@ -79,13 +79,13 @@ volumes:
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: sentinel
+  name: zentinel
   labels:
-    app: sentinel
+    app: zentinel
 spec:
   selector:
     matchLabels:
-      app: sentinel
+      app: zentinel
   endpoints:
     - port: metrics
       interval: 15s
@@ -98,34 +98,34 @@ spec:
 
 | Metric | Type | Description |
 |--------|------|-------------|
-| `sentinel_requests_total` | Counter | Total requests by route, method, status |
-| `sentinel_request_duration_seconds` | Histogram | Request latency distribution |
-| `sentinel_request_size_bytes` | Histogram | Request body size |
-| `sentinel_response_size_bytes` | Histogram | Response body size |
+| `zentinel_requests_total` | Counter | Total requests by route, method, status |
+| `zentinel_request_duration_seconds` | Histogram | Request latency distribution |
+| `zentinel_request_size_bytes` | Histogram | Request body size |
+| `zentinel_response_size_bytes` | Histogram | Response body size |
 
 ### Upstream Metrics
 
 | Metric | Type | Description |
 |--------|------|-------------|
-| `sentinel_upstream_requests_total` | Counter | Requests per upstream target |
-| `sentinel_upstream_latency_seconds` | Histogram | Upstream response time |
-| `sentinel_upstream_health` | Gauge | Target health (1=healthy, 0=unhealthy) |
-| `sentinel_upstream_connections_active` | Gauge | Active connections per upstream |
+| `zentinel_upstream_requests_total` | Counter | Requests per upstream target |
+| `zentinel_upstream_latency_seconds` | Histogram | Upstream response time |
+| `zentinel_upstream_health` | Gauge | Target health (1=healthy, 0=unhealthy) |
+| `zentinel_upstream_connections_active` | Gauge | Active connections per upstream |
 
 ### Agent Metrics
 
 | Metric | Type | Description |
 |--------|------|-------------|
-| `sentinel_agent_duration_seconds` | Histogram | Agent processing time |
-| `sentinel_agent_errors_total` | Counter | Agent errors by type |
-| `sentinel_agent_decisions_total` | Counter | Agent decisions (allow/block) |
+| `zentinel_agent_duration_seconds` | Histogram | Agent processing time |
+| `zentinel_agent_errors_total` | Counter | Agent errors by type |
+| `zentinel_agent_decisions_total` | Counter | Agent decisions (allow/block) |
 
 ### System Metrics
 
 | Metric | Type | Description |
 |--------|------|-------------|
-| `sentinel_connections_active` | Gauge | Active client connections |
-| `sentinel_connections_total` | Counter | Total connections |
+| `zentinel_connections_active` | Gauge | Active client connections |
+| `zentinel_connections_total` | Counter | Total connections |
 | `process_cpu_seconds_total` | Counter | CPU usage |
 | `process_resident_memory_bytes` | Gauge | Memory usage |
 
@@ -135,48 +135,48 @@ spec:
 
 ```promql
 # Requests per second
-rate(sentinel_requests_total[5m])
+rate(zentinel_requests_total[5m])
 
 # By route
-sum by (route) (rate(sentinel_requests_total[5m]))
+sum by (route) (rate(zentinel_requests_total[5m]))
 
 # By status code
-sum by (status) (rate(sentinel_requests_total[5m]))
+sum by (status) (rate(zentinel_requests_total[5m]))
 ```
 
 ### Error Rate
 
 ```promql
 # 5xx error rate
-sum(rate(sentinel_requests_total{status=~"5.."}[5m]))
-/ sum(rate(sentinel_requests_total[5m])) * 100
+sum(rate(zentinel_requests_total{status=~"5.."}[5m]))
+/ sum(rate(zentinel_requests_total[5m])) * 100
 
 # 4xx rate
-sum(rate(sentinel_requests_total{status=~"4.."}[5m]))
-/ sum(rate(sentinel_requests_total[5m])) * 100
+sum(rate(zentinel_requests_total{status=~"4.."}[5m]))
+/ sum(rate(zentinel_requests_total[5m])) * 100
 ```
 
 ### Latency
 
 ```promql
 # 50th percentile
-histogram_quantile(0.50, rate(sentinel_request_duration_seconds_bucket[5m]))
+histogram_quantile(0.50, rate(zentinel_request_duration_seconds_bucket[5m]))
 
 # 95th percentile
-histogram_quantile(0.95, rate(sentinel_request_duration_seconds_bucket[5m]))
+histogram_quantile(0.95, rate(zentinel_request_duration_seconds_bucket[5m]))
 
 # 99th percentile
-histogram_quantile(0.99, rate(sentinel_request_duration_seconds_bucket[5m]))
+histogram_quantile(0.99, rate(zentinel_request_duration_seconds_bucket[5m]))
 ```
 
 ### Upstream Health
 
 ```promql
 # Unhealthy upstreams
-sentinel_upstream_health == 0
+zentinel_upstream_health == 0
 
 # Upstream latency p95
-histogram_quantile(0.95, rate(sentinel_upstream_latency_seconds_bucket[5m]))
+histogram_quantile(0.95, rate(zentinel_upstream_latency_seconds_bucket[5m]))
 ```
 
 ## Alerting Rules
@@ -185,34 +185,34 @@ histogram_quantile(0.95, rate(sentinel_upstream_latency_seconds_bucket[5m]))
 
 ```yaml
 groups:
-  - name: sentinel
+  - name: zentinel
     rules:
       # High error rate
-      - alert: SentinelHighErrorRate
+      - alert: ZentinelHighErrorRate
         expr: |
-          sum(rate(sentinel_requests_total{status=~"5.."}[5m]))
-          / sum(rate(sentinel_requests_total[5m])) > 0.05
+          sum(rate(zentinel_requests_total{status=~"5.."}[5m]))
+          / sum(rate(zentinel_requests_total[5m])) > 0.05
         for: 5m
         labels:
           severity: critical
         annotations:
-          summary: "High error rate on Sentinel"
+          summary: "High error rate on Zentinel"
           description: "Error rate is {{ $value | humanizePercentage }}"
 
       # High latency
-      - alert: SentinelHighLatency
+      - alert: ZentinelHighLatency
         expr: |
-          histogram_quantile(0.95, rate(sentinel_request_duration_seconds_bucket[5m])) > 1
+          histogram_quantile(0.95, rate(zentinel_request_duration_seconds_bucket[5m])) > 1
         for: 5m
         labels:
           severity: warning
         annotations:
-          summary: "High latency on Sentinel"
+          summary: "High latency on Zentinel"
           description: "p95 latency is {{ $value | humanizeDuration }}"
 
       # Upstream down
-      - alert: SentinelUpstreamDown
-        expr: sentinel_upstream_health == 0
+      - alert: ZentinelUpstreamDown
+        expr: zentinel_upstream_health == 0
         for: 1m
         labels:
           severity: critical
@@ -221,19 +221,19 @@ groups:
           description: "{{ $labels.upstream }}/{{ $labels.target }} is unhealthy"
 
       # No requests
-      - alert: SentinelNoTraffic
+      - alert: ZentinelNoTraffic
         expr: |
-          sum(rate(sentinel_requests_total[5m])) == 0
+          sum(rate(zentinel_requests_total[5m])) == 0
         for: 5m
         labels:
           severity: warning
         annotations:
-          summary: "No traffic to Sentinel"
-          description: "Sentinel has received no requests in 5 minutes"
+          summary: "No traffic to Zentinel"
+          description: "Zentinel has received no requests in 5 minutes"
 
       # Agent errors
-      - alert: SentinelAgentErrors
-        expr: rate(sentinel_agent_errors_total[5m]) > 0
+      - alert: ZentinelAgentErrors
+        expr: rate(zentinel_agent_errors_total[5m]) > 0
         for: 5m
         labels:
           severity: warning
@@ -242,7 +242,7 @@ groups:
           description: "Agent {{ $labels.agent }} has errors"
 
       # High memory
-      - alert: SentinelHighMemory
+      - alert: ZentinelHighMemory
         expr: |
           process_resident_memory_bytes / 1024 / 1024 > 1024
         for: 10m
@@ -250,7 +250,7 @@ groups:
           severity: warning
         annotations:
           summary: "High memory usage"
-          description: "Sentinel using {{ $value | humanize }}MB"
+          description: "Zentinel using {{ $value | humanize }}MB"
 ```
 
 ## Grafana Dashboards
@@ -259,14 +259,14 @@ groups:
 
 ```json
 {
-  "title": "Sentinel Overview",
+  "title": "Zentinel Overview",
   "panels": [
     {
       "title": "Request Rate",
       "type": "timeseries",
       "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
       "targets": [{
-        "expr": "sum(rate(sentinel_requests_total[5m]))",
+        "expr": "sum(rate(zentinel_requests_total[5m]))",
         "legendFormat": "Requests/sec"
       }]
     },
@@ -275,7 +275,7 @@ groups:
       "type": "gauge",
       "gridPos": {"x": 12, "y": 0, "w": 6, "h": 8},
       "targets": [{
-        "expr": "sum(rate(sentinel_requests_total{status=~\"5..\"}[5m])) / sum(rate(sentinel_requests_total[5m])) * 100"
+        "expr": "sum(rate(zentinel_requests_total{status=~\"5..\"}[5m])) / sum(rate(zentinel_requests_total[5m])) * 100"
       }],
       "fieldConfig": {
         "defaults": {
@@ -296,15 +296,15 @@ groups:
       "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8},
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, rate(sentinel_request_duration_seconds_bucket[5m]))",
+          "expr": "histogram_quantile(0.50, rate(zentinel_request_duration_seconds_bucket[5m]))",
           "legendFormat": "p50"
         },
         {
-          "expr": "histogram_quantile(0.95, rate(sentinel_request_duration_seconds_bucket[5m]))",
+          "expr": "histogram_quantile(0.95, rate(zentinel_request_duration_seconds_bucket[5m]))",
           "legendFormat": "p95"
         },
         {
-          "expr": "histogram_quantile(0.99, rate(sentinel_request_duration_seconds_bucket[5m]))",
+          "expr": "histogram_quantile(0.99, rate(zentinel_request_duration_seconds_bucket[5m]))",
           "legendFormat": "p99"
         }
       ]
@@ -314,7 +314,7 @@ groups:
       "type": "stat",
       "gridPos": {"x": 12, "y": 8, "w": 6, "h": 8},
       "targets": [{
-        "expr": "sentinel_upstream_health",
+        "expr": "zentinel_upstream_health",
         "legendFormat": "{{upstream}}/{{target}}"
       }]
     }
@@ -324,7 +324,7 @@ groups:
 
 ## Health Checks
 
-### Sentinel Health Endpoint
+### Zentinel Health Endpoint
 
 ```bash
 # Simple health check
@@ -366,7 +366,7 @@ apiVersion: v1
 kind: Pod
 spec:
   containers:
-    - name: sentinel
+    - name: zentinel
       livenessProbe:
         httpGet:
           path: /health
@@ -444,13 +444,13 @@ clients:
   - url: http://loki:3100/loki/api/v1/push
 
 scrape_configs:
-  - job_name: sentinel
+  - job_name: zentinel
     static_configs:
       - targets:
           - localhost
         labels:
-          job: sentinel
-          __path__: /var/log/sentinel/*.log
+          job: zentinel
+          __path__: /var/log/zentinel/*.log
     pipeline_stages:
       - json:
           expressions:
@@ -514,17 +514,17 @@ services:
 
 ```promql
 # Availability SLI (non-5xx responses)
-sum(rate(sentinel_requests_total{status!~"5.."}[5m]))
-/ sum(rate(sentinel_requests_total[5m]))
+sum(rate(zentinel_requests_total{status!~"5.."}[5m]))
+/ sum(rate(zentinel_requests_total[5m]))
 
 # Latency SLI (requests under 200ms)
-sum(rate(sentinel_request_duration_seconds_bucket{le="0.2"}[5m]))
-/ sum(rate(sentinel_request_duration_seconds_count[5m]))
+sum(rate(zentinel_request_duration_seconds_bucket{le="0.2"}[5m]))
+/ sum(rate(zentinel_request_duration_seconds_count[5m]))
 
 # Error budget remaining (99.9% SLO)
 1 - (
-  (1 - (sum(rate(sentinel_requests_total{status!~"5.."}[30d]))
-  / sum(rate(sentinel_requests_total[30d]))))
+  (1 - (sum(rate(zentinel_requests_total{status!~"5.."}[30d]))
+  / sum(rate(zentinel_requests_total[30d]))))
   / (1 - 0.999)
 )
 ```

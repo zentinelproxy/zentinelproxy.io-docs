@@ -3,17 +3,17 @@ title = "FAQ"
 weight = 2
 +++
 
-Frequently asked questions about Sentinel.
+Frequently asked questions about Zentinel.
 
 ## General
 
-### What is Sentinel?
+### What is Zentinel?
 
-Sentinel is a high-performance reverse proxy and load balancer built on [Pingora](https://github.com/cloudflare/pingora), Cloudflare's Rust-based proxy framework. It provides HTTP/1.1, HTTP/2, and HTTP/3 support with features like load balancing, health checks, TLS termination, and extensible request processing through agents.
+Zentinel is a high-performance reverse proxy and load balancer built on [Pingora](https://github.com/cloudflare/pingora), Cloudflare's Rust-based proxy framework. It provides HTTP/1.1, HTTP/2, and HTTP/3 support with features like load balancing, health checks, TLS termination, and extensible request processing through agents.
 
-### How does Sentinel compare to nginx?
+### How does Zentinel compare to nginx?
 
-| Aspect | Sentinel | nginx |
+| Aspect | Zentinel | nginx |
 |--------|----------|-------|
 | Language | Rust | C |
 | Config format | KDL | nginx.conf |
@@ -22,49 +22,49 @@ Sentinel is a high-performance reverse proxy and load balancer built on [Pingora
 | HTTP/3 | Native | Requires patch |
 | Extensibility | Agents (external) | Modules (compiled) |
 
-Sentinel offers memory safety guarantees and a more modern configuration format, while nginx has a larger ecosystem and longer track record.
+Zentinel offers memory safety guarantees and a more modern configuration format, while nginx has a larger ecosystem and longer track record.
 
-### How does Sentinel compare to Envoy?
+### How does Zentinel compare to Envoy?
 
-Both are modern proxies with similar capabilities. Sentinel uses KDL configuration files while Envoy uses YAML/JSON and xDS APIs. Sentinel is lighter weight and simpler to configure for common use cases, while Envoy offers more extensive observability and service mesh features.
+Both are modern proxies with similar capabilities. Zentinel uses KDL configuration files while Envoy uses YAML/JSON and xDS APIs. Zentinel is lighter weight and simpler to configure for common use cases, while Envoy offers more extensive observability and service mesh features.
 
-### Is Sentinel production-ready?
+### Is Zentinel production-ready?
 
-Sentinel is under active development. Check the [changelog](../changelog/) for the current version and stability status. For production deployments, thoroughly test your specific use case and monitor the GitHub repository for updates.
+Zentinel is under active development. Check the [changelog](../changelog/) for the current version and stability status. For production deployments, thoroughly test your specific use case and monitor the GitHub repository for updates.
 
 ## Configuration
 
 ### Where should I put the configuration file?
 
-The default location is `/etc/sentinel/sentinel.kdl`. You can specify a different path with `--config`:
+The default location is `/etc/zentinel/zentinel.kdl`. You can specify a different path with `--config`:
 
 ```bash
-sentinel --config /path/to/sentinel.kdl
+zentinel --config /path/to/zentinel.kdl
 ```
 
-Or set the `SENTINEL_CONFIG` environment variable.
+Or set the `ZENTINEL_CONFIG` environment variable.
 
 ### How do I validate my configuration?
 
 Use the `--test` flag to validate without starting the server:
 
 ```bash
-sentinel --test --config sentinel.kdl
+zentinel --test --config zentinel.kdl
 ```
 
 Add `--verbose` for detailed validation output.
 
 ### How do I reload configuration without downtime?
 
-Send a `SIGHUP` signal to the Sentinel process:
+Send a `SIGHUP` signal to the Zentinel process:
 
 ```bash
-kill -HUP $(cat /var/run/sentinel.pid)
+kill -HUP $(cat /var/run/zentinel.pid)
 # or
-systemctl reload sentinel
+systemctl reload zentinel
 ```
 
-Sentinel validates the new configuration before applying it. If validation fails, the old configuration remains active.
+Zentinel validates the new configuration before applying it. If validation fails, the old configuration remains active.
 
 ### Can I use environment variables in configuration?
 
@@ -72,7 +72,7 @@ Currently, environment variables are not interpolated in KDL configuration files
 
 ## Networking
 
-### What ports does Sentinel use?
+### What ports does Zentinel use?
 
 By default:
 - **8080** - HTTP traffic (configurable)
@@ -87,7 +87,7 @@ Ports below 1024 require elevated privileges. Options:
 
 1. **Linux capabilities** (recommended):
    ```bash
-   sudo setcap cap_net_bind_service=+ep /usr/local/bin/sentinel
+   sudo setcap cap_net_bind_service=+ep /usr/local/bin/zentinel
    ```
 
 2. **iptables redirect**:
@@ -97,19 +97,19 @@ Ports below 1024 require elevated privileges. Options:
 
 3. **Run as root** (not recommended for production)
 
-### Does Sentinel support WebSockets?
+### Does Zentinel support WebSockets?
 
 Yes. WebSocket connections are proxied transparently when using HTTP/1.1. Ensure your route doesn't have policies that buffer the request body.
 
-### Does Sentinel support gRPC?
+### Does Zentinel support gRPC?
 
-Yes. Sentinel can proxy gRPC traffic over HTTP/2. Configure your listener with `protocol "h2"` or `protocol "https"` and ensure the upstream supports HTTP/2.
+Yes. Zentinel can proxy gRPC traffic over HTTP/2. Configure your listener with `protocol "h2"` or `protocol "https"` and ensure the upstream supports HTTP/2.
 
 ## TLS
 
 ### What TLS versions are supported?
 
-Sentinel supports TLS 1.2 and TLS 1.3. Configure minimum version in the listener:
+Zentinel supports TLS 1.2 and TLS 1.3. Configure minimum version in the listener:
 
 ```kdl
 listeners {
@@ -143,9 +143,9 @@ listeners {
 Update the certificate files on disk and send `SIGHUP` to reload:
 
 ```bash
-cp new-cert.crt /etc/sentinel/certs/server.crt
-cp new-key.key /etc/sentinel/certs/server.key
-kill -HUP $(cat /var/run/sentinel.pid)
+cp new-cert.crt /etc/zentinel/certs/server.crt
+cp new-key.key /etc/zentinel/certs/server.key
+kill -HUP $(cat /var/run/zentinel.pid)
 ```
 
 ## Load Balancing
@@ -209,7 +209,7 @@ Common causes:
 
 ### How do I disable health checks?
 
-Remove the `health-check` block from the upstream configuration. Without health checks, Sentinel assumes all targets are healthy.
+Remove the `health-check` block from the upstream configuration. Without health checks, Zentinel assumes all targets are healthy.
 
 ### Can I use different health check paths for different servers?
 
@@ -262,7 +262,7 @@ Agents handle request processing tasks that require external logic or state:
 - **WAF** - Web application firewall inspection
 - **Custom logic** - Any request/response transformation
 
-### How do agents communicate with Sentinel?
+### How do agents communicate with Zentinel?
 
 Agents connect via:
 - **Unix sockets** (recommended for local agents)
@@ -283,19 +283,19 @@ Circuit breakers prevent repeated failures from overwhelming agents.
 Set the `RUST_LOG` environment variable:
 
 ```bash
-RUST_LOG=debug sentinel --config sentinel.kdl
+RUST_LOG=debug zentinel --config zentinel.kdl
 
 # Module-specific debugging
-RUST_LOG=sentinel::proxy=debug sentinel --config sentinel.kdl
+RUST_LOG=zentinel::proxy=debug zentinel --config zentinel.kdl
 ```
 
 ### Where are the logs?
 
 | Deployment | Location |
 |------------|----------|
-| systemd | `journalctl -u sentinel` |
-| Docker | `docker logs sentinel` |
-| Kubernetes | `kubectl logs -l app=sentinel` |
+| systemd | `journalctl -u zentinel` |
+| Docker | `docker logs zentinel` |
+| Kubernetes | `kubectl logs -l app=zentinel` |
 
 ### How do I trace a specific request?
 
@@ -305,7 +305,7 @@ Every request has a correlation ID in the `X-Correlation-Id` response header. Se
 curl -i http://localhost:8080/api/endpoint
 # Note the X-Correlation-Id header
 
-grep "abc123xyz" /var/log/sentinel/*.log
+grep "abc123xyz" /var/log/zentinel/*.log
 ```
 
 ## Migration
@@ -318,14 +318,14 @@ See the [Migration Guide](../../operations/migration/#from-nginx) for detailed c
 
 See the [Migration Guide](../../operations/migration/#from-haproxy) for detailed configuration mapping and examples.
 
-### Can I run Sentinel alongside my existing proxy?
+### Can I run Zentinel alongside my existing proxy?
 
-Yes. Run Sentinel on a different port and gradually shift traffic:
+Yes. Run Zentinel on a different port and gradually shift traffic:
 
 ```bash
-# Sentinel on 8080, nginx on 80
+# Zentinel on 8080, nginx on 80
 # Test: curl http://localhost:8080/api/endpoint
-# Compare: diff <(curl -s nginx/api) <(curl -s sentinel/api)
+# Compare: diff <(curl -s nginx/api) <(curl -s zentinel/api)
 ```
 
 ## See Also

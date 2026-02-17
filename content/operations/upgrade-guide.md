@@ -3,13 +3,13 @@ title = "Upgrade Guide"
 weight = 7
 +++
 
-Procedures for upgrading and migrating Sentinel deployments.
+Procedures for upgrading and migrating Zentinel deployments.
 
 ## Version Management
 
 ### Version Numbering
 
-Sentinel follows semantic versioning: `MAJOR.MINOR.PATCH`
+Zentinel follows semantic versioning: `MAJOR.MINOR.PATCH`
 
 | Version Change | Meaning | Upgrade Approach |
 |----------------|---------|------------------|
@@ -29,13 +29,13 @@ Sentinel follows semantic versioning: `MAJOR.MINOR.PATCH`
 
 ```bash
 # Check current version
-sentinel --version
+zentinel --version
 
 # Check version in running instance
 curl -s localhost:9090/admin/version
 
 # Compare with latest release
-curl -s https://api.github.com/repos/raskell-io/sentinel/releases/latest | \
+curl -s https://api.github.com/repos/zentinelproxy/zentinel/releases/latest | \
     jq -r '.tag_name'
 ```
 
@@ -55,17 +55,17 @@ curl -s https://api.github.com/repos/raskell-io/sentinel/releases/latest | \
 
 ```bash
 #!/bin/bash
-BACKUP_DIR="/var/backups/sentinel/$(date +%Y%m%d-%H%M%S)"
+BACKUP_DIR="/var/backups/zentinel/$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$BACKUP_DIR"
 
 # Backup binary
-cp /usr/local/bin/sentinel "$BACKUP_DIR/"
+cp /usr/local/bin/zentinel "$BACKUP_DIR/"
 
 # Backup configuration
-cp -r /etc/sentinel "$BACKUP_DIR/config"
+cp -r /etc/zentinel "$BACKUP_DIR/config"
 
 # Save current version
-sentinel --version > "$BACKUP_DIR/version.txt"
+zentinel --version > "$BACKUP_DIR/version.txt"
 
 # Save metrics snapshot
 curl -s localhost:9090/metrics > "$BACKUP_DIR/metrics.txt"
@@ -85,22 +85,22 @@ echo "Backup complete: $BACKUP_DIR"
 NEW_VERSION="$1"
 
 # Download new version
-curl -L -o /tmp/sentinel-new \
-    "https://github.com/raskell-io/sentinel/releases/download/v${NEW_VERSION}/sentinel-linux-amd64"
-chmod +x /tmp/sentinel-new
+curl -L -o /tmp/zentinel-new \
+    "https://github.com/zentinelproxy/zentinel/releases/download/v${NEW_VERSION}/zentinel-linux-amd64"
+chmod +x /tmp/zentinel-new
 
 # Verify download and validate config
-/tmp/sentinel-new --version
-/tmp/sentinel-new --validate --config /etc/sentinel/config.kdl
+/tmp/zentinel-new --version
+/tmp/zentinel-new --validate --config /etc/zentinel/config.kdl
 
 # Create backup
-./backup-sentinel.sh
+./backup-zentinel.sh
 
 # Replace binary
-mv /tmp/sentinel-new /usr/local/bin/sentinel
+mv /tmp/zentinel-new /usr/local/bin/zentinel
 
 # Graceful restart
-systemctl restart sentinel
+systemctl restart zentinel
 
 # Verify
 sleep 5
@@ -124,30 +124,30 @@ if [ "$AVAILABLE_SPACE" -lt 100000 ]; then
 fi
 
 # Download and verify checksum
-curl -L -o /tmp/sentinel-new \
-    "https://github.com/raskell-io/sentinel/releases/download/v${NEW_VERSION}/sentinel-linux-amd64"
-curl -L -o /tmp/sentinel-new.sha256 \
-    "https://github.com/raskell-io/sentinel/releases/download/v${NEW_VERSION}/sentinel-linux-amd64.sha256"
+curl -L -o /tmp/zentinel-new \
+    "https://github.com/zentinelproxy/zentinel/releases/download/v${NEW_VERSION}/zentinel-linux-amd64"
+curl -L -o /tmp/zentinel-new.sha256 \
+    "https://github.com/zentinelproxy/zentinel/releases/download/v${NEW_VERSION}/zentinel-linux-amd64.sha256"
 
-cd /tmp && sha256sum -c sentinel-new.sha256
-chmod +x /tmp/sentinel-new
+cd /tmp && sha256sum -c zentinel-new.sha256
+chmod +x /tmp/zentinel-new
 
 # Test new binary
-/tmp/sentinel-new --version
-/tmp/sentinel-new --validate --config /etc/sentinel/config.kdl
+/tmp/zentinel-new --version
+/tmp/zentinel-new --validate --config /etc/zentinel/config.kdl
 
 # Create backup
-./backup-sentinel.sh
+./backup-zentinel.sh
 
 # Graceful shutdown and replace
-kill -TERM $(cat /var/run/sentinel.pid)
+kill -TERM $(cat /var/run/zentinel.pid)
 sleep 5
-mv /tmp/sentinel-new /usr/local/bin/sentinel
-systemctl start sentinel
+mv /tmp/zentinel-new /usr/local/bin/zentinel
+systemctl start zentinel
 
 # Verify
 sleep 5
-curl -sf localhost:8080/health || { ./rollback-sentinel.sh; exit 1; }
+curl -sf localhost:8080/health || { ./rollback-zentinel.sh; exit 1; }
 echo "Upgrade successful!"
 ```
 
@@ -205,7 +205,7 @@ Phase 2: Shift traffic to new version
 
 ```bash
 #!/bin/bash
-BACKUP_DIR=$(ls -td /var/backups/sentinel/*/ | head -1)
+BACKUP_DIR=$(ls -td /var/backups/zentinel/*/ | head -1)
 
 if [ -z "$BACKUP_DIR" ]; then
     echo "ERROR: No backup found!"
@@ -215,17 +215,17 @@ fi
 echo "Rolling back from $BACKUP_DIR"
 
 # Stop current version
-systemctl stop sentinel
+systemctl stop zentinel
 
 # Restore binary
-cp "$BACKUP_DIR/sentinel" /usr/local/bin/sentinel
-chmod +x /usr/local/bin/sentinel
+cp "$BACKUP_DIR/zentinel" /usr/local/bin/zentinel
+chmod +x /usr/local/bin/zentinel
 
 # Restore configuration
-cp -r "$BACKUP_DIR/config/"* /etc/sentinel/
+cp -r "$BACKUP_DIR/config/"* /etc/zentinel/
 
 # Start
-systemctl start sentinel
+systemctl start zentinel
 
 # Verify
 sleep 5
@@ -289,16 +289,16 @@ routes {
 
 ```bash
 # Check for configuration issues
-sentinel config check /etc/sentinel/config.kdl
+zentinel config check /etc/zentinel/config.kdl
 
 # Migrate configuration to new format
-sentinel config migrate /etc/sentinel/config.kdl -o config.kdl.new
+zentinel config migrate /etc/zentinel/config.kdl -o config.kdl.new
 
 # Show migration diff
-diff /etc/sentinel/config.kdl config.kdl.new
+diff /etc/zentinel/config.kdl config.kdl.new
 
 # Validate migrated configuration
-sentinel --validate --config config.kdl.new
+zentinel --validate --config config.kdl.new
 ```
 
 ## Post-Upgrade Validation
@@ -311,7 +311,7 @@ ERRORS=0
 
 # Process running
 echo -n "Process running: "
-pgrep -f sentinel > /dev/null && echo "OK" || { echo "FAIL"; ((ERRORS++)); }
+pgrep -f zentinel > /dev/null && echo "OK" || { echo "FAIL"; ((ERRORS++)); }
 
 # Health endpoint
 echo -n "Health endpoint: "
@@ -323,7 +323,7 @@ curl -sf localhost:9090/metrics > /dev/null && echo "OK" || { echo "FAIL"; ((ERR
 
 # Version correct
 echo -n "Version: "
-sentinel --version
+zentinel --version
 
 # Configuration loaded
 echo -n "Config loaded: "
@@ -369,10 +369,10 @@ done
 
 ```bash
 # Validate config before upgrade
-sentinel --validate --config /etc/sentinel/config.kdl
+zentinel --validate --config /etc/zentinel/config.kdl
 
 # Create backup
-./backup-sentinel.sh
+./backup-zentinel.sh
 
 # Perform upgrade
 ./patch-upgrade.sh 2.1.5      # Patch
@@ -380,7 +380,7 @@ sentinel --validate --config /etc/sentinel/config.kdl
 ./blue-green-upgrade.sh 3.0.0 # Major
 
 # Rollback if needed
-./rollback-sentinel.sh
+./rollback-zentinel.sh
 ```
 
 ### Health Check Endpoints

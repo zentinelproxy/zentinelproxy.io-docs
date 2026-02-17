@@ -3,12 +3,12 @@ title = "Component Design"
 weight = 2
 +++
 
-Sentinel is organized as a Cargo workspace with four core crates. This page explains each component's responsibilities and how they interact.
+Zentinel is organized as a Cargo workspace with four core crates. This page explains each component's responsibilities and how they interact.
 
 ## Crate Structure
 
 ```
-sentinel/
+zentinel/
 ├── crates/
 │   ├── proxy/           # Main proxy binary and library
 │   ├── config/          # Configuration parsing and validation
@@ -20,8 +20,8 @@ sentinel/
 
 ## Proxy Crate
 
-**Package**: `sentinel-proxy`
-**Binary**: `sentinel`
+**Package**: `zentinel-proxy`
+**Binary**: `zentinel`
 
 The main proxy implementation that ties everything together.
 
@@ -41,10 +41,10 @@ The main proxy implementation that ties everything together.
 
 ### Proxy Module
 
-The `SentinelProxy` struct implements Pingora's `ProxyHttp` trait:
+The `ZentinelProxy` struct implements Pingora's `ProxyHttp` trait:
 
 ```rust
-impl ProxyHttp for SentinelProxy {
+impl ProxyHttp for ZentinelProxy {
     // Select upstream target for request
     async fn upstream_peer(&self, session: &mut Session, ctx: &mut Context)
         -> Result<Box<HttpPeer>>;
@@ -143,7 +143,7 @@ pub struct Agent {
 
 ## Config Crate
 
-**Package**: `sentinel-config`
+**Package**: `zentinel-config`
 
 Handles configuration parsing, validation, and hot reload.
 
@@ -235,9 +235,9 @@ pub enum ReloadEvent {
 
 ## Agent Protocol Crate
 
-**Package**: `sentinel-agent-protocol`
+**Package**: `zentinel-agent-protocol`
 
-Defines the contract between Sentinel and external agents.
+Defines the contract between Zentinel and external agents.
 
 ### Transport Options
 
@@ -324,7 +324,7 @@ pub trait AgentHandler: Send + Sync {
 
 ## Common Crate
 
-**Package**: `sentinel-common`
+**Package**: `zentinel-common`
 
 Shared types and utilities used across all crates.
 
@@ -342,7 +342,7 @@ pub struct AgentId(String);
 ### Error Types
 
 ```rust
-pub enum SentinelError {
+pub enum ZentinelError {
     Config(ConfigError),
     Routing(RoutingError),
     Upstream(UpstreamError),
@@ -351,7 +351,7 @@ pub enum SentinelError {
     Io(std::io::Error),
 }
 
-pub type SentinelResult<T> = Result<T, SentinelError>;
+pub type ZentinelResult<T> = Result<T, ZentinelError>;
 ```
 
 ### Circuit Breaker
@@ -405,7 +405,7 @@ pub struct RequestMetrics {
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         sentinel-proxy                           │
+│                         zentinel-proxy                           │
 │  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────────────────┐│
 │  │ Routing │  │Upstream │  │ Agents  │  │    Static Files     ││
 │  └────┬────┘  └────┬────┘  └────┬────┘  └─────────────────────┘│
@@ -414,7 +414,7 @@ pub struct RequestMetrics {
         │            │            │
         │            │            │
 ┌───────▼────────────▼────────────▼───────────────────────────────┐
-│                       sentinel-config                            │
+│                       zentinel-config                            │
 │  ┌─────────────┐  ┌──────────────┐  ┌────────────────────────┐ │
 │  │   Parsing   │  │  Validation  │  │     Hot Reload         │ │
 │  └─────────────┘  └──────────────┘  └────────────────────────┘ │
@@ -422,7 +422,7 @@ pub struct RequestMetrics {
         │
         │
 ┌───────▼─────────────────────────────────────────────────────────┐
-│                    sentinel-agent-protocol                       │
+│                    zentinel-agent-protocol                       │
 │  ┌─────────────┐  ┌──────────────┐  ┌────────────────────────┐ │
 │  │   Client    │  │    Types     │  │      Server            │ │
 │  └─────────────┘  └──────────────┘  └────────────────────────┘ │
@@ -430,7 +430,7 @@ pub struct RequestMetrics {
         │
         │
 ┌───────▼─────────────────────────────────────────────────────────┐
-│                       sentinel-common                            │
+│                       zentinel-common                            │
 │  ┌─────────┐  ┌──────────┐  ┌─────────┐  ┌──────────────────┐  │
 │  │  Types  │  │  Errors  │  │ Circuit │  │  Observability   │  │
 │  │  (IDs)  │  │          │  │ Breaker │  │                  │  │

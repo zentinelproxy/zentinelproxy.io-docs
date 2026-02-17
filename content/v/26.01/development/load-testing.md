@@ -3,7 +3,7 @@ title = "Load Testing"
 weight = 8
 +++
 
-Performance and stress testing for Sentinel.
+Performance and stress testing for Zentinel.
 
 ## Load Testing Tools
 
@@ -58,8 +58,8 @@ sudo apt install k6  # Ubuntu
 Measure maximum requests per second:
 
 ```bash
-# Start Sentinel
-./sentinel -c sentinel.kdl &
+# Start Zentinel
+./zentinel -c zentinel.kdl &
 
 # Run throughput test
 wrk -t4 -c100 -d60s http://localhost:8080/health
@@ -222,7 +222,7 @@ Test agent behavior under pressure:
 
 ```bash
 # Start agent with limited resources
-sentinel-agent-waf --socket /tmp/waf.sock &
+zentinel-agent-waf --socket /tmp/waf.sock &
 
 # Generate high load
 wrk -t8 -c500 -d5m http://localhost:8080/api/test
@@ -243,9 +243,9 @@ curl http://localhost:9091/metrics | grep agent
 docker run -p 9090:9090 -v ./prometheus.yml:/etc/prometheus/prometheus.yml prom/prometheus
 
 # During load test, query:
-# - Request rate: rate(sentinel_requests_total[1m])
-# - Latency p99: histogram_quantile(0.99, rate(sentinel_request_duration_seconds_bucket[1m]))
-# - Error rate: rate(sentinel_requests_total{status=~"5.."}[1m])
+# - Request rate: rate(zentinel_requests_total[1m])
+# - Latency p99: histogram_quantile(0.99, rate(zentinel_request_duration_seconds_bucket[1m]))
+# - Error rate: rate(zentinel_requests_total{status=~"5.."}[1m])
 ```
 
 ### Recording Results
@@ -270,7 +270,7 @@ Using criterion for micro-benchmarks:
 ```rust
 // benches/routing.rs
 use criterion::{criterion_group, criterion_main, Criterion};
-use sentinel::routing::Router;
+use zentinel::routing::Router;
 
 fn bench_route_matching(c: &mut Criterion) {
     let router = Router::from_config(test_config());
@@ -306,7 +306,7 @@ cargo bench -- --baseline main
 
 ```bash
 # Linux
-perf record -g ./target/release/sentinel -c sentinel.kdl &
+perf record -g ./target/release/zentinel -c zentinel.kdl &
 # Run load test
 perf report
 ```
@@ -315,19 +315,19 @@ perf report
 
 ```bash
 # Profile with Instruments
-xcrun xctrace record --template 'Time Profiler' --launch ./target/release/sentinel -- -c sentinel.kdl
+xcrun xctrace record --template 'Time Profiler' --launch ./target/release/zentinel -- -c zentinel.kdl
 ```
 
 ### Memory Profiling
 
 ```bash
 # Using heaptrack
-heaptrack ./target/release/sentinel -c sentinel.kdl &
+heaptrack ./target/release/zentinel -c zentinel.kdl &
 # Run load test
-heaptrack_gui heaptrack.sentinel.*.gz
+heaptrack_gui heaptrack.zentinel.*.gz
 
 # Using valgrind
-valgrind --tool=massif ./target/release/sentinel -c sentinel.kdl
+valgrind --tool=massif ./target/release/zentinel -c zentinel.kdl
 ```
 
 ### Flamegraphs
@@ -337,9 +337,9 @@ valgrind --tool=massif ./target/release/sentinel -c sentinel.kdl
 cargo install flamegraph
 
 # Generate flamegraph
-cargo flamegraph --bin sentinel -- -c sentinel.kdl &
+cargo flamegraph --bin zentinel -- -c zentinel.kdl &
 # Run load test
-# Stop sentinel
+# Stop zentinel
 
 # View flamegraph.svg in browser
 ```
@@ -378,7 +378,7 @@ cargo flamegraph --bin sentinel -- -c sentinel.kdl &
 
 ```bash
 # Check for blocking operations
-RUST_LOG=trace cargo run -- -c sentinel.kdl 2>&1 | grep -i block
+RUST_LOG=trace cargo run -- -c zentinel.kdl 2>&1 | grep -i block
 
 # Profile to find hot spots
 cargo flamegraph
@@ -400,7 +400,7 @@ ss -tan | awk '{print $1}' | sort | uniq -c
 ```bash
 # Monitor memory over time
 while true; do
-    ps -o rss= -p $(pgrep sentinel)
+    ps -o rss= -p $(pgrep zentinel)
     sleep 1
 done | tee memory.log
 ```

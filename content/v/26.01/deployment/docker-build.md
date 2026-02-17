@@ -3,25 +3,25 @@ title = "Building Images"
 weight = 2
 +++
 
-Build optimized Docker images for Sentinel and agents.
+Build optimized Docker images for Zentinel and agents.
 
 ## Official Images
 
 Pre-built images are available:
 
 ```bash
-# Sentinel proxy
-docker pull ghcr.io/raskell-io/sentinel:latest
-docker pull ghcr.io/raskell-io/sentinel:1.0.0
+# Zentinel proxy
+docker pull ghcr.io/zentinelproxy/zentinel:latest
+docker pull ghcr.io/zentinelproxy/zentinel:1.0.0
 
 # Agents
-docker pull ghcr.io/raskell-io/sentinel-agent-waf:latest
-docker pull ghcr.io/raskell-io/sentinel-agent-auth:latest
-docker pull ghcr.io/raskell-io/sentinel-agent-ratelimit:latest
-docker pull ghcr.io/raskell-io/sentinel-agent-js:latest
+docker pull ghcr.io/zentinelproxy/zentinel-agent-waf:latest
+docker pull ghcr.io/zentinelproxy/zentinel-agent-auth:latest
+docker pull ghcr.io/zentinelproxy/zentinel-agent-ratelimit:latest
+docker pull ghcr.io/zentinelproxy/zentinel-agent-js:latest
 ```
 
-## Building Sentinel
+## Building Zentinel
 
 ### Basic Dockerfile
 
@@ -41,18 +41,18 @@ RUN apt-get update && apt-get install -y \
     libssl3 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /app/target/release/sentinel /usr/local/bin/
+COPY --from=builder /app/target/release/zentinel /usr/local/bin/
 
 EXPOSE 8080 8443 9090
 
-ENTRYPOINT ["sentinel"]
-CMD ["-c", "/etc/sentinel/sentinel.kdl"]
+ENTRYPOINT ["zentinel"]
+CMD ["-c", "/etc/zentinel/zentinel.kdl"]
 ```
 
 Build:
 
 ```bash
-docker build -t sentinel:latest .
+docker build -t zentinel:latest .
 ```
 
 ### Optimized Multi-Stage Build
@@ -68,14 +68,14 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Create app user
-RUN useradd --create-home --uid 1000 sentinel
+RUN useradd --create-home --uid 1000 zentinel
 
 WORKDIR /app
 
 # Cache dependencies
 COPY Cargo.toml Cargo.lock ./
 RUN mkdir src && echo "fn main() {}" > src/main.rs
-RUN cargo build --release && rm -rf src target/release/deps/sentinel*
+RUN cargo build --release && rm -rf src target/release/deps/zentinel*
 
 # Build actual application
 COPY src ./src
@@ -90,23 +90,23 @@ RUN apt-get update && apt-get install -y \
     libssl3 \
     curl \
     && rm -rf /var/lib/apt/lists/* \
-    && useradd --create-home --uid 1000 sentinel
+    && useradd --create-home --uid 1000 zentinel
 
 # Copy binary
-COPY --from=builder /app/target/release/sentinel /usr/local/bin/
+COPY --from=builder /app/target/release/zentinel /usr/local/bin/
 
 # Create config directory
-RUN mkdir -p /etc/sentinel && chown sentinel:sentinel /etc/sentinel
+RUN mkdir -p /etc/zentinel && chown zentinel:zentinel /etc/zentinel
 
-USER sentinel
+USER zentinel
 
 EXPOSE 8080 8443 9090
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s \
     CMD curl -f http://localhost:9090/health || exit 1
 
-ENTRYPOINT ["sentinel"]
-CMD ["-c", "/etc/sentinel/sentinel.kdl"]
+ENTRYPOINT ["zentinel"]
+CMD ["-c", "/etc/zentinel/zentinel.kdl"]
 ```
 
 ### Alpine-Based (Smaller)
@@ -126,16 +126,16 @@ FROM alpine:3.19
 
 RUN apk add --no-cache ca-certificates libssl3 curl
 
-COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/sentinel \
+COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/zentinel \
     /usr/local/bin/
 
-RUN adduser -D -u 1000 sentinel
-USER sentinel
+RUN adduser -D -u 1000 zentinel
+USER zentinel
 
 EXPOSE 8080 8443 9090
 
-ENTRYPOINT ["sentinel"]
-CMD ["-c", "/etc/sentinel/sentinel.kdl"]
+ENTRYPOINT ["zentinel"]
+CMD ["-c", "/etc/zentinel/zentinel.kdl"]
 ```
 
 ### Distroless (Minimal Attack Surface)
@@ -151,12 +151,12 @@ RUN cargo build --release
 
 FROM gcr.io/distroless/cc-debian12
 
-COPY --from=builder /app/target/release/sentinel /sentinel
+COPY --from=builder /app/target/release/zentinel /zentinel
 
 EXPOSE 8080 8443 9090
 
-ENTRYPOINT ["/sentinel"]
-CMD ["-c", "/etc/sentinel/sentinel.kdl"]
+ENTRYPOINT ["/zentinel"]
+CMD ["-c", "/etc/zentinel/zentinel.kdl"]
 ```
 
 ## Building Agents
@@ -179,12 +179,12 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --uid 1000 agent
 
-COPY --from=builder /app/target/release/sentinel-agent-waf /usr/local/bin/
+COPY --from=builder /app/target/release/zentinel-agent-waf /usr/local/bin/
 
 USER agent
 
-ENTRYPOINT ["sentinel-agent-waf"]
-CMD ["--socket", "/var/run/sentinel/waf.sock"]
+ENTRYPOINT ["zentinel-agent-waf"]
+CMD ["--socket", "/var/run/zentinel/waf.sock"]
 ```
 
 ### ModSecurity Agent
@@ -212,14 +212,14 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --uid 1000 agent
 
-COPY --from=builder /app/target/release/sentinel-agent-modsec /usr/local/bin/
+COPY --from=builder /app/target/release/zentinel-agent-modsec /usr/local/bin/
 
 # Copy OWASP CRS rules
 COPY --from=owasp/modsecurity-crs:3.3.5 /opt/owasp-crs /opt/owasp-crs
 
 USER agent
 
-ENTRYPOINT ["sentinel-agent-modsec"]
+ENTRYPOINT ["zentinel-agent-modsec"]
 ```
 
 ### JavaScript Agent
@@ -240,11 +240,11 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --uid 1000 agent
 
-COPY --from=builder /app/target/release/sentinel-agent-js /usr/local/bin/
+COPY --from=builder /app/target/release/zentinel-agent-js /usr/local/bin/
 
 USER agent
 
-ENTRYPOINT ["sentinel-agent-js"]
+ENTRYPOINT ["zentinel-agent-js"]
 ```
 
 ## Multi-Architecture Builds
@@ -258,7 +258,7 @@ docker buildx create --name multiarch --use
 # Build for multiple architectures
 docker buildx build \
     --platform linux/amd64,linux/arm64 \
-    -t ghcr.io/raskell-io/sentinel:latest \
+    -t ghcr.io/zentinelproxy/zentinel:latest \
     --push \
     .
 ```
@@ -288,7 +288,7 @@ RUN case "$TARGETPLATFORM" in \
     "linux/arm64") \
         CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
         cargo build --release --target aarch64-unknown-linux-gnu \
-        && mv target/aarch64-unknown-linux-gnu/release/sentinel target/release/ \
+        && mv target/aarch64-unknown-linux-gnu/release/zentinel target/release/ \
         ;; \
     esac
 
@@ -298,9 +298,9 @@ RUN apt-get update && apt-get install -y \
     ca-certificates libssl3 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /app/target/release/sentinel /usr/local/bin/
+COPY --from=builder /app/target/release/zentinel /usr/local/bin/
 
-ENTRYPOINT ["sentinel"]
+ENTRYPOINT ["zentinel"]
 ```
 
 ## CI/CD Integration
@@ -391,10 +391,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Use COPY instead of ADD
-COPY --from=builder /app/target/release/sentinel /usr/local/bin/
+COPY --from=builder /app/target/release/zentinel /usr/local/bin/
 
 # Strip binary (if not using LTO)
-RUN strip /usr/local/bin/sentinel
+RUN strip /usr/local/bin/zentinel
 ```
 
 ### Using cargo-strip
@@ -417,14 +417,14 @@ RUN cargo build --release \
 
 ```dockerfile
 # Create user at build time
-RUN useradd --create-home --uid 1000 sentinel
+RUN useradd --create-home --uid 1000 zentinel
 
 # Copy files with correct ownership
-COPY --from=builder --chown=sentinel:sentinel \
-    /app/target/release/sentinel /usr/local/bin/
+COPY --from=builder --chown=zentinel:zentinel \
+    /app/target/release/zentinel /usr/local/bin/
 
 # Switch to non-root user
-USER sentinel
+USER zentinel
 ```
 
 ### Read-Only Filesystem
@@ -436,7 +436,7 @@ security_context:
 
 # Mount writable directories
 volumes:
-  - /var/run/sentinel  # For Unix sockets
+  - /var/run/zentinel  # For Unix sockets
   - /tmp               # For temp files
 ```
 
@@ -444,10 +444,10 @@ volumes:
 
 ```bash
 # Scan for vulnerabilities
-docker scout cves sentinel:latest
+docker scout cves zentinel:latest
 
 # Or use Trivy
-trivy image sentinel:latest
+trivy image zentinel:latest
 ```
 
 ## Registry Setup
@@ -459,21 +459,21 @@ trivy image sentinel:latest
 echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
 
 # Push
-docker push ghcr.io/raskell-io/sentinel:latest
+docker push ghcr.io/zentinelproxy/zentinel:latest
 ```
 
 ### Private Registry
 
 ```bash
 # Tag for private registry
-docker tag sentinel:latest registry.example.com/sentinel:latest
+docker tag zentinel:latest registry.example.com/zentinel:latest
 
 # Push
-docker push registry.example.com/sentinel:latest
+docker push registry.example.com/zentinel:latest
 ```
 
 ## Next Steps
 
-- [Docker Deployment](../docker/) - Run Sentinel in Docker
+- [Docker Deployment](../docker/) - Run Zentinel in Docker
 - [Docker Compose](../docker-compose/) - Multi-container setup
 - [Kubernetes](../kubernetes/) - Production deployment

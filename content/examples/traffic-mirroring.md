@@ -3,7 +3,7 @@ title = "Traffic Mirroring"
 weight = 80
 +++
 
-This guide demonstrates how to use Sentinel's traffic mirroring (shadow traffic) feature for safe canary deployments and testing.
+This guide demonstrates how to use Zentinel's traffic mirroring (shadow traffic) feature for safe canary deployments and testing.
 
 ## Overview
 
@@ -23,7 +23,7 @@ Traffic mirroring duplicates live requests to a shadow upstream for testing purp
      │ Request
      ▼
 ┌────────────────┐
-│   Sentinel     │
+│   Zentinel     │
 └────┬───────┬───┘
      │       │
      │       └─────► Shadow Request (async, fire-and-forget)
@@ -173,8 +173,8 @@ system {
 # Start upstreams
 docker compose up -d
 
-# Start Sentinel
-sentinel -c shadow-test.kdl
+# Start Zentinel
+zentinel -c shadow-test.kdl
 ```
 
 ### 4. Test Traffic Mirroring
@@ -369,7 +369,7 @@ route "api-with-body" {
 
 ### Prometheus Metrics
 
-Sentinel exposes the following metrics for shadow traffic:
+Zentinel exposes the following metrics for shadow traffic:
 
 ```prometheus
 # Total shadow requests (labels: route, upstream, result)
@@ -623,7 +623,7 @@ route "public-data" {
 
 **Check:**
 1. Shadow upstream logs for errors
-2. Network connectivity: Can Sentinel reach shadow upstream?
+2. Network connectivity: Can Zentinel reach shadow upstream?
 3. Timeout settings: Are shadow timeouts too short?
 4. Resource limits: Is shadow upstream under-provisioned?
 

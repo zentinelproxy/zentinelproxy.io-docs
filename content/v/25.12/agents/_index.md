@@ -5,11 +5,11 @@ sort_by = "weight"
 template = "section.html"
 +++
 
-Agents are the primary extension mechanism for Sentinel. They allow you to add custom logic, security policies, and integrations without modifying the core proxy.
+Agents are the primary extension mechanism for Zentinel. They allow you to add custom logic, security policies, and integrations without modifying the core proxy.
 
 ## What Are Agents?
 
-Agents are **external processes** that communicate with Sentinel over a well-defined protocol. When a request flows through Sentinel, configured agents receive events at key lifecycle points and can:
+Agents are **external processes** that communicate with Zentinel over a well-defined protocol. When a request flows through Zentinel, configured agents receive events at key lifecycle points and can:
 
 - **Inspect** request/response headers and bodies
 - **Modify** headers, routing metadata, and more
@@ -18,7 +18,7 @@ Agents are **external processes** that communicate with Sentinel over a well-def
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         Sentinel Proxy                          │
+│                         Zentinel Proxy                          │
 │  ┌─────────────────────────────────────────────────────────┐    │
 │  │                    Agent Manager                         │    │
 │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐      │    │
@@ -38,19 +38,19 @@ Agents are **external processes** that communicate with Sentinel over a well-def
 
 ## Why External Agents?
 
-Sentinel's architecture keeps the dataplane minimal and predictable:
+Zentinel's architecture keeps the dataplane minimal and predictable:
 
 | Benefit | Description |
 |---------|-------------|
 | **Isolation** | A buggy or crashing agent cannot take down the proxy |
-| **Independent Deployment** | Update agents without restarting Sentinel |
+| **Independent Deployment** | Update agents without restarting Zentinel |
 | **Language Flexibility** | Write agents in Rust, Go, Python, or any gRPC-capable language |
-| **Circuit Breakers** | Sentinel protects itself from slow or failing agents |
+| **Circuit Breakers** | Zentinel protects itself from slow or failing agents |
 | **Horizontal Scaling** | Run agents as separate services for high availability |
 
 ## Transport Options
 
-Agents can communicate with Sentinel via two transport mechanisms:
+Agents can communicate with Zentinel via two transport mechanisms:
 
 | Transport | Protocol | Best For |
 |-----------|----------|----------|
@@ -107,7 +107,7 @@ Request arrives
 agents {
     // Unix socket agent (local)
     agent "auth-agent" type="auth" {
-        unix-socket "/var/run/sentinel/auth.sock"
+        unix-socket "/var/run/zentinel/auth.sock"
         events "request_headers"
         timeout-ms 100
         failure-mode "closed"

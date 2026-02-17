@@ -3,7 +3,7 @@ title = "Request Lifecycle"
 weight = 5
 +++
 
-This page details the complete lifecycle of an HTTP request through Sentinel, from client connection to response delivery.
+This page details the complete lifecycle of an HTTP request through Zentinel, from client connection to response delivery.
 
 ## Overview
 
@@ -15,7 +15,7 @@ This page details the complete lifecycle of an HTTP request through Sentinel, fr
     │  1. TCP Connect                                                     │
     │────────────────────▶┌─────────────────────────────────┐             │
     │                     │                                 │             │
-    │  2. TLS Handshake   │         Sentinel Proxy          │             │
+    │  2. TLS Handshake   │         Zentinel Proxy          │             │
     │────────────────────▶│                                 │             │
     │                     │  ┌───────────────────────────┐  │             │
     │  3. HTTP Request    │  │     Request Pipeline      │  │             │
@@ -41,7 +41,7 @@ This page details the complete lifecycle of an HTTP request through Sentinel, fr
 When a client connects, Pingora's listener accepts the TCP connection:
 
 ```
-Client                          Sentinel
+Client                          Zentinel
    │                                │
    │──── TCP SYN ─────────────────▶│
    │◀─── TCP SYN-ACK ──────────────│
@@ -60,7 +60,7 @@ Client                          Sentinel
 For HTTPS listeners, TLS negotiation occurs:
 
 ```
-Client                          Sentinel
+Client                          Zentinel
    │                                │
    │──── ClientHello ─────────────▶│  Supported ciphers, SNI
    │◀─── ServerHello ──────────────│  Selected cipher, certificate
@@ -80,7 +80,7 @@ Client                          Sentinel
 
 ### HTTP Parsing
 
-Sentinel parses the incoming HTTP request:
+Zentinel parses the incoming HTTP request:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -157,7 +157,7 @@ The trace ID propagates through:
 
 ### Route Selection
 
-Sentinel matches the request against compiled routes:
+Zentinel matches the request against compiled routes:
 
 ```
 Request: POST /api/users/123/profile
@@ -399,7 +399,7 @@ Agent call started
 
 ### Load Balancing
 
-Sentinel selects a backend server from the upstream pool:
+Zentinel selects a backend server from the upstream pool:
 
 ```
 Upstream Pool: "backend"
@@ -436,7 +436,7 @@ Unhealthy servers are excluded:
 
 ### Connection Pooling
 
-Sentinel reuses connections to upstreams:
+Zentinel reuses connections to upstreams:
 
 ```
 ┌────────────────────────────────────────┐
@@ -471,7 +471,7 @@ Original Request          Modified Request (to upstream)
 │ Auth: Bearer ... │      │ X-Correlation-Id: abc-123    │
 └──────────────────┘      │ X-Forwarded-For: 192.168.1.1 │
                           │ X-Forwarded-Proto: https     │
-                          │ X-Forwarded-By: Sentinel     │
+                          │ X-Forwarded-By: Zentinel     │
                           │ X-User-Id: user-789          │ ◀── From agent
                           │ Content-Type: application/json│
                           │                              │
@@ -487,7 +487,7 @@ Original Request          Modified Request (to upstream)
 | `X-Forwarded-For` | Client IP | Original client address |
 | `X-Forwarded-Proto` | `http`/`https` | Original protocol |
 | `X-Forwarded-Host` | Original host | Original Host header |
-| `X-Forwarded-By` | `Sentinel` | Proxy identification |
+| `X-Forwarded-By` | `Zentinel` | Proxy identification |
 
 ### Retry Logic
 
@@ -550,7 +550,7 @@ routes {
 
 ### Response Filter
 
-Sentinel processes the response before sending to client:
+Zentinel processes the response before sending to client:
 
 ```rust
 async fn response_filter(&self, upstream_response: &mut ResponseHeader) {
@@ -597,7 +597,7 @@ async fn response_filter(&self, upstream_response: &mut ResponseHeader) {
 Responses are streamed as they arrive:
 
 ```
-Upstream                    Sentinel                    Client
+Upstream                    Zentinel                    Client
    │                           │                           │
    │── Headers ───────────────▶│                           │
    │                           │── Headers ───────────────▶│
@@ -620,7 +620,7 @@ This streaming approach:
 
 ### Error Responses
 
-When errors occur, Sentinel generates appropriate responses:
+When errors occur, Zentinel generates appropriate responses:
 
 | Condition | Status | Response |
 |-----------|--------|----------|
@@ -642,7 +642,7 @@ After the response is sent:
 {
   "timestamp": "2024-01-15T10:30:45.123Z",
   "trace_id": "abc-123",
-  "instance_id": "sentinel-pod-xyz",
+  "instance_id": "zentinel-pod-xyz",
   "client_ip": "192.168.1.100",
   "method": "POST",
   "path": "/api/users",
@@ -663,19 +663,19 @@ After the response is sent:
 
 ```
 # Request counter
-sentinel_requests_total{route="api-users",method="POST",status="200"} 1
+zentinel_requests_total{route="api-users",method="POST",status="200"} 1
 
 # Latency histogram
-sentinel_request_duration_seconds_bucket{route="api-users",le="0.05"} 1
-sentinel_request_duration_seconds_bucket{route="api-users",le="0.1"} 1
+zentinel_request_duration_seconds_bucket{route="api-users",le="0.05"} 1
+zentinel_request_duration_seconds_bucket{route="api-users",le="0.1"} 1
 
 # Upstream metrics
-sentinel_upstream_requests_total{upstream="backend",status="200"} 1
-sentinel_upstream_latency_seconds_bucket{upstream="backend",le="0.05"} 1
+zentinel_upstream_requests_total{upstream="backend",status="200"} 1
+zentinel_upstream_latency_seconds_bucket{upstream="backend",le="0.05"} 1
 
 # Agent metrics
-sentinel_agent_requests_total{agent="auth-agent",decision="allow"} 1
-sentinel_agent_latency_seconds_bucket{agent="auth-agent",le="0.01"} 1
+zentinel_agent_requests_total{agent="auth-agent",decision="allow"} 1
+zentinel_agent_latency_seconds_bucket{agent="auth-agent",le="0.01"} 1
 ```
 
 ### Request Complete
@@ -687,7 +687,7 @@ Finally, the reload coordinator is notified:
 self.reload_coordinator.dec_requests();
 ```
 
-This enables graceful shutdown - Sentinel waits for all in-flight requests to complete before stopping.
+This enables graceful shutdown - Zentinel waits for all in-flight requests to complete before stopping.
 
 ## Complete Timeline
 

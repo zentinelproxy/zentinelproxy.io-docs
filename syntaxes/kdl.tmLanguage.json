@@ -13,8 +13,8 @@
     { "include": "#number-binary" },
     { "include": "#number" },
     { "include": "#constant-language" },
-    { "include": "#node-sentinel" },
-    { "include": "#keyword-sentinel" },
+    { "include": "#node-zentinel" },
+    { "include": "#keyword-zentinel" },
     { "include": "#property-assignment" },
     { "include": "#punctuation" },
     { "include": "#identifier" }
@@ -68,11 +68,11 @@
       "match": "\\b(true|false|null)\\b",
       "name": "constant.language.kdl"
     },
-    "node-sentinel": {
+    "node-zentinel": {
       "match": "\\b(server|listeners|listener|routes|route|upstreams|upstream|agents|agent|targets|target|transport|matches|events|observability|metrics|logging|tracing|health-check|tls)\\b",
       "name": "entity.name.tag.kdl"
     },
-    "keyword-sentinel": {
+    "keyword-zentinel": {
       "match": "\\b(address|protocol|path-prefix|path|path-exact|path-regex|host|method|headers|load-balancing|worker-threads|graceful-shutdown-timeout-secs|timeout-ms|failure-mode|type|max-request-body-bytes|enabled|level|format|interval-secs|cert-file|key-file|weight|service-name|endpoint|sample-rate)\\b",
       "name": "keyword.other.kdl"
     },

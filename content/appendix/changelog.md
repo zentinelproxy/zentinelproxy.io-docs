@@ -3,10 +3,10 @@ title = "Changelog"
 weight = 1
 +++
 
-All notable changes to Sentinel are documented here.
+All notable changes to Zentinel are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-Sentinel uses [CalVer](https://calver.org/) (`YY.MM_PATCH`) for releases and
+Zentinel uses [CalVer](https://calver.org/) (`YY.MM_PATCH`) for releases and
 [SemVer](https://semver.org/) for crate versions on crates.io. CalVer is the
 primary, operator-facing version. See [Versioning](../versioning/) for details.
 
@@ -37,7 +37,7 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 **Crate version:** 0.4.10
 
 ### Fixed
-- **Install script** — `get_latest_version()` now queries `/releases` and selects the first release with actual binary assets, instead of relying on `/releases/latest` which could point to a release without binaries ([#67](https://github.com/raskell-io/sentinel/issues/67)).
+- **Install script** — `get_latest_version()` now queries `/releases` and selects the first release with actual binary assets, instead of relying on `/releases/latest` which could point to a release without binaries ([#67](https://github.com/zentinelproxy/zentinel/issues/67)).
 - **Release workflow** — Version bump push to `main` now falls back to creating a PR when blocked by branch protection.
 - **16 rustdoc warnings** — Fixed bare URLs, unclosed HTML tags, unresolved type references, and private module links across 10 files.
 - **Clippy warnings** — Resolved warnings and migrated to updated dependency APIs.
@@ -65,12 +65,12 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 **Crate version:** 0.4.9
 
 ### Added
-- **First-time user smoke tests** — Self-contained integration tests (`test_first_time_waf.sh`, `test_first_time_lua.sh`) that validate building Sentinel + an agent from source, wiring them together, and verifying end-to-end behavior. WAF test covers 8 scenarios (SQLi, XSS, path traversal, fail-open, recovery); Lua test covers 4 (header injection, blocking, fail-open).
+- **First-time user smoke tests** — Self-contained integration tests (`test_first_time_waf.sh`, `test_first_time_lua.sh`) that validate building Zentinel + an agent from source, wiring them together, and verifying end-to-end behavior. WAF test covers 8 scenarios (SQLi, XSS, path traversal, fail-open, recovery); Lua test covers 4 (header injection, blocking, fail-open).
 - **`protocol-version` KDL config** — Agent blocks now accept `protocol-version "v2"` to explicitly select Protocol v2 for gRPC agents, instead of always defaulting to v1.
 - **Makefile targets** — `test-first-time`, `test-first-time-waf`, `test-first-time-lua` for running smoke tests.
 
 ### Fixed
-- **Example configs** — All configs in `config/examples/` now pass `sentinel test` validation.
+- **Example configs** — All configs in `config/examples/` now pass `zentinel test` validation.
 - **Install script** — Removed stale linux-arm64 block, fixed sudo fallback.
 
 ### Changed
@@ -84,7 +84,7 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 **Crate version:** 0.4.7
 
 ### Changed
-- **Pingora 0.6 → 0.7** — Upgraded to upstream Pingora 0.7.0, removing the `raskell-io/pingora` security fork and all 16 `[patch.crates-io]` overrides. Sentinel now builds against upstream Pingora with zero patches.
+- **Pingora 0.6 → 0.7** — Upgraded to upstream Pingora 0.7.0, removing the `raskell-io/pingora` security fork and all 16 `[patch.crates-io]` overrides. Zentinel now builds against upstream Pingora with zero patches.
   - `ForcedInvalidationKind` renamed to `ForcedFreshness` in cache layer
   - `range_header_filter` now accepts `max_multipart_ranges` parameter (defaults to 200)
 - **Major dependency updates:**
@@ -274,7 +274,7 @@ See [Supply Chain Security](/docs/operations/supply-chain/) for verification pro
 **Date:** 2026-01-05
 **Crate version:** 0.2.3
 
-See [GitHub Release](https://github.com/raskell-io/sentinel/releases/tag/26.01_3).
+See [GitHub Release](https://github.com/zentinelproxy/zentinel/releases/tag/26.01_3).
 
 ---
 
@@ -285,7 +285,7 @@ See [GitHub Release](https://github.com/raskell-io/sentinel/releases/tag/26.01_3
 
 First release using CalVer tagging.
 
-See [GitHub Release](https://github.com/raskell-io/sentinel/releases/tag/26.01_0).
+See [GitHub Release](https://github.com/zentinelproxy/zentinel/releases/tag/26.01_0).
 
 ---
 
@@ -296,12 +296,12 @@ See [GitHub Release](https://github.com/raskell-io/sentinel/releases/tag/26.01_0
 
 Initial public release series. Core proxy, routing, upstreams, agent system, observability, and KDL configuration.
 
-See [GitHub Releases](https://github.com/raskell-io/sentinel/releases?q=25.12) for individual release notes.
+See [GitHub Releases](https://github.com/zentinelproxy/zentinel/releases?q=25.12) for individual release notes.
 
 ---
 
 ## Links
 
-- [GitHub Releases](https://github.com/raskell-io/sentinel/releases)
+- [GitHub Releases](https://github.com/zentinelproxy/zentinel/releases)
 - [Versioning](../versioning/) -- CalVer/SemVer scheme, LTS windows, version mapping
 - [Supply Chain Security](/docs/operations/supply-chain/) -- Verify binary and container authenticity

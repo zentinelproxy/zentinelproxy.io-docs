@@ -1,16 +1,16 @@
 +++
-title = "sentinel-stack"
+title = "zentinel-stack"
 weight = 2
 +++
 
-`sentinel-stack` is a lightweight launcher that runs Sentinel and its agents as a single command. It's designed for development and simple deployments where full process supervision isn't needed.
+`zentinel-stack` is a lightweight launcher that runs Zentinel and its agents as a single command. It's designed for development and simple deployments where full process supervision isn't needed.
 
 ## Overview
 
 ```
-sentinel-stack
+zentinel-stack
     │
-    ├── Spawns sentinel (proxy)
+    ├── Spawns zentinel (proxy)
     ├── Spawns each configured agent
     ├── Monitors and restarts crashed processes
     └── Forwards signals for graceful shutdown
@@ -18,28 +18,28 @@ sentinel-stack
 
 ## Installation
 
-`sentinel-stack` is included with Sentinel:
+`zentinel-stack` is included with Zentinel:
 
 ```bash
 # Install via cargo
-cargo install sentinel-stack
+cargo install zentinel-stack
 
 # Or download from releases
-curl -sSL https://sentinel.raskell.io/install.sh | sh
+curl -sSL https://zentinelproxy.io/install.sh | sh
 ```
 
 ## Quick Start
 
 ```bash
 # Create a simple config
-cat > sentinel.kdl << 'EOF'
-system {
+cat > zentinel.kdl << 'EOF'
+server {
     listen "0.0.0.0:8080"
 }
 
 agents {
     agent "echo" type="custom" {
-        command "sentinel-echo-agent" "--socket" "/tmp/echo.sock"
+        command "zentinel-echo-agent" "--socket" "/tmp/echo.sock"
         unix-socket "/tmp/echo.sock"
         events "request_headers"
     }
@@ -61,22 +61,22 @@ routes {
 EOF
 
 # Start everything
-sentinel-stack --config sentinel.kdl
+zentinel-stack --config zentinel.kdl
 ```
 
 ## Configuration
 
 ### Agent Commands
 
-When using `sentinel-stack`, agents include a `command` directive:
+When using `zentinel-stack`, agents include a `command` directive:
 
 ```kdl
 agents {
     agent "auth" type="auth" {
         // Command to spawn the agent
-        command "sentinel-auth-agent" "--socket" "/tmp/auth.sock"
+        command "zentinel-auth-agent" "--socket" "/tmp/auth.sock"
 
-        // Connection details (same as standalone Sentinel)
+        // Connection details (same as standalone Zentinel)
         unix-socket "/tmp/auth.sock"
         events "request_headers"
         timeout-ms 100
@@ -89,7 +89,7 @@ agents {
 
     agent "waf" type="waf" {
         // gRPC agent
-        command "sentinel-waf-agent" "--grpc" "127.0.0.1:50051"
+        command "zentinel-waf-agent" "--grpc" "127.0.0.1:50051"
         grpc "http://127.0.0.1:50051"
         events "request_headers" "request_body"
 
@@ -98,7 +98,7 @@ agents {
     }
 
     agent "external" type="custom" {
-        // No command = external agent (not managed by sentinel-stack)
+        // No command = external agent (not managed by zentinel-stack)
         grpc "http://external-service:50051"
         events "request_headers"
     }
@@ -119,7 +119,7 @@ Pass environment to agents:
 
 ```kdl
 agent "auth" type="auth" {
-    command "sentinel-auth-agent"
+    command "zentinel-auth-agent"
 
     env {
         AUTH_SECRET "${AUTH_SECRET}"
@@ -132,10 +132,10 @@ agent "auth" type="auth" {
 ## CLI Reference
 
 ```bash
-sentinel-stack [OPTIONS]
+zentinel-stack [OPTIONS]
 
 Options:
-    -c, --config <PATH>     Config file path [default: sentinel.kdl]
+    -c, --config <PATH>     Config file path [default: zentinel.kdl]
     -l, --log-level <LVL>   Log level [default: info]
     --proxy-only            Start only the proxy (no agents)
     --agents-only           Start only agents (no proxy)
@@ -148,19 +148,19 @@ Options:
 
 ```bash
 # Standard startup
-sentinel-stack --config sentinel.kdl
+zentinel-stack --config zentinel.kdl
 
 # Debug logging
-sentinel-stack -l debug
+zentinel-stack -l debug
 
 # Validate configuration
-sentinel-stack --dry-run
+zentinel-stack --dry-run
 
 # Start only proxy (agents managed externally)
-sentinel-stack --proxy-only
+zentinel-stack --proxy-only
 
 # Start only agents (proxy managed externally)
-sentinel-stack --agents-only
+zentinel-stack --agents-only
 ```
 
 ## Process Management
@@ -170,7 +170,7 @@ sentinel-stack --agents-only
 1. Parse and validate configuration
 2. Spawn agents in dependency order
 3. Wait for agent sockets/ports to be ready
-4. Start Sentinel proxy
+4. Start Zentinel proxy
 5. Begin accepting traffic
 
 ### Shutdown Sequence
@@ -191,7 +191,7 @@ stack {
 
 ### Health Monitoring
 
-`sentinel-stack` provides a combined health endpoint:
+`zentinel-stack` provides a combined health endpoint:
 
 ```bash
 curl http://localhost:9090/stack/health
@@ -213,14 +213,14 @@ curl http://localhost:9090/stack/health
 
 ## Logging
 
-All output is unified through `sentinel-stack`:
+All output is unified through `zentinel-stack`:
 
 ```bash
-sentinel-stack --config sentinel.kdl 2>&1 | jq
+zentinel-stack --config zentinel.kdl 2>&1 | jq
 ```
 
 ```json
-{"timestamp":"2025-12-29T10:00:00Z","level":"INFO","component":"stack","message":"Starting sentinel-stack"}
+{"timestamp":"2025-12-29T10:00:00Z","level":"INFO","component":"stack","message":"Starting zentinel-stack"}
 {"timestamp":"2025-12-29T10:00:00Z","level":"INFO","component":"agent:auth","message":"Agent started","pid":1234}
 {"timestamp":"2025-12-29T10:00:00Z","level":"INFO","component":"agent:waf","message":"Agent started","pid":1235}
 {"timestamp":"2025-12-29T10:00:00Z","level":"INFO","component":"proxy","message":"Listening on 0.0.0.0:8080"}
@@ -232,7 +232,7 @@ sentinel-stack --config sentinel.kdl 2>&1 | jq
 
 ```kdl
 // dev.kdl - Simple development config
-system {
+server {
     listen "127.0.0.1:8080"
 }
 
@@ -242,7 +242,7 @@ admin {
 
 agents {
     agent "echo" type="custom" {
-        command "cargo" "run" "--release" "-p" "sentinel-echo-agent" "--" "--socket" "/tmp/echo.sock"
+        command "cargo" "run" "--release" "-p" "zentinel-echo-agent" "--" "--socket" "/tmp/echo.sock"
         unix-socket "/tmp/echo.sock"
         events "request_headers"
         restart-policy "always"
@@ -268,7 +268,7 @@ routes {
 
 ```kdl
 // local-prod.kdl - Production-like but local
-system {
+server {
     listen "0.0.0.0:8080"
 }
 
@@ -282,7 +282,7 @@ stack {
 
 agents {
     agent "auth" type="auth" {
-        command "/usr/local/bin/sentinel-auth-agent" "--socket" "/tmp/auth.sock"
+        command "/usr/local/bin/zentinel-auth-agent" "--socket" "/tmp/auth.sock"
         unix-socket "/tmp/auth.sock"
         events "request_headers"
         timeout-ms 50
@@ -292,7 +292,7 @@ agents {
     }
 
     agent "waf" type="waf" {
-        command "/usr/local/bin/sentinel-waf-agent" "--grpc" "127.0.0.1:50051"
+        command "/usr/local/bin/zentinel-waf-agent" "--grpc" "127.0.0.1:50051"
         grpc "http://127.0.0.1:50051"
         events "request_headers" "request_body"
         timeout-ms 100
@@ -321,7 +321,7 @@ routes {
 }
 ```
 
-## When to Use sentinel-stack
+## When to Use zentinel-stack
 
 **Good for:**
 - Development and testing
@@ -337,10 +337,10 @@ routes {
 
 ## Migrating to Production
 
-When moving from `sentinel-stack` to production deployment:
+When moving from `zentinel-stack` to production deployment:
 
 1. **Extract the config** — Remove `command`, `restart-policy`, `env` directives
-2. **Create systemd units** — One per agent plus Sentinel
+2. **Create systemd units** — One per agent plus Zentinel
 3. **Set up monitoring** — Prometheus/Grafana for metrics
 4. **Configure logging** — journald or central logging
 

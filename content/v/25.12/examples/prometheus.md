@@ -16,7 +16,7 @@ Complete observability setup with Prometheus metrics, Grafana dashboards, and Ja
 
 ```
                     ┌─────────────────┐
-                    │    Sentinel     │
+                    │    Zentinel     │
                     │   :8080/:9090   │
                     └────────┬────────┘
                              │
@@ -31,7 +31,7 @@ Complete observability setup with Prometheus metrics, Grafana dashboards, and Ja
 
 ## Configuration
 
-Create `sentinel.kdl`:
+Create `zentinel.kdl`:
 
 ```kdl
 // Observability Configuration
@@ -93,7 +93,7 @@ observability {
     // OpenTelemetry tracing
     tracing {
         enabled true
-        service-name "sentinel"
+        service-name "zentinel"
         endpoint "http://jaeger:4317"
         protocol "grpc"  // or "http"
         sample-rate 1.0  // Sample all requests (reduce in production)
@@ -112,49 +112,49 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  - job_name: 'sentinel'
+  - job_name: 'zentinel'
     static_configs:
-      - targets: ['sentinel:9090']
+      - targets: ['zentinel:9090']
     metrics_path: /metrics
 
-  - job_name: 'sentinel-agents'
+  - job_name: 'zentinel-agents'
     static_configs:
       - targets:
-        - 'sentinel-waf:9091'
-        - 'sentinel-auth:9092'
-        - 'sentinel-ratelimit:9093'
+        - 'zentinel-waf:9091'
+        - 'zentinel-auth:9092'
+        - 'zentinel-ratelimit:9093'
 ```
 
 ### Key Metrics
 
 | Metric | Type | Description |
 |--------|------|-------------|
-| `sentinel_requests_total` | Counter | Total requests by route, method, status |
-| `sentinel_request_duration_seconds` | Histogram | Request latency distribution |
-| `sentinel_upstream_requests_total` | Counter | Requests per upstream target |
-| `sentinel_upstream_latency_seconds` | Histogram | Upstream response times |
-| `sentinel_upstream_health` | Gauge | Upstream health (1=healthy, 0=unhealthy) |
-| `sentinel_connections_active` | Gauge | Active client connections |
-| `sentinel_agent_duration_seconds` | Histogram | Agent processing time |
-| `sentinel_agent_errors_total` | Counter | Agent errors by type |
+| `zentinel_requests_total` | Counter | Total requests by route, method, status |
+| `zentinel_request_duration_seconds` | Histogram | Request latency distribution |
+| `zentinel_upstream_requests_total` | Counter | Requests per upstream target |
+| `zentinel_upstream_latency_seconds` | Histogram | Upstream response times |
+| `zentinel_upstream_health` | Gauge | Upstream health (1=healthy, 0=unhealthy) |
+| `zentinel_connections_active` | Gauge | Active client connections |
+| `zentinel_agent_duration_seconds` | Histogram | Agent processing time |
+| `zentinel_agent_errors_total` | Counter | Agent errors by type |
 
 ### Useful PromQL Queries
 
 ```promql
 # Request rate (requests per second)
-rate(sentinel_requests_total[5m])
+rate(zentinel_requests_total[5m])
 
 # Error rate (5xx responses)
-rate(sentinel_requests_total{status=~"5.."}[5m]) / rate(sentinel_requests_total[5m])
+rate(zentinel_requests_total{status=~"5.."}[5m]) / rate(zentinel_requests_total[5m])
 
 # 95th percentile latency
-histogram_quantile(0.95, rate(sentinel_request_duration_seconds_bucket[5m]))
+histogram_quantile(0.95, rate(zentinel_request_duration_seconds_bucket[5m]))
 
 # Upstream health status
-sentinel_upstream_health
+zentinel_upstream_health
 
 # Requests by route
-sum by (route) (rate(sentinel_requests_total[5m]))
+sum by (route) (rate(zentinel_requests_total[5m]))
 ```
 
 ## Grafana Dashboard
@@ -163,14 +163,14 @@ sum by (route) (rate(sentinel_requests_total[5m]))
 
 ```json
 {
-  "title": "Sentinel Overview",
+  "title": "Zentinel Overview",
   "panels": [
     {
       "title": "Request Rate",
       "type": "timeseries",
       "targets": [
         {
-          "expr": "sum(rate(sentinel_requests_total[5m]))",
+          "expr": "sum(rate(zentinel_requests_total[5m]))",
           "legendFormat": "Total"
         }
       ]
@@ -180,7 +180,7 @@ sum by (route) (rate(sentinel_requests_total[5m]))
       "type": "gauge",
       "targets": [
         {
-          "expr": "sum(rate(sentinel_requests_total{status=~\"5..\"}[5m])) / sum(rate(sentinel_requests_total[5m])) * 100"
+          "expr": "sum(rate(zentinel_requests_total{status=~\"5..\"}[5m])) / sum(rate(zentinel_requests_total[5m])) * 100"
         }
       ],
       "fieldConfig": {
@@ -201,15 +201,15 @@ sum by (route) (rate(sentinel_requests_total[5m]))
       "type": "timeseries",
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, rate(sentinel_request_duration_seconds_bucket[5m]))",
+          "expr": "histogram_quantile(0.50, rate(zentinel_request_duration_seconds_bucket[5m]))",
           "legendFormat": "p50"
         },
         {
-          "expr": "histogram_quantile(0.95, rate(sentinel_request_duration_seconds_bucket[5m]))",
+          "expr": "histogram_quantile(0.95, rate(zentinel_request_duration_seconds_bucket[5m]))",
           "legendFormat": "p95"
         },
         {
-          "expr": "histogram_quantile(0.99, rate(sentinel_request_duration_seconds_bucket[5m]))",
+          "expr": "histogram_quantile(0.99, rate(zentinel_request_duration_seconds_bucket[5m]))",
           "legendFormat": "p99"
         }
       ]
@@ -219,7 +219,7 @@ sum by (route) (rate(sentinel_requests_total[5m]))
       "type": "stat",
       "targets": [
         {
-          "expr": "sentinel_upstream_health",
+          "expr": "zentinel_upstream_health",
           "legendFormat": "{{upstream}}/{{target}}"
         }
       ]
@@ -236,13 +236,13 @@ sum by (route) (rate(sentinel_requests_total[5m]))
 version: '3.8'
 
 services:
-  sentinel:
-    image: ghcr.io/raskell-io/sentinel:latest
+  zentinel:
+    image: ghcr.io/zentinelproxy/zentinel:latest
     ports:
       - "8080:8080"
       - "9090:9090"
     volumes:
-      - ./sentinel.kdl:/etc/sentinel/sentinel.kdl
+      - ./zentinel.kdl:/etc/zentinel/zentinel.kdl
     environment:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
 
@@ -275,7 +275,7 @@ services:
 
 ### Trace Context Propagation
 
-Sentinel propagates trace context through requests:
+Zentinel propagates trace context through requests:
 
 ```bash
 # Incoming request with trace context
@@ -286,12 +286,12 @@ curl -H "traceparent: 00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01" \
 Backend receives headers:
 - `traceparent` - W3C Trace Context
 - `tracestate` - Vendor-specific trace state
-- `X-Request-Id` - Sentinel request ID
+- `X-Request-Id` - Zentinel request ID
 
 ### Viewing Traces
 
 1. Open Jaeger UI: http://localhost:16686
-2. Select service: `sentinel`
+2. Select service: `zentinel`
 3. Find traces by:
    - Operation (route name)
    - Tags (status, method, path)
@@ -306,12 +306,12 @@ Create `alerts.yml`:
 
 ```yaml
 groups:
-  - name: sentinel
+  - name: zentinel
     rules:
       - alert: HighErrorRate
         expr: |
-          sum(rate(sentinel_requests_total{status=~"5.."}[5m]))
-          / sum(rate(sentinel_requests_total[5m])) > 0.05
+          sum(rate(zentinel_requests_total{status=~"5.."}[5m]))
+          / sum(rate(zentinel_requests_total[5m])) > 0.05
         for: 5m
         labels:
           severity: critical
@@ -321,7 +321,7 @@ groups:
 
       - alert: HighLatency
         expr: |
-          histogram_quantile(0.95, rate(sentinel_request_duration_seconds_bucket[5m])) > 1
+          histogram_quantile(0.95, rate(zentinel_request_duration_seconds_bucket[5m])) > 1
         for: 5m
         labels:
           severity: warning
@@ -330,7 +330,7 @@ groups:
           description: "95th percentile latency is {{ $value }}s"
 
       - alert: UpstreamDown
-        expr: sentinel_upstream_health == 0
+        expr: zentinel_upstream_health == 0
         for: 1m
         labels:
           severity: critical
@@ -339,7 +339,7 @@ groups:
           description: "{{ $labels.upstream }}/{{ $labels.target }} is unhealthy"
 
       - alert: AgentErrors
-        expr: rate(sentinel_agent_errors_total[5m]) > 0
+        expr: rate(zentinel_agent_errors_total[5m]) > 0
         for: 5m
         labels:
           severity: warning
@@ -373,13 +373,13 @@ groups:
 ```yaml
 # loki configuration
 scrape_configs:
-  - job_name: sentinel
+  - job_name: zentinel
     static_configs:
       - targets:
           - localhost
         labels:
-          job: sentinel
-          __path__: /var/log/sentinel/*.log
+          job: zentinel
+          __path__: /var/log/zentinel/*.log
 ```
 
 ## Testing
@@ -387,7 +387,7 @@ scrape_configs:
 ### Verify Metrics
 
 ```bash
-curl http://localhost:9090/metrics | grep sentinel
+curl http://localhost:9090/metrics | grep zentinel
 ```
 
 ### Generate Test Traffic

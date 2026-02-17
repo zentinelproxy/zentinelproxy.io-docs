@@ -3,34 +3,34 @@ title = "Troubleshooting"
 weight = 1
 +++
 
-Guide to diagnosing and resolving common Sentinel issues.
+Guide to diagnosing and resolving common Zentinel issues.
 
 ## Quick Diagnostics
 
 ### Check Service Status
 
 ```bash
-# Is Sentinel running?
-ps aux | grep sentinel
-systemctl status sentinel
+# Is Zentinel running?
+ps aux | grep zentinel
+systemctl status zentinel
 
 # Check listening ports
-ss -tlnp | grep sentinel
+ss -tlnp | grep zentinel
 lsof -i :8080
 
 # View recent logs
-journalctl -u sentinel -n 100
-tail -f /var/log/sentinel/error.log
+journalctl -u zentinel -n 100
+tail -f /var/log/zentinel/error.log
 ```
 
 ### Test Configuration
 
 ```bash
 # Validate configuration
-sentinel --test --config sentinel.kdl
+zentinel --test --config zentinel.kdl
 
 # Test with verbose output
-sentinel --test --verbose --config sentinel.kdl
+zentinel --test --verbose --config zentinel.kdl
 ```
 
 ### Check Connectivity
@@ -65,7 +65,7 @@ lsof -i :8080
 # or
 ss -tlnp | grep 8080
 
-# Kill the process or change Sentinel's port
+# Kill the process or change Zentinel's port
 ```
 
 #### "Permission denied" on privileged ports
@@ -79,7 +79,7 @@ Error: Permission denied (os error 13)
 **Solution:**
 ```bash
 # Option 1: Grant capability
-sudo setcap cap_net_bind_service=+ep /usr/local/bin/sentinel
+sudo setcap cap_net_bind_service=+ep /usr/local/bin/zentinel
 
 # Option 2: Use port >= 1024 and redirect
 iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8080
@@ -96,10 +96,10 @@ Error: Configuration error: Failed to load configuration file
 **Solution:**
 ```bash
 # Check file exists and permissions
-ls -la /etc/sentinel/sentinel.kdl
+ls -la /etc/zentinel/zentinel.kdl
 
 # Verify path
-sentinel --test --config /etc/sentinel/sentinel.kdl
+zentinel --test --config /etc/zentinel/zentinel.kdl
 ```
 
 ### Connection Issues
@@ -117,7 +117,7 @@ curl http://localhost:9090/admin/upstreams
 curl -v http://upstream-host:port/health
 
 # Check logs for upstream errors
-grep "upstream" /var/log/sentinel/error.log
+grep "upstream" /var/log/zentinel/error.log
 ```
 
 **Common causes:**
@@ -186,7 +186,7 @@ routes {
 time curl http://upstream-host:8080/endpoint
 
 # Check timeout settings
-grep timeout sentinel.kdl
+grep timeout zentinel.kdl
 ```
 
 **Solutions:**
@@ -216,7 +216,7 @@ upstreams {
 
 ```bash
 # Verify certificate
-openssl x509 -in /etc/sentinel/certs/server.crt -noout -text
+openssl x509 -in /etc/zentinel/certs/server.crt -noout -text
 
 # Check certificate chain
 openssl verify -CAfile ca.crt server.crt
@@ -286,8 +286,8 @@ curl -w "@curl-format.txt" http://localhost:8080/api/endpoint
 curl -s http://localhost:9090/metrics | grep memory
 
 # Check process memory
-ps aux | grep sentinel
-cat /proc/$(pgrep sentinel)/status | grep Vm
+ps aux | grep zentinel
+cat /proc/$(pgrep zentinel)/status | grep Vm
 ```
 
 **Solutions:**
@@ -322,7 +322,7 @@ limits {
 curl -s http://localhost:9090/metrics | grep cpu
 
 # Profile with perf (Linux)
-perf top -p $(pgrep sentinel)
+perf top -p $(pgrep zentinel)
 ```
 
 **Solutions:**
@@ -352,29 +352,29 @@ routes {
 
 ```bash
 # Via environment
-RUST_LOG=debug sentinel --config sentinel.kdl
+RUST_LOG=debug zentinel --config zentinel.kdl
 
 # Module-specific debug
-RUST_LOG=sentinel::proxy=debug,sentinel::agents=trace sentinel --config sentinel.kdl
+RUST_LOG=zentinel::proxy=debug,zentinel::agents=trace zentinel --config zentinel.kdl
 
 # Pretty format for development
-SENTINEL_LOG_FORMAT=pretty RUST_LOG=debug sentinel --config sentinel.kdl
+ZENTINEL_LOG_FORMAT=pretty RUST_LOG=debug zentinel --config zentinel.kdl
 ```
 
 ### Log Analysis
 
 ```bash
 # Find errors
-grep -i error /var/log/sentinel/*.log
+grep -i error /var/log/zentinel/*.log
 
 # Find specific correlation ID
-grep "2kF8xQw4BnM" /var/log/sentinel/*.log
+grep "2kF8xQw4BnM" /var/log/zentinel/*.log
 
 # Count errors by type
-grep "error" /var/log/sentinel/error.log | jq -r '.error_type' | sort | uniq -c
+grep "error" /var/log/zentinel/error.log | jq -r '.error_type' | sort | uniq -c
 
 # Find slow requests (>1s)
-jq 'select(.duration_ms > 1000)' /var/log/sentinel/access.log
+jq 'select(.duration_ms > 1000)' /var/log/zentinel/access.log
 ```
 
 ### Request Tracing
@@ -387,7 +387,7 @@ curl -i http://localhost:8080/api/endpoint
 # X-Correlation-Id: 2kF8xQw4BnM
 
 # Search logs by ID
-grep "2kF8xQw4BnM" /var/log/sentinel/*.log | jq .
+grep "2kF8xQw4BnM" /var/log/zentinel/*.log | jq .
 ```
 
 ### Metrics Analysis
@@ -405,7 +405,7 @@ curl -s http://localhost:9090/metrics | grep circuit_breaker
 
 ## Health Check Failures
 
-### Sentinel Health Check
+### Zentinel Health Check
 
 ```bash
 # Basic health
@@ -462,20 +462,20 @@ Agent error: auth - connection refused
 ps aux | grep agent
 
 # Check socket exists
-ls -la /var/run/sentinel/*.sock
+ls -la /var/run/zentinel/*.sock
 
 # Test socket connection
-nc -U /var/run/sentinel/auth.sock
+nc -U /var/run/zentinel/auth.sock
 ```
 
 **Solutions:**
 ```bash
 # Start agent
-systemctl start sentinel-auth-agent
+systemctl start zentinel-auth-agent
 
 # Check socket permissions
-chmod 660 /var/run/sentinel/auth.sock
-chown sentinel:sentinel /var/run/sentinel/auth.sock
+chmod 660 /var/run/zentinel/auth.sock
+chown zentinel:zentinel /var/run/zentinel/auth.sock
 ```
 
 ### Agent Timeouts
@@ -507,20 +507,20 @@ agents {
 
 ```bash
 # Check reload status
-journalctl -u sentinel | grep -i reload
+journalctl -u zentinel | grep -i reload
 
 # Validate new config before reload
-sentinel --test --config sentinel.kdl
+zentinel --test --config zentinel.kdl
 
 # Manual reload
-kill -HUP $(cat /var/run/sentinel.pid)
+kill -HUP $(cat /var/run/zentinel.pid)
 ```
 
 ### Config Validation Errors
 
 ```bash
 # Get detailed validation errors
-sentinel --test --verbose --config sentinel.kdl 2>&1
+zentinel --test --verbose --config zentinel.kdl 2>&1
 
 # Common issues:
 # - Route references undefined upstream
@@ -538,14 +538,14 @@ sentinel --test --verbose --config sentinel.kdl 2>&1
 uname -a
 cat /etc/os-release
 
-# Sentinel version
-sentinel --version
+# Zentinel version
+zentinel --version
 
 # Configuration (sanitized)
-cat sentinel.kdl | grep -v -E "(key|password|secret)"
+cat zentinel.kdl | grep -v -E "(key|password|secret)"
 
 # Recent logs
-journalctl -u sentinel --since "1 hour ago"
+journalctl -u zentinel --since "1 hour ago"
 
 # Metrics snapshot
 curl http://localhost:9090/metrics > metrics.txt
@@ -555,9 +555,9 @@ curl http://localhost:9090/metrics > metrics.txt
 
 | Platform | Location |
 |----------|----------|
-| systemd | `journalctl -u sentinel` |
-| Docker | `docker logs sentinel` |
-| Kubernetes | `kubectl logs -l app=sentinel` |
+| systemd | `journalctl -u zentinel` |
+| Docker | `docker logs zentinel` |
+| Kubernetes | `kubectl logs -l app=zentinel` |
 | Custom | Check `working-directory` in config |
 
 ## See Also

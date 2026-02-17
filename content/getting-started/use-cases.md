@@ -3,7 +3,7 @@ title = "Use Cases"
 weight = 5
 +++
 
-Sentinel is a secure, high-performance reverse proxy with programmable security controls. Here are common scenarios where Sentinel excels, from enterprise deployments to personal projects.
+Zentinel is a secure, high-performance reverse proxy with programmable security controls. Here are common scenarios where Zentinel excels, from enterprise deployments to personal projects.
 
 ## Reverse Proxy & Load Balancer
 
@@ -15,8 +15,8 @@ listeners {
         address "0.0.0.0:443"
         protocol "https"
         tls {
-            cert "/etc/sentinel/certs/server.crt"
-            key "/etc/sentinel/certs/server.key"
+            cert "/etc/zentinel/certs/server.crt"
+            key "/etc/zentinel/certs/server.key"
         }
     }
 }
@@ -70,7 +70,7 @@ routes {
 
 agents {
     agent "auth" type="auth" {
-        unix-socket "/var/run/sentinel/auth.sock"
+        unix-socket "/var/run/zentinel/auth.sock"
         config {
             jwt-secret "${JWT_SECRET}"
             required-claims "sub" "exp"
@@ -78,7 +78,7 @@ agents {
     }
 
     agent "ratelimit" type="ratelimit" {
-        unix-socket "/var/run/sentinel/ratelimit.sock"
+        unix-socket "/var/run/zentinel/ratelimit.sock"
         config {
             requests-per-minute 100
             burst 20
@@ -168,7 +168,7 @@ agents {
     agent "waf" {
         type "waf"
         transport "unix_socket" {
-            path "/var/run/sentinel/waf.sock"
+            path "/var/run/zentinel/waf.sock"
         }
         events "request_headers" "request_body"
         timeout-ms 200
@@ -219,7 +219,7 @@ routes {
 
 agents {
     agent "ai-gateway" type="ai-gateway" {
-        unix-socket "/var/run/sentinel/ai-gateway.sock"
+        unix-socket "/var/run/zentinel/ai-gateway.sock"
         events "request_headers" "request_body"
         config {
             detect-prompt-injection #true
@@ -335,7 +335,7 @@ routes {
 
 agents {
     agent "denylist" type="denylist" {
-        unix-socket "/var/run/sentinel/denylist.sock"
+        unix-socket "/var/run/zentinel/denylist.sock"
         config {
             block-ips "10.0.0.0/8"
             block-countries "XX" "YY"
@@ -343,14 +343,14 @@ agents {
     }
 
     agent "waf" type="waf" {
-        unix-socket "/var/run/sentinel/waf.sock"
+        unix-socket "/var/run/zentinel/waf.sock"
         config {
             paranoia-level 3
         }
     }
 
     agent "auth" type="auth" {
-        unix-socket "/var/run/sentinel/auth.sock"
+        unix-socket "/var/run/zentinel/auth.sock"
         config {
             provider "oidc"
             issuer "https://auth.example.com"
@@ -366,10 +366,10 @@ agents {
 
 ## Custom Logic with Rust SDK
 
-Build custom agents in Rust with the [Sentinel Agent SDK](https://github.com/raskell-io/sentinel-agent-sdk):
+Build custom agents in Rust with the [Zentinel Agent SDK](https://github.com/zentinelproxy/zentinel-agent-sdk):
 
 ```rust
-use sentinel_agent_sdk::prelude::*;
+use zentinel_agent_sdk::prelude::*;
 
 struct TenantAgent;
 
@@ -410,14 +410,14 @@ Alternatively, use JavaScript for simpler logic or rapid prototyping:
 ```kdl
 agents {
     agent "custom" type="js" {
-        unix-socket "/var/run/sentinel/js.sock"
-        script "/etc/sentinel/scripts/custom.js"
+        unix-socket "/var/run/zentinel/js.sock"
+        script "/etc/zentinel/scripts/custom.js"
     }
 }
 ```
 
 ```javascript
-// /etc/sentinel/scripts/custom.js
+// /etc/zentinel/scripts/custom.js
 function onRequest(request) {
     const host = request.headers["host"] || "";
     const tenant = host.split(".")[0];
@@ -444,8 +444,8 @@ listeners {
         address "0.0.0.0:443"
         protocol "https"
         tls {
-            cert "/etc/sentinel/certs/wildcard.crt"
-            key "/etc/sentinel/certs/wildcard.key"
+            cert "/etc/zentinel/certs/wildcard.crt"
+            key "/etc/zentinel/certs/wildcard.key"
         }
     }
 }
@@ -495,7 +495,7 @@ upstreams {
 | Web Application | waf, denylist |
 | AI/LLM APIs | ai-gateway, ratelimit |
 | Microservices | auth, ratelimit |
-| Custom Logic (Rust) | [SDK](https://github.com/raskell-io/sentinel-agent-sdk) |
+| Custom Logic (Rust) | [SDK](https://github.com/zentinelproxy/zentinel-agent-sdk) |
 | Custom Logic (Scripting) | js, lua, wasm |
 | Full OWASP CRS | modsec |
 | Homelab | (none needed - just routing) |

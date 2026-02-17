@@ -3,7 +3,7 @@ title = "Docker Compose"
 weight = 4
 +++
 
-Docker Compose provides a straightforward way to deploy Sentinel with agents as containers. This guide covers local development and small production setups.
+Docker Compose provides a straightforward way to deploy Zentinel with agents as containers. This guide covers local development and small production setups.
 
 ## Overview
 
@@ -11,10 +11,10 @@ Docker Compose provides a straightforward way to deploy Sentinel with agents as 
 ┌──────────────────────────────────────────────────────────────┐
 │                    docker-compose.yml                        │
 │  ┌─────────────────────────────────────────────────────────┐│
-│  │                    Network: sentinel                    ││
+│  │                    Network: zentinel                    ││
 │  │                                                         ││
 │  │  ┌──────────┐  ┌──────────┐  ┌──────────┐             ││
-│  │  │ sentinel │  │   auth   │  │   waf    │             ││
+│  │  │ zentinel │  │   auth   │  │   waf    │             ││
 │  │  │  :8080   │  │  :50051  │  │  :50052  │             ││
 │  │  │  :9090   │  │          │  │          │             ││
 │  │  └────┬─────┘  └────┬─────┘  └────┬─────┘             ││
@@ -37,41 +37,41 @@ Docker Compose provides a straightforward way to deploy Sentinel with agents as 
 version: "3.8"
 
 services:
-  sentinel:
-    image: ghcr.io/raskell-io/sentinel:latest
+  zentinel:
+    image: ghcr.io/zentinelproxy/zentinel:latest
     ports:
       - "8080:8080"   # HTTP
       - "9090:9090"   # Admin
     volumes:
-      - ./config:/etc/sentinel:ro
-      - sockets:/var/run/sentinel
+      - ./config:/etc/zentinel:ro
+      - sockets:/var/run/zentinel
     depends_on:
       - auth-agent
       - echo-agent
     networks:
-      - sentinel
+      - zentinel
 
   auth-agent:
-    image: ghcr.io/raskell-io/sentinel-auth:latest
-    command: ["--socket", "/var/run/sentinel/auth.sock"]
+    image: ghcr.io/zentinelproxy/zentinel-auth:latest
+    command: ["--socket", "/var/run/zentinel/auth.sock"]
     volumes:
-      - sockets:/var/run/sentinel
+      - sockets:/var/run/zentinel
     networks:
-      - sentinel
+      - zentinel
 
   echo-agent:
-    image: ghcr.io/raskell-io/sentinel-echo:latest
-    command: ["--socket", "/var/run/sentinel/echo.sock"]
+    image: ghcr.io/zentinelproxy/zentinel-echo:latest
+    command: ["--socket", "/var/run/zentinel/echo.sock"]
     volumes:
-      - sockets:/var/run/sentinel
+      - sockets:/var/run/zentinel
     networks:
-      - sentinel
+      - zentinel
 
 volumes:
   sockets:
 
 networks:
-  sentinel:
+  zentinel:
 ```
 
 ```bash
@@ -82,7 +82,7 @@ docker-compose up -d
 docker-compose ps
 
 # View logs
-docker-compose logs -f sentinel
+docker-compose logs -f zentinel
 
 # Stop
 docker-compose down
@@ -96,14 +96,14 @@ Best for lowest latency when all containers run on the same host:
 
 ```yaml
 services:
-  sentinel:
+  zentinel:
     volumes:
-      - sockets:/var/run/sentinel
+      - sockets:/var/run/zentinel
 
   auth-agent:
     volumes:
-      - sockets:/var/run/sentinel
-    command: ["--socket", "/var/run/sentinel/auth.sock"]
+      - sockets:/var/run/zentinel
+    command: ["--socket", "/var/run/zentinel/auth.sock"]
 
 volumes:
   sockets:
@@ -112,7 +112,7 @@ volumes:
 Configuration:
 ```kdl
 agent "auth" type="auth" {
-    unix-socket "/var/run/sentinel/auth.sock"
+    unix-socket "/var/run/zentinel/auth.sock"
 }
 ```
 
@@ -122,15 +122,15 @@ Best for scaling agents independently or running on different hosts:
 
 ```yaml
 services:
-  sentinel:
+  zentinel:
     depends_on:
       - waf-agent
 
   waf-agent:
-    image: ghcr.io/raskell-io/sentinel-waf:latest
+    image: ghcr.io/zentinelproxy/zentinel-waf:latest
     command: ["--grpc", "0.0.0.0:50051"]
     networks:
-      - sentinel
+      - zentinel
 ```
 
 Configuration:
@@ -145,10 +145,10 @@ agent "waf" type="waf" {
 ### Project Structure
 
 ```
-sentinel-deploy/
+zentinel-deploy/
 ├── docker-compose.yml
 ├── config/
-│   └── sentinel.kdl
+│   └── zentinel.kdl
 ├── agents/
 │   └── auth/
 │       └── config.toml
@@ -164,19 +164,19 @@ version: "3.8"
 
 services:
   # ─────────────────────────────────────────────────────────
-  # Sentinel Proxy
+  # Zentinel Proxy
   # ─────────────────────────────────────────────────────────
-  sentinel:
-    image: ghcr.io/raskell-io/sentinel:latest
-    container_name: sentinel
+  zentinel:
+    image: ghcr.io/zentinelproxy/zentinel:latest
+    container_name: zentinel
     ports:
       - "80:8080"
       - "443:8443"
       - "9090:9090"
     volumes:
-      - ./config:/etc/sentinel:ro
-      - ./certs:/etc/sentinel/tls:ro
-      - sockets:/var/run/sentinel
+      - ./config:/etc/zentinel:ro
+      - ./certs:/etc/zentinel/tls:ro
+      - sockets:/var/run/zentinel
     environment:
       - RUST_LOG=info
     depends_on:
@@ -191,41 +191,41 @@ services:
       retries: 3
     restart: unless-stopped
     networks:
-      - sentinel
+      - zentinel
       - backend
 
   # ─────────────────────────────────────────────────────────
   # Auth Agent (Unix Socket)
   # ─────────────────────────────────────────────────────────
   auth-agent:
-    image: ghcr.io/raskell-io/sentinel-auth:latest
-    container_name: sentinel-auth
+    image: ghcr.io/zentinelproxy/zentinel-auth:latest
+    container_name: zentinel-auth
     command:
       - "--socket"
-      - "/var/run/sentinel/auth.sock"
+      - "/var/run/zentinel/auth.sock"
       - "--config"
       - "/etc/auth/config.toml"
     volumes:
-      - sockets:/var/run/sentinel
+      - sockets:/var/run/zentinel
       - ./agents/auth:/etc/auth:ro
     environment:
       - RUST_LOG=info
       - AUTH_SECRET=${AUTH_SECRET}
     healthcheck:
-      test: ["CMD", "test", "-S", "/var/run/sentinel/auth.sock"]
+      test: ["CMD", "test", "-S", "/var/run/zentinel/auth.sock"]
       interval: 5s
       timeout: 3s
       retries: 3
     restart: unless-stopped
     networks:
-      - sentinel
+      - zentinel
 
   # ─────────────────────────────────────────────────────────
   # WAF Agent (gRPC)
   # ─────────────────────────────────────────────────────────
   waf-agent:
-    image: ghcr.io/raskell-io/sentinel-waf:latest
-    container_name: sentinel-waf
+    image: ghcr.io/zentinelproxy/zentinel-waf:latest
+    container_name: zentinel-waf
     command:
       - "--grpc"
       - "0.0.0.0:50051"
@@ -242,14 +242,14 @@ services:
       retries: 3
     restart: unless-stopped
     networks:
-      - sentinel
+      - zentinel
 
   # ─────────────────────────────────────────────────────────
   # Echo Agent (for debugging)
   # ─────────────────────────────────────────────────────────
   echo-agent:
-    image: ghcr.io/raskell-io/sentinel-echo:latest
-    container_name: sentinel-echo
+    image: ghcr.io/zentinelproxy/zentinel-echo:latest
+    container_name: zentinel-echo
     command: ["--grpc", "0.0.0.0:50052", "--verbose"]
     environment:
       - RUST_LOG=debug
@@ -262,7 +262,7 @@ services:
     profiles:
       - debug
     networks:
-      - sentinel
+      - zentinel
 
   # ─────────────────────────────────────────────────────────
   # Example Backend
@@ -280,22 +280,22 @@ volumes:
     driver: local
 
 networks:
-  sentinel:
+  zentinel:
     driver: bridge
   backend:
     driver: bridge
     internal: true
 ```
 
-### config/sentinel.kdl
+### config/zentinel.kdl
 
 ```kdl
 server {
     listen "0.0.0.0:8080"
     listen "0.0.0.0:8443" {
         tls {
-            cert "/etc/sentinel/tls/cert.pem"
-            key "/etc/sentinel/tls/key.pem"
+            cert "/etc/zentinel/tls/cert.pem"
+            key "/etc/zentinel/tls/key.pem"
         }
     }
 }
@@ -306,7 +306,7 @@ admin {
 
 agents {
     agent "auth" type="auth" {
-        unix-socket "/var/run/sentinel/auth.sock"
+        unix-socket "/var/run/zentinel/auth.sock"
         events "request_headers"
         timeout-ms 50
         failure-mode "closed"
@@ -358,13 +358,13 @@ routes {
 version: "3.8"
 
 services:
-  sentinel:
+  zentinel:
     build:
-      context: ../sentinel
+      context: ../zentinel
       dockerfile: Dockerfile
     volumes:
-      - ./config:/etc/sentinel:ro
-      - sockets:/var/run/sentinel
+      - ./config:/etc/zentinel:ro
+      - sockets:/var/run/zentinel
     environment:
       - RUST_LOG=debug
     ports:
@@ -373,11 +373,11 @@ services:
 
   auth-agent:
     build:
-      context: ../sentinel
+      context: ../zentinel
       dockerfile: agents/auth/Dockerfile
     volumes:
-      - sockets:/var/run/sentinel
-    command: ["--socket", "/var/run/sentinel/auth.sock"]
+      - sockets:/var/run/zentinel
+    command: ["--socket", "/var/run/zentinel/auth.sock"]
 
 volumes:
   sockets:
@@ -416,17 +416,17 @@ agent "waf" type="waf" {
 }
 ```
 
-### Multiple Sentinel Instances
+### Multiple Zentinel Instances
 
 ```yaml
 services:
-  sentinel-1:
-    image: ghcr.io/raskell-io/sentinel:latest
+  zentinel-1:
+    image: ghcr.io/zentinelproxy/zentinel:latest
     ports:
       - "8081:8080"
 
-  sentinel-2:
-    image: ghcr.io/raskell-io/sentinel:latest
+  zentinel-2:
+    image: ghcr.io/zentinelproxy/zentinel:latest
     ports:
       - "8082:8080"
 
@@ -436,15 +436,15 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - sentinel-1
-      - sentinel-2
+      - zentinel-1
+      - zentinel-2
 ```
 
 ## Resource Limits
 
 ```yaml
 services:
-  sentinel:
+  zentinel:
     deploy:
       resources:
         limits:
@@ -468,7 +468,7 @@ services:
 
 ```yaml
 services:
-  sentinel:
+  zentinel:
     logging:
       driver: "json-file"
       options:
@@ -476,10 +476,10 @@ services:
         max-file: "3"
         labels: "service"
     labels:
-      service: "sentinel-proxy"
+      service: "zentinel-proxy"
 
   # Or with Loki
-  sentinel:
+  zentinel:
     logging:
       driver: loki
       options:
@@ -494,13 +494,13 @@ services:
 docker-compose logs -f
 
 # Specific service
-docker-compose logs -f sentinel
+docker-compose logs -f zentinel
 
 # With timestamps
-docker-compose logs -f -t sentinel
+docker-compose logs -f -t zentinel
 
 # Last 100 lines
-docker-compose logs --tail=100 sentinel
+docker-compose logs --tail=100 zentinel
 ```
 
 ## Health Checks
@@ -509,7 +509,7 @@ docker-compose logs --tail=100 sentinel
 
 ```yaml
 services:
-  sentinel:
+  zentinel:
     depends_on:
       auth-agent:
         condition: service_healthy
@@ -518,7 +518,7 @@ services:
 
   auth-agent:
     healthcheck:
-      test: ["CMD", "test", "-S", "/var/run/sentinel/auth.sock"]
+      test: ["CMD", "test", "-S", "/var/run/zentinel/auth.sock"]
       interval: 5s
       timeout: 3s
       retries: 3
@@ -528,7 +528,7 @@ services:
 ### External Health Check
 
 ```bash
-# Check Sentinel health
+# Check Zentinel health
 curl http://localhost:9090/health
 
 # Check agent connectivity
@@ -541,7 +541,7 @@ curl http://localhost:9090/agents/health
 
 ```yaml
 services:
-  sentinel:
+  zentinel:
     security_opt:
       - no-new-privileges:true
     read_only: true
@@ -574,12 +574,12 @@ secrets:
 
 ```yaml
 services:
-  sentinel:
+  zentinel:
     volumes:
-      - ./certs:/etc/sentinel/tls:ro
+      - ./certs:/etc/zentinel/tls:ro
     environment:
-      - SENTINEL_TLS_CERT=/etc/sentinel/tls/cert.pem
-      - SENTINEL_TLS_KEY=/etc/sentinel/tls/key.pem
+      - ZENTINEL_TLS_CERT=/etc/zentinel/tls/cert.pem
+      - ZENTINEL_TLS_KEY=/etc/zentinel/tls/key.pem
 ```
 
 ## Troubleshooting
@@ -594,20 +594,20 @@ docker-compose logs auth-agent
 docker-compose run --rm auth-agent sh
 
 # Check if socket exists
-docker-compose exec sentinel ls -la /var/run/sentinel/
+docker-compose exec zentinel ls -la /var/run/zentinel/
 ```
 
 ### Agent Connection Failed
 
 ```bash
 # Check network connectivity
-docker-compose exec sentinel ping waf-agent
+docker-compose exec zentinel ping waf-agent
 
 # Test gRPC connection
-docker-compose exec sentinel grpcurl -plaintext waf-agent:50051 list
+docker-compose exec zentinel grpcurl -plaintext waf-agent:50051 list
 
 # Check socket permissions
-docker-compose exec sentinel ls -la /var/run/sentinel/
+docker-compose exec zentinel ls -la /var/run/zentinel/
 ```
 
 ### Socket Permission Issues
@@ -615,7 +615,7 @@ docker-compose exec sentinel ls -la /var/run/sentinel/
 ```yaml
 # Ensure same user in all containers
 services:
-  sentinel:
+  zentinel:
     user: "1000:1000"
 
   auth-agent:

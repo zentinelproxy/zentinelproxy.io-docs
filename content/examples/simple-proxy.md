@@ -3,7 +3,7 @@ title = "Simple Proxy"
 weight = 1
 +++
 
-A minimal reverse proxy configuration that forwards all traffic to a single backend server. This is the simplest Sentinel setup and a good starting point.
+A minimal reverse proxy configuration that forwards all traffic to a single backend server. This is the simplest Zentinel setup and a good starting point.
 
 ## Use Case
 
@@ -13,7 +13,7 @@ A minimal reverse proxy configuration that forwards all traffic to a single back
 
 ## Configuration
 
-Create `sentinel.kdl`:
+Create `zentinel.kdl`:
 
 ```kdl
 // Simple Reverse Proxy
@@ -84,19 +84,19 @@ npx http-server -p 3000
 # Or use your own application on port 3000
 ```
 
-### 2. Run Sentinel
+### 2. Run Zentinel
 
 ```bash
-sentinel -c sentinel.kdl
+zentinel -c zentinel.kdl
 ```
 
 Expected output:
 
 ```
-INFO sentinel: Starting Sentinel v25.12.0
-INFO sentinel: Listener http bound to 0.0.0.0:8080
-INFO sentinel: Metrics server listening on 0.0.0.0:9090
-INFO sentinel: Upstream backend: 1 target(s) configured
+INFO zentinel: Starting Zentinel v25.12.0
+INFO zentinel: Listener http bound to 0.0.0.0:8080
+INFO zentinel: Metrics server listening on 0.0.0.0:9090
+INFO zentinel: Upstream backend: 1 target(s) configured
 ```
 
 ## Testing
@@ -109,7 +109,7 @@ curl -i http://localhost:8080/
 
 ### Check Headers
 
-Sentinel adds standard proxy headers:
+Zentinel adds standard proxy headers:
 
 ```bash
 curl -i http://localhost:8080/ | grep -i x-
@@ -123,13 +123,13 @@ Expected headers on the backend:
 ### Metrics
 
 ```bash
-curl http://localhost:9090/metrics | grep sentinel
+curl http://localhost:9090/metrics | grep zentinel
 ```
 
 Key metrics:
-- `sentinel_requests_total` - Total request count
-- `sentinel_request_duration_seconds` - Latency histogram
-- `sentinel_upstream_health` - Backend health status
+- `zentinel_requests_total` - Total request count
+- `zentinel_request_duration_seconds` - Latency histogram
+- `zentinel_upstream_health` - Backend health status
 
 ## Customizations
 
@@ -157,8 +157,8 @@ listeners {
         address "0.0.0.0:8443"
         protocol "https"
         tls {
-            cert-file "/etc/sentinel/cert.pem"
-            key-file "/etc/sentinel/key.pem"
+            cert-file "/etc/zentinel/cert.pem"
+            key-file "/etc/zentinel/key.pem"
         }
     }
 }

@@ -3,32 +3,32 @@ title = "Environment Variables"
 weight = 2
 +++
 
-Environment variables for configuring Sentinel and its agents.
+Environment variables for configuring Zentinel and its agents.
 
-## Sentinel Proxy
+## Zentinel Proxy
 
 ### Configuration
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `SENTINEL_CONFIG` | Path to configuration file | None (uses embedded default) |
+| `ZENTINEL_CONFIG` | Path to configuration file | None (uses embedded default) |
 
 ### Logging
 
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `RUST_LOG` | Log level filter (trace, debug, info, warn, error) | `info` |
-| `SENTINEL_LOG_FORMAT` | Log output format (`json` or `pretty`) | `json` |
+| `ZENTINEL_LOG_FORMAT` | Log output format (`json` or `pretty`) | `json` |
 
 **Examples:**
 
 ```bash
 # Set log level
 export RUST_LOG=debug
-export RUST_LOG=sentinel=debug,pingora=info
+export RUST_LOG=zentinel=debug,pingora=info
 
 # Use pretty format for development
-export SENTINEL_LOG_FORMAT=pretty
+export ZENTINEL_LOG_FORMAT=pretty
 ```
 
 ### Log Level Syntax
@@ -40,10 +40,10 @@ The `RUST_LOG` variable supports fine-grained control:
 RUST_LOG=debug
 
 # Per-module level
-RUST_LOG=sentinel=debug,pingora=warn
+RUST_LOG=zentinel=debug,pingora=warn
 
 # With target filtering
-RUST_LOG=sentinel::proxy=trace,sentinel::agents=debug
+RUST_LOG=zentinel::proxy=trace,zentinel::agents=debug
 ```
 
 ## Configuration Overrides
@@ -52,15 +52,15 @@ Some configuration settings can be overridden via environment variables. Environ
 
 | Variable | Config Setting | Description |
 |----------|----------------|-------------|
-| `SENTINEL_WORKERS` | `server.worker-threads` | Number of worker threads |
-| `SENTINEL_MAX_CONNECTIONS` | `server.max-connections` | Maximum connections |
+| `ZENTINEL_WORKERS` | `server.worker-threads` | Number of worker threads |
+| `ZENTINEL_MAX_CONNECTIONS` | `server.max-connections` | Maximum connections |
 
 **Example:**
 
 ```bash
 # Override worker threads regardless of config file
-export SENTINEL_WORKERS=8
-sentinel --config sentinel.kdl
+export ZENTINEL_WORKERS=8
+zentinel --config zentinel.kdl
 ```
 
 ## Agent Environment Variables
@@ -98,29 +98,29 @@ When building custom agents using the agent template:
 
 ## Docker Environment
 
-When running Sentinel in Docker, pass environment variables:
+When running Zentinel in Docker, pass environment variables:
 
 ```bash
 docker run -d \
-  -e SENTINEL_CONFIG=/etc/sentinel/sentinel.kdl \
+  -e ZENTINEL_CONFIG=/etc/zentinel/zentinel.kdl \
   -e RUST_LOG=info \
-  -e SENTINEL_LOG_FORMAT=json \
-  -v /path/to/config:/etc/sentinel \
-  sentinel:latest
+  -e ZENTINEL_LOG_FORMAT=json \
+  -v /path/to/config:/etc/zentinel \
+  zentinel:latest
 ```
 
 Docker Compose:
 
 ```yaml
 services:
-  sentinel:
-    image: sentinel:latest
+  zentinel:
+    image: zentinel:latest
     environment:
-      - SENTINEL_CONFIG=/etc/sentinel/sentinel.kdl
+      - ZENTINEL_CONFIG=/etc/zentinel/zentinel.kdl
       - RUST_LOG=info
-      - SENTINEL_LOG_FORMAT=json
+      - ZENTINEL_LOG_FORMAT=json
     volumes:
-      - ./config:/etc/sentinel:ro
+      - ./config:/etc/zentinel:ro
 ```
 
 ## Kubernetes Environment
@@ -131,41 +131,41 @@ Use ConfigMaps and Secrets for environment variables:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: sentinel-config
+  name: zentinel-config
 data:
   RUST_LOG: "info"
-  SENTINEL_LOG_FORMAT: "json"
+  ZENTINEL_LOG_FORMAT: "json"
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sentinel
+  name: zentinel
 spec:
   template:
     spec:
       containers:
-        - name: sentinel
+        - name: zentinel
           envFrom:
             - configMapRef:
-                name: sentinel-config
+                name: zentinel-config
 ```
 
 ## systemd Environment
 
 For systemd services, use an environment file:
 
-**/etc/sentinel/environment:**
+**/etc/zentinel/environment:**
 ```bash
-SENTINEL_CONFIG=/etc/sentinel/sentinel.kdl
+ZENTINEL_CONFIG=/etc/zentinel/zentinel.kdl
 RUST_LOG=info
-SENTINEL_LOG_FORMAT=json
+ZENTINEL_LOG_FORMAT=json
 ```
 
-**/etc/systemd/system/sentinel.service:**
+**/etc/systemd/system/zentinel.service:**
 ```ini
 [Service]
-EnvironmentFile=/etc/sentinel/environment
-ExecStart=/usr/local/bin/sentinel
+EnvironmentFile=/etc/zentinel/environment
+ExecStart=/usr/local/bin/zentinel
 ```
 
 ## Precedence
@@ -183,10 +183,10 @@ Check which environment variables are set:
 
 ```bash
 # Linux/macOS
-env | grep -E '^(SENTINEL|RUST_LOG)'
+env | grep -E '^(ZENTINEL|RUST_LOG)'
 
 # Show effective configuration
-sentinel --test --verbose --config sentinel.kdl
+zentinel --test --verbose --config zentinel.kdl
 ```
 
 ## Security Considerations

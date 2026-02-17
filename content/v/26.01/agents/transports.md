@@ -3,7 +3,7 @@ title = "Transport Protocols"
 weight = 4
 +++
 
-Sentinel agents communicate with the proxy over two transport mechanisms: Unix domain sockets (UDS) and gRPC. Both transports use the same logical protocol—only the wire encoding differs.
+Zentinel agents communicate with the proxy over two transport mechanisms: Unix domain sockets (UDS) and gRPC. Both transports use the same logical protocol—only the wire encoding differs.
 
 ## Transport Comparison
 
@@ -19,7 +19,7 @@ Sentinel agents communicate with the proxy over two transport mechanisms: Unix d
 
 ## Unix Domain Sockets
 
-Unix sockets provide the lowest-latency option for agents running on the same host as Sentinel.
+Unix sockets provide the lowest-latency option for agents running on the same host as Zentinel.
 
 ### Wire Format
 
@@ -44,7 +44,7 @@ Messages are length-prefixed JSON:
 
 ```kdl
 agent "my-agent" type="custom" {
-    unix-socket "/var/run/sentinel/my-agent.sock"
+    unix-socket "/var/run/zentinel/my-agent.sock"
     events "request_headers"
     timeout-ms 100
 }
@@ -53,7 +53,7 @@ agent "my-agent" type="custom" {
 ### Message Flow
 
 ```
-Sentinel Proxy                              Agent Process
+Zentinel Proxy                              Agent Process
       │                                           │
       │ ──── [4 bytes: length] ────────────────▶ │
       │ ──── [N bytes: JSON request] ──────────▶ │
@@ -191,9 +191,9 @@ async fn call_agent(
 
 | Pattern | Use Case |
 |---------|----------|
-| `/var/run/sentinel/<agent>.sock` | Production (systemd) |
+| `/var/run/zentinel/<agent>.sock` | Production (systemd) |
 | `/tmp/<agent>.sock` | Development/testing |
-| `~/.sentinel/<agent>.sock` | User-space development |
+| `~/.zentinel/<agent>.sock` | User-space development |
 
 ### Message Size Limits
 
@@ -241,10 +241,10 @@ service AgentProcessor {
 
 ### Rust Implementation (Server)
 
-Using the `sentinel-agent-protocol` crate:
+Using the `zentinel-agent-protocol` crate:
 
 ```rust
-use sentinel_agent_protocol::{GrpcAgentServer, AgentHandler, AgentResponse};
+use zentinel_agent_protocol::{GrpcAgentServer, AgentHandler, AgentResponse};
 
 struct MyAgent;
 
@@ -275,7 +275,7 @@ import (
     "context"
     "net"
 
-    pb "github.com/raskell-io/sentinel-proto/go"
+    pb "github.com/zentinelproxy/zentinel-proto/go"
     "google.golang.org/grpc"
 )
 
@@ -359,7 +359,7 @@ grpcurl -plaintext -d '{
     "method": "GET",
     "uri": "/api/test"
   }
-}' localhost:50051 sentinel.agent.v1.AgentProcessor/ProcessEvent
+}' localhost:50051 zentinel.agent.v1.AgentProcessor/ProcessEvent
 ```
 
 ### Streaming for Body Inspection
@@ -401,7 +401,7 @@ let response = stream.finish().await?;
 
 ### Use Unix Sockets When:
 
-- Agent runs on the same host as Sentinel
+- Agent runs on the same host as Zentinel
 - Latency is critical (< 100µs per call)
 - Simplicity is preferred (no protobuf toolchain)
 - Deploying as systemd services
@@ -422,7 +422,7 @@ let response = stream.finish().await?;
 
 ```kdl
 agent "local-auth" type="auth" {
-    unix-socket "/var/run/sentinel/auth.sock"
+    unix-socket "/var/run/zentinel/auth.sock"
 
     // Connection pool settings
     pool {
@@ -458,8 +458,8 @@ Unix sockets rely on filesystem permissions:
 
 ```bash
 # Restrict socket access
-chmod 0600 /var/run/sentinel/auth.sock
-chown sentinel:sentinel /var/run/sentinel/auth.sock
+chmod 0600 /var/run/zentinel/auth.sock
+chown zentinel:zentinel /var/run/zentinel/auth.sock
 ```
 
 ### gRPC Security
@@ -471,9 +471,9 @@ agent "secure-agent" type="custom" {
     grpc "https://agent.internal:50051"
 
     tls {
-        ca-cert "/etc/sentinel/ca.crt"
-        client-cert "/etc/sentinel/client.crt"
-        client-key "/etc/sentinel/client.key"
+        ca-cert "/etc/zentinel/ca.crt"
+        client-cert "/etc/zentinel/client.crt"
+        client-key "/etc/zentinel/client.key"
     }
 }
 ```
@@ -486,7 +486,7 @@ Both transports support the same failure policies:
 
 ```kdl
 agent "auth" type="auth" {
-    unix-socket "/var/run/sentinel/auth.sock"
+    unix-socket "/var/run/zentinel/auth.sock"
     timeout-ms 100
 
     // What to do when agent fails

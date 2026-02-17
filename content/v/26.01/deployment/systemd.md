@@ -3,7 +3,7 @@ title = "systemd Deployment"
 weight = 3
 +++
 
-systemd is the recommended deployment method for production Sentinel installations on Linux. It provides robust process supervision, socket activation, resource limits, and integration with system logging.
+systemd is the recommended deployment method for production Zentinel installations on Linux. It provides robust process supervision, socket activation, resource limits, and integration with system logging.
 
 ## Overview
 
@@ -11,21 +11,21 @@ systemd is the recommended deployment method for production Sentinel installatio
 ┌────────────────────────────────────────────────────────────┐
 │                      systemd                               │
 │  ┌─────────────────────────────────────────────────────┐  │
-│  │              sentinel-agents.target                  │  │
+│  │              zentinel-agents.target                  │  │
 │  │  ┌──────────────┐ ┌──────────────┐ ┌─────────────┐  │  │
-│  │  │sentinel-auth │ │sentinel-waf  │ │sentinel-echo│  │  │
+│  │  │zentinel-auth │ │zentinel-waf  │ │zentinel-echo│  │  │
 │  │  │   .service   │ │  .service    │ │  .service   │  │  │
 │  │  └──────┬───────┘ └──────┬───────┘ └──────┬──────┘  │  │
 │  │         │                │                │         │  │
 │  │  ┌──────┴───────┐ ┌──────┴───────┐ ┌──────┴──────┐  │  │
-│  │  │sentinel-auth │ │sentinel-waf  │ │sentinel-echo│  │  │
+│  │  │zentinel-auth │ │zentinel-waf  │ │zentinel-echo│  │  │
 │  │  │   .socket    │ │  .socket     │ │  .socket    │  │  │
 │  │  └──────────────┘ └──────────────┘ └─────────────┘  │  │
 │  └─────────────────────────────────────────────────────┘  │
 │                            │                               │
 │                            ▼                               │
 │               ┌────────────────────────┐                  │
-│               │    sentinel.service    │                  │
+│               │    zentinel.service    │                  │
 │               └────────────────────────┘                  │
 └────────────────────────────────────────────────────────────┘
 ```
@@ -35,50 +35,50 @@ systemd is the recommended deployment method for production Sentinel installatio
 ### Create User and Directories
 
 ```bash
-# Create sentinel user
-sudo useradd --system --no-create-home --shell /usr/sbin/nologin sentinel
+# Create zentinel user
+sudo useradd --system --no-create-home --shell /usr/sbin/nologin zentinel
 
 # Create directories
-sudo mkdir -p /etc/sentinel
-sudo mkdir -p /var/run/sentinel
-sudo mkdir -p /var/log/sentinel
+sudo mkdir -p /etc/zentinel
+sudo mkdir -p /var/run/zentinel
+sudo mkdir -p /var/log/zentinel
 
 # Set permissions
-sudo chown -R sentinel:sentinel /etc/sentinel
-sudo chown -R sentinel:sentinel /var/run/sentinel
-sudo chown -R sentinel:sentinel /var/log/sentinel
+sudo chown -R zentinel:zentinel /etc/zentinel
+sudo chown -R zentinel:zentinel /var/run/zentinel
+sudo chown -R zentinel:zentinel /var/log/zentinel
 ```
 
 ### Install Binaries
 
 ```bash
 # Download and install
-curl -sSL https://sentinel.raskell.io/install.sh | sudo sh
+curl -sSL https://zentinelproxy.io/install.sh | sudo sh
 
 # Or from source
 cargo build --release
-sudo cp target/release/sentinel /usr/local/bin/
-sudo cp target/release/sentinel-echo-agent /usr/local/bin/
-sudo cp target/release/sentinel-auth-agent /usr/local/bin/
+sudo cp target/release/zentinel /usr/local/bin/
+sudo cp target/release/zentinel-echo-agent /usr/local/bin/
+sudo cp target/release/zentinel-auth-agent /usr/local/bin/
 ```
 
 ## Unit Files
 
-### Sentinel Proxy Service
+### Zentinel Proxy Service
 
 ```ini
-# /etc/systemd/system/sentinel.service
+# /etc/systemd/system/zentinel.service
 [Unit]
-Description=Sentinel Reverse Proxy
-Documentation=https://sentinel.raskell.io/docs/
-After=network-online.target sentinel-agents.target
-Wants=network-online.target sentinel-agents.target
+Description=Zentinel Reverse Proxy
+Documentation=https://zentinelproxy.io/docs/
+After=network-online.target zentinel-agents.target
+Wants=network-online.target zentinel-agents.target
 
 [Service]
 Type=simple
-User=sentinel
-Group=sentinel
-ExecStart=/usr/local/bin/sentinel --config /etc/sentinel/sentinel.kdl
+User=zentinel
+Group=zentinel
+ExecStart=/usr/local/bin/zentinel --config /etc/zentinel/zentinel.kdl
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=always
 RestartSec=5
@@ -92,7 +92,7 @@ PrivateDevices=true
 ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectControlGroups=true
-ReadWritePaths=/var/run/sentinel /var/log/sentinel
+ReadWritePaths=/var/run/zentinel /var/log/zentinel
 
 # Resource limits
 LimitNOFILE=65536
@@ -101,7 +101,7 @@ MemoryMax=1G
 # Logging
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=sentinel
+SyslogIdentifier=zentinel
 
 [Install]
 WantedBy=multi-user.target
@@ -110,15 +110,15 @@ WantedBy=multi-user.target
 ### Agent Socket (Template)
 
 ```ini
-# /etc/systemd/system/sentinel-agent@.socket
+# /etc/systemd/system/zentinel-agent@.socket
 [Unit]
-Description=Sentinel Agent Socket (%i)
-PartOf=sentinel-agents.target
+Description=Zentinel Agent Socket (%i)
+PartOf=zentinel-agents.target
 
 [Socket]
-ListenStream=/var/run/sentinel/%i.sock
-SocketUser=sentinel
-SocketGroup=sentinel
+ListenStream=/var/run/zentinel/%i.sock
+SocketUser=zentinel
+SocketGroup=zentinel
 SocketMode=0600
 
 [Install]
@@ -128,19 +128,19 @@ WantedBy=sockets.target
 ### Agent Service (Template)
 
 ```ini
-# /etc/systemd/system/sentinel-agent@.service
+# /etc/systemd/system/zentinel-agent@.service
 [Unit]
-Description=Sentinel Agent (%i)
-Documentation=https://sentinel.raskell.io/docs/agents/
-Requires=sentinel-agent@%i.socket
-After=sentinel-agent@%i.socket
-PartOf=sentinel-agents.target
+Description=Zentinel Agent (%i)
+Documentation=https://zentinelproxy.io/docs/agents/
+Requires=zentinel-agent@%i.socket
+After=zentinel-agent@%i.socket
+PartOf=zentinel-agents.target
 
 [Service]
 Type=simple
-User=sentinel
-Group=sentinel
-ExecStart=/usr/local/bin/sentinel-%i-agent --socket /var/run/sentinel/%i.sock
+User=zentinel
+Group=zentinel
+ExecStart=/usr/local/bin/zentinel-%i-agent --socket /var/run/zentinel/%i.sock
 Restart=on-failure
 RestartSec=5
 
@@ -160,10 +160,10 @@ WantedBy=multi-user.target
 ### Agents Target
 
 ```ini
-# /etc/systemd/system/sentinel-agents.target
+# /etc/systemd/system/zentinel-agents.target
 [Unit]
-Description=Sentinel Agents
-Documentation=https://sentinel.raskell.io/docs/agents/
+Description=Zentinel Agents
+Documentation=https://zentinelproxy.io/docs/agents/
 
 [Install]
 WantedBy=multi-user.target
@@ -176,62 +176,62 @@ For agents with specific requirements, create dedicated unit files:
 ### Auth Agent
 
 ```ini
-# /etc/systemd/system/sentinel-auth.socket
+# /etc/systemd/system/zentinel-auth.socket
 [Unit]
-Description=Sentinel Auth Agent Socket
+Description=Zentinel Auth Agent Socket
 
 [Socket]
-ListenStream=/var/run/sentinel/auth.sock
-SocketUser=sentinel
-SocketGroup=sentinel
+ListenStream=/var/run/zentinel/auth.sock
+SocketUser=zentinel
+SocketGroup=zentinel
 SocketMode=0600
 
 [Install]
-WantedBy=sentinel-agents.target
+WantedBy=zentinel-agents.target
 ```
 
 ```ini
-# /etc/systemd/system/sentinel-auth.service
+# /etc/systemd/system/zentinel-auth.service
 [Unit]
-Description=Sentinel Auth Agent
-Requires=sentinel-auth.socket
-After=sentinel-auth.socket
+Description=Zentinel Auth Agent
+Requires=zentinel-auth.socket
+After=zentinel-auth.socket
 
 [Service]
 Type=simple
-User=sentinel
-Group=sentinel
-ExecStart=/usr/local/bin/sentinel-auth-agent \
-    --socket /var/run/sentinel/auth.sock \
-    --config /etc/sentinel/auth.toml
+User=zentinel
+Group=zentinel
+ExecStart=/usr/local/bin/zentinel-auth-agent \
+    --socket /var/run/zentinel/auth.sock \
+    --config /etc/zentinel/auth.toml
 Restart=on-failure
 RestartSec=5
 
 # Auth agent needs access to secrets
-Environment="AUTH_SECRET_FILE=/etc/sentinel/secrets/auth.key"
-ReadOnlyPaths=/etc/sentinel/secrets
+Environment="AUTH_SECRET_FILE=/etc/zentinel/secrets/auth.key"
+ReadOnlyPaths=/etc/zentinel/secrets
 
 MemoryMax=128M
 
 [Install]
-WantedBy=sentinel-agents.target
+WantedBy=zentinel-agents.target
 ```
 
 ### WAF Agent (gRPC)
 
 ```ini
-# /etc/systemd/system/sentinel-waf.service
+# /etc/systemd/system/zentinel-waf.service
 [Unit]
-Description=Sentinel WAF Agent
+Description=Zentinel WAF Agent
 After=network-online.target
 
 [Service]
 Type=simple
-User=sentinel
-Group=sentinel
-ExecStart=/usr/local/bin/sentinel-waf-agent \
+User=zentinel
+Group=zentinel
+ExecStart=/usr/local/bin/zentinel-waf-agent \
     --grpc 127.0.0.1:50051 \
-    --rules /etc/sentinel/waf/crs-rules
+    --rules /etc/zentinel/waf/crs-rules
 Restart=on-failure
 RestartSec=5
 
@@ -239,20 +239,20 @@ RestartSec=5
 MemoryMax=512M
 
 [Install]
-WantedBy=sentinel-agents.target
+WantedBy=zentinel-agents.target
 ```
 
-## Sentinel Configuration
+## Zentinel Configuration
 
 ```kdl
-// /etc/sentinel/sentinel.kdl
+// /etc/zentinel/zentinel.kdl
 
 server {
     listen "0.0.0.0:80"
     listen "0.0.0.0:443" {
         tls {
-            cert "/etc/sentinel/tls/cert.pem"
-            key "/etc/sentinel/tls/key.pem"
+            cert "/etc/zentinel/tls/cert.pem"
+            key "/etc/zentinel/tls/key.pem"
         }
     }
 }
@@ -263,7 +263,7 @@ admin {
 
 agents {
     agent "auth" type="auth" {
-        unix-socket "/var/run/sentinel/auth.sock"
+        unix-socket "/var/run/zentinel/auth.sock"
         events "request_headers"
         timeout-ms 50
         failure-mode "closed"
@@ -306,39 +306,39 @@ routes {
 sudo systemctl daemon-reload
 
 # Enable socket activation for agents
-sudo systemctl enable sentinel-auth.socket
-sudo systemctl enable sentinel-waf.service
-sudo systemctl enable sentinel-agents.target
+sudo systemctl enable zentinel-auth.socket
+sudo systemctl enable zentinel-waf.service
+sudo systemctl enable zentinel-agents.target
 
 # Start agents target (starts sockets, services start on demand)
-sudo systemctl start sentinel-agents.target
+sudo systemctl start zentinel-agents.target
 
-# Enable and start Sentinel
-sudo systemctl enable sentinel.service
-sudo systemctl start sentinel.service
+# Enable and start Zentinel
+sudo systemctl enable zentinel.service
+sudo systemctl start zentinel.service
 ```
 
 ### Management
 
 ```bash
 # Check status
-sudo systemctl status sentinel
-sudo systemctl status sentinel-auth
-sudo systemctl status sentinel-waf
+sudo systemctl status zentinel
+sudo systemctl status zentinel-auth
+sudo systemctl status zentinel-waf
 
 # View logs
-sudo journalctl -u sentinel -f
-sudo journalctl -u sentinel-auth -f
+sudo journalctl -u zentinel -f
+sudo journalctl -u zentinel-auth -f
 
 # Reload configuration (graceful)
-sudo systemctl reload sentinel
+sudo systemctl reload zentinel
 
 # Restart
-sudo systemctl restart sentinel
+sudo systemctl restart zentinel
 
 # Stop everything
-sudo systemctl stop sentinel
-sudo systemctl stop sentinel-agents.target
+sudo systemctl stop zentinel
+sudo systemctl stop zentinel-agents.target
 ```
 
 ## Socket Activation
@@ -350,10 +350,10 @@ Socket activation provides several benefits:
 
 ```bash
 # Check socket status
-sudo systemctl status sentinel-auth.socket
+sudo systemctl status zentinel-auth.socket
 
 # Socket is listening even if service isn't running
-ss -l | grep sentinel
+ss -l | grep zentinel
 ```
 
 ## Log Management
@@ -361,7 +361,7 @@ ss -l | grep sentinel
 ### journald Configuration
 
 ```ini
-# /etc/systemd/journald.conf.d/sentinel.conf
+# /etc/systemd/journald.conf.d/zentinel.conf
 [Journal]
 SystemMaxUse=1G
 MaxRetentionSec=7day
@@ -370,24 +370,24 @@ MaxRetentionSec=7day
 ### Log Queries
 
 ```bash
-# All Sentinel logs
-journalctl -u 'sentinel*' --since today
+# All Zentinel logs
+journalctl -u 'zentinel*' --since today
 
 # Just proxy logs
-journalctl -u sentinel -f
+journalctl -u zentinel -f
 
 # Agent logs with priority
-journalctl -u sentinel-auth -p err
+journalctl -u zentinel-auth -p err
 
 # JSON output for parsing
-journalctl -u sentinel -o json | jq
+journalctl -u zentinel -o json | jq
 ```
 
 ### Forward to External System
 
 ```bash
 # Export to file for shipping
-journalctl -u sentinel -o json --since "1 hour ago" > /var/log/sentinel/export.json
+journalctl -u zentinel -o json --since "1 hour ago" > /var/log/zentinel/export.json
 ```
 
 ## Resource Management
@@ -415,7 +415,7 @@ LimitNPROC=4096        # Processes
 
 ```bash
 # Check effective limits
-cat /proc/$(pgrep -f sentinel)/limits
+cat /proc/$(pgrep -f zentinel)/limits
 ```
 
 ## Health Checks
@@ -423,15 +423,15 @@ cat /proc/$(pgrep -f sentinel)/limits
 ### Systemd Watchdog
 
 ```ini
-# /etc/systemd/system/sentinel.service.d/watchdog.conf
+# /etc/systemd/system/zentinel.service.d/watchdog.conf
 [Service]
 WatchdogSec=30
 ```
 
-Sentinel must notify systemd periodically:
+Zentinel must notify systemd periodically:
 
 ```rust
-// In Sentinel code
+// In Zentinel code
 sd_notify::notify(false, &[sd_notify::NotifyState::Watchdog])?;
 ```
 
@@ -439,12 +439,12 @@ sd_notify::notify(false, &[sd_notify::NotifyState::Watchdog])?;
 
 ```bash
 # Simple HTTP check
-curl -f http://localhost:9090/health || systemctl restart sentinel
+curl -f http://localhost:9090/health || systemctl restart zentinel
 
 # As a systemd timer
-# /etc/systemd/system/sentinel-healthcheck.timer
+# /etc/systemd/system/zentinel-healthcheck.timer
 [Unit]
-Description=Sentinel Health Check Timer
+Description=Zentinel Health Check Timer
 
 [Timer]
 OnBootSec=1min
@@ -460,13 +460,13 @@ WantedBy=timers.target
 
 ```bash
 # 1. Deploy new binary
-sudo cp sentinel-new /usr/local/bin/sentinel.new
-sudo mv /usr/local/bin/sentinel.new /usr/local/bin/sentinel
+sudo cp zentinel-new /usr/local/bin/zentinel.new
+sudo mv /usr/local/bin/zentinel.new /usr/local/bin/zentinel
 
 # 2. Graceful restart
-sudo systemctl reload sentinel
+sudo systemctl reload zentinel
 # or for full restart:
-sudo systemctl restart sentinel
+sudo systemctl restart zentinel
 
 # 3. Verify
 curl http://localhost:9090/health
@@ -476,17 +476,17 @@ curl http://localhost:9090/health
 
 ```bash
 # Start new version on different port
-sentinel --config /etc/sentinel/sentinel-new.kdl &
+zentinel --config /etc/zentinel/zentinel-new.kdl &
 
 # Test new version
 curl http://localhost:8081/health
 
 # Switch traffic (update load balancer or DNS)
 # Stop old version
-sudo systemctl stop sentinel
+sudo systemctl stop zentinel
 
 # Rename new version
-sudo systemctl start sentinel
+sudo systemctl start zentinel
 ```
 
 ## Troubleshooting
@@ -495,37 +495,37 @@ sudo systemctl start sentinel
 
 ```bash
 # Check socket
-systemctl status sentinel-auth.socket
+systemctl status zentinel-auth.socket
 
 # Check service
-systemctl status sentinel-auth.service
+systemctl status zentinel-auth.service
 
 # Check logs
-journalctl -u sentinel-auth -n 50
+journalctl -u zentinel-auth -n 50
 
 # Manual test
-sudo -u sentinel /usr/local/bin/sentinel-auth-agent --socket /tmp/test.sock
+sudo -u zentinel /usr/local/bin/zentinel-auth-agent --socket /tmp/test.sock
 ```
 
 ### Permission Denied
 
 ```bash
 # Check socket permissions
-ls -la /var/run/sentinel/
+ls -la /var/run/zentinel/
 
 # Fix ownership
-sudo chown sentinel:sentinel /var/run/sentinel/*.sock
+sudo chown zentinel:zentinel /var/run/zentinel/*.sock
 ```
 
 ### Connection Refused
 
 ```bash
 # Is the socket listening?
-ss -l | grep sentinel
+ss -l | grep zentinel
 
 # Is the service running?
-systemctl is-active sentinel-auth
+systemctl is-active zentinel-auth
 
 # Try connecting manually
-socat - UNIX-CONNECT:/var/run/sentinel/auth.sock
+socat - UNIX-CONNECT:/var/run/zentinel/auth.sock
 ```

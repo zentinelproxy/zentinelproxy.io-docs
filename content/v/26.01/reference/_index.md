@@ -5,7 +5,7 @@ sort_by = "weight"
 template = "section.html"
 +++
 
-Quick reference documentation for Sentinel operations and troubleshooting.
+Quick reference documentation for Zentinel operations and troubleshooting.
 
 ## Reference Guides
 
@@ -19,10 +19,10 @@ Quick reference documentation for Sentinel operations and troubleshooting.
 
 ## Quick Links
 
-**Starting Sentinel:**
+**Starting Zentinel:**
 ```bash
-sentinel --config sentinel.kdl
-sentinel --test --config sentinel.kdl  # Validate config
+zentinel --config zentinel.kdl
+zentinel --test --config zentinel.kdl  # Validate config
 ```
 
 **Signals:**
@@ -30,9 +30,9 @@ sentinel --test --config sentinel.kdl  # Validate config
 - `SIGTERM` / `SIGINT` - Graceful shutdown
 
 **Key Environment Variables:**
-- `SENTINEL_CONFIG` - Configuration file path
+- `ZENTINEL_CONFIG` - Configuration file path
 - `RUST_LOG` - Log level (debug, info, warn, error)
-- `SENTINEL_LOG_FORMAT` - Log format (json, pretty)
+- `ZENTINEL_LOG_FORMAT` - Log format (json, pretty)
 
 **Metrics Endpoint:**
 ```bash

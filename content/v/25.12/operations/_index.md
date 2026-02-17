@@ -5,7 +5,7 @@ sort_by = "weight"
 template = "section.html"
 +++
 
-Guides for operating, monitoring, and maintaining Sentinel in production.
+Guides for operating, monitoring, and maintaining Zentinel in production.
 
 ## Operations Guides
 
@@ -18,11 +18,11 @@ Guides for operating, monitoring, and maintaining Sentinel in production.
 ## Quick Diagnostics
 
 ```bash
-# Check if Sentinel is running
-systemctl status sentinel
+# Check if Zentinel is running
+systemctl status zentinel
 
 # Validate configuration
-sentinel --test --config sentinel.kdl
+zentinel --test --config zentinel.kdl
 
 # View health status
 curl http://localhost:9090/health

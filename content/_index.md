@@ -4,11 +4,11 @@ weight = 0
 sort_by = "weight"
 template = "section.html"
 +++
-Welcome to **Sentinel**, a high-performance **reverse proxy** platform built on [Cloudflare's Pingora](https://github.com/cloudflare/pingora) framework. Sentinel extends Pingora's robust foundation with enterprise-grade features designed for modern web infrastructure.
+Welcome to **Zentinel**, a high-performance **reverse proxy** platform built on [Cloudflare's Pingora](https://github.com/cloudflare/pingora) framework. Zentinel extends Pingora's robust foundation with enterprise-grade features designed for modern web infrastructure.
 
-## What is Sentinel?
+## What is Zentinel?
 
-Sentinel is a next-generation reverse proxy that combines the performance and reliability of Pingora with advanced routing capabilities, service-type awareness, and comprehensive error handling. Whether you're serving static files, proxying REST APIs, or managing complex web applications, Sentinel provides the tools and flexibility you need for production deployments.
+Zentinel is a next-generation reverse proxy that combines the performance and reliability of Pingora with advanced routing capabilities, service-type awareness, and comprehensive error handling. Whether you're serving static files, proxying REST APIs, or managing complex web applications, Zentinel provides the tools and flexibility you need for production deployments.
 
 ## Key Features
 
@@ -19,7 +19,7 @@ Sentinel is a next-generation reverse proxy that combines the performance and re
 - Optimized for both throughput and latency
 
 ### Service-Type Awareness
-Sentinel understands different service types and optimizes behavior accordingly:
+Zentinel understands different service types and optimizes behavior accordingly:
 
 - **Web Applications**: HTML error pages, session handling, SPA support
 - **REST APIs**: JSON schema validation, structured error responses, OpenAPI integration
@@ -56,13 +56,13 @@ Sentinel understands different service types and optimizes behavior accordingly:
 - Environment variable substitution
 - Comprehensive validation on startup
 
-## Why Sentinel?
+## Why Zentinel?
 
 ### Production-Ready
-Sentinel is designed for production use from the ground up. Every feature is implemented with reliability, performance, and operational excellence in mind.
+Zentinel is designed for production use from the ground up. Every feature is implemented with reliability, performance, and operational excellence in mind.
 
 ### Type-Safe and Memory-Safe
-Written in Rust, Sentinel eliminates entire classes of bugs common in traditional proxies, including buffer overflows, use-after-free errors, and data races.
+Written in Rust, Zentinel eliminates entire classes of bugs common in traditional proxies, including buffer overflows, use-after-free errors, and data races.
 
 ### Cloud-Native
 Built for modern cloud environments with support for:
@@ -79,7 +79,7 @@ Built for modern cloud environments with support for:
 
 ## Use Cases
 
-Sentinel excels in various deployment scenarios:
+Zentinel excels in various deployment scenarios:
 
 - **API Gateway**: Validate requests, transform responses, implement rate limiting
 - **Static Content Delivery**: Serve files directly with optimal caching headers
@@ -90,7 +90,7 @@ Sentinel excels in various deployment scenarios:
 
 ## Architecture Highlights
 
-Sentinel leverages Pingora's battle-tested architecture while adding its own innovations:
+Zentinel leverages Pingora's battle-tested architecture while adding its own innovations:
 
 ```text
 Client Request
@@ -116,9 +116,9 @@ Client Response
 
 This documentation will guide you through:
 
-1. **[Installation](./getting-started/installation.md)** — Get Sentinel up and running
+1. **[Installation](./getting-started/installation.md)** — Get Zentinel up and running
 2. **[Quick Start](./getting-started/quick-start.md)** — Your first proxy configuration
-3. **[Core Concepts](./concepts/architecture.md)** — Understand how Sentinel works
+3. **[Core Concepts](./concepts/architecture.md)** — Understand how Zentinel works
 4. **[Configuration](./configuration/file-format.md)** — Master the configuration system
 5. **[Features](./features/)** — Explore all capabilities
 6. **[Deployment](./deployment/docker.md)** — Deploy to production
@@ -134,24 +134,24 @@ This documentation will guide you through:
 - **[Deployment](./deployment/)** — Container and cloud deployment guides
 - **[Examples](./examples/)** — Real-world configuration examples
 - **[Reference](./reference/)** — Metrics, CLI, and API documentation
-- **[Development](./development/)** — Contributing to Sentinel
+- **[Development](./development/)** — Contributing to Zentinel
 
 ## Community
 
-- 💬 **[Discussions](https://github.com/raskell-io/sentinel/discussions)** — Questions, ideas, show & tell
-- 🐛 **[Issues](https://github.com/raskell-io/sentinel/issues)** — Bug reports and feature requests
-- 📦 **[GitHub](https://github.com/raskell-io/sentinel)** — Source code and releases
+- 💬 **[Discussions](https://github.com/zentinelproxy/zentinel/discussions)** — Questions, ideas, show & tell
+- 🐛 **[Issues](https://github.com/zentinelproxy/zentinel/issues)** — Bug reports and feature requests
+- 📦 **[GitHub](https://github.com/zentinelproxy/zentinel)** — Source code and releases
 
 Contributions are welcome! See our [Contributing Guide](./development/contributing.md) to get started.
 
 ## Version Information
 
-This documentation covers Sentinel release **26.02**. For the latest updates and changes, see the [Changelog](./appendix/changelog.md). For details on the versioning scheme, see [Versioning](./appendix/versioning.md).
+This documentation covers Zentinel release **26.02**. For the latest updates and changes, see the [Changelog](./appendix/changelog.md). For details on the versioning scheme, see [Versioning](./appendix/versioning.md).
 
 ## License
 
-Sentinel is open-source software licensed under the Apache License, Version 2.0. See the [License](./appendix/license.md) page for details.
+Zentinel is open-source software licensed under the Apache License, Version 2.0. See the [License](./appendix/license.md) page for details.
 
 ---
 
-Ready to get started? Head to the [Installation Guide](./getting-started/installation.md) to begin your journey with Sentinel!
+Ready to get started? Head to the [Installation Guide](./getting-started/installation.md) to begin your journey with Zentinel!

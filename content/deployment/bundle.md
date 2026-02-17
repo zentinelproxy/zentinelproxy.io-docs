@@ -3,7 +3,7 @@ title = "Bundle Installation"
 weight = 1
 +++
 
-The `sentinel bundle` command provides a streamlined way to install Sentinel with its bundled agents. This is the recommended approach for production deployments on Linux servers.
+The `zentinel bundle` command provides a streamlined way to install Zentinel with its bundled agents. This is the recommended approach for production deployments on Linux servers.
 
 ## Overview
 
@@ -15,7 +15,7 @@ Instead of manually downloading and configuring each agent, the bundle command:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│              sentinel bundle install                     │
+│              zentinel bundle install                     │
 │                                                         │
 │  Reads lock file → Downloads agents → Installs binaries │
 │                                                         │
@@ -29,17 +29,17 @@ Instead of manually downloading and configuring each agent, the bundle command:
 ## Quick Start
 
 ```bash
-# 1. Install Sentinel
-curl -fsSL https://getsentinel.raskell.io | sh
+# 1. Install Zentinel
+curl -fsSL https://getzentinelproxy.io | sh
 
 # 2. Install bundled agents
-sudo sentinel bundle install
+sudo zentinel bundle install
 
 # 3. Check status
-sentinel bundle status
+zentinel bundle status
 
 # 4. Configure and start
-sudo systemctl start sentinel.target
+sudo systemctl start zentinel.target
 ```
 
 ## Commands Reference
@@ -48,37 +48,37 @@ sudo systemctl start sentinel.target
 
 ```bash
 # Install all bundled agents
-sudo sentinel bundle install
+sudo zentinel bundle install
 
 # Install with systemd services
-sudo sentinel bundle install --systemd
+sudo zentinel bundle install --systemd
 
 # Install a specific agent only
-sudo sentinel bundle install waf
+sudo zentinel bundle install waf
 
 # Preview without installing
-sentinel bundle install --dry-run
+zentinel bundle install --dry-run
 
 # Force reinstall even if up to date
-sudo sentinel bundle install --force
+sudo zentinel bundle install --force
 
 # Custom installation prefix
-sudo sentinel bundle install --prefix /opt/sentinel
+sudo zentinel bundle install --prefix /opt/zentinel
 
 # Skip checksum verification
-sudo sentinel bundle install --skip-verify
+sudo zentinel bundle install --skip-verify
 ```
 
 ### Check Status
 
 ```bash
-sentinel bundle status
+zentinel bundle status
 ```
 
 Example output:
 
 ```
-Sentinel Bundle Status
+Zentinel Bundle Status
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Bundle version: 26.01_1
 Install path:   /usr/local/bin
@@ -96,33 +96,33 @@ Total: 3 | Up to date: 2 | Outdated: 0 | Not installed: 1
 
 ```bash
 # List agents
-sentinel bundle list
+zentinel bundle list
 
 # With download URLs
-sentinel bundle list --verbose
+zentinel bundle list --verbose
 ```
 
 ### Check for Updates
 
 ```bash
 # Check what's available
-sentinel bundle update
+zentinel bundle update
 
 # Apply updates
-sentinel bundle update --apply
+zentinel bundle update --apply
 ```
 
 ### Uninstall Agents
 
 ```bash
 # Remove all agents
-sudo sentinel bundle uninstall
+sudo zentinel bundle uninstall
 
 # Remove specific agent
-sudo sentinel bundle uninstall waf
+sudo zentinel bundle uninstall waf
 
 # Preview
-sentinel bundle uninstall --dry-run
+zentinel bundle uninstall --dry-run
 ```
 
 ## Bundled Agents
@@ -139,11 +139,11 @@ ModSecurity-based web application firewall with OWASP Core Rule Set support.
 - Request validation
 - Security baseline
 
-**Configuration:** `/etc/sentinel/agents/waf.yaml`
+**Configuration:** `/etc/zentinel/agents/waf.yaml`
 
 ```yaml
 socket:
-  path: /var/run/sentinel/waf.sock
+  path: /var/run/zentinel/waf.sock
 
 modsecurity:
   engine: "On"
@@ -163,11 +163,11 @@ Token bucket rate limiting with flexible rule configuration.
 - Fair usage enforcement
 - Cost control
 
-**Configuration:** `/etc/sentinel/agents/ratelimit.yaml`
+**Configuration:** `/etc/zentinel/agents/ratelimit.yaml`
 
 ```yaml
 socket:
-  path: /var/run/sentinel/ratelimit.sock
+  path: /var/run/zentinel/ratelimit.sock
 
 rules:
   - name: api_per_ip
@@ -189,11 +189,11 @@ Simple IP and path blocking for known bad actors.
 - Geographic restrictions
 - Emergency blocking
 
-**Configuration:** `/etc/sentinel/agents/denylist.yaml`
+**Configuration:** `/etc/zentinel/agents/denylist.yaml`
 
 ```yaml
 socket:
-  path: /var/run/sentinel/denylist.sock
+  path: /var/run/zentinel/denylist.sock
 
 ip_denylist:
   enabled: true
@@ -207,26 +207,26 @@ path_denylist:
 
 ## Configuration
 
-After installing agents, configure Sentinel to use them.
+After installing agents, configure Zentinel to use them.
 
-### Add Agents to sentinel.kdl
+### Add Agents to zentinel.kdl
 
 ```kdl
 agents {
     agent "waf" {
-        endpoint "unix:///var/run/sentinel/waf.sock"
+        endpoint "unix:///var/run/zentinel/waf.sock"
         timeout-ms 100
         failure-mode "open"
     }
 
     agent "ratelimit" {
-        endpoint "unix:///var/run/sentinel/ratelimit.sock"
+        endpoint "unix:///var/run/zentinel/ratelimit.sock"
         timeout-ms 50
         failure-mode "open"
     }
 
     agent "denylist" {
-        endpoint "unix:///var/run/sentinel/denylist.sock"
+        endpoint "unix:///var/run/zentinel/denylist.sock"
         timeout-ms 20
         failure-mode "open"
     }
@@ -265,42 +265,42 @@ Install with systemd services for production:
 
 ```bash
 # Install with systemd
-sudo sentinel bundle install --systemd
+sudo zentinel bundle install --systemd
 
 # Reload systemd
 sudo systemctl daemon-reload
 
 # Enable the target (starts on boot)
-sudo systemctl enable sentinel.target
+sudo systemctl enable zentinel.target
 
 # Start everything
-sudo systemctl start sentinel.target
+sudo systemctl start zentinel.target
 ```
 
-The `sentinel.target` groups all services:
+The `zentinel.target` groups all services:
 
 ```bash
 # Check all services
-sudo systemctl status sentinel.target
+sudo systemctl status zentinel.target
 
 # View proxy logs
-sudo journalctl -u sentinel -f
+sudo journalctl -u zentinel -f
 
 # View WAF logs
-sudo journalctl -u sentinel-waf -f
+sudo journalctl -u zentinel-waf -f
 ```
 
 ### Service Dependencies
 
 ```
-sentinel.target
-├── sentinel.service        (proxy)
-├── sentinel-waf.service    (WAF agent)
-├── sentinel-ratelimit.service
-└── sentinel-denylist.service
+zentinel.target
+├── zentinel.service        (proxy)
+├── zentinel-waf.service    (WAF agent)
+├── zentinel-ratelimit.service
+└── zentinel-denylist.service
 ```
 
-All agent services depend on `sentinel.service` and are part of `sentinel.target`.
+All agent services depend on `zentinel.service` and are part of `zentinel.target`.
 
 ## Installation Paths
 
@@ -308,34 +308,34 @@ All agent services depend on `sentinel.service` and are part of `sentinel.target
 
 | Type | Path |
 |------|------|
-| Binaries | `/usr/local/bin/sentinel-{agent}-agent` |
-| Configs | `/etc/sentinel/agents/{agent}.yaml` |
-| Systemd | `/etc/systemd/system/sentinel-{agent}.service` |
-| Runtime | `/var/run/sentinel/` |
+| Binaries | `/usr/local/bin/zentinel-{agent}-agent` |
+| Configs | `/etc/zentinel/agents/{agent}.yaml` |
+| Systemd | `/etc/systemd/system/zentinel-{agent}.service` |
+| Runtime | `/var/run/zentinel/` |
 
 ### User-local (no root)
 
 | Type | Path |
 |------|------|
-| Binaries | `~/.local/bin/sentinel-{agent}-agent` |
-| Configs | `~/.config/sentinel/agents/{agent}.yaml` |
-| Systemd | `~/.config/systemd/user/sentinel-{agent}.service` |
+| Binaries | `~/.local/bin/zentinel-{agent}-agent` |
+| Configs | `~/.config/zentinel/agents/{agent}.yaml` |
+| Systemd | `~/.config/systemd/user/zentinel-{agent}.service` |
 
 The command automatically detects whether to use system-wide or user-local paths.
 
 ## Version Management
 
-Agent versions are coordinated via a lock file embedded in Sentinel:
+Agent versions are coordinated via a lock file embedded in Zentinel:
 
 ```bash
 # Check current versions
-sentinel bundle status
+zentinel bundle status
 
 # Check for updates
-sentinel bundle update
+zentinel bundle update
 
 # Update to latest
-sentinel bundle install --force
+zentinel bundle install --force
 ```
 
 The lock file ensures that all installed components are tested to work together.
@@ -346,10 +346,10 @@ The lock file ensures that all installed components are tested to work together.
 
 ```bash
 # Use sudo for system-wide installation
-sudo sentinel bundle install
+sudo zentinel bundle install
 
 # Or use user-local paths
-sentinel bundle install --prefix ~/.local
+zentinel bundle install --prefix ~/.local
 ```
 
 ### Download Failed
@@ -358,10 +358,10 @@ Check network connectivity:
 
 ```bash
 # Show download URLs
-sentinel bundle list --verbose
+zentinel bundle list --verbose
 
 # Test connectivity
-curl -I https://github.com/raskell-io/sentinel-agent-waf/releases
+curl -I https://github.com/zentinelproxy/zentinel-agent-waf/releases
 ```
 
 ### Agent Won't Start
@@ -370,13 +370,13 @@ Check logs and socket permissions:
 
 ```bash
 # Check logs
-sudo journalctl -u sentinel-waf -f
+sudo journalctl -u zentinel-waf -f
 
 # Check socket directory
-ls -la /var/run/sentinel/
+ls -la /var/run/zentinel/
 
-# Ensure sentinel user owns the directory
-sudo chown sentinel:sentinel /var/run/sentinel
+# Ensure zentinel user owns the directory
+sudo chown zentinel:zentinel /var/run/zentinel
 ```
 
 ### Version Mismatch
@@ -384,21 +384,21 @@ sudo chown sentinel:sentinel /var/run/sentinel
 Force reinstall:
 
 ```bash
-sudo sentinel bundle install --force
+sudo zentinel bundle install --force
 ```
 
 ## Example: Complete Setup
 
 ```bash
-# 1. Install Sentinel
-curl -fsSL https://getsentinel.raskell.io | sh
+# 1. Install Zentinel
+curl -fsSL https://getzentinelproxy.io | sh
 
 # 2. Install bundled agents with systemd
-sudo sentinel bundle install --systemd
+sudo zentinel bundle install --systemd
 
 # 3. Create configuration
-sudo mkdir -p /etc/sentinel
-sudo cat > /etc/sentinel/config.kdl << 'EOF'
+sudo mkdir -p /etc/zentinel
+sudo cat > /etc/zentinel/config.kdl << 'EOF'
 system {
     worker-threads 0
 }
@@ -412,17 +412,17 @@ listeners {
 
 agents {
     agent "denylist" {
-        endpoint "unix:///var/run/sentinel/denylist.sock"
+        endpoint "unix:///var/run/zentinel/denylist.sock"
         timeout-ms 20
         failure-mode "open"
     }
     agent "ratelimit" {
-        endpoint "unix:///var/run/sentinel/ratelimit.sock"
+        endpoint "unix:///var/run/zentinel/ratelimit.sock"
         timeout-ms 50
         failure-mode "open"
     }
     agent "waf" {
-        endpoint "unix:///var/run/sentinel/waf.sock"
+        endpoint "unix:///var/run/zentinel/waf.sock"
         timeout-ms 100
         failure-mode "open"
     }
@@ -447,17 +447,17 @@ EOF
 
 # 4. Start everything
 sudo systemctl daemon-reload
-sudo systemctl enable sentinel.target
-sudo systemctl start sentinel.target
+sudo systemctl enable zentinel.target
+sudo systemctl start zentinel.target
 
 # 5. Verify
 curl localhost:8080/_builtin/health
-sudo systemctl status sentinel.target
+sudo systemctl status zentinel.target
 ```
 
 ## See Also
 
-- [Installation](/getting-started/installation/) - Installing Sentinel
+- [Installation](/getting-started/installation/) - Installing Zentinel
 - [Systemd Deployment](../systemd/) - Production systemd setup
 - [Docker Compose](../docker-compose/) - Container deployment with agents
 - [Configuration Reference](/configuration/agents/) - Agent configuration options

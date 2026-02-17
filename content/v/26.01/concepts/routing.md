@@ -3,7 +3,7 @@ title = "Routing System"
 weight = 6
 +++
 
-Sentinel's routing system determines how incoming requests are matched to configured routes. This page covers match conditions, priority rules, and performance optimizations.
+Zentinel's routing system determines how incoming requests are matched to configured routes. This page covers match conditions, priority rules, and performance optimizations.
 
 ## Overview
 
@@ -419,7 +419,7 @@ Configuration                    Compiled
 
 ## Route Cache
 
-Sentinel caches route matches for performance:
+Zentinel caches route matches for performance:
 
 ```
 ┌───────────────────────────────────────────────────────────┐
@@ -577,7 +577,7 @@ route "api-other" { priority 50; matches { path-prefix "/api/" } }
 Use the CLI to test which route matches:
 
 ```bash
-sentinel route-test --path "/api/users/123" --method GET --host api.example.com
+zentinel route-test --path "/api/users/123" --method GET --host api.example.com
 ```
 
 Output:
@@ -596,13 +596,13 @@ Evaluated routes:
 ### View Compiled Routes
 
 ```bash
-sentinel routes --compiled
+zentinel routes --compiled
 ```
 
 ### Monitor Cache Performance
 
 ```bash
-sentinel stats routes
+zentinel stats routes
 ```
 
 ```

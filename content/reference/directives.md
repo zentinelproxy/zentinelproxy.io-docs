@@ -1,20 +1,20 @@
 +++
 title = "Directive Index"
 weight = 1
-description = "Complete reference for all Sentinel configuration directives"
+description = "Complete reference for all Zentinel configuration directives"
 +++
 
-Complete reference for all Sentinel configuration directives, verified against the source code. Each entry includes syntax, context, default values, and usage examples.
+Complete reference for all Zentinel configuration directives, verified against the source code. Each entry includes syntax, context, default values, and usage examples.
 
 ---
 
 ## Root-Level Blocks
 <small class="docs-ref">[File Format](/configuration/file-format/)</small>
-<small class="source-ref">[`crates/config/src/lib.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/lib.rs)</small>
+<small class="source-ref">[`crates/config/src/lib.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/lib.rs)</small>
 
 ### `schema-version`
 
-Configuration schema version for compatibility checking. Sentinel validates that the config matches the expected schema version.
+Configuration schema version for compatibility checking. Zentinel validates that the config matches the expected schema version.
 
 **Context:** root
 **Default:** `"1.0"`
@@ -44,7 +44,7 @@ system {
 
 ### `listeners`
 
-Top-level block containing all listener definitions. At least one listener is required for Sentinel to accept traffic.
+Top-level block containing all listener definitions. At least one listener is required for Zentinel to accept traffic.
 
 **Context:** root
 
@@ -241,7 +241,7 @@ namespaces {
 
 ## System Directives
 <small class="docs-ref">[Server](/configuration/server/)</small>
-<small class="source-ref">[`crates/config/src/server.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/server.rs)</small>
+<small class="source-ref">[`crates/config/src/server.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/server.rs)</small>
 
 ### `worker-threads`
 
@@ -290,7 +290,7 @@ system {
 
 ### `daemon`
 
-When enabled, Sentinel forks to the background after startup.
+When enabled, Zentinel forks to the background after startup.
 
 **Context:** `system`
 **Default:** `#false`
@@ -298,7 +298,7 @@ When enabled, Sentinel forks to the background after startup.
 ```kdl
 system {
     daemon #true
-    pid-file "/var/run/sentinel.pid"
+    pid-file "/var/run/zentinel.pid"
 }
 ```
 
@@ -312,7 +312,7 @@ Path to write the process ID file for process management.
 
 ```kdl
 system {
-    pid-file "/var/run/sentinel.pid"
+    pid-file "/var/run/zentinel.pid"
 }
 ```
 
@@ -326,8 +326,8 @@ Unix user to switch to after binding privileged ports.
 
 ```kdl
 system {
-    user "sentinel"
-    group "sentinel"
+    user "zentinel"
+    group "zentinel"
 }
 ```
 
@@ -341,8 +341,8 @@ Unix group to switch to after binding privileged ports.
 
 ```kdl
 system {
-    user "sentinel"
-    group "sentinel"
+    user "zentinel"
+    group "zentinel"
 }
 ```
 
@@ -356,7 +356,7 @@ Directory to change to after startup.
 
 ```kdl
 system {
-    working-directory "/var/lib/sentinel"
+    working-directory "/var/lib/zentinel"
 }
 ```
 
@@ -379,7 +379,7 @@ system {
 
 ### `auto-reload`
 
-When enabled, Sentinel watches the configuration file for changes and automatically reloads.
+When enabled, Zentinel watches the configuration file for changes and automatically reloads.
 
 **Context:** `system`
 **Default:** `#false`
@@ -394,7 +394,7 @@ system {
 
 ## Listener Directives
 <small class="docs-ref">[Listeners](/configuration/listeners/)</small>
-<small class="source-ref">[`crates/config/src/server.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/server.rs)</small>
+<small class="source-ref">[`crates/config/src/server.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/server.rs)</small>
 
 ### `listener`
 
@@ -506,7 +506,7 @@ listener "http" {
 
 ## Listener TLS Directives
 <small class="docs-ref">[Listeners](/configuration/listeners/)</small>
-<small class="source-ref">[`crates/config/src/server.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/server.rs)</small>
+<small class="source-ref">[`crates/config/src/server.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/server.rs)</small>
 
 ### `tls`
 
@@ -517,8 +517,8 @@ Configures TLS settings for secure connections.
 ```kdl
 listener "https" {
     tls {
-        cert-file "/etc/sentinel/server.crt"
-        key-file "/etc/sentinel/server.key"
+        cert-file "/etc/zentinel/server.crt"
+        key-file "/etc/zentinel/server.key"
     }
 }
 ```
@@ -534,8 +534,8 @@ Path to the TLS certificate file in PEM format.
 
 ```kdl
 tls {
-    cert-file "/etc/sentinel/server.crt"
-    key-file "/etc/sentinel/server.key"
+    cert-file "/etc/zentinel/server.crt"
+    key-file "/etc/zentinel/server.key"
 }
 ```
 
@@ -550,8 +550,8 @@ Path to the TLS private key file in PEM format.
 
 ```kdl
 tls {
-    cert-file "/etc/sentinel/server.crt"
-    key-file "/etc/sentinel/server.key"
+    cert-file "/etc/zentinel/server.crt"
+    key-file "/etc/zentinel/server.key"
 }
 ```
 
@@ -565,7 +565,7 @@ Path to CA certificate file for verifying client certificates (mTLS).
 
 ```kdl
 tls {
-    ca-file "/etc/sentinel/client-ca.pem"
+    ca-file "/etc/zentinel/client-ca.pem"
     client-auth #true
 }
 ```
@@ -611,7 +611,7 @@ Enables mutual TLS (mTLS) requiring client certificates.
 
 ```kdl
 tls {
-    ca-file "/etc/sentinel/client-ca.pem"
+    ca-file "/etc/zentinel/client-ca.pem"
     client-auth #true
 }
 ```
@@ -684,7 +684,7 @@ tls {
 
 ## Route Directives
 <small class="docs-ref">[Routes](/configuration/routes/)</small>
-<small class="source-ref">[`crates/config/src/routes.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/routes.rs)</small>
+<small class="source-ref">[`crates/config/src/routes.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/routes.rs)</small>
 
 ### `route`
 
@@ -832,7 +832,7 @@ route "api" {
 
 ## Route Matching Directives
 <small class="docs-ref">[Routes](/configuration/routes/)</small>
-<small class="source-ref">[`crates/config/src/routes.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/routes.rs)</small>
+<small class="source-ref">[`crates/config/src/routes.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/routes.rs)</small>
 
 ### `matches`
 
@@ -943,7 +943,7 @@ matches {
 
 ## Route Policies Directives
 <small class="docs-ref">[Routes](/configuration/routes/)</small>
-<small class="source-ref">[`crates/config/src/routes.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/routes.rs)</small>
+<small class="source-ref">[`crates/config/src/routes.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/routes.rs)</small>
 
 ### `policies`
 
@@ -1092,7 +1092,7 @@ Adds a header value without removing existing values.
 
 ```kdl
 response-headers {
-    add { "X-Served-By" "sentinel" }
+    add { "X-Served-By" "zentinel" }
 }
 ```
 
@@ -1177,7 +1177,7 @@ rate-limit {
 
 ## Route Cache Directives
 <small class="docs-ref">[Cache](/configuration/cache/)</small>
-<small class="source-ref">[`crates/config/src/routes.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/routes.rs)</small>
+<small class="source-ref">[`crates/config/src/routes.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/routes.rs)</small>
 
 ### `cache`
 
@@ -1341,7 +1341,7 @@ cache {
 
 ## Static Files Directives
 <small class="docs-ref">[Routes](/configuration/routes/)</small>
-<small class="source-ref">[`crates/config/src/routes.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/routes.rs)</small>
+<small class="source-ref">[`crates/config/src/routes.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/routes.rs)</small>
 
 ### `static-files`
 
@@ -1468,7 +1468,7 @@ static-files {
 
 ## Circuit Breaker Directives
 <small class="docs-ref">[Upstreams](/configuration/upstreams/)</small>
-<small class="source-ref">[`crates/config/src/routes.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/routes.rs)</small>
+<small class="source-ref">[`crates/config/src/routes.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/routes.rs)</small>
 
 ### `circuit-breaker`
 
@@ -1548,7 +1548,7 @@ circuit-breaker {
 
 ## Retry Policy Directives
 <small class="docs-ref">[Routes](/configuration/routes/)</small>
-<small class="source-ref">[`crates/config/src/routes.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/routes.rs)</small>
+<small class="source-ref">[`crates/config/src/routes.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/routes.rs)</small>
 
 ### `retry-policy`
 
@@ -1643,7 +1643,7 @@ retry-policy {
 
 ## Shadow/Traffic Mirroring Directives
 <small class="docs-ref">[Routes](/configuration/routes/)</small>
-<small class="source-ref">[`crates/config/src/routes.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/routes.rs)</small>
+<small class="source-ref">[`crates/config/src/routes.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/routes.rs)</small>
 
 ### `shadow`
 
@@ -1707,7 +1707,7 @@ shadow {
 
 ## Error Pages Directives
 <small class="docs-ref">[Routes](/configuration/routes/)</small>
-<small class="source-ref">[`crates/config/src/routes.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/routes.rs)</small>
+<small class="source-ref">[`crates/config/src/routes.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/routes.rs)</small>
 
 ### `error-pages`
 
@@ -1764,7 +1764,7 @@ Directory containing error page templates.
 
 ```kdl
 error-pages {
-    template-dir "/etc/sentinel/templates"
+    template-dir "/etc/zentinel/templates"
 }
 ```
 
@@ -1793,7 +1793,7 @@ pages {
 
 ## Upstream Directives
 <small class="docs-ref">[Upstreams](/configuration/upstreams/)</small>
-<small class="source-ref">[`crates/config/src/upstreams.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/upstreams.rs)</small>
+<small class="source-ref">[`crates/config/src/upstreams.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/upstreams.rs)</small>
 
 ### `upstream`
 
@@ -1928,7 +1928,7 @@ target {
 
 ## Health Check Directives
 <small class="docs-ref">[Upstreams](/configuration/upstreams/)</small>
-<small class="source-ref">[`crates/config/src/upstreams.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/upstreams.rs)</small>
+<small class="source-ref">[`crates/config/src/upstreams.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/upstreams.rs)</small>
 
 ### `health-check`
 
@@ -2025,7 +2025,7 @@ health-check {
 
 ## Connection Pool Directives
 <small class="docs-ref">[Upstreams](/configuration/upstreams/)</small>
-<small class="source-ref">[`crates/config/src/upstreams.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/upstreams.rs)</small>
+<small class="source-ref">[`crates/config/src/upstreams.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/upstreams.rs)</small>
 
 ### `connection-pool`
 
@@ -2090,7 +2090,7 @@ connection-pool {
 
 ## Upstream Timeouts Directives
 <small class="docs-ref">[Upstreams](/configuration/upstreams/)</small>
-<small class="source-ref">[`crates/config/src/upstreams.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/upstreams.rs)</small>
+<small class="source-ref">[`crates/config/src/upstreams.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/upstreams.rs)</small>
 
 ### `timeouts`
 
@@ -2171,7 +2171,7 @@ timeouts {
 
 ## Upstream TLS Directives
 <small class="docs-ref">[Upstreams](/configuration/upstreams/)</small>
-<small class="source-ref">[`crates/config/src/upstreams.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/upstreams.rs)</small>
+<small class="source-ref">[`crates/config/src/upstreams.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/upstreams.rs)</small>
 
 ### `sni`
 
@@ -2212,8 +2212,8 @@ Path to client certificate for mTLS to upstream.
 
 ```kdl
 tls {
-    client-cert "/etc/sentinel/client.crt"
-    client-key "/etc/sentinel/client.key"
+    client-cert "/etc/zentinel/client.crt"
+    client-key "/etc/zentinel/client.key"
 }
 ```
 
@@ -2227,8 +2227,8 @@ Path to client private key for mTLS.
 
 ```kdl
 tls {
-    client-cert "/etc/sentinel/client.crt"
-    client-key "/etc/sentinel/client.key"
+    client-cert "/etc/zentinel/client.crt"
+    client-key "/etc/zentinel/client.key"
 }
 ```
 
@@ -2242,7 +2242,7 @@ Path to CA certificate for upstream verification.
 
 ```kdl
 tls {
-    ca-cert "/etc/sentinel/ca.pem"
+    ca-cert "/etc/zentinel/ca.pem"
 }
 ```
 
@@ -2250,7 +2250,7 @@ tls {
 
 ## HTTP Version Directives
 <small class="docs-ref">[Upstreams](/configuration/upstreams/)</small>
-<small class="source-ref">[`crates/config/src/upstreams.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/upstreams.rs)</small>
+<small class="source-ref">[`crates/config/src/upstreams.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/upstreams.rs)</small>
 
 ### `http-version`
 
@@ -2329,7 +2329,7 @@ http-version {
 
 ## Agent Directives
 <small class="docs-ref">[Agents](/configuration/agents/)</small>
-<small class="source-ref">[`crates/config/src/agents.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/agents.rs)</small>
+<small class="source-ref">[`crates/config/src/agents.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/agents.rs)</small>
 
 ### `agent`
 
@@ -2518,7 +2518,7 @@ agent "custom" {
 
 ## Transport Directives
 <small class="docs-ref">[Agents](/configuration/agents/)</small>
-<small class="source-ref">[`crates/config/src/agents.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/agents.rs)</small>
+<small class="source-ref">[`crates/config/src/agents.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/agents.rs)</small>
 
 ### `type` (transport)
 
@@ -2568,7 +2568,7 @@ transport {
 
 ## Filter Directives
 <small class="docs-ref">[Filters](/configuration/filters/)</small>
-<small class="source-ref">[`crates/config/src/filters.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/filters.rs)</small>
+<small class="source-ref">[`crates/config/src/filters.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/filters.rs)</small>
 
 ### `filter`
 
@@ -2833,7 +2833,7 @@ GeoIP database path.
 ```kdl
 filter "geo" {
     type "geo"
-    database-path "/etc/sentinel/GeoLite2-Country.mmdb"
+    database-path "/etc/zentinel/GeoLite2-Country.mmdb"
 }
 ```
 
@@ -2887,7 +2887,7 @@ filter "geo" {
 ---
 
 ## WAF Directives
-<small class="source-ref">[`crates/config/src/waf.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/waf.rs)</small>
+<small class="source-ref">[`crates/config/src/waf.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/waf.rs)</small>
 
 ### `engine`
 
@@ -3035,7 +3035,7 @@ waf {
 
 ## Inference Directives
 <small class="docs-ref">[Inference](/configuration/inference/)</small>
-<small class="source-ref">[`crates/config/src/routes.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/routes.rs)</small>
+<small class="source-ref">[`crates/config/src/routes.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/routes.rs)</small>
 
 ### `inference`
 
@@ -3453,7 +3453,7 @@ pii-detection {
 
 ## Limits Directives
 <small class="docs-ref">[Limits](/configuration/limits/)</small>
-<small class="source-ref">[`crates/common/src/limits.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/common/src/limits.rs)</small>
+<small class="source-ref">[`crates/common/src/limits.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/common/src/limits.rs)</small>
 
 ### `max-header-size-bytes`
 
@@ -3577,7 +3577,7 @@ limits {
 
 ## Observability Directives
 <small class="docs-ref">[Observability](/configuration/observability/)</small>
-<small class="source-ref">[`crates/config/src/observability.rs`](https://github.com/raskell-io/sentinel/blob/main/crates/config/src/observability.rs)</small>
+<small class="source-ref">[`crates/config/src/observability.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/observability.rs)</small>
 
 ### `metrics`
 
@@ -3667,7 +3667,7 @@ Log output file path.
 
 ```kdl
 logging {
-    file "/var/log/sentinel/app.log"
+    file "/var/log/zentinel/app.log"
 }
 ```
 
@@ -3683,7 +3683,7 @@ Access log configuration.
 logging {
     access-log {
         enabled #true
-        file "/var/log/sentinel/access.log"
+        file "/var/log/zentinel/access.log"
         format "json"
     }
 }
@@ -3701,7 +3701,7 @@ Error log configuration.
 logging {
     error-log {
         enabled #true
-        file "/var/log/sentinel/error.log"
+        file "/var/log/zentinel/error.log"
         level "warn"
     }
 }
@@ -3719,7 +3719,7 @@ Audit log configuration.
 logging {
     audit-log {
         enabled #true
-        file "/var/log/sentinel/audit.log"
+        file "/var/log/zentinel/audit.log"
         log-blocked #true
     }
 }
@@ -3740,7 +3740,7 @@ observability {
             endpoint "http://localhost:4317"
         }
         sampling-rate 0.01
-        service-name "sentinel"
+        service-name "zentinel"
     }
 }
 ```
@@ -3767,7 +3767,7 @@ tracing {
 Service name for tracing spans.
 
 **Context:** `tracing`
-**Default:** `"sentinel"`
+**Default:** `"zentinel"`
 
 ```kdl
 tracing {
