@@ -10,13 +10,13 @@ This guide covers two approaches to building Zentinel agents:
 
 ## Using the SDK (Recommended)
 
-The [Zentinel Agent SDK](https://github.com/zentinelproxy/zentinel-agent-sdk) provides a high-level API that handles protocol details, connection management, CLI parsing, and logging automatically.
+The [Zentinel Agent SDK](https://github.com/zentinelproxy/zentinel-agent-rust-sdk) provides a high-level API that handles protocol details, connection management, CLI parsing, and logging automatically.
 
 ### Add Dependency
 
 ```toml
 [dependencies]
-zentinel-agent-sdk = { git = "https://github.com/zentinelproxy/zentinel-agent-sdk" }
+zentinel-agent-sdk = { git = "https://github.com/zentinelproxy/zentinel-agent-rust-sdk" }
 ```
 
 ### Implement Your Agent
