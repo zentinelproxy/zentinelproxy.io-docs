@@ -13,7 +13,7 @@ The fastest way to try Zentinel:
 
 ```bash
 # Install
-curl -fsSL https://getzentinelproxy.io | sh
+curl -fsSL https://get.zentinelproxy.io | sh
 
 # Run with a simple config
 zentinel -c zentinel.kdl
