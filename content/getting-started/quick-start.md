@@ -10,7 +10,7 @@ Get Zentinel up and running in under 5 minutes.
 Run the install script:
 
 ```bash
-curl -fsSL https://getzentinelproxy.io | sh
+curl -fsSL https://get.zentinelproxy.io | sh
 ```
 
 Add to your PATH if needed:
@@ -211,7 +211,7 @@ The installer needs write access to `/usr/local/bin`:
 
 ```bash
 # Option 1: Use sudo (will prompt for password)
-curl -fsSL https://getzentinelproxy.io | sudo sh
+curl -fsSL https://get.zentinelproxy.io | sudo sh
 
 # Option 2: Install to user directory (no sudo needed)
 # The script will automatically fall back to ~/.local/bin

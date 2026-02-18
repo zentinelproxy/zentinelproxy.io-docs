@@ -5,7 +5,7 @@
 zola = "0.19.2"
 
 # Zentinel for local serving (optional)
-# Install: curl -fsSL https://getzentinelproxy.io | sh
+# Install: curl -fsSL https://get.zentinelproxy.io | sh
 
 [tasks.default]
 description = "Show available tasks"

@@ -10,7 +10,7 @@ Zentinel can be installed via the install script, from pre-built binaries, built
 The easiest way to install Zentinel is using the install script, which automatically detects your OS and architecture:
 
 ```bash
-curl -fsSL https://getzentinelproxy.io | sh
+curl -fsSL https://get.zentinelproxy.io | sh
 ```
 
 The script downloads the appropriate binary and installs it to `~/.local/bin`. You may need to add this to your PATH:
