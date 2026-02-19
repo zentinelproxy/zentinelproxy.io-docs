@@ -1,6 +1,7 @@
 +++
 title = "Monitoring Setup"
 weight = 6
+updated = 2026-02-19
 +++
 
 Production monitoring and observability for Zentinel deployments.

@@ -2,6 +2,7 @@
 title = "Directive Index"
 weight = 1
 description = "Complete reference for all Zentinel configuration directives"
+updated = 2026-02-19
 +++
 
 Complete reference for all Zentinel configuration directives, verified against the source code. Each entry includes syntax, context, default values, and usage examples.

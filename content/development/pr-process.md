@@ -1,6 +1,7 @@
 +++
 title = "Pull Request Process"
 weight = 9
+updated = 2026-02-19
 +++
 
 Guidelines for submitting and reviewing pull requests.

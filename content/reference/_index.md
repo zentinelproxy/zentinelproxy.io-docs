@@ -3,6 +3,7 @@ title = "Reference"
 weight = 9
 sort_by = "weight"
 template = "section.html"
+updated = 2026-02-19
 +++
 
 Quick reference documentation for Zentinel operations and troubleshooting.

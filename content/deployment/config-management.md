@@ -1,6 +1,7 @@
 +++
 title = "Configuration Management"
 weight = 1
+updated = 2026-02-19
 +++
 
 Managing Zentinel configurations across environments.

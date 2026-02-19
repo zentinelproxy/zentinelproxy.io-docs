@@ -1,6 +1,7 @@
 +++
 title = "API Schema Validation"
 weight = 3
+updated = 2026-02-19
 +++
 
 Validate API requests and responses against JSON schemas or OpenAPI specifications at the proxy layer. This example demonstrates contract validation, ensuring all API traffic conforms to your API specifications.

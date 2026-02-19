@@ -1,6 +1,7 @@
 +++
 title = "Incident Response"
 weight = 4
+updated = 2026-02-19
 +++
 
 Procedures for responding to production incidents affecting Zentinel.

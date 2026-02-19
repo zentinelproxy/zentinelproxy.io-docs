@@ -1,6 +1,7 @@
 +++
 title = "Simple Proxy"
 weight = 1
+updated = 2026-02-19
 +++
 
 A minimal reverse proxy configuration that forwards all traffic to a single backend server. This is the simplest Zentinel setup and a good starting point.

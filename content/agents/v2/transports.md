@@ -1,6 +1,7 @@
 +++
 title = "Transport Options"
 weight = 4
+updated = 2026-02-19
 +++
 
 This document covers the three transport mechanisms available in Agent Protocol v2: gRPC, Unix Domain Sockets (UDS), and Reverse Connections.

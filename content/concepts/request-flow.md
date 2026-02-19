@@ -1,6 +1,7 @@
 +++
 title = "Request Lifecycle"
 weight = 5
+updated = 2026-02-19
 +++
 
 This page details the complete lifecycle of an HTTP request through Zentinel, from client connection to response delivery.

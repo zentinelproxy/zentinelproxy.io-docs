@@ -1,6 +1,7 @@
 +++
 title = "HTTP Caching"
 weight = 16
+updated = 2026-02-19
 +++
 
 Configure HTTP response caching with different storage backends and per-route cache policies. This example demonstrates memory caching, stale-while-revalidate, and cache control handling.

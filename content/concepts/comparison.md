@@ -1,6 +1,7 @@
 +++
 title = "Comparison with Alternatives"
 weight = 6
+updated = 2026-02-19
 +++
 
 How Zentinel compares to other popular reverse proxies and load balancers.

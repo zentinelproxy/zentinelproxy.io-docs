@@ -1,6 +1,7 @@
 +++
 title = "Versioning"
 weight = 2
+updated = 2026-02-19
 +++
 
 How Zentinel versions work, mapping between release and crate versions, and changelogs.

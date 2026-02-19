@@ -1,6 +1,7 @@
 +++
 title = "Basic Configuration"
 weight = 2
+updated = 2026-02-19
 +++
 
 Zentinel uses [KDL](https://kdl.dev) (KDL Document Language) as its primary configuration format. KDL is a human-friendly document language with a clean syntax that's easy to read and write.

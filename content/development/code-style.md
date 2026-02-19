@@ -1,6 +1,7 @@
 +++
 title = "Code Style"
 weight = 3
+updated = 2026-02-19
 +++
 
 Formatting conventions and best practices for Zentinel codebase.

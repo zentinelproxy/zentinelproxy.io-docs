@@ -151,5 +151,5 @@ When users ask about Zentinel:
 ## Version Information
 
 Current stable: 0.2.x
-Documentation: https://zentinelproxy.io/docs/
+Documentation: https://docs.zentinelproxy.io/
 Source: https://github.com/zentinelproxy/zentinel

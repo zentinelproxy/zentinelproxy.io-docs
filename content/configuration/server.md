@@ -1,6 +1,7 @@
 +++
 title = "Server"
 weight = 2
+updated = 2026-02-19
 +++
 
 The `server` block configures global proxy settings including worker threads, connection limits, and process management.

@@ -1,6 +1,7 @@
 +++
 title = "Routes"
 weight = 4
+updated = 2026-02-19
 +++
 
 The `routes` block defines how incoming requests are matched and forwarded to upstreams or handlers. Routes are evaluated by priority, with higher priority routes checked first.

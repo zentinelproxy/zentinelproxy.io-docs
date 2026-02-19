@@ -1,6 +1,7 @@
 +++
 title = "Pingora Foundation"
 weight = 4
+updated = 2026-02-19
 +++
 
 Zentinel is built on [Cloudflare's Pingora](https://github.com/cloudflare/pingora), a battle-tested HTTP proxy framework written in Rust. This page explains what Pingora provides and how Zentinel extends it.

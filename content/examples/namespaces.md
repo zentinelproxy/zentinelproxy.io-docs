@@ -1,6 +1,7 @@
 +++
 title = "Namespaces"
 weight = 17
+updated = 2026-02-19
 +++
 
 Organize resources using namespaces for multi-tenant or microservice architectures. This example shows hierarchical configuration with namespace-scoped resources, service definitions, and cross-namespace exports.

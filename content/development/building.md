@@ -1,6 +1,7 @@
 +++
 title = "Building from Source"
 weight = 1
+updated = 2026-02-19
 +++
 
 Compile Zentinel and agents from source code.

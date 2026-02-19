@@ -1,6 +1,7 @@
 +++
 title = "Observability"
 weight = 8
+updated = 2026-02-19
 +++
 
 Zentinel provides comprehensive observability through metrics, logging, and distributed tracing. All observability features are configured in the `observability` block.

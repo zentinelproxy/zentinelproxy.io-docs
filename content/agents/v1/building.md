@@ -1,6 +1,7 @@
 +++
 title = "Building Agents"
 weight = 3
+updated = 2026-02-19
 +++
 
 This guide covers two approaches to building Zentinel agents:

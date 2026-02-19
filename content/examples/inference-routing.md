@@ -1,6 +1,7 @@
 +++
 title = "Inference Routing"
 weight = 18
+updated = 2026-02-19
 +++
 
 Configure Zentinel for LLM/AI inference endpoints with token-based rate limiting, model routing, cost tracking, and intelligent load balancing. This example demonstrates how to build a production-ready AI gateway.

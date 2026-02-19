@@ -1,6 +1,7 @@
 +++
 title = "Caching"
 weight = 7
+updated = 2026-02-19
 +++
 
 Zentinel provides HTTP response caching to reduce upstream load and improve response times. Caching is configured at two levels: global storage settings and per-route caching policies.

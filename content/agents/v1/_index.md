@@ -2,6 +2,7 @@
 title = "Protocol v1 (Legacy)"
 weight = 20
 sort_by = "weight"
+updated = 2026-02-19
 +++
 
 Agent Protocol v1 is the legacy protocol for agent communication. It remains fully supported for backwards compatibility with existing agents.

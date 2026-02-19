@@ -1,6 +1,7 @@
 +++
 title = "Namespaces & Services"
 weight = 11
+updated = 2026-02-19
 +++
 
 Namespaces and services provide hierarchical organization for Zentinel configuration, enabling multi-tenant deployments with runtime isolation.

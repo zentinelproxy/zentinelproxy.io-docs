@@ -1,6 +1,7 @@
 +++
 title = "Environment Variables"
 weight = 2
+updated = 2026-02-19
 +++
 
 Environment variables for configuring Zentinel and its agents.

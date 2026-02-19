@@ -1,6 +1,7 @@
 +++
 title = "AI Gateway"
 weight = 9
+updated = 2026-02-19
 +++
 
 Secure proxy for AI/LLM APIs with prompt injection detection, PII filtering, rate limiting, and cost management.

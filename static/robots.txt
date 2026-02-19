@@ -1,12 +1,12 @@
 # Zentinel Documentation - robots.txt
-# https://zentinelproxy.io/docs/
+# https://docs.zentinelproxy.io/
 
 # Allow all standard crawlers
 User-agent: *
 Allow: /
 
 # Sitemap location
-Sitemap: https://zentinelproxy.io/docs/sitemap.xml
+Sitemap: https://docs.zentinelproxy.io/sitemap.xml
 
 # AI Crawlers - Welcome to index our documentation
 User-agent: GPTBot
@@ -50,4 +50,4 @@ User-agent: PerplexityBot
 Crawl-delay: 1
 
 # AI context file for documentation
-# See: https://zentinelproxy.io/docs/llms.txt
+# See: https://docs.zentinelproxy.io/llms.txt

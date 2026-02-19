@@ -1,6 +1,7 @@
 +++
 title = "Kubernetes"
 weight = 5
+updated = 2026-02-19
 +++
 
 Kubernetes provides the most flexible deployment model for Zentinel, supporting multiple patterns from simple sidecar deployments to sophisticated service mesh integrations.

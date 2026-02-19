@@ -1,6 +1,7 @@
 +++
 title = "Error Codes"
 weight = 3
+updated = 2026-02-19
 +++
 
 HTTP status codes and error responses returned by Zentinel.

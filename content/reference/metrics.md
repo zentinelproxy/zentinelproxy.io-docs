@@ -1,6 +1,7 @@
 +++
 title = "Metrics Reference"
 weight = 4
+updated = 2026-02-19
 +++
 
 Prometheus metrics exposed by Zentinel for monitoring and alerting.

@@ -1,6 +1,7 @@
 +++
 title = "Connection Pooling"
 weight = 3
+updated = 2026-02-19
 +++
 
 This document covers the AgentPool connection pooling system, including load balancing strategies, health tracking, and circuit breakers.

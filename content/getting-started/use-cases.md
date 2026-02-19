@@ -1,6 +1,7 @@
 +++
 title = "Use Cases"
 weight = 5
+updated = 2026-02-19
 +++
 
 Zentinel is a secure, high-performance reverse proxy with programmable security controls. Here are common scenarios where Zentinel excels, from enterprise deployments to personal projects.

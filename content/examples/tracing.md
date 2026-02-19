@@ -1,6 +1,7 @@
 +++
 title = "Distributed Tracing"
 weight = 8
+updated = 2026-02-19
 +++
 
 Complete distributed tracing setup with Jaeger or Grafana Tempo for end-to-end request visibility.

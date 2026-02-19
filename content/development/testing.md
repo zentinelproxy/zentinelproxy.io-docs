@@ -1,6 +1,7 @@
 +++
 title = "Testing"
 weight = 5
+updated = 2026-02-19
 +++
 
 Testing strategy and philosophy for Zentinel development.

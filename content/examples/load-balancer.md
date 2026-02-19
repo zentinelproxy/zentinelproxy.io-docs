@@ -1,6 +1,7 @@
 +++
 title = "Load Balancer"
 weight = 3
+updated = 2026-02-19
 +++
 
 A load balancer configuration distributing traffic across multiple backend servers with health checks, session affinity, and weighted routing.

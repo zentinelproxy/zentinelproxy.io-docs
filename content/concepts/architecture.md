@@ -1,6 +1,7 @@
 +++
 title = "Architecture Overview"
 weight = 1
+updated = 2026-02-19
 +++
 
 Zentinel is a security-first reverse proxy built on [Cloudflare's Pingora](https://github.com/cloudflare/pingora) framework. This page explains the high-level architecture and design philosophy.

@@ -1,6 +1,7 @@
 +++
 title = "Bundle Installation"
 weight = 1
+updated = 2026-02-19
 +++
 
 The `zentinel bundle` command provides a streamlined way to install Zentinel with its bundled agents. This is the recommended approach for production deployments on Linux servers.

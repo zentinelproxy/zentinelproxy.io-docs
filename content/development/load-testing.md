@@ -1,6 +1,7 @@
 +++
 title = "Load Testing"
 weight = 8
+updated = 2026-02-19
 +++
 
 Performance and stress testing for Zentinel.

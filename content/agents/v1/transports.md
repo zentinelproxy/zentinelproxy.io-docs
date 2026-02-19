@@ -1,6 +1,7 @@
 +++
 title = "Transport Protocols"
 weight = 4
+updated = 2026-02-19
 +++
 
 Zentinel agents communicate with the proxy over two transport mechanisms: Unix domain sockets (UDS) and gRPC. Both transports use the same logical protocol—only the wire encoding differs.
