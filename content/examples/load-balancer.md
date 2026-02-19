@@ -505,6 +505,35 @@ upstreams {
 
 Gradually increases traffic to newly healthy targets.
 
+### HTTPS Backends
+
+If your backend pool serves HTTPS, add a `tls` block to the upstream:
+
+```kdl
+upstreams {
+    upstream "secure-cluster" {
+        target "10.0.1.10:443" weight=100
+        target "10.0.1.11:443" weight=100
+        target "10.0.1.12:443" weight=100
+
+        load-balancing "round-robin"
+        tls {
+            sni "app.internal"
+        }
+
+        health-check {
+            type "http" {
+                path "/health"
+                expected-status 200
+            }
+            interval-secs 5
+        }
+    }
+}
+```
+
+Without the `tls` block, Zentinel connects with plaintext HTTP. This causes health checks to fail and all targets to be marked unhealthy.
+
 ## Next Steps
 
 - [Observability](../observability/) - Monitor load distribution

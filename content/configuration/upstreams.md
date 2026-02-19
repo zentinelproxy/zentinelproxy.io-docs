@@ -682,6 +682,10 @@ upstream "backend" {
 
 ## Upstream TLS
 
+When your backend serves HTTPS (typically on port 443), you **must** add a `tls` block to the upstream. Without it, Zentinel connects with plaintext HTTP, which causes TLS handshake failures, connection resets, or redirect loops.
+
+> **Common pitfall:** Setting a target address to `:443` without a `tls` block is the most frequent cause of 502 errors and redirect loops. If your backend expects HTTPS, you need the `tls` block. See [Troubleshooting: Redirect Loops](../../operations/troubleshooting/#redirect-loops) for details.
+
 ### Basic TLS to Upstream
 
 ```kdl
@@ -722,6 +726,52 @@ upstream "mtls-backend" {
 | `insecure-skip-verify` | Skip certificate verification (testing only) |
 
 **Warning:** Never use `insecure-skip-verify` in production.
+
+### Complete HTTPS Upstream Example
+
+A full configuration proxying to an HTTPS backend (for example, an external API or a backend behind TLS):
+
+```kdl
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
+routes {
+    route "api" {
+        matches {
+            path-prefix "/api/"
+        }
+        upstream "external-api"
+    }
+}
+
+upstreams {
+    upstream "external-api" {
+        targets {
+            target { address "api.example.com:443" }
+        }
+        tls {
+            sni "api.example.com"
+        }
+        health-check {
+            type "http" {
+                path "/health"
+                expected-status 200
+            }
+            interval-secs 10
+        }
+    }
+}
+```
+
+> **Note:** The `sni` value should match the hostname the backend's TLS certificate is issued for. If your backend serves `www.example.com`, set `sni "www.example.com"` even if the target address uses an IP.
 
 ## Complete Examples
 

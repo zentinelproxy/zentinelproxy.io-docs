@@ -189,6 +189,25 @@ Test with:
 curl -k https://localhost:8443/
 ```
 
+## Proxy to an HTTPS Backend
+
+If your backend serves HTTPS (e.g., an external API on port 443), add a `tls` block to the upstream:
+
+```kdl
+upstreams {
+    upstream "api-backend" {
+        targets {
+            target { address "api.example.com:443" }
+        }
+        tls {
+            sni "api.example.com"
+        }
+    }
+}
+```
+
+> **Important:** Without the `tls` block, Zentinel connects with plaintext HTTP regardless of the port number. This causes 502 errors or redirect loops when the backend expects HTTPS. See [Upstream TLS](/configuration/upstreams/#upstream-tls) for full details.
+
 ## Troubleshooting
 
 ### "command not found: zentinel"

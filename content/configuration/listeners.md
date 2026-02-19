@@ -118,6 +118,8 @@ Route to use when no other route matches. If not set and no route matches, Zenti
 
 ## TLS Configuration
 
+This section covers **listener TLS** (encrypting connections between clients and Zentinel). If you need to connect to a backend that serves HTTPS, see [Upstream TLS](/configuration/upstreams/#upstream-tls) instead.
+
 ### Basic TLS
 
 ```kdl

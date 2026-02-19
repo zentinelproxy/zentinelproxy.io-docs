@@ -61,6 +61,8 @@ docker run -d \
     ghcr.io/zentinelproxy/zentinel:latest
 ```
 
+> **Note:** If your backend serves HTTPS (port 443), your `zentinel.kdl` must include a `tls` block in the upstream configuration. Without it, Zentinel connects with plaintext HTTP, causing 502 errors or redirect loops. See [Upstream TLS](/configuration/upstreams/#upstream-tls) for details.
+
 ### Volume Mounts
 
 | Mount | Purpose |

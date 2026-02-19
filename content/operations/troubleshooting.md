@@ -211,6 +211,91 @@ upstreams {
 }
 ```
 
+### Redirect Loops
+
+**Symptoms:** Browser shows "too many redirects" or curl returns `ERR_TOO_MANY_REDIRECTS`. The backend keeps redirecting between HTTP and HTTPS or between `www` and non-`www`.
+
+**Common causes:**
+
+1. **Missing upstream `tls` block** - Your backend expects HTTPS (port 443), but Zentinel is connecting with plaintext HTTP. The backend sees an HTTP request and redirects to HTTPS, creating an infinite loop.
+
+2. **Host header mismatch** - Your backend checks the `Host` header and redirects to a canonical domain (e.g., `www.example.com`), but Zentinel forwards a different `Host` value.
+
+3. **`X-Forwarded-Proto` not set** - The backend checks the protocol and issues an HTTPS redirect because it doesn't know the client already connected over HTTPS.
+
+**Solution for cause 1 (most common):**
+
+Add a `tls` block to your upstream when connecting to an HTTPS backend:
+
+```kdl
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "api.example.com:443" }
+        }
+        // Required when the backend serves HTTPS
+        tls {
+            sni "api.example.com"
+        }
+    }
+}
+```
+
+Without the `tls` block, Zentinel connects with plaintext HTTP even to port 443. The backend's TLS listener receives garbage data and either resets the connection (502) or, if it has an HTTP-to-HTTPS redirect, creates a redirect loop.
+
+**Solution for cause 2:**
+
+Set the correct `Host` header in your route policies:
+
+```kdl
+routes {
+    route "api" {
+        matches { path-prefix "/" }
+        upstream "backend"
+        policies {
+            request-headers {
+                set {
+                    "Host" "www.example.com"
+                }
+            }
+        }
+    }
+}
+```
+
+**Solution for cause 3:**
+
+Forward the original protocol:
+
+```kdl
+routes {
+    route "api" {
+        matches { path-prefix "/" }
+        upstream "backend"
+        policies {
+            request-headers {
+                set {
+                    "X-Forwarded-Proto" "https"
+                }
+            }
+        }
+    }
+}
+```
+
+**Debugging redirect loops:**
+
+```bash
+# Follow redirects and show each step
+curl -v -L --max-redirs 5 http://localhost:8080/
+
+# Check what the backend returns when accessed directly
+curl -v https://api.example.com:443/
+
+# Enable debug logging to see upstream connections
+RUST_LOG=zentinel::proxy=debug zentinel --config zentinel.kdl
+```
+
 ### TLS/Certificate Issues
 
 #### "Invalid certificate chain"
