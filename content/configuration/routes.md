@@ -603,6 +603,8 @@ route "api" {
 
 Reference an upstream defined in the `upstreams` block. Required for `web` and `api` service types.
 
+> **Note:** If the referenced upstream connects to an HTTPS backend, make sure it has a `tls` block configured. See [Upstream TLS](/configuration/upstreams/#upstream-tls).
+
 ### Filters and Agents
 
 ```kdl

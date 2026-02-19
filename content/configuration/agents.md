@@ -784,6 +784,8 @@ This checks:
 - Timeout values are within bounds
 - Circuit breaker thresholds are valid
 
+> **Note:** Agent TLS (configured in this section) secures the connection between Zentinel and the agent process. This is separate from **upstream TLS**, which secures the connection between Zentinel and your backend servers. If your backend serves HTTPS, see [Upstream TLS](/configuration/upstreams/#upstream-tls).
+
 ## Next Steps
 
 - [Agent Protocol](../../agents/protocol/) - Wire protocol specification

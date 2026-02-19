@@ -145,6 +145,57 @@ upstreams {
 }
 ```
 
+### HTTPS Upstream (proxy_pass https://)
+
+**nginx:**
+```nginx
+upstream secure_backend {
+    server api.example.com:443;
+}
+
+server {
+    listen 80;
+    location /api/ {
+        proxy_pass https://secure_backend;
+        proxy_ssl_server_name on;
+        proxy_ssl_name api.example.com;
+    }
+}
+```
+
+**Zentinel:**
+```kdl
+listeners {
+    listener "http" {
+        address "0.0.0.0:80"
+        protocol "http"
+    }
+}
+
+routes {
+    route "api" {
+        matches {
+            path-prefix "/api/"
+        }
+        upstream "secure-backend"
+    }
+}
+
+upstreams {
+    upstream "secure-backend" {
+        targets {
+            target { address "api.example.com:443" }
+        }
+        // Required: tells Zentinel to connect with TLS
+        tls {
+            sni "api.example.com"
+        }
+    }
+}
+```
+
+> **Important:** In nginx, `proxy_pass https://` enables TLS to the upstream. In Zentinel, you must add a `tls` block to the upstream. Without it, Zentinel connects with plaintext HTTP regardless of the port, which causes 502 errors or redirect loops.
+
 ### Rate Limiting
 
 **nginx:**
@@ -185,7 +236,8 @@ routes {
 | `location /path` | `matches { path-prefix "/path" }` |
 | `location = /exact` | `matches { path "/exact" }` |
 | `location ~ regex` | `matches { path-regex "regex" }` |
-| `proxy_pass` | `upstream "name"` |
+| `proxy_pass http://` | `upstream "name"` |
+| `proxy_pass https://` | `upstream "name"` + `tls { sni "..." }` |
 | `upstream { }` | `upstreams { upstream "name" { } }` |
 | `least_conn` | `load-balancing "least_connections"` |
 | `ip_hash` | `load-balancing "ip_hash"` |
@@ -468,6 +520,7 @@ routes {
 
 - [ ] Document all routes and backends
 - [ ] Export current TLS certificates
+- [ ] Identify backends using HTTPS (`proxy_pass https://`, `ssl` backends)
 - [ ] Note rate limits and timeouts
 - [ ] Record health check configurations
 - [ ] Capture baseline metrics
@@ -475,7 +528,9 @@ routes {
 ### After Migration
 
 - [ ] All routes accessible
-- [ ] TLS working correctly
+- [ ] TLS working correctly (listener and upstream)
+- [ ] HTTPS backends have `tls` block in upstream config
+- [ ] No redirect loops (check with `curl -L`)
 - [ ] Health checks passing
 - [ ] Load balancing functioning
 - [ ] Rate limits enforced

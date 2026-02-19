@@ -58,6 +58,8 @@ Response:
 
 ### Upstream Health
 
+> **Note:** If your upstream targets use HTTPS (port 443), the upstream must have a `tls` block for health checks to succeed. Without it, Zentinel sends plaintext HTTP to a TLS listener, causing all health checks to fail. See [Upstream TLS](/configuration/upstreams/#upstream-tls).
+
 Check upstream health status:
 
 ```bash

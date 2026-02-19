@@ -165,6 +165,31 @@ listeners {
 }
 ```
 
+### HTTPS Backend
+
+If your backend serves HTTPS, add a `tls` block to the upstream:
+
+```kdl
+upstreams {
+    upstream "backend" {
+        target "api.example.com:443" weight=1
+
+        tls {
+            sni "api.example.com"
+        }
+
+        health-check {
+            type "http" {
+                path "/health"
+            }
+            interval-secs 10
+        }
+    }
+}
+```
+
+Without the `tls` block, Zentinel connects with plaintext HTTP regardless of the port number.
+
 ### Multiple Backend Instances
 
 ```kdl

@@ -279,6 +279,29 @@ Circuit breakers prevent repeated failures from overwhelming agents.
 
 ## Troubleshooting
 
+### Why am I getting a redirect loop?
+
+This usually happens when your backend expects HTTPS but Zentinel connects with plaintext HTTP. The backend sees an HTTP request and redirects to HTTPS, creating an infinite loop.
+
+**Fix:** Add a `tls` block to your upstream when the backend serves HTTPS:
+
+```kdl
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "api.example.com:443" }
+        }
+        tls {
+            sni "api.example.com"
+        }
+    }
+}
+```
+
+Setting the target port to `443` is **not** enough. You must explicitly add the `tls` block to tell Zentinel to connect over TLS. Without it, Zentinel always uses plaintext HTTP.
+
+A redirect loop can also happen if the `Host` header doesn't match what the backend expects (e.g., `www.example.com` vs `example.com`). See [Troubleshooting: Redirect Loops](../../operations/troubleshooting/#redirect-loops) for all causes and solutions.
+
 ### How do I enable debug logging?
 
 Set the `RUST_LOG` environment variable:
