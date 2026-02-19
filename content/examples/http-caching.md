@@ -26,7 +26,7 @@ Configure HTTP response caching with different storage backends and per-route ca
                     │    Zentinel     │
                     │   ┌─────────┐   │
                     │   │  Cache  │   │
-                    │   │ (memory)│   │
+                    │   │ mem/disk│   │
                     │   └─────────┘   │
                     └────────┬────────┘
                              │
@@ -100,9 +100,8 @@ cache {
     enabled #true
 
     // Storage backend: "memory", "disk", or "hybrid"
-    backend "memory" {
-        max-size-mb 512
-    }
+    backend "memory"
+    max-size 536870912         // 512MB
 
     // Lock timeout to prevent thundering herd
     lock-timeout 10
@@ -450,29 +449,33 @@ curl http://localhost:9090/metrics | grep cache
 
 ### Disk-Based Cache
 
+Persist cached responses to disk so they survive proxy restarts. Ideal for large caches (multi-GB) or static asset caching:
+
 ```kdl
 cache {
     enabled #true
-
-    backend "disk" {
-        path "/var/cache/zentinel"
-        max-size-mb 10240  // 10GB
-        shards 16
-    }
+    backend "disk"
+    max-size 10737418240       // 10GB
+    disk-path "/var/cache/zentinel"
+    disk-shards 16
+    lock-timeout 10
 }
 ```
 
+The disk backend stores entries in a sharded directory layout under `disk-path`. All writes are atomic (temp file + rename), so a crash never corrupts the cache. Orphaned temp files from previous crashes are cleaned up on startup.
+
 ### Hybrid Cache (Memory + Disk)
+
+> **Not yet implemented.** Configuring `backend "hybrid"` currently falls back to the memory backend with a warning. Specify `disk-path` now so no config changes are needed when hybrid support lands.
 
 ```kdl
 cache {
     enabled #true
-
-    backend "hybrid" {
-        memory-max-size-mb 512
-        disk-path "/var/cache/zentinel"
-        disk-max-size-mb 10240
-    }
+    backend "hybrid"
+    max-size 10737418240       // 10GB total
+    disk-path "/var/cache/zentinel"
+    disk-shards 16
+    lock-timeout 10
 }
 ```
 

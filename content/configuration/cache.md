@@ -44,7 +44,7 @@ cache {
 
 #### Disk Backend
 
-Persistent disk-based caching:
+Persistent disk-based caching that survives proxy restarts. Cache entries are stored as files on disk using a sharded directory layout for performance:
 
 ```kdl
 cache {
@@ -56,6 +56,34 @@ cache {
     lock-timeout 10
 }
 ```
+
+**Directory layout:**
+
+```
+/var/cache/zentinel/
+├── shard-00/
+│   ├── 00/
+│   │   ├── <key>.meta       // Response metadata (headers, freshness)
+│   │   └── <key>.body       // Response body
+│   ├── 01/
+│   │   └── ...
+│   ├── ...
+│   ├── ff/
+│   └── tmp/                  // Temporary files during writes
+├── shard-01/
+│   └── ...
+├── ...
+├── shard-0f/
+└── eviction/                 // LRU eviction state (persisted)
+```
+
+Each shard contains 256 hex-prefix subdirectories to prevent too many files in a single directory. The number of shards is configurable via `disk-shards` (default: 16).
+
+**Crash safety:** All writes use atomic temp-file-then-rename, so a crash during a write never leaves a corrupted cache entry. Orphaned temporary files from previous crashes are cleaned up automatically on startup.
+
+**Eviction state:** The LRU eviction manager's state is saved to `<disk-path>/eviction/` on shutdown and restored on startup, so the proxy knows which entries to evict first without scanning access patterns from scratch.
+
+> **Note:** `disk-path` is required when using the `disk` backend. The proxy will fail to start if it is not set.
 
 #### Hybrid Backend
 
@@ -71,6 +99,8 @@ cache {
     lock-timeout 15
 }
 ```
+
+> **Not yet implemented.** Configuring `backend "hybrid"` currently falls back to the memory backend with a warning logged at startup. `disk-path` is still required in the config so that switching to hybrid in a future release requires no config changes. Track progress in [#90](https://github.com/zentinelproxy/zentinel/issues/90).
 
 ### Global Cache Options
 
