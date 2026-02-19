@@ -54,9 +54,9 @@ cargo install zentinel-agent-waf zentinel-agent-auth
 
 ## Example Files
 
-All configuration files in these examples are available in the [zentinel-examples](https://github.com/zentinelproxy/zentinel-examples) repository:
+All configuration files in these examples are available in the [examples directory](https://github.com/zentinelproxy/zentinel/tree/main/examples) of the main repository:
 
 ```bash
-git clone https://github.com/zentinelproxy/zentinel-examples
-cd zentinel-examples
+git clone https://github.com/zentinelproxy/zentinel
+cd zentinel/examples
 ```
