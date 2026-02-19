@@ -3,7 +3,6 @@ title = "Agents"
 weight = 8
 sort_by = "weight"
 template = "section.html"
-updated = 2026-02-19
 +++
 
 Agents are the primary extension mechanism for Zentinel. They allow you to add custom logic, security policies, and integrations without modifying the core proxy.

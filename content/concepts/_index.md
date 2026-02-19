@@ -3,7 +3,6 @@ title = "Core Concepts"
 weight = 2
 sort_by = "weight"
 template = "section.html"
-updated = 2026-02-19
 +++
 
 Understanding Zentinel's architecture and design principles.

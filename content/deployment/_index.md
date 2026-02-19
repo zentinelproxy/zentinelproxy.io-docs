@@ -3,7 +3,6 @@ title = "Deployment"
 weight = 6
 sort_by = "weight"
 template = "section.html"
-updated = 2026-02-19
 +++
 
 Zentinel is designed for flexible deployment across environments—from single-binary development setups to distributed Kubernetes clusters.

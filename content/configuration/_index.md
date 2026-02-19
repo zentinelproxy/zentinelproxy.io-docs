@@ -3,7 +3,6 @@ title = "Configuration"
 weight = 3
 sort_by = "weight"
 template = "section.html"
-updated = 2026-02-19
 +++
 
 Zentinel uses KDL (a human-friendly document language) for configuration. This section covers all configuration options organized by component.
