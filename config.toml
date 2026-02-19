@@ -1,5 +1,5 @@
 # Zentinel Documentation - Zola Configuration
-base_url = "https://zentinelproxy.io/docs"
+base_url = "https://docs.zentinelproxy.io"
 title = "Zentinel Documentation"
 description = "Comprehensive documentation for Zentinel - A security-first reverse proxy built to guard the free web."
 theme = "tanuki"
@@ -55,7 +55,7 @@ logo = "img/zentinel-mascot.png"
 [extra.versions]
 current = "26.02"
 list = [
-    { version = "26.02", url = "/docs/", label = "latest" },
-    { version = "26.01", url = "/docs/v/26.01/", label = "" },
-    { version = "25.12", url = "/docs/v/25.12/", label = "" },
+    { version = "26.02", url = "/", label = "latest" },
+    { version = "26.01", url = "/v/26.01/", label = "" },
+    { version = "25.12", url = "/v/25.12/", label = "" },
 ]
