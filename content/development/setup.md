@@ -1,6 +1,7 @@
 +++
 title = "Development Setup"
 weight = 2
+updated = 2026-02-19
 +++
 
 Configure your development environment for working on Zentinel.

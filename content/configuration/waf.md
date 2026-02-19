@@ -1,6 +1,7 @@
 +++
 title = "WAF"
 weight = 10
+updated = 2026-02-19
 +++
 
 The `waf` block configures Zentinel's Web Application Firewall (WAF) settings. WAF protection is implemented via external agents, but this block provides global WAF configuration including engine selection, rule sets, and body inspection policies.

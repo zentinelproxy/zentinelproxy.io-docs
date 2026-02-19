@@ -1,6 +1,7 @@
 +++
 title = "Building Images"
 weight = 2
+updated = 2026-02-19
 +++
 
 Build optimized Docker images for Zentinel and agents.

@@ -1,6 +1,7 @@
 +++
 title = "API Gateway"
 weight = 2
+updated = 2026-02-19
 +++
 
 A complete API gateway configuration with versioned APIs, authentication, rate limiting, and proper error handling. This example shows how to build a production-ready API gateway.

@@ -1,6 +1,7 @@
 +++
 title = "API Reference"
 weight = 2
+updated = 2026-02-19
 +++
 
 This document covers the v2 APIs for building agent integrations with connection pooling, multiple transports, and reverse connections.

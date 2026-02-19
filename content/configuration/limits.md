@@ -1,6 +1,7 @@
 +++
 title = "Limits"
 weight = 6
+updated = 2026-02-19
 +++
 
 The `limits` block configures request/response limits, connection limits, and rate limiting. These settings are critical for predictable behavior, resource protection, and "sleepable operations."

@@ -1,6 +1,7 @@
 +++
 title = "Integration Tests"
 weight = 7
+updated = 2026-02-19
 +++
 
 End-to-end testing with real network connections.

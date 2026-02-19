@@ -1,6 +1,7 @@
 +++
 title = "WebSocket"
 weight = 10
+updated = 2026-02-19
 +++
 
 WebSocket proxying with frame inspection, security controls, and real-time monitoring.

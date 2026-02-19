@@ -1,6 +1,7 @@
 +++
 title = "Traffic Mirroring"
 weight = 80
+updated = 2026-02-19
 +++
 
 This guide demonstrates how to use Zentinel's traffic mirroring (shadow traffic) feature for safe canary deployments and testing.

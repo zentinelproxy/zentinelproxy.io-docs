@@ -1,6 +1,7 @@
 +++
 title = "Distributed Rate Limiting"
 weight = 15
+updated = 2026-02-19
 +++
 
 Configure distributed rate limiting across multiple Zentinel instances using Redis or Memcached backends. This example shows how to implement consistent rate limiting in multi-instance deployments.

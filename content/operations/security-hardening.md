@@ -1,6 +1,7 @@
 +++
 title = "Security Hardening"
 weight = 5
+updated = 2026-02-19
 +++
 
 Best practices for securing Zentinel deployments in production.

@@ -1,6 +1,7 @@
 +++
 title = "Rolling Updates"
 weight = 7
+updated = 2026-02-19
 +++
 
 Zero-downtime deployment strategies for Zentinel.

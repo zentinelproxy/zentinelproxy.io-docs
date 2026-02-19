@@ -1,6 +1,7 @@
 +++
 title = "Reverse Connections"
 weight = 5
+updated = 2026-02-19
 +++
 
 This document provides detailed coverage of the reverse connection feature in Agent Protocol v2, which allows agents to connect to the proxy instead of the proxy connecting to agents.

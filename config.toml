@@ -34,6 +34,8 @@ include_content = true
 
 [extra]
 mode = "docs"
+author = "raskell.io"
+keywords = "zentinel, reverse proxy, documentation, configuration, KDL, agents, Pingora, Rust, security"
 github = "https://github.com/zentinelproxy/zentinel"
 
 # OpenGraph image for social sharing

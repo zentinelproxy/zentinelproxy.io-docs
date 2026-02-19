@@ -1,6 +1,7 @@
 +++
 title = "License"
 weight = 4
+updated = 2026-02-19
 +++
 
 Zentinel is licensed under the Apache License, Version 2.0.

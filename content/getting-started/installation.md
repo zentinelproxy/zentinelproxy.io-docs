@@ -1,6 +1,7 @@
 +++
 title = "Installation"
 weight = 1
+updated = 2026-02-19
 +++
 
 Zentinel can be installed via the install script, from pre-built binaries, built from source, or run as an OCI container.

@@ -1,6 +1,7 @@
 +++
 title = "Upgrade Guide"
 weight = 7
+updated = 2026-02-19
 +++
 
 Procedures for upgrading and migrating Zentinel deployments.

@@ -1,6 +1,7 @@
 +++
 title = "File Format"
 weight = 1
+updated = 2026-02-19
 +++
 
 Zentinel uses [KDL](https://kdl.dev/) as its primary configuration format. KDL is a human-friendly document language that's easy to read, write, and diff.

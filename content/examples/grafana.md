@@ -1,6 +1,7 @@
 +++
 title = "Security"
 weight = 7
+updated = 2026-02-19
 +++
 
 Complete security configuration with WAF, authentication, rate limiting, and security headers.

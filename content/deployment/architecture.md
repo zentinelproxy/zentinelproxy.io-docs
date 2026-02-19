@@ -1,6 +1,7 @@
 +++
 title = "Deployment Architecture"
 weight = 1
+updated = 2026-02-19
 +++
 
 This page explains Zentinel's deployment philosophy and why agents are managed externally.

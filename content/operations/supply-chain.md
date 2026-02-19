@@ -1,6 +1,7 @@
 +++
 title = "Supply Chain Security"
 weight = 8
+updated = 2026-02-19
 +++
 
 Verifying the authenticity and integrity of Zentinel releases before deploying to production.

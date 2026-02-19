@@ -3,6 +3,7 @@ title = "Introduction"
 weight = 0
 sort_by = "weight"
 template = "section.html"
+updated = 2026-02-19
 +++
 Welcome to **Zentinel**, a high-performance **reverse proxy** platform built on [Cloudflare's Pingora](https://github.com/cloudflare/pingora) framework. Zentinel extends Pingora's robust foundation with enterprise-grade features designed for modern web infrastructure.
 

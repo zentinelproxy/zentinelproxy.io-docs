@@ -1,6 +1,7 @@
 +++
 title = "Quick Start"
 weight = 0
+updated = 2026-02-19
 +++
 
 Get Zentinel up and running in under 5 minutes.

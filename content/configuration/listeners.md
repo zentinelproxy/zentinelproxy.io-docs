@@ -1,6 +1,7 @@
 +++
 title = "Listeners"
 weight = 3
+updated = 2026-02-19
 +++
 
 The `listeners` block defines network endpoints where Zentinel accepts incoming connections. Each listener binds to an address, specifies a protocol, and optionally configures TLS.

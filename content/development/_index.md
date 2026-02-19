@@ -3,6 +3,7 @@ title = "Development"
 weight = 10
 sort_by = "weight"
 template = "section.html"
+updated = 2026-02-19
 +++
 
 Guide for contributors and developers working on Zentinel and its ecosystem.

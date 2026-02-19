@@ -1,6 +1,7 @@
 +++
 title = "systemd Deployment"
 weight = 3
+updated = 2026-02-19
 +++
 
 systemd is the recommended deployment method for production Zentinel installations on Linux. It provides robust process supervision, socket activation, resource limits, and integration with system logging.

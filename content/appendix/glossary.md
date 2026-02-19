@@ -1,6 +1,7 @@
 +++
 title = "Glossary"
 weight = 3
+updated = 2026-02-19
 +++
 
 Definitions of key terms used throughout Zentinel documentation.

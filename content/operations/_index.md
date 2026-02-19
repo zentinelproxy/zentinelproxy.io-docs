@@ -3,6 +3,7 @@ title = "Operations"
 weight = 7
 sort_by = "weight"
 template = "section.html"
+updated = 2026-02-19
 +++
 
 Guides for operating, monitoring, and maintaining Zentinel in production.

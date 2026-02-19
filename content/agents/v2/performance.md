@@ -1,6 +1,7 @@
 +++
 title = "Performance Benchmarks"
 weight = 7
+updated = 2026-02-19
 +++
 
 This page presents benchmark results for Agent Protocol v2 optimizations, helping you understand expected performance characteristics and make informed configuration decisions.

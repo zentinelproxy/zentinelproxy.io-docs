@@ -1,6 +1,7 @@
 +++
 title = "Migration Guide"
 weight = 3
+updated = 2026-02-19
 +++
 
 Guides for migrating to Zentinel from other reverse proxies.

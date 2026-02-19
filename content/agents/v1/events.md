@@ -1,6 +1,7 @@
 +++
 title = "Events & Hooks"
 weight = 2
+updated = 2026-02-19
 +++
 
 Agents receive events at key points in the request/response lifecycle. Each event carries relevant data and expects a response with a decision and optional mutations.

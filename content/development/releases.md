@@ -1,6 +1,7 @@
 +++
 title = "Release Process"
 weight = 10
+updated = 2026-02-19
 +++
 
 Versioning, release workflow, and publishing.

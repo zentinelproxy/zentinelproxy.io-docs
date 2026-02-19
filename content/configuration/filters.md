@@ -1,6 +1,7 @@
 +++
 title = "Filters"
 weight = 6
+updated = 2026-02-19
 +++
 
 Filters provide a flexible pipeline for request and response processing. They can be built-in (rate-limit, headers, CORS, compression) or external agents. Filters are defined centrally in the `filters` block with unique IDs, then referenced by name in route configurations.

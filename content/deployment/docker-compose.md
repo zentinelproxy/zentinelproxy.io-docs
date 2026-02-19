@@ -1,6 +1,7 @@
 +++
 title = "Docker Compose"
 weight = 4
+updated = 2026-02-19
 +++
 
 Docker Compose provides a straightforward way to deploy Zentinel with agents as containers. This guide covers local development and small production setups.

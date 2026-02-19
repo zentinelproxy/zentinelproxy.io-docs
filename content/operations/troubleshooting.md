@@ -1,6 +1,7 @@
 +++
 title = "Troubleshooting"
 weight = 1
+updated = 2026-02-19
 +++
 
 Guide to diagnosing and resolving common Zentinel issues.

@@ -1,6 +1,7 @@
 +++
 title = "Agent Registry"
 weight = 1
+updated = 2026-02-19
 +++
 
 Zentinel has a growing ecosystem of agents for security, traffic management, and custom logic. This page catalogs official agents maintained by the Zentinel team and community-contributed agents.

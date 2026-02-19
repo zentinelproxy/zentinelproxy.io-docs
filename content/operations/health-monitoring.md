@@ -1,6 +1,7 @@
 +++
 title = "Health Monitoring"
 weight = 2
+updated = 2026-02-19
 +++
 
 Monitoring Zentinel health, readiness, and upstream status.

@@ -3,6 +3,7 @@ title = "Examples"
 weight = 5
 sort_by = "weight"
 template = "section.html"
+updated = 2026-02-19
 +++
 
 Complete, production-ready configuration examples for common Zentinel use cases. Each example includes the full configuration file, setup instructions, and testing commands.

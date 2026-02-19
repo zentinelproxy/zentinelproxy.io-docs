@@ -1,6 +1,7 @@
 +++
 title = "zentinel-stack"
 weight = 2
+updated = 2026-02-19
 +++
 
 `zentinel-stack` is a lightweight launcher that runs Zentinel and its agents as a single command. It's designed for development and simple deployments where full process supervision isn't needed.

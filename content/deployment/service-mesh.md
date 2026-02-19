@@ -1,6 +1,7 @@
 +++
 title = "Service Mesh Integration"
 weight = 7
+updated = 2026-02-19
 +++
 
 Zentinel integrates with service mesh environments through dynamic service discovery and mTLS support. While not a service mesh itself, Zentinel can serve as an ingress gateway or edge proxy in mesh deployments.

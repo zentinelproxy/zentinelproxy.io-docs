@@ -3,6 +3,7 @@ title = "Getting Started"
 weight = 1
 sort_by = "weight"
 template = "section.html"
+updated = 2026-02-19
 +++
 
 Get up and running with Zentinel in minutes.

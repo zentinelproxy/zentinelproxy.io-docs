@@ -1,6 +1,7 @@
 +++
 title = "Changelog"
 weight = 1
+updated = 2026-02-19
 +++
 
 All notable changes to Zentinel are documented here.

@@ -3,6 +3,7 @@ title = "Appendices"
 weight = 11
 sort_by = "weight"
 template = "section.html"
+updated = 2026-02-19
 +++
 
 Supplementary reference material for Zentinel.

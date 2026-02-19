@@ -1,6 +1,7 @@
 +++
 title = "Component Design"
 weight = 2
+updated = 2026-02-19
 +++
 
 Zentinel is organized as a Cargo workspace with four core crates. This page explains each component's responsibilities and how they interact.

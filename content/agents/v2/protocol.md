@@ -1,6 +1,7 @@
 +++
 title = "Protocol Specification"
 weight = 1
+updated = 2026-02-19
 +++
 
 This document describes the v2 wire protocol for communication between the Zentinel proxy dataplane and external processing agents.

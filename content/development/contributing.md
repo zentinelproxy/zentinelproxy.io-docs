@@ -1,6 +1,7 @@
 +++
 title = "Contributing"
 weight = 4
+updated = 2026-02-19
 +++
 
 Guide to contributing to Zentinel and its ecosystem.

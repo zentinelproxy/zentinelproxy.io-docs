@@ -1,6 +1,7 @@
 +++
 title = "Configuration Playground"
 weight = 6
+updated = 2026-02-19
 +++
 
 Try Zentinel configurations in your browser without installing anything.

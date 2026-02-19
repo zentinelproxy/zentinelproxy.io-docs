@@ -1,6 +1,7 @@
 +++
 title = "Docker Deployment"
 weight = 4
+updated = 2026-02-19
 +++
 
 Running Zentinel and agents in Docker containers.

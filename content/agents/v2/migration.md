@@ -1,6 +1,7 @@
 +++
 title = "Migration Guide (v1 to v2)"
 weight = 6
+updated = 2026-02-19
 +++
 
 This guide helps you migrate from Agent Protocol v1 to v2. The v2 protocol offers significant improvements in performance, reliability, and observability while maintaining conceptual compatibility.

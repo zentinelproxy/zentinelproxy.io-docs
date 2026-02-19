@@ -1,6 +1,7 @@
 +++
 title = "Static Site"
 weight = 4
+updated = 2026-02-19
 +++
 
 Serve static files with Zentinel including caching, compression, SPA support, and CDN-like features.

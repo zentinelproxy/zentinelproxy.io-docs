@@ -1,6 +1,7 @@
 +++
 title = "Protocol Specification"
 weight = 5
+updated = 2026-02-19
 +++
 
 This document defines the Zentinel Agent Protocol v1—the wire format for communication between Zentinel and external agents.

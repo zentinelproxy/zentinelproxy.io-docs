@@ -1,6 +1,7 @@
 +++
 title = "Configuration Schema"
 weight = 5
+updated = 2026-02-19
 +++
 
 Quick reference for all Zentinel configuration options.

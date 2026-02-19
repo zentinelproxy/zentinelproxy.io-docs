@@ -1,6 +1,7 @@
 +++
 title = "Observability"
 weight = 6
+updated = 2026-02-19
 +++
 
 Complete observability setup with Prometheus metrics, Grafana dashboards, and Jaeger distributed tracing.
