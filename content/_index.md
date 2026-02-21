@@ -132,6 +132,7 @@ This documentation will guide you through:
 - **[Agents](./agents/)** — External agent system for extensibility
 - **[Operations](./operations/)** — Production management and troubleshooting
 - **[Deployment](./deployment/)** — Container and cloud deployment guides
+- **[Control Plane](./control-plane/)** — Fleet management, rollouts, and observability
 - **[Examples](./examples/)** — Real-world configuration examples
 - **[Reference](./reference/)** — Metrics, CLI, and API documentation
 - **[Development](./development/)** — Contributing to Zentinel
