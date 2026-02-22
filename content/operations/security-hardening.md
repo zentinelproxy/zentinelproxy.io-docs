@@ -202,88 +202,28 @@ See [mTLS to Upstreams](/configuration/upstreams/#mtls) for detailed configurati
 
 ## Header Security
 
-### Security Response Headers
+Zentinel does not inject any security headers by default — all response headers are configured explicitly. See the dedicated [Security Headers](/configuration/security-headers/) guide for:
 
-Security headers can be configured using response header policies in your routes:
+- Recommended headers and their values (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, HSTS, CSP, `Permissions-Policy`)
+- How to add headers via route policies or reusable filters
+- Stripping server identification headers (`Server`, `X-Powered-By`)
+- Complete production-ready examples for web apps and APIs
 
-```kdl
-system {
-    worker-threads 0
-}
-
-listeners {
-    listener "http" {
-        address "0.0.0.0:8080"
-        protocol "http"
-    }
-}
-
-routes {
-    route "default" {
-        matches { path-prefix "/" }
-        upstream "backend"
-        policies {
-            response-headers {
-                set {
-                    "X-Frame-Options" "DENY"
-                    "X-Content-Type-Options" "nosniff"
-                    "X-XSS-Protection" "1; mode=block"
-                    "Referrer-Policy" "strict-origin-when-cross-origin"
-                    "Content-Security-Policy" "default-src 'self'"
-                    "Strict-Transport-Security" "max-age=31536000; includeSubDomains"
-                    "Permissions-Policy" "geolocation=(), microphone=(), camera=()"
-                }
-            }
-        }
-    }
-}
-
-upstreams {
-    upstream "backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
-        }
-    }
-}
-```
-
-### Header Sanitization
-
-Remove sensitive headers using response and request header policies:
+Quick example:
 
 ```kdl
-system {
-    worker-threads 0
-}
-
-listeners {
-    listener "http" {
-        address "0.0.0.0:8080"
-        protocol "http"
-    }
-}
-
-routes {
-    route "default" {
-        matches { path-prefix "/" }
-        upstream "backend"
-        policies {
-            // Remove server identification from responses
-            response-headers {
-                remove "Server" "X-Powered-By" "X-AspNet-Version"
+route "app" {
+    matches { path-prefix "/" }
+    upstream "backend"
+    policies {
+        response-headers {
+            set {
+                "X-Content-Type-Options" "nosniff"
+                "X-Frame-Options" "SAMEORIGIN"
+                "Referrer-Policy" "strict-origin-when-cross-origin"
+                "Strict-Transport-Security" "max-age=31536000; includeSubDomains"
             }
-            // Remove internal routing headers from requests
-            request-headers {
-                remove "X-Forwarded-For" "X-Real-IP"
-            }
-        }
-    }
-}
-
-upstreams {
-    upstream "backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
+            remove "Server" "X-Powered-By"
         }
     }
 }
