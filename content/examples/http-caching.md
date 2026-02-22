@@ -513,6 +513,36 @@ route "conditional-cache" {
 }
 ```
 
+### Cache Exclusion Rules
+
+For broad routes that cache most content but need to skip certain paths or file types, use `exclude-extensions` and `exclude-paths`:
+
+```kdl
+route "site-with-exclusions" {
+    matches {
+        path-prefix "/"
+    }
+    upstream "origin"
+
+    policies {
+        cache {
+            enabled #true
+            default-ttl-secs 3600
+
+            // Don't cache dynamic file types
+            exclude-extensions "php" "html" "asp"
+
+            // Don't cache admin or login paths (glob patterns)
+            exclude-paths "/wp-admin/**" "/login" "/api/auth/**"
+
+            vary-headers "Accept-Encoding"
+        }
+    }
+}
+```
+
+This avoids splitting a single route into multiple routes just to control caching. Excluded requests are forwarded directly to the upstream with a `BYPASS` cache status.
+
 ## Next Steps
 
 - [Distributed Rate Limiting](../distributed-rate-limit/) - Add rate limiting
