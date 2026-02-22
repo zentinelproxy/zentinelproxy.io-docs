@@ -146,6 +146,8 @@ route "api" {
 | `cache-private` | `false` | Cache responses with `Cache-Control: private` |
 | `stale-while-revalidate-secs` | `60` | Serve stale while revalidating in background |
 | `stale-if-error-secs` | `300` | Serve stale on upstream error |
+| `exclude-extensions` | `[]` | File extensions to skip caching (without dot) |
+| `exclude-paths` | `[]` | Path glob patterns to skip caching |
 
 ### Cacheable Methods
 
@@ -198,6 +200,41 @@ cache {
 ```
 
 Useful for ignoring tracking parameters or cache-busting tokens.
+
+### Excluding Extensions
+
+Exclude specific file extensions from caching. This is useful for broad routes (e.g., `path-prefix "/"`) where most content should be cached but dynamic file types should not:
+
+```kdl
+cache {
+    enabled #true
+    default-ttl-secs 3600
+    exclude-extensions "php" "html" "asp"
+}
+```
+
+Extensions are specified without the leading dot. The check is case-insensitive.
+
+### Excluding Paths
+
+Exclude specific paths from caching using glob patterns (`*`, `**`, `?`):
+
+```kdl
+cache {
+    enabled #true
+    default-ttl-secs 3600
+    exclude-paths "/wp-admin/**" "/login" "/api/auth/**"
+}
+```
+
+| Pattern | Matches |
+|---------|---------|
+| `/login` | Exact path `/login` |
+| `/admin/*` | One level under `/admin/` (e.g., `/admin/users`) |
+| `/api/auth/**` | Any depth under `/api/auth/` (e.g., `/api/auth/oauth/callback`) |
+| `/files/*.tmp` | `.tmp` files directly under `/files/` |
+
+Requests matching an excluded extension or path are bypassed from caching and forwarded directly to the upstream. The cache status for these requests is reported as `BYPASS`.
 
 ## Stale Content Handling
 
