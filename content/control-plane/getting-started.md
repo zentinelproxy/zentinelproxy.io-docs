@@ -9,6 +9,8 @@ Get the Zentinel Control Plane running locally and deploy your first configurati
 
 **Docker Compose (recommended):** Only [Docker](https://docs.docker.com/get-docker/) required — all dependencies included.
 
+**Standalone / production deployment:** If you have your own PostgreSQL and S3, see the [standalone Docker and bare-metal options](../deployment/#standalone-docker).
+
 **Local development:**
 - Elixir 1.16+ and Erlang/OTP 26+ (managed via [mise](https://mise.jdx.dev/))
 - Docker — for MinIO (bundle storage)
@@ -141,7 +143,7 @@ curl -X POST http://localhost:4000/api/v1/projects/my-project/nodes/register \
   -d '{"name": "proxy-1", "labels": {"env": "dev"}}'
 ```
 
-Store the returned `node_key` — it is shown only once.
+Store the returned `node_key` — it is shown only once. See the [Proxy Registration](../proxy-registration/) guide for the full walkthrough on connecting proxies, configuring JWT auth, and deploying bundles.
 
 ### 6. Deploy with a Rollout
 
