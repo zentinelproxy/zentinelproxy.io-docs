@@ -58,6 +58,7 @@ Built with Elixir/Phoenix, LiveView for real-time UI, Oban for background jobs, 
 | [Architecture](architecture/) | System design, components, data flow |
 | [Authentication](authentication/) | API keys, node auth, SSO, MFA |
 | [API Reference](api/) | REST API endpoints with curl examples |
+| [Proxy Registration](proxy-registration/) | Connecting proxy instances to the control plane |
 | [Configuration](configuration/) | Services, upstreams, TLS, env vars |
 | [Deployment](deployment/) | Docker setup, rollout strategies, health gates |
 | [Security](security/) | WAF rules, auth policies, bundle signing |

@@ -1,6 +1,6 @@
 +++
 title = "Security"
-weight = 7
+weight = 8
 +++
 
 WAF, auth policies, bundle signing, and encryption in the Zentinel Control Plane.

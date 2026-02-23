@@ -1,6 +1,6 @@
 +++
 title = "Observability"
-weight = 8
+weight = 9
 +++
 
 Monitoring, metrics, alerting, tracing, and notifications for the Zentinel Control Plane.

@@ -1,6 +1,6 @@
 +++
 title = "Configuration"
-weight = 5
+weight = 6
 +++
 
 Service definitions, upstreams, TLS, middlewares, and environment variables for the Zentinel Control Plane.
