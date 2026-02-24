@@ -21,6 +21,7 @@ Complete, production-ready configuration examples for common Zentinel use cases.
 | [Security](security/) | WAF + Auth | Agents, protection layers |
 | [Observability](observability/) | Monitoring stack | Prometheus, Grafana, tracing |
 | [WebSocket](websocket/) | Real-time apps | WS proxying, inspection |
+| [Image Optimization](image-optimization/) | WebP/AVIF conversion | Accept negotiation, caching |
 | [AI Gateway](ai-gateway/) | LLM API proxy | Prompt security, PII filtering |
 
 ## Getting Started

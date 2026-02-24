@@ -20,6 +20,7 @@ Production-ready agents with stable APIs.
 |-------|---------|-------------|--------|
 | **Auth** | v0.1.0 | Authentication and authorization supporting JWT, API keys, OAuth, and custom providers | `request_headers` |
 | **Denylist** | v0.1.0 | Block requests based on IP addresses, CIDR ranges, or custom patterns with real-time updates | `request_headers` |
+| **Image Optimization** | v0.1.0 | On-the-fly JPEG/PNG to WebP/AVIF conversion with content negotiation and filesystem caching | `request_headers`, `response_headers`, `response_body`, `request_complete` |
 | **Rate Limiter** | v0.1.0 | Token bucket rate limiting with configurable windows per route, IP, or custom keys | `request_headers` |
 
 ### Beta
