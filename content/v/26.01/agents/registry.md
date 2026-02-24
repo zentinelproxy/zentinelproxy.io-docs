@@ -1,6 +1,7 @@
 +++
 title = "Agent Registry"
 weight = 1
+updated = 2026-02-24
 +++
 
 Zentinel has a growing ecosystem of agents for security, traffic management, and custom logic. This page catalogs official agents maintained by the Zentinel team and community-contributed agents.
@@ -9,31 +10,65 @@ Zentinel has a growing ecosystem of agents for security, traffic management, and
 
 ## Official Agents
 
-Official agents are maintained by the Zentinel Core Team and follow strict quality, security, and compatibility standards.
+Official agents are maintained by the Zentinel Core Team and follow strict quality, security, and compatibility standards. All bundled agents are distributed via `zentinel bundle install`.
 
-### Stable
+### Core
 
-Production-ready agents with stable APIs.
+| Agent | Version | Status | Description |
+|-------|---------|--------|-------------|
+| **WAF** | v0.3.0 | Stable | Pure Rust WAF with 285 detection rules, anomaly scoring, and API security |
+| **Denylist** | v0.3.0 | Stable | Block requests based on IP addresses, CIDR ranges, or custom patterns with real-time updates |
+| **Rate Limiter** | v0.3.0 | Deprecated | Token bucket rate limiting with configurable windows per route, IP, or custom keys |
 
-| Agent | Version | Description | Events |
-|-------|---------|-------------|--------|
-| **Auth** | v0.1.0 | Authentication and authorization supporting JWT, API keys, OAuth, and custom providers | `request_headers` |
-| **Denylist** | v0.1.0 | Block requests based on IP addresses, CIDR ranges, or custom patterns with real-time updates | `request_headers` |
-| **Rate Limiter** | v0.1.0 | Token bucket rate limiting with configurable windows per route, IP, or custom keys | `request_headers` |
+### Security
 
-### Beta
+| Agent | Version | Status | Description |
+|-------|---------|--------|-------------|
+| **ZentinelSec** | v0.3.0 | Stable | Pure Rust ModSecurity-compatible WAF with full OWASP CRS support — no C dependencies |
+| **ModSecurity** | v0.3.0 | Stable | Full OWASP Core Rule Set (CRS) support via libmodsecurity with 800+ detection rules |
+| **IP Reputation** | v0.4.0 | Stable | IP threat intelligence with AbuseIPDB integration, file-based blocklists, and Tor exit node detection |
+| **Bot Management** | v0.4.0 | Stable | Comprehensive bot detection with multi-signal analysis, known bot verification, and behavioral tracking |
+| **Content Scanner** | v0.4.0 | Stable | Malware scanning agent using ClamAV daemon for file upload protection |
 
-Feature-complete but APIs may change.
+### API Security
 
-| Agent | Version | Description | Events |
-|-------|---------|-------------|--------|
-| **AI Gateway** | v0.1.0 | LLM traffic control with prompt injection detection, PII filtering, and rate limiting | `request_headers`, `request_body` |
-| **JS Scripting** | v0.1.0 | JavaScript-based custom logic using embedded V8 runtime | all |
-| **Lua Scripting** | v0.1.0 | Embed custom Lua scripts for flexible request/response processing | all |
-| **ModSecurity** | v0.1.0 | Full OWASP CRS support via libmodsecurity integration | `request_headers`, `request_body` |
-| **WAF** | v0.1.0 | Native Rust web application firewall with SQL injection, XSS detection | `request_headers`, `request_body` |
-| **WASM** | v0.1.0 | WebAssembly-based custom logic with sandboxed execution | `request_headers` |
-| **WebSocket Inspector** | v0.1.0 | Deep inspection and filtering of WebSocket frames | `websocket_frame` |
+| Agent | Version | Status | Description |
+|-------|---------|--------|-------------|
+| **GraphQL Security** | v0.4.0 | Stable | Query depth limiting, complexity analysis, introspection control, and field-level authorization |
+| **gRPC Inspector** | v0.4.0 | Stable | Method authorization, rate limiting, metadata inspection, and reflection control for gRPC services |
+| **SOAP** | v0.4.0 | Stable | Envelope validation, WS-Security verification, operation control, and XXE prevention |
+| **API Deprecation** | v0.4.0 | Stable | API lifecycle management with RFC 8594 Sunset headers, usage tracking, and automatic redirects |
+
+### Protocol
+
+| Agent | Version | Status | Description |
+|-------|---------|--------|-------------|
+| **WebSocket Inspector** | v0.4.0 | Stable | Content filtering, schema validation, and attack detection for WebSocket frames |
+| **MQTT Gateway** | v0.4.0 | Stable | IoT protocol security with topic-based ACLs, client authentication, payload inspection, and QoS enforcement |
+
+### Scripting
+
+| Agent | Version | Status | Description |
+|-------|---------|--------|-------------|
+| **Lua** | v0.3.0 | Stable | Embed custom Lua scripts for flexible request/response processing |
+| **JS** | v0.3.0 | Stable | JavaScript-based custom logic using the QuickJS engine |
+| **WASM** | v0.3.0 | Stable | Execute custom Wasm modules for high-performance request/response processing in any language |
+
+### Utility
+
+| Agent | Version | Status | Description |
+|-------|---------|--------|-------------|
+| **Transform** | v0.4.0 | Stable | URL rewriting, header manipulation, and JSON body transforms |
+| **Audit Logger** | v0.4.0 | Stable | Structured audit logging with PII redaction, multiple formats (JSON, CEF, LEEF), and compliance templates |
+| **Mock Server** | v0.4.0 | Stable | Configurable stub responses with templating, latency simulation, and fault injection |
+| **Chaos** | v0.4.0 | Stable | Controlled fault injection for resilience testing with flexible targeting and safety controls |
+| **Image Optimization** | v0.1.0 | Stable | On-the-fly JPEG/PNG to WebP/AVIF conversion with content negotiation and filesystem caching |
+
+### Identity
+
+| Agent | Version | Status | Description |
+|-------|---------|--------|-------------|
+| **SPIFFE** | v0.3.0 | Stable | SPIFFE/SPIRE workload identity authentication for zero-trust service-to-service communication |
 
 ### Planned
 
