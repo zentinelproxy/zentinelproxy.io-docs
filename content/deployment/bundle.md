@@ -1,7 +1,7 @@
 +++
 title = "Bundle Installation"
 weight = 1
-updated = 2026-02-19
+updated = 2026-02-24
 +++
 
 The `zentinel bundle` command provides a streamlined way to install Zentinel with its bundled agents. This is the recommended approach for production deployments on Linux servers.
@@ -15,16 +15,23 @@ Instead of manually downloading and configuring each agent, the bundle command:
 3. Optionally generates configuration and systemd service files
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│              zentinel bundle install                     │
-│                                                         │
-│  Reads lock file → Downloads agents → Installs binaries │
-│                                                         │
-│  Bundled agents:                                        │
-│    • WAF (ModSecurity-based firewall)                  │
-│    • Ratelimit (Token bucket limiting)                 │
-│    • Denylist (IP/path blocking)                       │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                    zentinel bundle install                           │
+│                                                                     │
+│  Reads lock file → Downloads agents → Installs binaries             │
+│                                                                     │
+│  26 bundled agents across 7 categories:                             │
+│    Core        ─ WAF, Denylist, Rate Limiter                        │
+│    Security    ─ ZentinelSec, ModSecurity, IP Reputation,           │
+│                  Bot Management, Content Scanner                    │
+│    API         ─ GraphQL Security, gRPC Inspector, SOAP,            │
+│                  API Deprecation                                    │
+│    Protocol    ─ WebSocket Inspector, MQTT Gateway                  │
+│    Scripting   ─ Lua, JS, WASM                                     │
+│    Utility     ─ Transform, Audit Logger, Mock Server, Chaos,       │
+│                  Image Optimization                                 │
+│    Identity    ─ SPIFFE                                             │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Quick Start
@@ -80,17 +87,37 @@ Example output:
 
 ```
 Zentinel Bundle Status
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Bundle version: 26.01_1
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Bundle version: 26.02_14
 Install path:   /usr/local/bin
 
-Agent           Installed    Expected     Status
-─────────────────────────────────────────────────
-denylist        0.2.0        0.2.0        ✓ up to date
-ratelimit       0.2.0        0.2.0        ✓ up to date
-waf             -            0.2.0        ✗ not installed
+Agent                Installed    Expected     Status
+─────────────────────────────────────────────────────────────
+api-deprecation      0.4.0        0.4.0        ✓ up to date
+audit-logger         0.4.0        0.4.0        ✓ up to date
+bot-management       0.4.0        0.4.0        ✓ up to date
+chaos                0.4.0        0.4.0        ✓ up to date
+content-scanner      0.4.0        0.4.0        ✓ up to date
+denylist             0.3.0        0.3.0        ✓ up to date
+graphql-security     0.4.0        0.4.0        ✓ up to date
+grpc-inspector       0.4.0        0.4.0        ✓ up to date
+image-optimization   0.1.0        0.1.0        ✓ up to date
+ip-reputation        0.4.0        0.4.0        ✓ up to date
+js                   0.3.0        0.3.0        ✓ up to date
+lua                  0.3.0        0.3.0        ✓ up to date
+mock-server          0.4.0        0.4.0        ✓ up to date
+modsec               0.3.0        0.3.0        ✓ up to date
+mqtt-gateway         0.4.0        0.4.0        ✓ up to date
+ratelimit            0.3.0        0.3.0        ✓ up to date
+soap                 0.4.0        0.4.0        ✓ up to date
+spiffe               0.3.0        0.3.0        ✓ up to date
+transform            0.4.0        0.4.0        ✓ up to date
+waf                  0.3.0        0.3.0        ✓ up to date
+wasm                 0.3.0        0.3.0        ✓ up to date
+websocket-inspector  0.4.0        0.4.0        ✓ up to date
+zentinelsec          0.3.0        0.3.0        ✓ up to date
 
-Total: 3 | Up to date: 2 | Outdated: 0 | Not installed: 1
+Total: 23 | Up to date: 23 | Outdated: 0 | Not installed: 0
 ```
 
 ### List Available Agents
@@ -128,17 +155,13 @@ zentinel bundle uninstall --dry-run
 
 ## Bundled Agents
 
-The bundle includes agents that cover common production use cases:
+The bundle includes 23 agents across 7 categories covering common production use cases.
 
-### WAF Agent
+### Core Agents
 
-ModSecurity-based web application firewall with OWASP Core Rule Set support.
+#### WAF Agent (v0.3.0)
 
-**Use cases:**
-- SQL injection protection
-- XSS prevention
-- Request validation
-- Security baseline
+Pure Rust web application firewall with 285 detection rules, anomaly scoring, and API security.
 
 **Configuration:** `/etc/zentinel/agents/waf.yaml`
 
@@ -154,15 +177,29 @@ crs:
   inbound_anomaly_score_threshold: 5
 ```
 
-### Ratelimit Agent
+#### Denylist Agent (v0.3.0)
 
-Token bucket rate limiting with flexible rule configuration.
+Block requests based on IP addresses, CIDR ranges, or custom patterns with real-time updates.
 
-**Use cases:**
-- API rate limiting
-- DDoS mitigation
-- Fair usage enforcement
-- Cost control
+**Configuration:** `/etc/zentinel/agents/denylist.yaml`
+
+```yaml
+socket:
+  path: /var/run/zentinel/denylist.sock
+
+ip_denylist:
+  enabled: true
+
+path_denylist:
+  enabled: true
+  patterns:
+    - ".*\\.php$"
+    - "/wp-admin.*"
+```
+
+#### Rate Limiter Agent (v0.3.0, deprecated)
+
+Token bucket rate limiting with configurable windows and limits per route, IP, or custom keys.
 
 **Configuration:** `/etc/zentinel/agents/ratelimit.yaml`
 
@@ -180,31 +217,55 @@ rules:
     key: client_ip
 ```
 
-### Denylist Agent
+### Security Agents
 
-Simple IP and path blocking for known bad actors.
+| Agent | Version | Description |
+|-------|---------|-------------|
+| **ZentinelSec** | v0.3.0 | Pure Rust ModSecurity-compatible WAF with full OWASP CRS — no C dependencies |
+| **ModSecurity** | v0.3.0 | OWASP CRS via libmodsecurity with 800+ detection rules |
+| **IP Reputation** | v0.4.0 | Threat intelligence with AbuseIPDB, file-based blocklists, Tor exit node detection |
+| **Bot Management** | v0.4.0 | Multi-signal bot detection, known bot verification, behavioral tracking |
+| **Content Scanner** | v0.4.0 | ClamAV-based malware scanning for file uploads |
 
-**Use cases:**
-- Block malicious IPs
-- Block scanner paths
-- Geographic restrictions
-- Emergency blocking
+### API Security Agents
 
-**Configuration:** `/etc/zentinel/agents/denylist.yaml`
+| Agent | Version | Description |
+|-------|---------|-------------|
+| **GraphQL Security** | v0.4.0 | Query depth limiting, complexity analysis, introspection control |
+| **gRPC Inspector** | v0.4.0 | Method authorization, rate limiting, metadata inspection |
+| **SOAP** | v0.4.0 | Envelope validation, WS-Security, XXE prevention |
+| **API Deprecation** | v0.4.0 | RFC 8594 Sunset headers, usage tracking, automatic redirects |
 
-```yaml
-socket:
-  path: /var/run/zentinel/denylist.sock
+### Protocol Agents
 
-ip_denylist:
-  enabled: true
+| Agent | Version | Description |
+|-------|---------|-------------|
+| **WebSocket Inspector** | v0.4.0 | Content filtering, schema validation, attack detection for WebSocket frames |
+| **MQTT Gateway** | v0.4.0 | Topic-based ACLs, client auth, payload inspection, QoS enforcement |
 
-path_denylist:
-  enabled: true
-  patterns:
-    - ".*\\.php$"
-    - "/wp-admin.*"
-```
+### Scripting Agents
+
+| Agent | Version | Description |
+|-------|---------|-------------|
+| **Lua** | v0.3.0 | Custom Lua scripts for request/response processing |
+| **JS** | v0.3.0 | JavaScript logic using QuickJS engine |
+| **WASM** | v0.3.0 | WebAssembly modules for high-performance processing |
+
+### Utility Agents
+
+| Agent | Version | Description |
+|-------|---------|-------------|
+| **Transform** | v0.4.0 | URL rewriting, header manipulation, JSON body transforms |
+| **Audit Logger** | v0.4.0 | Structured logging with PII redaction, compliance templates (SOC2, HIPAA, PCI, GDPR) |
+| **Mock Server** | v0.4.0 | Configurable stub responses with templating and latency simulation |
+| **Chaos** | v0.4.0 | Fault injection for resilience testing (latency, errors, timeouts) |
+| **Image Optimization** | v0.1.0 | JPEG/PNG to WebP/AVIF conversion with content negotiation and caching |
+
+### Identity Agents
+
+| Agent | Version | Description |
+|-------|---------|-------------|
+| **SPIFFE** | v0.3.0 | SPIFFE/SPIRE workload identity for zero-trust service-to-service communication |
 
 ## Configuration
 
@@ -231,6 +292,12 @@ agents {
         timeout-ms 20
         failure-mode "open"
     }
+
+    agent "image-optimization" {
+        endpoint "unix:///var/run/zentinel/image-optimization.sock"
+        timeout-ms 500
+        failure-mode "open"
+    }
 }
 ```
 
@@ -245,6 +312,15 @@ routes {
         policies {
             // Order matters: check deny first, then rate limit, then WAF
             agents "denylist" "ratelimit" "waf"
+        }
+    }
+
+    route "images" {
+        priority "normal"
+        matches { path-prefix "/images" }
+        upstream "cdn"
+        policies {
+            agents "denylist" "image-optimization"
         }
     }
 
@@ -295,10 +371,30 @@ sudo journalctl -u zentinel-waf -f
 
 ```
 zentinel.target
-├── zentinel.service        (proxy)
-├── zentinel-waf.service    (WAF agent)
+├── zentinel.service              (proxy)
+├── zentinel-waf.service
+├── zentinel-denylist.service
 ├── zentinel-ratelimit.service
-└── zentinel-denylist.service
+├── zentinel-zentinelsec.service
+├── zentinel-modsec.service
+├── zentinel-ip-reputation.service
+├── zentinel-bot-management.service
+├── zentinel-content-scanner.service
+├── zentinel-graphql-security.service
+├── zentinel-grpc-inspector.service
+├── zentinel-soap.service
+├── zentinel-api-deprecation.service
+├── zentinel-websocket-inspector.service
+├── zentinel-mqtt-gateway.service
+├── zentinel-lua.service
+├── zentinel-js.service
+├── zentinel-wasm.service
+├── zentinel-transform.service
+├── zentinel-audit-logger.service
+├── zentinel-mock-server.service
+├── zentinel-chaos.service
+├── zentinel-image-optimization.service
+└── zentinel-spiffe.service
 ```
 
 All agent services depend on `zentinel.service` and are part of `zentinel.target`.
