@@ -260,6 +260,8 @@ observability {
 }
 ```
 
+> **Note:** Error logging to `/var/log/zentinel/error.log` is enabled by default at `warn` level — no explicit configuration required. See [Observability](/configuration/observability/) for customization options.
+
 ## Complete Example
 
 Here's a production-ready configuration:

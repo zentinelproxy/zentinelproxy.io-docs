@@ -1,7 +1,7 @@
 +++
 title = "Observability"
 weight = 8
-updated = 2026-02-19
+updated = 2026-02-25
 +++
 
 Zentinel provides comprehensive observability through metrics, logging, and distributed tracing. All observability features are configured in the `observability` block.
@@ -136,7 +136,9 @@ observability {
 
 ### Error Log
 
-Error and warning logging:
+Error and warning logging. **Error logging is enabled by default** — even without explicit configuration, Zentinel writes errors and warnings to `/var/log/zentinel/error.log`. The directory is created automatically if it doesn't exist.
+
+To customize:
 
 ```kdl
 observability {
@@ -151,13 +153,25 @@ observability {
 }
 ```
 
+To disable error file logging:
+
+```kdl
+observability {
+    logging {
+        error-log {
+            enabled #false
+        }
+    }
+}
+```
+
 #### Error Log Options
 
 | Option | Default | Description |
 |--------|---------|-------------|
 | `enabled` | `true` | Enable error logging |
 | `file` | `/var/log/zentinel/error.log` | Log file path |
-| `level` | `warn` | Minimum level to log |
+| `level` | `warn` | Minimum level to log (`warn` or `error`) |
 | `buffer-size` | `8192` | Write buffer size |
 
 ### Audit Log
