@@ -3694,7 +3694,7 @@ logging {
 
 ### `error-log`
 
-Error log configuration.
+Error log configuration. **Enabled by default** — writes to `/var/log/zentinel/error.log` at `warn` level without explicit configuration.
 
 **Context:** `logging`
 
