@@ -302,24 +302,23 @@ pub struct HeaderOps {
 ### Client and Server
 
 ```rust
-// Proxy side - calls agents
-pub struct AgentClient {
-    transport: Transport,
-    timeout: Duration,
-}
-
-impl AgentClient {
-    pub async fn call(&self, request: AgentRequest) -> Result<AgentResponse>;
+// Proxy side - manages agent connections
+pub struct AgentPool {
+    agents: HashMap<String, AgentClientV2>,
+    config: AgentPoolConfig,
 }
 
 // Agent side - receives calls
-pub struct AgentServer {
-    transport: Transport,
-    handler: Box<dyn AgentHandler>,
+pub struct UdsAgentServerV2 {
+    name: String,
+    socket_path: PathBuf,
+    handler: Box<dyn AgentHandlerV2>,
 }
 
-pub trait AgentHandler: Send + Sync {
-    async fn handle(&self, request: AgentRequest) -> AgentResponse;
+pub trait AgentHandlerV2: Send + Sync {
+    fn capabilities(&self) -> AgentCapabilities;
+    async fn on_request_headers(&self, event: RequestHeadersEvent) -> AgentResponse;
+    // ... other event handlers
 }
 ```
 
