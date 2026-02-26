@@ -208,7 +208,7 @@ For higher throughput or remote deployment:
 agent "image-opt" type="custom" {
     grpc "http://image-opt-service:50060"
     events "request_headers" "response_headers" "response_body" "request_complete"
-    protocol-version 2
+
     timeout-ms 5000
     failure-mode "open"
 }
