@@ -27,7 +27,7 @@ Agent Protocol v2 is the recommended protocol for new agent deployments. It prov
 | [Transport Options](transports/) | gRPC, UDS, and Reverse comparison |
 | [Reverse Connections](reverse-connections/) | NAT traversal and agent-initiated connections |
 | [Performance Benchmarks](performance/) | Latency, throughput, and optimization results |
-| [Migration Guide](migration/) | Migrate from v1 to v2 |
+| [Migration Guide](migration/) | Historical v1 → v2 migration notes (v1 removed in 26.02_18) |
 
 ## Quick Start
 
@@ -49,15 +49,15 @@ pool.add_agent("waf", "localhost:50051").await?;       // gRPC
 pool.add_agent("auth", "/var/run/auth.sock").await?;   // UDS
 ```
 
-## Version Comparison
+## Features
 
-| Feature | v1 | v2 |
-|---------|----|----|
-| Transport | UDS (JSON), gRPC | UDS (binary), gRPC, Reverse |
-| Connection pooling | No | Yes (4 strategies) |
-| Bidirectional streaming | Limited | Full support |
-| Metrics export | No | Prometheus format |
-| Config push | No | Yes |
-| Health tracking | Basic | Comprehensive |
-| Flow control | No | Yes |
-| Request cancellation | No | Yes |
+| Feature | Details |
+|---------|---------|
+| Transport | UDS (binary), gRPC, Reverse Connections |
+| Connection pooling | Yes (4 strategies) |
+| Bidirectional streaming | Full support |
+| Metrics export | Prometheus format |
+| Config push | Yes |
+| Health tracking | Comprehensive |
+| Flow control | Yes |
+| Request cancellation | Yes |

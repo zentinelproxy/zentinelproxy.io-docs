@@ -128,7 +128,7 @@ Coordinates external agent communication:
 ```rust
 pub struct AgentManager {
     agents: HashMap<AgentId, Agent>,
-    pools: HashMap<AgentId, AgentConnectionPool>,
+    pools: HashMap<AgentId, AgentPool>,
     circuit_breakers: HashMap<AgentId, CircuitBreaker>,
     metrics: AgentMetrics,
 }

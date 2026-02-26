@@ -1,8 +1,12 @@
 +++
 title = "Migration Guide (v1 to v2)"
 weight = 6
-updated = 2026-02-19
+updated = 2026-02-26
 +++
+
+{{ callout(type="warning", title="V1 Protocol Removed") }}
+V1 was **removed** in Zentinel release 26.02_18 (February 2026). All agents must use v2. This guide is preserved for teams completing their migration.
+{{ end }}
 
 This guide helps you migrate from Agent Protocol v1 to v2. The v2 protocol offers significant improvements in performance, reliability, and observability while maintaining conceptual compatibility.
 
