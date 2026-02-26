@@ -1,8 +1,12 @@
 +++
-title = "Events & Hooks"
+title = "Events & Hooks (v1 - Removed)"
 weight = 2
-updated = 2026-02-19
+updated = 2026-02-26
 +++
+
+{{ callout(type="warning", title="V1 Protocol Removed") }}
+This page documents the **removed** v1 protocol. For current documentation, see [Events & Hooks (v2)](../../v2/events/).
+{{ end }}
 
 Agents receive events at key points in the request/response lifecycle. Each event carries relevant data and expects a response with a decision and optional mutations.
 

@@ -1,8 +1,12 @@
 +++
-title = "Protocol Specification"
+title = "Protocol Specification (v1 - Removed)"
 weight = 5
-updated = 2026-02-19
+updated = 2026-02-26
 +++
+
+{{ callout(type="warning", title="V1 Protocol Removed") }}
+This page documents the **removed** v1 protocol. For the current protocol specification, see [Protocol v2](../../v2/protocol/).
+{{ end }}
 
 This document defines the Zentinel Agent Protocol v1—the wire format for communication between Zentinel and external agents.
 

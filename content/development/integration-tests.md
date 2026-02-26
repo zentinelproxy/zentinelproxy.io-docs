@@ -218,7 +218,7 @@ async fn test_upstream_unavailable() {
 ### Agent Test Infrastructure
 
 ```rust
-use zentinel_agent_protocol::{AgentClient, AgentServer};
+use zentinel_agent_protocol::v2::{AgentHandlerV2, UdsAgentServerV2};
 
 pub struct TestAgent {
     pub socket_path: PathBuf,
@@ -226,15 +226,16 @@ pub struct TestAgent {
 }
 
 impl TestAgent {
-    pub async fn start<H: AgentHandler + Send + Sync + 'static>(
-        handler: H,
+    pub async fn start(
+        name: &str,
+        handler: Box<dyn AgentHandlerV2>,
     ) -> Self {
         let dir = tempfile::tempdir().unwrap();
         let socket_path = dir.path().join("agent.sock");
 
-        let server = AgentServer::bind(&socket_path).await.unwrap();
+        let server = UdsAgentServerV2::new(name, socket_path.clone(), handler);
         let handle = tokio::spawn(async move {
-            server.serve(handler).await
+            server.run().await
         });
 
         Self { socket_path, handle }
@@ -305,13 +306,14 @@ async fn test_agent_protocol_roundtrip() {
         .join("test.sock");
 
     // Start server
-    let server = AgentServer::bind(&socket_path).await.unwrap();
+    let server = UdsAgentServerV2::new("echo", socket_path.clone(), Box::new(EchoAgent));
     let handle = tokio::spawn(async move {
-        server.serve(EchoAgent).await
+        server.run().await
     });
 
     // Connect client
-    let client = AgentClient::connect(&socket_path).await.unwrap();
+    let client = AgentClientV2Uds::new("test", socket_path.to_string_lossy(), Duration::from_secs(5)).await.unwrap();
+    client.connect().await.unwrap();
 
     // Send request
     let event = RequestHeadersEvent {

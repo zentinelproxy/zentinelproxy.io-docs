@@ -7,37 +7,22 @@ template = "section.html"
 
 Agents are the primary extension mechanism for Zentinel. They allow you to add custom logic, security policies, and integrations without modifying the core proxy.
 
-## Protocol Versions
+## Protocol
 
-Zentinel supports two protocol versions for agent communication:
+Zentinel uses the **v2 agent protocol** for all agent communication:
 
-| Version | Status | Recommendation |
-|---------|--------|----------------|
-| [**v2 (Current)**](v2/) | Recommended | Use for new deployments |
-| [**v1 (Legacy)**](v1/) | Supported | Existing agents, simple use cases |
+| Feature | Details |
+|---------|---------|
+| **Transports** | UDS (binary), gRPC, Reverse Connections |
+| **Connection Pooling** | Multiple connections per agent with load balancing (4 strategies) |
+| **Streaming** | Full bidirectional streaming support |
+| **Observability** | Built-in metrics export in Prometheus format |
+| **Config Push** | Dynamic configuration updates |
+| **Health Tracking** | Comprehensive health checks |
+| **Flow Control** | Backpressure support |
+| **Request Cancellation** | Cancel in-flight requests when clients disconnect |
 
-### v2 Features
-
-Protocol v2 introduces significant enhancements:
-
-- **Connection Pooling** - Multiple connections per agent with load balancing
-- **Multiple Transports** - gRPC, Binary UDS, and Reverse Connections
-- **Request Cancellation** - Cancel in-flight requests when clients disconnect
-- **Reverse Connections** - Agents connect to proxy (NAT traversal)
-- **Enhanced Observability** - Built-in metrics export in Prometheus format
-
-### Version Comparison
-
-| Feature | v1 | v2 |
-|---------|----|----|
-| Transport | UDS (JSON), gRPC | UDS (binary), gRPC, Reverse |
-| Connection pooling | No | Yes (4 strategies) |
-| Bidirectional streaming | Limited | Full support |
-| Metrics export | No | Prometheus format |
-| Config push | No | Yes |
-| Health tracking | Basic | Comprehensive |
-| Flow control | No | Yes |
-| Request cancellation | No | Yes |
+See the [v2 protocol documentation](v2/) for full details.
 
 ---
 
@@ -88,29 +73,26 @@ Agents can communicate with Zentinel via multiple transports:
 
 | Transport | Protocol | Best For |
 |-----------|----------|----------|
-| **Unix Socket (v2)** | Binary + JSON | Local agents, lowest latency |
-| **Unix Socket (v1)** | Length-prefixed JSON | Legacy agents |
+| **Unix Socket** | Binary + JSON | Local agents, lowest latency |
 | **gRPC** | Protocol Buffers over HTTP/2 | High throughput, streaming, remote |
-| **Reverse Connection** | Binary (v2 only) | NAT traversal, dynamic scaling |
+| **Reverse Connection** | Binary | NAT traversal, dynamic scaling |
 
 ## Quick Configuration Example
 
 ```kdl
 agents {
-    // v2 Unix socket agent with pooling
+    // Unix socket agent with pooling
     agent "auth-agent" type="auth" {
         unix-socket "/var/run/zentinel/auth.sock"
-        protocol-version 2
         connections 4
         events "request_headers"
         timeout-ms 100
         failure-mode "closed"
     }
 
-    // v2 gRPC agent
+    // gRPC agent
     agent "waf-agent" type="waf" {
         grpc "http://localhost:50051"
-        protocol-version 2
         connections 4
         events "request_headers" "request_body"
         timeout-ms 200
@@ -122,7 +104,7 @@ agents {
     }
 }
 
-// v2 reverse connection listener
+// Reverse connection listener
 reverse-listener {
     path "/var/run/zentinel/agents.sock"
     max-connections-per-agent 4
@@ -145,7 +127,6 @@ The easiest way to build a custom agent is with the **Zentinel Agent SDK**:
 ```rust
 use zentinel_agent_protocol::v2::{AgentPool, AgentPoolConfig};
 
-// v2 with connection pooling
 let pool = AgentPool::new();
 pool.add_agent("my-agent", "/var/run/my-agent.sock").await?;
 
@@ -156,7 +137,7 @@ The SDK provides ergonomic wrappers around the protocol, handling connection man
 
 ## Documentation
 
-### Protocol v2 (Recommended)
+### Protocol Reference
 
 | Page | Description |
 |------|-------------|
@@ -165,14 +146,9 @@ The SDK provides ergonomic wrappers around the protocol, handling connection man
 | [Connection Pooling](v2/pooling/) | Load balancing and circuit breakers |
 | [Transport Options](v2/transports/) | gRPC, UDS, and Reverse comparison |
 | [Reverse Connections](v2/reverse-connections/) | NAT traversal setup |
-| [Migration Guide](v2/migration/) | Migrate from v1 to v2 |
 
-### Protocol v1 (Legacy)
+### Legacy (Removed)
 
 | Page | Description |
 |------|-------------|
-| [Protocol Specification](v1/protocol/) | Wire protocol and message formats |
-| [Events & Hooks](v1/events/) | Request lifecycle events |
-| [Building Agents](v1/building/) | How to create agents |
-| [Transport Protocols](v1/transports/) | Unix sockets and gRPC |
-| [Agent Registry](v1/registry/) | Official and community agents |
+| [Protocol v1](v1/) | Historical v1 documentation (removed in 26.02_18) |

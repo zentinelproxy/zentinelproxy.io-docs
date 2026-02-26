@@ -237,18 +237,23 @@ zentinel-agent-protocol = "0.1"
 2. Implement the handler trait:
 
 ```rust
-use zentinel_agent_protocol::{AgentHandler, RequestHeadersEvent};
+use zentinel_agent_protocol::v2::AgentHandlerV2;
+use zentinel_agent_protocol::RequestHeadersEvent;
 
 pub struct MyAgent { }
 
 #[async_trait]
-impl AgentHandler for MyAgent {
+impl AgentHandlerV2 for MyAgent {
+    fn capabilities(&self) -> AgentCapabilities {
+        AgentCapabilities::default()
+    }
+
     async fn on_request_headers(
         &self,
         event: RequestHeadersEvent,
-    ) -> RequestDecision {
+    ) -> AgentResponse {
         // Your logic here
-        RequestDecision::Allow
+        AgentResponse::default_allow()
     }
 }
 ```
