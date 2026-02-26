@@ -1,8 +1,12 @@
 +++
-title = "Transport Protocols"
+title = "Transport Protocols (v1 - Removed)"
 weight = 4
-updated = 2026-02-19
+updated = 2026-02-26
 +++
+
+{{ callout(type="warning", title="V1 Protocol Removed") }}
+This page documents the **removed** v1 protocol. For current transport documentation, see [Transports (v2)](../../v2/transports/).
+{{ end }}
 
 Zentinel agents communicate with the proxy over two transport mechanisms: Unix domain sockets (UDS) and gRPC. Both transports use the same logical protocol—only the wire encoding differs.
 
