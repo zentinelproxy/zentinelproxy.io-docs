@@ -1,7 +1,7 @@
 +++
 title = "Filters"
 weight = 6
-updated = 2026-02-19
+updated = 2026-02-27
 +++
 
 Filters provide a flexible pipeline for request and response processing. They can be built-in (rate-limit, headers, CORS, compression) or external agents. Filters are defined centrally in the `filters` block with unique IDs, then referenced by name in route configurations.
@@ -267,9 +267,20 @@ Delegate processing to an external agent:
 filter "waf" {
     type "agent"
     agent "waf-agent"      // Reference to agent defined in agents block
-    phase "request"        // "request", "response", or "both"
     timeout-ms 200
     failure-mode "open"    // "open" or "closed"
+}
+```
+
+Agent filters automatically process both request-phase and response-phase events based on the agent's `events` subscription. An agent subscribed to `response_headers` and `response_body` will be called during the response phase to inspect and modify the upstream response:
+
+```kdl
+// Agent that transforms response content (e.g. image optimization)
+filter "image-optimization" {
+    type "agent"
+    agent "image-optimizer"
+    timeout-ms 5000
+    failure-mode "open"
 }
 ```
 

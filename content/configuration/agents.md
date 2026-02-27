@@ -1,7 +1,7 @@
 +++
 title = "Agents"
 weight = 9
-updated = 2026-02-19
+updated = 2026-02-27
 +++
 
 Agents are external processes that extend Zentinel's functionality. They handle security policies, authentication, rate limiting, and custom business logic. The `agents` block configures how Zentinel connects to and communicates with these agents.
@@ -204,6 +204,65 @@ agent "waf-agent" type="waf" {
 | `response_body` | Response body chunks |
 | `log` | Request complete (for logging) |
 | `websocket_frame` | WebSocket frames (after upgrade) |
+
+### Request vs Response Phase
+
+Events are processed in two phases:
+
+- **Request phase** (`request_headers`, `request_body`): Before the request is forwarded to the upstream. The agent can allow, block, or modify the request.
+- **Response phase** (`response_headers`, `response_body`): After the upstream responds. The agent can inspect and modify response headers and body.
+
+An agent that needs both phases (e.g. image optimization) must subscribe to events from both:
+
+```kdl
+agent "image-optimizer" type="custom" {
+    unix-socket "/var/run/zentinel/image-opt.sock"
+    events "request_headers" "response_headers" "response_body"
+    timeout-ms 5000
+    failure-mode "open"
+}
+```
+
+In the request phase, the agent receives the client's `Accept` header to negotiate the output format. In the response phase, it receives the upstream's response headers (to check `Content-Type`) and the response body (to perform the conversion).
+
+### Response Header Modifications
+
+When an agent subscribes to `response_headers`, its Decision can include `response_headers` operations that modify headers before they are sent to the client:
+
+```json
+{
+  "decision": "allow",
+  "response_headers": [
+    {"set": {"name": "content-type", "value": "image/avif"}},
+    {"set": {"name": "vary", "value": "Accept"}},
+    {"remove": {"name": "content-length"}}
+  ],
+  "needs_more": true
+}
+```
+
+Setting `needs_more: true` tells the proxy that the agent expects to receive subsequent events (e.g. response body chunks).
+
+### Response Body Mutations
+
+When an agent subscribes to `response_body`, it receives body chunks (base64-encoded) and can return a `BodyMutation` to replace the body:
+
+```json
+{
+  "decision": "allow",
+  "response_body_mutation": {
+    "data": "<base64-encoded replacement body>"
+  }
+}
+```
+
+| `data` value | Behavior |
+|--------------|----------|
+| `null` / absent | Pass through original body |
+| `""` (empty) | Drop the chunk |
+| `"<base64>"` | Replace body with decoded content |
+
+When response body processing is active, the proxy automatically sets `Connection: close` and removes the original `Content-Length` header since the body size may change.
 
 ## Failure Handling
 
@@ -541,6 +600,40 @@ agents {
     }
 }
 ```
+
+### Response Processing Agent (Image Optimization)
+
+```kdl
+agents {
+    agent "image-optimizer" type="custom" {
+        unix-socket "/var/run/zentinel/image-opt.sock"
+        events "request_headers" "response_headers" "response_body"
+        timeout-ms 5000
+        failure-mode "open"
+        response-body-mode "buffer"
+        max-response-body-bytes 10485760    // 10MB
+    }
+}
+
+filters {
+    filter "image-optimization" {
+        type "agent"
+        agent "image-optimizer"
+        timeout-ms 5000
+        failure-mode "open"
+    }
+}
+
+routes {
+    route "images" {
+        matches { path-prefix "/images/" }
+        upstream "backend"
+        filters "image-optimization"
+    }
+}
+```
+
+The agent receives `request_headers` to extract the client's `Accept` header, `response_headers` to check the upstream's `Content-Type` and set output headers, and `response_body` to perform the image conversion.
 
 ### Logging/Analytics Agent
 

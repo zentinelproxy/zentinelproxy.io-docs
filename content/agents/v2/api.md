@@ -1,7 +1,7 @@
 +++
 title = "API Reference"
 weight = 2
-updated = 2026-02-19
+updated = 2026-02-27
 +++
 
 This document covers the v2 APIs for building agent integrations with connection pooling, multiple transports, and reverse connections.
@@ -107,6 +107,53 @@ let chunk = RequestBodyChunk {
 let response = pool.send_request_body_chunk("waf", &chunk).await?;
 ```
 
+### Sending Response Events
+
+For agents that subscribe to response-phase events, the proxy sends upstream response headers and body chunks through the pool:
+
+```rust
+use zentinel_agent_protocol::v2::{ResponseHeaders, ResponseBodyChunk};
+
+// Send upstream response headers to agent
+let response_headers = ResponseHeaders {
+    request_id: 1,
+    status: 200,
+    headers: vec![
+        ("content-type".to_string(), "image/png".to_string()),
+        ("content-length".to_string(), "1024".to_string()),
+    ],
+    metadata: request_metadata,
+};
+let decision = pool.send_response_headers("image-optimizer", &response_headers).await?;
+
+// Apply response header modifications from the agent's decision
+for op in &decision.response_headers {
+    match op {
+        HeaderOp::Set { name, value } => { /* set header */ }
+        HeaderOp::Add { name, value } => { /* add header */ }
+        HeaderOp::Remove { name } => { /* remove header */ }
+    }
+}
+
+// Send response body chunk to agent
+let chunk = ResponseBodyChunk {
+    request_id: 1,
+    chunk_index: 0,
+    data: base64::encode(&body_bytes),
+    is_last: true,
+    total_size: Some(body_bytes.len()),
+};
+let decision = pool.send_response_body_chunk("image-optimizer", &chunk).await?;
+
+// Apply body mutation if present
+if let Some(mutation) = &decision.response_body_mutation {
+    if let Some(data) = &mutation.data {
+        let new_body = base64::decode(data)?;
+        // Replace response body with new_body
+    }
+}
+```
+
 ### Cancelling Requests
 
 ```rust
@@ -130,6 +177,8 @@ pool.cancel_all("waf").await?;
 | `remove_agent(name)` | Remove agent from pool |
 | `send_request_headers(agent, headers)` | Send request headers |
 | `send_request_body_chunk(agent, chunk)` | Send request body chunk |
+| `send_response_headers(agent, status, headers)` | Send response headers |
+| `send_response_body_chunk(agent, chunk)` | Send response body chunk |
 | `cancel_request(agent, request_id)` | Cancel specific request |
 | `cancel_all(agent)` | Cancel all requests |
 | `get_health(agent)` | Get agent health status |

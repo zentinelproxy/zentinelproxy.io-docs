@@ -1,7 +1,7 @@
 +++
 title = "Protocol Specification"
 weight = 1
-updated = 2026-02-19
+updated = 2026-02-27
 +++
 
 This document describes the v2 wire protocol for communication between the Zentinel proxy dataplane and external processing agents.
@@ -243,13 +243,46 @@ pub struct DecisionMessage {
     pub decision: Decision,
     pub request_headers: Vec<HeaderOp>,
     pub response_headers: Vec<HeaderOp>,
+    pub response_body_mutation: Option<BodyMutation>,
+    pub needs_more: bool,              // Agent needs more events (e.g. body chunks)
     pub audit: Option<AuditMetadata>,
+}
+
+pub struct BodyMutation {
+    pub data: Option<String>,          // None = pass through, Some("") = drop, Some(base64) = replace
 }
 
 pub enum Decision {
     Allow,
     Block { status: u16, body: Option<String>, headers: HashMap<String, String> },
     Redirect { url: String, status: u16 },
+}
+```
+
+### ResponseHeaders
+
+Sent when upstream response headers are received. The agent can inspect the status code and headers, and return a Decision with `response_headers` operations to modify them before they are sent to the client.
+
+```rust
+pub struct ResponseHeadersMessage {
+    pub request_id: u64,
+    pub metadata: RequestMetadata,
+    pub status: u16,                   // HTTP status code
+    pub headers: Vec<(String, String)>,
+}
+```
+
+### ResponseBodyChunk
+
+Sent for each chunk of the upstream response body. The agent can accumulate chunks and return a `BodyMutation` in its Decision to replace the body content.
+
+```rust
+pub struct ResponseBodyChunkMessage {
+    pub request_id: u64,
+    pub chunk_index: u32,
+    pub data: String,                 // Base64-encoded bytes
+    pub is_last: bool,
+    pub total_size: Option<usize>,    // Total body size if known
 }
 ```
 
@@ -268,7 +301,7 @@ pub struct CancelRequestMessage {
 
 ## Request Lifecycle
 
-### Normal Flow
+### Request-Phase Flow
 
 ```
 ┌─────────┐    RequestHeaders     ┌─────────┐
@@ -282,6 +315,45 @@ pub struct CancelRequestMessage {
 │         │ ◄─────────────────── │         │
 └─────────┘                       └─────────┘
 ```
+
+### Response-Phase Flow
+
+Agents that subscribe to `response_headers` and `response_body` events can inspect and modify upstream responses. This enables use cases like image optimization, content transformation, and response body inspection.
+
+```
+┌─────────┐    RequestHeaders       ┌─────────┐
+│  Proxy  │ ─────────────────────► │  Agent  │
+│         │    Decision (allow)     │         │
+│         │ ◄───────────────────── │         │
+│         │                         │         │
+│         │  (proxy forwards to upstream,     │
+│         │   receives response)              │
+│         │                         │         │
+│         │    ResponseHeaders      │         │
+│         │ ─────────────────────► │         │
+│         │    Decision             │         │
+│         │    (+ header mods)      │         │
+│         │ ◄───────────────────── │         │
+│         │                         │         │
+│         │    ResponseBodyChunk    │         │
+│         │ ─────────────────────► │         │
+│         │    Decision             │         │
+│         │    (+ body mutation)    │         │
+│         │ ◄───────────────────── │         │
+└─────────┘                         └─────────┘
+```
+
+**Response header modifications** are applied before headers are sent to the client. The agent can set, add, or remove headers using `HeaderOp` operations in the Decision message.
+
+**Response body mutations** replace the original body. The agent receives body chunks (base64-encoded), processes them, and returns a `BodyMutation` in the Decision:
+
+| `BodyMutation.data` | Behavior |
+|----------------------|----------|
+| `None` | Pass through original body unchanged |
+| `Some("")` | Drop the body chunk |
+| `Some("<base64>")` | Replace body with decoded base64 data |
+
+When response body processing is active, the proxy sets `Connection: close` and removes `Content-Length` since the body size may change.
 
 ### Cancellation Flow
 
