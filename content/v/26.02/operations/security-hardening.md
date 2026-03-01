@@ -1,0 +1,555 @@
++++
+title = "Security Hardening"
+weight = 5
+updated = 2026-02-19
++++
+
+Best practices for securing Zentinel deployments in production.
+
+## Security Baseline
+
+### Defense in Depth
+
+Zentinel follows a defense-in-depth approach:
+
+1. **Network layer**: Firewall rules, network segmentation
+2. **Transport layer**: TLS, certificate validation
+3. **Application layer**: Header validation, rate limiting, WAF
+4. **Host layer**: File permissions, process isolation
+
+### Secure Defaults
+
+Zentinel ships with secure defaults:
+
+```kdl
+security {
+    // Fail closed on errors by default
+    failure-mode "closed"
+
+    // Enforce request limits
+    limits {
+        max-header-size 8192
+        max-header-count 100
+        max-body-size 10485760  // 10MB
+        max-uri-length 8192
+    }
+
+    // Enforce timeouts
+    timeouts {
+        request-header-secs 30
+        request-body-secs 60
+        response-header-secs 60
+        response-body-secs 120
+    }
+}
+```
+
+## TLS Configuration
+
+### Minimum TLS Requirements
+
+```kdl
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "https" {
+        address "0.0.0.0:443"
+        protocol "https"
+
+        tls {
+            cert-file "/etc/zentinel/certs/server.crt"
+            key-file "/etc/zentinel/certs/server.key"
+
+            // Minimum TLS 1.2 (TLS 1.3 preferred)
+            min-version "1.2"
+
+            // Strong cipher suites only
+            ciphers "TLS_AES_256_GCM_SHA384" "TLS_AES_128_GCM_SHA256" "TLS_CHACHA20_POLY1305_SHA256" "ECDHE-ECDSA-AES256-GCM-SHA384" "ECDHE-RSA-AES256-GCM-SHA384"
+
+            // OCSP stapling
+            ocsp-stapling #true
+        }
+    }
+}
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
+    }
+}
+```
+
+### Certificate Requirements
+
+**Server Certificates**:
+- Minimum 2048-bit RSA or 256-bit ECDSA
+- SHA-256 or stronger signature algorithm
+- Valid DNS names in SAN (Subject Alternative Name)
+- Certificate chain complete (including intermediates)
+
+**Validation**:
+```bash
+# Check certificate details
+openssl x509 -in server.crt -noout -text | grep -A2 "Public-Key\|Signature Algorithm"
+
+# Verify certificate chain
+openssl verify -CAfile ca-chain.crt server.crt
+
+# Test TLS configuration
+openssl s_client -connect localhost:443 -tls1_2 </dev/null 2>/dev/null | grep "Cipher is"
+```
+
+### HSTS Validation
+
+Zentinel automatically warns if TLS is enabled but no HSTS (HTTP Strict Transport Security) header is configured:
+
+```bash
+zentinel --config zentinel.kdl --validate
+# Warning: TLS is enabled but no HSTS header is configured
+```
+
+To resolve this warning, add the `Strict-Transport-Security` header to your routes:
+
+```kdl
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
+        policies {
+            response-headers {
+                set {
+                    "Strict-Transport-Security" "max-age=31536000; includeSubDomains"
+                }
+            }
+        }
+    }
+}
+```
+
+Or use a headers filter:
+
+```kdl
+filters {
+    filter "security-headers" {
+        type "headers"
+        response {
+            set {
+                "Strict-Transport-Security" "max-age=31536000; includeSubDomains"
+            }
+        }
+    }
+}
+```
+
+**HSTS Settings:**
+
+| Directive | Meaning |
+|-----------|---------|
+| `max-age=31536000` | Browser remembers HTTPS-only for 1 year |
+| `includeSubDomains` | Apply to all subdomains |
+| `preload` | Request inclusion in browser preload lists |
+
+### mTLS for Upstreams
+
+Configure client certificates for backend authentication:
+
+```kdl
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "secure-backend"
+    }
+}
+
+upstreams {
+    upstream "secure-backend" {
+        targets {
+            target { address "10.0.0.1:8443" }
+        }
+        tls {
+            sni "backend.internal"
+            client-cert "/etc/zentinel/certs/client.crt"
+            client-key "/etc/zentinel/certs/client.key"
+            ca-cert "/etc/zentinel/certs/backend-ca.crt"
+        }
+    }
+}
+```
+
+See [mTLS to Upstreams](/configuration/upstreams/#mtls) for detailed configuration.
+
+## Header Security
+
+Zentinel does not inject any security headers by default — all response headers are configured explicitly. See the dedicated [Security Headers](/configuration/security-headers/) guide for:
+
+- Recommended headers and their values (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, HSTS, CSP, `Permissions-Policy`)
+- How to add headers via route policies or reusable filters
+- Stripping server identification headers (`Server`, `X-Powered-By`)
+- Complete production-ready examples for web apps and APIs
+
+Quick example:
+
+```kdl
+route "app" {
+    matches { path-prefix "/" }
+    upstream "backend"
+    policies {
+        response-headers {
+            set {
+                "X-Content-Type-Options" "nosniff"
+                "X-Frame-Options" "SAMEORIGIN"
+                "Referrer-Policy" "strict-origin-when-cross-origin"
+                "Strict-Transport-Security" "max-age=31536000; includeSubDomains"
+            }
+            remove "Server" "X-Powered-By"
+        }
+    }
+}
+```
+
+### Request Validation
+
+Request validation can be implemented using WAF agents. See [Agents](/configuration/agents/) for configuration details.
+
+## Access Control
+
+IP-based access control and GeoIP blocking can be implemented using agents. See [Agents](/configuration/agents/) for details on building custom access control agents.
+
+### Route-Level Access Control
+
+Admin routes can be protected by requiring authentication via agents:
+
+```kdl
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
+routes {
+    route "admin" {
+        matches { path-prefix "/admin/" }
+        agents "auth"
+        upstream "admin-backend"
+    }
+}
+
+upstreams {
+    upstream "admin-backend" {
+        targets {
+            target { address "127.0.0.1:3001" }
+        }
+    }
+}
+
+agents {
+    agent "auth" type="auth" {
+        unix-socket "/var/run/zentinel/auth.sock"
+        events "request_headers"
+        timeout-ms 50
+        failure-mode "closed"
+    }
+}
+```
+
+## Rate Limiting
+
+Rate limiting is implemented via agents. Configure a rate limiting agent for your routes:
+
+```kdl
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
+routes {
+    route "api" {
+        matches { path-prefix "/api/" }
+        agents "ratelimit"
+        upstream "api-backend"
+    }
+
+    route "login" {
+        matches { path "/auth/login" }
+        agents "ratelimit-strict"
+        upstream "auth-backend"
+    }
+}
+
+upstreams {
+    upstream "api-backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
+    }
+    upstream "auth-backend" {
+        targets {
+            target { address "127.0.0.1:3001" }
+        }
+    }
+}
+
+agents {
+    // Standard rate limiting: 100 req/min
+    agent "ratelimit" type="rate_limit" {
+        unix-socket "/var/run/zentinel/ratelimit.sock"
+        events "request_headers"
+        timeout-ms 20
+        failure-mode "open"
+    }
+
+    // Strict rate limiting for login: 5 req/min
+    agent "ratelimit-strict" type="rate_limit" {
+        unix-socket "/var/run/zentinel/ratelimit-strict.sock"
+        events "request_headers"
+        timeout-ms 20
+        failure-mode "closed"
+    }
+}
+```
+
+## Security Logging
+
+### Event Logging
+
+Configure logging via the observability block:
+
+```kdl
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "127.0.0.1:3000" }
+        }
+    }
+}
+
+observability {
+    logging {
+        level "info"
+        format "json"
+    }
+    metrics {
+        enabled #true
+        address "0.0.0.0:9090"
+    }
+}
+```
+
+Security events are logged automatically when agents block requests or when rate limits are triggered. Monitor these via your log aggregation system.
+
+### Log Rotation
+
+```bash
+# /etc/logrotate.d/zentinel
+/var/log/zentinel/*.log {
+    daily
+    rotate 30
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0640 zentinel zentinel
+    postrotate
+        kill -USR1 $(cat /var/run/zentinel.pid) 2>/dev/null || true
+    endscript
+}
+```
+
+## File System Security
+
+### Directory Structure
+
+```
+/etc/zentinel/
+├── config.kdl              # 0640 zentinel:zentinel
+├── certs/
+│   ├── server.crt          # 0644 zentinel:zentinel
+│   ├── server.key          # 0600 zentinel:zentinel
+│   ├── client.crt          # 0644 zentinel:zentinel
+│   └── client.key          # 0600 zentinel:zentinel
+└── geoip/
+    └── GeoLite2-Country.mmdb  # 0644 zentinel:zentinel
+
+/var/log/zentinel/          # 0750 zentinel:zentinel
+/var/run/zentinel/          # 0755 zentinel:zentinel
+```
+
+### Permission Hardening
+
+```bash
+#!/bin/bash
+ZENTINEL_USER="zentinel"
+ZENTINEL_GROUP="zentinel"
+
+# Configuration
+chown -R root:$ZENTINEL_GROUP /etc/zentinel
+chmod 750 /etc/zentinel
+chmod 640 /etc/zentinel/config.kdl
+
+# Certificates
+chmod 644 /etc/zentinel/certs/*.crt
+chmod 600 /etc/zentinel/certs/*.key
+
+# Logs
+chown -R $ZENTINEL_USER:$ZENTINEL_GROUP /var/log/zentinel
+chmod 750 /var/log/zentinel
+```
+
+### Systemd Security Options
+
+```ini
+# /etc/systemd/system/zentinel.service
+[Service]
+User=zentinel
+Group=zentinel
+
+# Security hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/log/zentinel /var/run/zentinel
+ReadOnlyPaths=/etc/zentinel
+
+# Capabilities
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+# System call filtering
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+
+# Memory protection
+MemoryDenyWriteExecute=yes
+```
+
+## Network Security
+
+### Firewall Configuration
+
+```bash
+# Allow incoming HTTP/HTTPS
+iptables -A INPUT -p tcp --dport 80 -j ACCEPT
+iptables -A INPUT -p tcp --dport 443 -j ACCEPT
+
+# Allow metrics (internal only)
+iptables -A INPUT -p tcp --dport 9090 -s 10.0.0.0/8 -j ACCEPT
+iptables -A INPUT -p tcp --dport 9090 -j DROP
+
+# Rate limit new connections
+iptables -A INPUT -p tcp --syn -m limit --limit 100/s --limit-burst 200 -j ACCEPT
+iptables -A INPUT -p tcp --syn -j DROP
+```
+
+## Security Checklist
+
+### Pre-Deployment
+
+**TLS Configuration**:
+- [ ] TLS 1.2 minimum version enforced
+- [ ] Strong cipher suites only
+- [ ] Valid certificates installed
+- [ ] Private keys have restricted permissions (0600)
+- [ ] HSTS enabled (see [HSTS Validation](#hsts-validation) below)
+
+**Access Control**:
+- [ ] Admin endpoints restricted to internal IPs
+- [ ] Rate limiting configured
+- [ ] Request size limits configured
+
+**Headers**:
+- [ ] Security headers configured
+- [ ] Server identification headers removed
+
+**Logging**:
+- [ ] Security events logged
+- [ ] Log rotation configured
+
+**System**:
+- [ ] Run as non-root user
+- [ ] File permissions hardened
+- [ ] Systemd security options enabled
+- [ ] Firewall rules configured
+
+### Regular Security Tasks
+
+| Task | Frequency |
+|------|-----------|
+| Review security logs | Daily |
+| Check certificate expiry | Weekly |
+| Update GeoIP database | Monthly |
+| Security scan | Monthly |
+| Audit configuration | Monthly |
+
+## Security Scanning
+
+```bash
+# TLS configuration scan
+testssl.sh --severity HIGH https://your-domain.com
+
+# HTTP security headers check
+curl -s -D- https://your-domain.com -o /dev/null | \
+    grep -i "strict\|content-security\|x-frame"
+
+# Check SSL Labs rating
+# https://www.ssllabs.com/ssltest/
+```
+
+## See Also
+
+- [Supply Chain Security](../supply-chain/) - Verifying release authenticity and integrity
+- [TLS Configuration](../../configuration/listeners/#tls) - Listener TLS settings
+- [mTLS to Upstreams](../../configuration/upstreams/#mtls) - Client certificate authentication
+- [Rate Limiting](../../configuration/limits/) - Rate limiting configuration
+- [Troubleshooting](../troubleshooting/) - Diagnosing security issues

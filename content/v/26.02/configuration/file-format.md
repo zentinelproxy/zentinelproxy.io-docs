@@ -1,0 +1,461 @@
++++
+title = "File Format"
+weight = 1
+updated = 2026-02-27
++++
+
+Zentinel uses [KDL](https://kdl.dev/) as its primary configuration format. KDL is a human-friendly document language that's easy to read, write, and diff.
+
+## Why KDL?
+
+| Feature | Benefit |
+|---------|---------|
+| **Human-readable** | Clean syntax without excessive punctuation |
+| **Git-friendly** | Diffs are clear and meaningful |
+| **Typed values** | Numbers, strings, booleans, #null |
+| **Comments** | Both line (`//`) and block (`/* */`) |
+| **Hierarchical** | Natural nesting for configuration blocks |
+
+## Basic Syntax
+
+### Nodes
+
+KDL documents are made of nodes. Each node has a name and optional values/properties:
+
+```kdl
+// Simple node
+system
+
+// Node with a value
+worker-threads 4
+
+// Node with a property
+listener "http" address="0.0.0.0:8080"
+
+// Node with children (block)
+system {
+    worker-threads 4
+    max-connections 10000
+}
+```
+
+### Values and Properties
+
+**Values** are positional arguments:
+```kdl
+route "api"           // "api" is a value
+targets "10.0.0.1" "10.0.0.2"  // Multiple values
+```
+
+**Properties** are named with `=`:
+```kdl
+target address="10.0.0.1" weight=5
+health-check type="http" interval-secs=10
+```
+
+### Data Types
+
+```kdl
+// Example showing KDL data types in Zentinel config
+
+system {
+    // Numbers (integer)
+    worker-threads 4
+    max-connections 1000
+    graceful-shutdown-timeout-secs 30
+}
+
+listeners {
+    listener "http" {
+        // Strings (quoted)
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
+routes {
+    route "default" {
+        // Booleans (#true, #false)
+        enabled #true
+
+        matches { path-prefix "/" }
+        upstream "backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target {
+                address "127.0.0.1:3000"
+                // Numbers (float)
+                weight 1.5
+            }
+        }
+
+        // Null values (#null)
+        health-check #null
+    }
+}
+```
+
+### Comments
+
+```kdl
+// Line comment
+
+/* Block comment
+   spanning multiple
+   lines */
+
+system {
+    worker-threads 4  // Inline comment
+}
+```
+
+## File Structure
+
+A typical Zentinel configuration has these top-level blocks:
+
+```kdl
+// System settings (use "system", not "server")
+system {
+    // ...
+}
+
+// Network listeners
+listeners {
+    // ...
+}
+
+// Request routing
+routes {
+    // ...
+}
+
+// Backend servers
+upstreams {
+    // ...
+}
+
+// External agents (optional)
+agents {
+    // ...
+}
+
+// Request/response limits
+limits {
+    // ...
+}
+
+// Logging and metrics (optional)
+observability {
+    // ...
+}
+
+// Hierarchical organization (optional)
+namespace "api" {
+    limits { /* namespace-scoped limits */ }
+    listeners { /* namespace-scoped listeners */ }
+    upstreams { /* namespace-scoped upstreams */ }
+    routes { /* namespace-scoped routes */ }
+    agents { /* namespace-scoped agents */ }
+
+    // Fine-grained isolation within namespace
+    service "payments" {
+        limits { /* service-scoped limits */ }
+        listener { /* dedicated listener */ }
+        upstreams { /* service-scoped upstreams */ }
+        routes { /* service-scoped routes */ }
+    }
+}
+```
+
+> **Note:** The `server` block name is deprecated but still supported for backward compatibility. Use `system` for new configurations.
+
+## Schema Versioning
+
+Zentinel configurations include a schema version for compatibility checking. This helps catch configuration issues when upgrading Zentinel.
+
+```kdl
+// Declare schema version at the top of your config
+schema-version "1.0"
+
+system {
+    // ...
+}
+```
+
+### Version Format
+
+Schema versions use `major.minor` format:
+
+| Version | Meaning |
+|---------|---------|
+| `1.0` | Initial stable schema |
+| `1.1` | Minor additions (backward compatible) |
+| `2.0` | Major changes (may require migration) |
+
+### Compatibility Behavior
+
+| Config Version vs Zentinel | Result |
+|---------------------------|--------|
+| Exact match | ✓ Loads normally |
+| Config older but supported | ✓ Loads normally |
+| Config newer than Zentinel | ⚠ Loads with warning (some features may not work) |
+| Config older than minimum | ✗ Rejected with error |
+| Invalid format | ✗ Rejected with error |
+
+### Omitting Version
+
+If `schema-version` is not specified, Zentinel assumes the current version. For production deployments, explicitly specifying the version is recommended:
+
+```kdl
+// Explicit version (recommended for production)
+schema-version "1.0"
+
+system { /* ... */ }
+```
+
+This ensures configuration files remain compatible when upgrading Zentinel, and provides clear error messages if migration is needed.
+
+## Complete Example
+
+```kdl
+// Zentinel Configuration
+// Production API Gateway
+
+schema-version "1.0"
+
+system {
+    worker-threads 0          // 0 = auto-detect CPU cores
+    max-connections 10000
+    graceful-shutdown-timeout-secs 30
+}
+
+listeners {
+    listener "https" {
+        address "0.0.0.0:443"
+        protocol "https"
+        tls {
+            cert-file "/etc/zentinel/certs/server.crt"
+            key-file "/etc/zentinel/certs/server.key"
+            min-version "1.2"
+        }
+    }
+
+    listener "admin" {
+        address "127.0.0.1:9090"
+        protocol "http"
+    }
+}
+
+routes {
+    route "api" {
+        priority 100
+        matches {
+            path-prefix "/api/"
+            method "GET" "POST" "PUT" "DELETE"
+        }
+        upstream "backend"
+        agents "auth" "ratelimit"
+    }
+
+    route "health" {
+        priority 1000
+        matches {
+            path "/health"
+        }
+        service-type "builtin"
+        builtin-handler "health"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "10.0.1.1:8080" weight=3 }
+            target { address "10.0.1.2:8080" weight=2 }
+            target { address "10.0.1.3:8080" weight=1 }
+        }
+        load-balancing "weighted_round_robin"
+        health-check {
+            type "http"
+            path "/health"
+            interval-secs 10
+            timeout-secs 5
+        }
+    }
+}
+
+agents {
+    agent "auth" {
+        type "auth"
+        transport "unix_socket" {
+            path "/var/run/zentinel/auth.sock"
+        }
+        timeout-ms 100
+        failure-mode "closed"
+    }
+
+    agent "ratelimit" {
+        type "rate_limit"
+        transport "unix_socket" {
+            path "/var/run/zentinel/ratelimit.sock"
+        }
+        timeout-ms 50
+        failure-mode "open"
+    }
+}
+
+limits {
+    max-header-size-bytes 8192
+    max-header-count 100
+    max-body-size-bytes 10485760  // 10MB
+}
+```
+
+## Alternative Formats
+
+Zentinel also supports JSON and TOML for programmatic generation:
+
+### JSON
+
+```json
+{
+  "system": {
+    "worker_threads": 4,
+    "max_connections": 10000
+  },
+  "listeners": [
+    {
+      "id": "http",
+      "address": "0.0.0.0:8080",
+      "protocol": "http"
+    }
+  ]
+}
+```
+
+### TOML
+
+```toml
+[system]
+worker_threads = 4
+max_connections = 10000
+
+[[listeners]]
+id = "http"
+address = "0.0.0.0:8080"
+protocol = "http"
+```
+
+File format is auto-detected by extension:
+- `.kdl` → KDL
+- `.json` → JSON
+- `.toml` → TOML
+
+## Multi-File Configuration
+
+For complex deployments, split configuration across multiple files:
+
+```
+/etc/zentinel/
+├── zentinel.kdl        # Main config (includes others)
+├── routes/
+│   ├── api.kdl
+│   ├── static.kdl
+│   └── admin.kdl
+├── upstreams/
+│   ├── backend.kdl
+│   └── cache.kdl
+└── agents/
+    └── security.kdl
+```
+
+Use directory loading:
+
+```bash
+zentinel --config-dir /etc/zentinel/
+```
+
+Or use `include` directives in your main config:
+
+```kdl
+// zentinel.kdl
+include "routes/*.kdl"
+include "upstreams/*.kdl"
+include "agents/*.kdl"
+```
+
+### Include Behavior
+
+The `include` directive is processed as a pre-processing step when loading configuration with `Config::from_file()` or `zentinel --config`. Include directives are resolved before the configuration is parsed, so included files can contain any top-level blocks (`routes`, `upstreams`, `agents`, etc.).
+
+**Glob patterns** — Include paths support glob patterns (`*`, `**`, `?`). Matched files are sorted alphabetically for deterministic ordering.
+
+**Relative paths** — Patterns are resolved relative to the directory of the file containing the `include` directive. This means included files can themselves include other files using paths relative to their own location.
+
+**Recursive includes** — Included files can contain their own `include` directives, which are expanded recursively.
+
+**Circular include detection** — Zentinel tracks which files have already been included (using canonical paths) and returns an error if a circular include is detected.
+
+**No-match behavior** — If a glob pattern matches no files, Zentinel logs a warning but continues loading. This allows optional includes like `include "overrides/*.kdl"` where the directory may be empty.
+
+```kdl
+// routes/api.kdl — included file contains a top-level block
+routes {
+    route "api" {
+        match {
+            path-prefix "/api"
+        }
+        upstream "backend"
+    }
+}
+```
+
+## Validation
+
+Validate configuration before applying:
+
+```bash
+# Check syntax and semantics
+zentinel --config zentinel.kdl --validate
+
+# Dry-run mode
+zentinel --config zentinel.kdl --dry-run
+```
+
+Common validation errors:
+
+| Error | Cause |
+|-------|-------|
+| Route references unknown upstream | Typo in upstream name |
+| No listeners defined | Missing `listeners` block |
+| Invalid socket address | Wrong format (need `host:port`) |
+| Duplicate route ID | Two routes with same name |
+
+## Hot Reload
+
+Zentinel supports configuration reload without restart:
+
+```bash
+# Send SIGHUP to reload
+kill -HUP $(cat /var/run/zentinel.pid)
+
+# Or use the admin endpoint
+curl -X POST http://localhost:9090/admin/reload
+```
+
+Reload behavior:
+1. Parse new configuration
+2. Validate syntax and semantics
+3. If valid, atomically swap configuration
+4. If invalid, keep old configuration and log error
+
+## Next Steps
+
+- [Server Configuration](../server/) - Server block settings
+- [Listeners](../listeners/) - Network binding and TLS
+- [Routes](../routes/) - Request routing
+- [Namespaces & Services](../namespaces/) - Hierarchical organization
