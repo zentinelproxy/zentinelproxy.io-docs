@@ -1,7 +1,7 @@
 +++
 title = "File Format"
 weight = 1
-updated = 2026-02-19
+updated = 2026-02-27
 +++
 
 Zentinel uses [KDL](https://kdl.dev/) as its primary configuration format. KDL is a human-friendly document language that's easy to read, write, and diff.
@@ -379,13 +379,39 @@ Use directory loading:
 zentinel --config-dir /etc/zentinel/
 ```
 
-Or explicit includes in your main config:
+Or use `include` directives in your main config:
 
 ```kdl
 // zentinel.kdl
 include "routes/*.kdl"
 include "upstreams/*.kdl"
 include "agents/*.kdl"
+```
+
+### Include Behavior
+
+The `include` directive is processed as a pre-processing step when loading configuration with `Config::from_file()` or `zentinel --config`. Include directives are resolved before the configuration is parsed, so included files can contain any top-level blocks (`routes`, `upstreams`, `agents`, etc.).
+
+**Glob patterns** — Include paths support glob patterns (`*`, `**`, `?`). Matched files are sorted alphabetically for deterministic ordering.
+
+**Relative paths** — Patterns are resolved relative to the directory of the file containing the `include` directive. This means included files can themselves include other files using paths relative to their own location.
+
+**Recursive includes** — Included files can contain their own `include` directives, which are expanded recursively.
+
+**Circular include detection** — Zentinel tracks which files have already been included (using canonical paths) and returns an error if a circular include is detected.
+
+**No-match behavior** — If a glob pattern matches no files, Zentinel logs a warning but continues loading. This allows optional includes like `include "overrides/*.kdl"` where the directory may be empty.
+
+```kdl
+// routes/api.kdl — included file contains a top-level block
+routes {
+    route "api" {
+        match {
+            path-prefix "/api"
+        }
+        upstream "backend"
+    }
+}
 ```
 
 ## Validation
