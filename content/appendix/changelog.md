@@ -1,7 +1,7 @@
 +++
 title = "Changelog"
 weight = 1
-updated = 2026-02-19
+updated = 2026-02-27
 +++
 
 All notable changes to Zentinel are documented here.
@@ -15,6 +15,7 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 
 | CalVer | Crate Version | Date | Highlights |
 |--------|---------------|------|------------|
+| [26.02_5](#26-02-5) | 0.5.11 | 2026-02-27 | `include` directive support in single-file config loading |
 | [26.02_4](#26-02-4) | 0.4.10 | 2026-02-04 | Install script fix, CI workflows, Pingora fork security fix |
 | [26.02_3](#26-02-3) | 0.4.9 | 2026-02-03 | First-time user smoke tests, protocol-version config, docs refresh |
 | [26.02_1](#26-02-1) | 0.4.7 | 2026-02-02 | Pingora 0.7 upgrade, drop fork, major dependency sweep |
@@ -29,6 +30,19 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 | [26.01_3](#26-01-3) | 0.2.3 | 2026-01-05 | Bug fixes |
 | [26.01_0](#26-01-0) | 0.2.0 | 2026-01-01 | First CalVer release |
 | [25.12](#25-12) | 0.1.x | 2025-12 | Initial public releases |
+
+---
+
+## 26.02_5
+
+**Date:** 2026-02-27
+**Crate version:** 0.5.11
+
+### Added
+- **`include` directive in single-file config** — `include "routes/*.kdl"` now works directly in `zentinel.kdl` when loaded via `Config::from_file()` or `zentinel --config`. Previously, include directives only worked through the multi-file loader (`--config-dir`). Includes support glob patterns, relative path resolution, recursive expansion, and circular include detection.
+
+### Changed
+- **Improved error message for `include` in raw KDL** — When `include` is encountered via `Config::from_kdl()` (raw string parsing), the error now explains to use `Config::from_file()` instead of showing the generic "unknown block" message.
 
 ---
 

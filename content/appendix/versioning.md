@@ -1,7 +1,7 @@
 +++
 title = "Versioning"
 weight = 2
-updated = 2026-02-19
+updated = 2026-02-27
 +++
 
 How Zentinel versions work, mapping between release and crate versions, and changelogs.
@@ -70,7 +70,8 @@ This table maps CalVer release versions to their corresponding crate versions:
 
 | Release (CalVer) | Crate Version (SemVer) | Protocol | Release Date | Status |
 |---------|---------------|----------|--------------|--------|
-| **26.02_4** | `0.4.10` | `0.2.0` | 2026-02-04 | Current |
+| **26.02_5** | `0.5.11` | `0.2.0` | 2026-02-27 | Current |
+| **26.02_4** | `0.4.10` | `0.2.0` | 2026-02-04 | Previous |
 | **26.01_0** | `0.2.0` | `0.2.0` | 2026-01-01 | Previous |
 | **25.12_0** | `0.1.0` | `0.1.0` | 2025-12-15 | Archive |
 | — | `0.1.0` | `0.1.0` | 2025-11-01 | Internal |
@@ -81,7 +82,7 @@ This table maps CalVer release versions to their corresponding crate versions:
 
 ```bash
 zentinel --version
-# zentinel 26.02_4 (0.4.10)
+# zentinel 26.02_5 (0.5.11)
 ```
 
 The CalVer release version is shown first, with the crate SemVer in parentheses.
@@ -89,8 +90,8 @@ The CalVer release version is shown first, with the crate SemVer in parentheses.
 **From Docker:**
 
 ```bash
-docker inspect ghcr.io/zentinelproxy/zentinel:26.02_4 --format '{{ index .Config.Labels "org.opencontainers.image.version" }}'
-# 26.02_4
+docker inspect ghcr.io/zentinelproxy/zentinel:26.02_5 --format '{{ index .Config.Labels "org.opencontainers.image.version" }}'
+# 26.02_5
 ```
 
 **From the documentation URL:**
@@ -107,11 +108,12 @@ For the full changelog with all patch releases, see [Changelog](../changelog/).
 
 ### Release 26.02
 
-**Crate version:** `0.4.10`
+**Crate version:** `0.5.11`
 **Release date:** January -- February 2026
 
 #### Added
 
+- **`include` directive in single-file config** — `include "routes/*.kdl"` works directly in config files loaded via `zentinel --config`, with glob patterns, recursive expansion, and circular include detection
 - **Supply chain security for release pipeline**
   - SBOM generation in CycloneDX 1.5 and SPDX 2.3 formats
   - Binary signing with Sigstore cosign (keyless, GitHub Actions OIDC)
@@ -230,7 +232,7 @@ No breaking changes. Direct upgrade supported.
 systemctl stop zentinel
 
 # Install new version
-VERSION="26.02_4"
+VERSION="26.02_5"
 curl -Lo /usr/local/bin/zentinel \
     "https://github.com/zentinelproxy/zentinel/releases/download/${VERSION}/zentinel-${VERSION}-linux-amd64.tar.gz"
 tar -xzf "zentinel-${VERSION}-linux-amd64.tar.gz"
