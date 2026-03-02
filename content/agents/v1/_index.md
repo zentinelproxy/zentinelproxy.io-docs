@@ -4,9 +4,9 @@ weight = 20
 sort_by = "weight"
 +++
 
-{{ callout(type="warning", title="V1 Protocol Removed") }}
+{% callout(type="warning", title="V1 Protocol Removed") %}
 Agent Protocol v1 was **removed** in Zentinel release 26.02_18 (February 2026). All agents must use [Protocol v2](../v2/). The documentation below is preserved for historical reference only.
-{{ end }}
+{% end %}
 
 ## Documentation (Historical)
 

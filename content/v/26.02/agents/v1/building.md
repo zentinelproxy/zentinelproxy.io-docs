@@ -4,9 +4,9 @@ weight = 3
 updated = 2026-02-26
 +++
 
-{{ callout(type="warning", title="V1 Protocol Removed") }}
+{% callout(type="warning", title="V1 Protocol Removed") %}
 This page documents the **removed** v1 protocol. For current documentation, see [Building Agents (v2)](../../v2/building/).
-{{ end }}
+{% end %}
 
 This guide covers two approaches to building Zentinel agents:
 
