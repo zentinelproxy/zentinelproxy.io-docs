@@ -291,6 +291,8 @@ For `service_type = "builtin"`:
 
 ## Phase 5: Agent Processing
 
+> For a deep dive into agent pipeline semantics, see [Agent Pipeline](../agent-pipeline/).
+
 For routes with configured agents, external processing occurs:
 
 ```
@@ -722,6 +724,7 @@ Total:  75ms (client perspective)
 
 ## Next Steps
 
+- [Agent Pipeline](../agent-pipeline/) - Agent chaining and pipeline architecture
 - [Routing System](../routing/) - Deep dive into route matching
 - [Pingora Foundation](../pingora/) - Underlying framework
 - [Agents](/agents/) - External processing details
