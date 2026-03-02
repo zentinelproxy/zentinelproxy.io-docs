@@ -36,6 +36,7 @@ Zentinel is a high-performance reverse proxy built on [Cloudflare's Pingora](htt
 | [Components](components/) | Detailed breakdown of each component |
 | [Pingora Foundation](pingora/) | Understanding the Pingora framework |
 | [Request Flow](request-flow/) | How requests traverse the proxy |
+| [Agent Pipeline](agent-pipeline/) | Agent chaining, execution strategies, and pipeline architecture |
 | [Routing](routing/) | Request matching and forwarding rules |
 | [Comparison](comparison/) | How Zentinel compares to Envoy, HAProxy, and Nginx |
 
@@ -44,6 +45,7 @@ Zentinel is a high-performance reverse proxy built on [Cloudflare's Pingora](htt
 1. Start with [Architecture](architecture/) for the big picture
 2. Read [Components](components/) to understand each part
 3. Review [Request Flow](request-flow/) to see how they work together
-4. Dive into [Routing](routing/) for traffic management details
-5. See [Comparison](comparison/) to understand trade-offs with alternatives
+4. Explore [Agent Pipeline](agent-pipeline/) for agent chaining and execution strategies
+5. Dive into [Routing](routing/) for traffic management details
+6. See [Comparison](comparison/) to understand trade-offs with alternatives
 
