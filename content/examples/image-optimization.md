@@ -81,19 +81,24 @@ agents {
 
         timeout-ms 5000
         failure-mode "open"
+        response-body-mode "buffer"
+        max-response-body-bytes 10485760
 
         config {
-            "formats" ["webp", "avif"]
-            "quality" { "webp" 80; "avif" 70 }
-            "max_input_size_bytes" 10485760
-            "max_pixel_count" 25000000
-            "eligible_content_types" ["image/jpeg", "image/png"]
-            "passthrough_patterns" ["\\.gif$", "\\.svg$", "\\.ico$"]
-            "cache" {
-                "enabled" true
-                "directory" "/var/cache/zentinel/image-optimization"
-                "max_size_bytes" 1073741824
-                "ttl_secs" 86400
+            formats "webp" "avif"
+            quality {
+                webp 80
+                avif 70
+            }
+            max_input_size_bytes 10485760
+            max_pixel_count 25000000
+            eligible_content_types "image/jpeg" "image/png"
+            passthrough_patterns "\\.gif$" "\\.svg$" "\\.ico$"
+            cache {
+                enabled true
+                directory "/var/cache/zentinel/image-optimization"
+                max_size_bytes 1073741824
+                ttl_secs 86400
             }
         }
     }
@@ -174,8 +179,10 @@ If you don't need AVIF support:
 
 ```kdl
 config {
-    "formats" ["webp"]
-    "quality" { "webp" 85 }
+    formats "webp"
+    quality {
+        webp 85
+    }
 }
 ```
 
@@ -185,8 +192,8 @@ Lower the size limits to avoid spending CPU on hero images:
 
 ```kdl
 config {
-    "max_input_size_bytes" 5242880
-    "max_pixel_count" 10000000
+    max_input_size_bytes 5242880
+    max_pixel_count 10000000
 }
 ```
 
@@ -196,7 +203,7 @@ Skip images that are already optimized or served from a CDN:
 
 ```kdl
 config {
-    "passthrough_patterns" ["\\.gif$", "\\.svg$", "/cdn/", "/thumbnails/"]
+    passthrough_patterns "\\.gif$" "\\.svg$" "/cdn/" "/thumbnails/"
 }
 ```
 
