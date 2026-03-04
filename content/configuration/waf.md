@@ -15,13 +15,13 @@ waf {
     audit-log #true
 
     ruleset {
-        paths "/etc/zentinel/waf/crs"
+        custom-rules-dir "/etc/zentinel/waf/crs"
         paranoia-level 2
     }
 
     body-inspection {
         inspect-request-body #true
-        max-body-inspection-bytes 1048576
+        max-inspection-bytes 1048576
     }
 }
 ```
@@ -108,26 +108,25 @@ Logs are written in JSON format to the configured log output.
 ```kdl
 waf {
     ruleset {
-        paths "/etc/zentinel/waf/crs"
+        custom-rules-dir "/etc/zentinel/waf/crs"
         paranoia-level 1
     }
 }
 ```
 
-### Multiple Rule Paths
+### CRS Version and Custom Rules
 
-Load rules from multiple directories:
+Configure the Core Rule Set version and custom rules directory:
 
 ```kdl
 waf {
     ruleset {
-        paths "/etc/zentinel/waf/crs" "/etc/zentinel/waf/custom"
+        crs-version "3.3.4"
+        custom-rules-dir "/etc/zentinel/waf/custom-rules"
         paranoia-level 2
     }
 }
 ```
-
-Rules are loaded in order. Custom rules in later paths can override earlier ones.
 
 ### Paranoia Level
 
@@ -157,30 +156,17 @@ Exclude specific rules to reduce false positives:
 ```kdl
 waf {
     ruleset {
-        paths "/etc/zentinel/waf/crs"
+        custom-rules-dir "/etc/zentinel/waf/crs"
         paranoia-level 2
 
-        exclusions {
-            // Exclude by rule ID
-            rule-exclusion {
-                rule-ids 942100 942200
-                scope "global"
-            }
+        // Exclude by rule ID (global scope)
+        exclusion "942100" "942200" scope="global"
 
-            // Exclude for specific paths
-            rule-exclusion {
-                rule-ids 941100
-                scope "path"
-                paths "/api/upload" "/api/import"
-            }
+        // Exclude for specific paths
+        exclusion "941100" scope="path=/api/upload"
 
-            // Exclude for specific parameters
-            rule-exclusion {
-                rule-ids 942100
-                scope "parameter"
-                parameters "content" "body" "raw_data"
-            }
-        }
+        // Exclude for specific hosts
+        exclusion "920350" scope="host=internal.example.com"
     }
 }
 ```
@@ -190,8 +176,8 @@ waf {
 | Scope | Description |
 |-------|-------------|
 | `global` | Exclude rule everywhere |
-| `path` | Exclude for specific URL paths |
-| `parameter` | Exclude for specific request parameters |
+| `path=<pattern>` | Exclude for a specific URL path |
+| `host=<hostname>` | Exclude for a specific host |
 
 ## Body Inspection
 
@@ -202,10 +188,14 @@ waf {
     body-inspection {
         inspect-request-body #true
         inspect-response-body #false
-        max-body-inspection-bytes 1048576
-        content-types "application/json" "application/x-www-form-urlencoded" "text/xml"
+        max-inspection-bytes 1048576
+        content-types {
+            "application/json"
+            "application/x-www-form-urlencoded"
+            "text/xml"
+        }
         decompress #true
-        max-decompression-ratio 100.0
+        max-decompression-ratio 100
     }
 }
 ```
@@ -214,21 +204,21 @@ waf {
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `inspect-request-body` | `false` | Inspect request bodies |
+| `inspect-request-body` | `true` | Inspect request bodies |
 | `inspect-response-body` | `false` | Inspect response bodies |
-| `max-body-inspection-bytes` | `1048576` | Maximum bytes to buffer for inspection |
+| `max-inspection-bytes` | `1048576` | Maximum bytes to buffer for inspection |
 | `content-types` | See below | Content types eligible for inspection |
 | `decompress` | `false` | Decompress bodies before inspection |
-| `max-decompression-ratio` | `100.0` | Max compression ratio (zip bomb protection) |
+| `max-decompression-ratio` | `100` | Max compression ratio (zip bomb protection) |
 
 ### Default Content Types
 
 When not specified, these content types are inspected:
-- `application/json`
 - `application/x-www-form-urlencoded`
-- `text/xml`
+- `multipart/form-data`
+- `application/json`
 - `application/xml`
-- `text/plain`
+- `text/xml`
 
 ### Decompression Security
 
@@ -238,7 +228,7 @@ When `decompress` is enabled:
 waf {
     body-inspection {
         decompress #true
-        max-decompression-ratio 50.0  // Reject if compressed/decompressed ratio > 50x
+        max-decompression-ratio 50  // Reject if compressed/decompressed ratio > 50x
     }
 }
 ```
@@ -254,33 +244,29 @@ waf {
     audit-log #true
 
     ruleset {
-        paths "/etc/zentinel/waf/crs" "/etc/zentinel/waf/custom-rules"
+        crs-version "3.3.4"
+        custom-rules-dir "/etc/zentinel/waf/custom-rules"
         paranoia-level 2
+        anomaly-threshold 5
 
-        exclusions {
-            // API endpoints that accept raw data
-            rule-exclusion {
-                rule-ids 942100 942200 942260
-                scope "path"
-                paths "/api/webhooks" "/api/import"
-            }
+        // API endpoints that accept raw data
+        exclusion "942100" "942200" "942260" scope="path=/api/webhooks"
 
-            // Large file upload endpoint
-            rule-exclusion {
-                rule-ids 920350
-                scope "path"
-                paths "/api/upload"
-            }
-        }
+        // Large file upload endpoint
+        exclusion "920350" scope="path=/api/upload"
     }
 
     body-inspection {
         inspect-request-body #true
         inspect-response-body #false
-        max-body-inspection-bytes 5242880  // 5MB
-        content-types "application/json" "application/xml" "multipart/form-data"
+        max-inspection-bytes 5242880
+        content-types {
+            "application/json"
+            "application/xml"
+            "multipart/form-data"
+        }
         decompress #true
-        max-decompression-ratio 100.0
+        max-decompression-ratio 100
     }
 }
 ```
@@ -294,7 +280,7 @@ waf {
     engine "coraza"
     mode "prevention"
     ruleset {
-        paths "/etc/zentinel/waf/crs"
+        crs-version "3.3.4"
         paranoia-level 2
     }
 }
@@ -336,12 +322,14 @@ WAF operations are tracked via Prometheus metrics:
 |---------|---------|
 | `engine` | `coraza` |
 | `mode` | `prevention` |
-| `audit-log` | `false` |
+| `audit-log` | `true` |
+| `ruleset.crs-version` | `3.3.4` |
 | `ruleset.paranoia-level` | `1` |
-| `body-inspection.inspect-request-body` | `false` |
-| `body-inspection.max-body-inspection-bytes` | `1048576` |
+| `ruleset.anomaly-threshold` | `5` |
+| `body-inspection.inspect-request-body` | `true` |
+| `body-inspection.max-inspection-bytes` | `1048576` |
 | `body-inspection.decompress` | `false` |
-| `body-inspection.max-decompression-ratio` | `100.0` |
+| `body-inspection.max-decompression-ratio` | `100` |
 
 ## See Also
 
