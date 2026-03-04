@@ -199,7 +199,9 @@ observability {
     tracing {
         enabled #true
         service-name "api-gateway"
-        endpoint "http://localhost:4317"
+        backend "otlp" {
+            endpoint "http://localhost:4317"
+        }
     }
 }
 

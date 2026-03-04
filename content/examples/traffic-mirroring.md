@@ -304,9 +304,15 @@ listeners {
 }
 
 upstreams {
-    upstream "production" { /* ... */ }
-    upstream "canary" { /* ... */ }
-    upstream "staging" { /* ... */ }
+    upstream "production" {
+        target "127.0.0.1:3000"
+    }
+    upstream "canary" {
+        target "127.0.0.1:3001"
+    }
+    upstream "staging" {
+        target "127.0.0.1:3002"
+    }
 }
 
 routes {
@@ -517,9 +523,14 @@ route "api-v1" {
 Begin with low sampling percentages:
 
 ```kdl
-shadow {
-    upstream "canary"
-    percentage 1.0  // Start with 1%
+route "api" {
+    matches { path-prefix "/api/" }
+    upstream "backend"
+
+    shadow {
+        upstream "canary"
+        percentage 1.0  // Start with 1%
+    }
 }
 ```
 
@@ -559,9 +570,14 @@ curl -s http://localhost:9090/metrics | grep 'shadow_errors_total'
 For controlled testing:
 
 ```kdl
-shadow {
-    upstream "canary"
-    sample-header "X-User-Tier" "beta"  // Only beta users
+route "api" {
+    matches { path-prefix "/api/" }
+    upstream "backend"
+
+    shadow {
+        upstream "canary"
+        sample-header "X-User-Tier" "beta"  // Only beta users
+    }
 }
 ```
 
@@ -570,10 +586,15 @@ shadow {
 Only buffer when necessary:
 
 ```kdl
-shadow {
-    upstream "canary"
-    buffer-body #true
-    max-body-bytes 524288  // 512KB limit (strict)
+route "api" {
+    matches { path-prefix "/api/" }
+    upstream "backend"
+
+    shadow {
+        upstream "canary"
+        buffer-body #true
+        max-body-bytes 524288  // 512KB limit (strict)
+    }
 }
 ```
 

@@ -137,6 +137,10 @@ The SDK provides ergonomic wrappers around the protocol, handling connection man
 
 ## Documentation
 
+| Page | Description |
+|------|-------------|
+| [WAF Engines](waf-engines/) | Choosing between WAF, ZentinelSec, and ModSecurity agents |
+
 ### Protocol Reference
 
 | Page | Description |

@@ -93,10 +93,11 @@ observability {
     tracing {
         enabled #true
         service-name "zentinel"
-        endpoint "http://jaeger:4317"
-        protocol "grpc"  // or "http"
         sample-rate 1.0  // Sample all requests (reduce in production)
         propagation "w3c"  // W3C Trace Context
+        backend "otlp" {
+            endpoint "http://jaeger:4317"
+        }
     }
 }
 

@@ -65,7 +65,7 @@ Create `zentinel.kdl`:
 // Converts JPEG/PNG responses to WebP/AVIF with caching
 
 system {
-    workers 4
+    worker-threads 4
 }
 
 listeners {
@@ -95,7 +95,7 @@ agents {
             eligible_content_types "image/jpeg" "image/png"
             passthrough_patterns "\\.gif$" "\\.svg$" "\\.ico$"
             cache {
-                enabled true
+                enabled #true
                 directory "/var/cache/zentinel/image-optimization"
                 max_size_bytes 1073741824
                 ttl_secs 86400

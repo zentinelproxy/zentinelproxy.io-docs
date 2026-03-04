@@ -266,8 +266,7 @@ listeners {
 upstreams {
     upstream "id" {
         targets {
-            target {
-                address "10.0.1.1:8080"
+            target "10.0.1.1:8080" {
                 weight 1
                 max-requests 1000
                 metadata { "zone" "us-east-1" }

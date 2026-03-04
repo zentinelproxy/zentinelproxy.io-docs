@@ -226,14 +226,14 @@ listeners {
     }
 }
 
-route "api-v1" {
-    matches {
-        path-prefix "/api/v1"
-    }
-    upstream "api-backend"
-}
-
 routes {
+    route "api-v1" {
+        matches {
+            path-prefix "/api/v1"
+        }
+        upstream "api-backend"
+    }
+
     route "default" {
         matches { path-prefix "/" }
         upstream "backend"
@@ -241,6 +241,11 @@ routes {
 }
 
 upstreams {
+    upstream "api-backend" {
+        targets {
+            target { address "127.0.0.1:3001" }
+        }
+    }
     upstream "backend" {
         targets {
             target { address "127.0.0.1:3000" }
@@ -719,14 +724,16 @@ listeners {
     }
 }
 
-route "api" {
-    policies {
-        buffer-requests #true   // Buffer full request before forwarding
-        buffer-responses #true  // Buffer full response before sending
-    }
-}
-
 routes {
+    route "api" {
+        matches { path-prefix "/api/" }
+        upstream "backend"
+        policies {
+            buffer-requests #true   // Buffer full request before forwarding
+            buffer-responses #true  // Buffer full response before sending
+        }
+    }
+
     route "default" {
         matches { path-prefix "/" }
         upstream "backend"

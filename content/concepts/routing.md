@@ -526,9 +526,11 @@ Exact paths are faster and more predictable:
 route "health" {
     matches { path "/-/health" }
 }
+```
 
-// Over regex for simple cases
-route "health" {
+```kdl
+// Over regex for simple cases — works but slower
+route "health-regex" {
     matches { path-regex "^/-/health$" }  // Slower
 }
 ```

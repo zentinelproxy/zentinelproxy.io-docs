@@ -1919,8 +1919,7 @@ Key-value pairs for load balancing decisions.
 **Context:** `target`
 
 ```kdl
-target {
-    address "10.0.1.1:8080"
+target "10.0.1.1:8080" {
     metadata { "zone" "us-east-1a" }
 }
 ```
