@@ -22,20 +22,20 @@ Zentinel uses [KDL](https://kdl.dev/) as its primary configuration format. KDL i
 
 KDL documents are made of nodes. Each node has a name and optional values/properties:
 
-```kdl
+```
 // Simple node
-system
+my-node
 
 // Node with a value
-worker-threads 4
+my-setting 4
 
 // Node with a property
-listener "http" address="0.0.0.0:8080"
+my-check type="http" interval-secs=10
 
 // Node with children (block)
-system {
-    worker-threads 4
-    max-connections 10000
+my-config {
+    my-setting 4
+    max-items 10000
 }
 ```
 
@@ -43,8 +43,8 @@ system {
 
 **Values** are positional arguments:
 ```kdl
-route "api"           // "api" is a value
-targets "10.0.0.1" "10.0.0.2"  // Multiple values
+node-name "api"           // "api" is a value
+multi-value "10.0.0.1" "10.0.0.2"  // Multiple values
 ```
 
 **Properties** are named with `=`:
@@ -125,7 +125,7 @@ system {
 
 // Network listeners
 listeners {
-    // ...
+    listener "http" { address "0.0.0.0:8080" }
 }
 
 // Request routing
@@ -164,7 +164,7 @@ namespace "api" {
     // Fine-grained isolation within namespace
     service "payments" {
         limits { /* service-scoped limits */ }
-        listener { /* dedicated listener */ }
+        listener "service-listener" { address "0.0.0.0:8081" }
         upstreams { /* service-scoped upstreams */ }
         routes { /* service-scoped routes */ }
     }
@@ -291,18 +291,14 @@ upstreams {
 agents {
     agent "auth" {
         type "auth"
-        transport "unix_socket" {
-            path "/var/run/zentinel/auth.sock"
-        }
+        unix-socket "/tmp/zentinel/auth.sock"
         timeout-ms 100
         failure-mode "closed"
     }
 
     agent "ratelimit" {
         type "rate_limit"
-        transport "unix_socket" {
-            path "/var/run/zentinel/ratelimit.sock"
-        }
+        unix-socket "/tmp/zentinel/ratelimit.sock"
         timeout-ms 50
         failure-mode "open"
     }

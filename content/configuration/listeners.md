@@ -141,31 +141,30 @@ system {
 }
 
 listeners {
-    listener "http" {
-        address "0.0.0.0:8080"
-        protocol "http"
+    listener "https" {
+        address "0.0.0.0:443"
+        protocol "https"
+        tls {
+            // Required
+            cert-file "/path/to/cert.pem"
+            key-file "/path/to/key.pem"
+
+            // Version control
+            min-version "1.2"        // Minimum: 1.0, 1.1, 1.2, 1.3
+            max-version "1.3"        // Maximum TLS version
+
+            // Client authentication (mTLS)
+            ca-file "/path/to/ca.pem"
+            client-auth #true
+
+            // Performance
+            session-resumption #true  // TLS session tickets
+            ocsp-stapling #true       // OCSP stapling
+
+            // Cipher control (optional)
+            cipher-suites "TLS_AES_256_GCM_SHA384" "TLS_CHACHA20_POLY1305_SHA256"
+        }
     }
-}
-
-tls {
-    // Required
-    cert-file "/path/to/cert.pem"
-    key-file "/path/to/key.pem"
-
-    // Version control
-    min-version "1.2"        // Minimum: 1.0, 1.1, 1.2, 1.3
-    max-version "1.3"        // Maximum TLS version
-
-    // Client authentication (mTLS)
-    ca-file "/path/to/ca.pem"
-    client-auth #true
-
-    // Performance
-    session-resumption #true  // TLS session tickets
-    ocsp-stapling #true       // OCSP stapling
-
-    // Cipher control (optional)
-    cipher-suites "TLS_AES_256_GCM_SHA384" "TLS_CHACHA20_POLY1305_SHA256"
 }
 
 routes {
@@ -229,16 +228,16 @@ system {
 }
 
 listeners {
-    listener "http" {
-
+    listener "https" {
+        address "0.0.0.0:443"
+        protocol "https"
         tls {
+            cert-file "/etc/zentinel/tls/cert.pem"
+            key-file "/etc/zentinel/tls/key.pem"
             session-resumption #true  // Default: true
         }
-        address "0.0.0.0:8080"
-        protocol "http"
     }
 }
-
 
 routes {
     route "default" {
@@ -254,7 +253,6 @@ upstreams {
         }
     }
 }
-
 ```
 
 Enables TLS session tickets for faster reconnections. Reduces handshake overhead for returning clients.
@@ -269,16 +267,16 @@ system {
 }
 
 listeners {
-    listener "http" {
-
+    listener "https" {
+        address "0.0.0.0:443"
+        protocol "https"
         tls {
+            cert-file "/etc/zentinel/tls/cert.pem"
+            key-file "/etc/zentinel/tls/key.pem"
             ocsp-stapling #true  // Default: true
         }
-        address "0.0.0.0:8080"
-        protocol "http"
     }
 }
-
 
 routes {
     route "default" {
@@ -294,7 +292,6 @@ upstreams {
         }
     }
 }
-
 ```
 
 Server fetches and staples OCSP responses, proving certificate validity without clients contacting the CA.
@@ -477,7 +474,7 @@ listener "https" {
             domains "example.com" "www.example.com"
 
             // Optional
-            staging false                           // Use staging environment for testing
+            staging #false                          // Use staging environment for testing
             storage "/var/lib/zentinel/acme"        // Certificate storage directory
             renew-before-days 30                    // Days before expiry to renew
         }
@@ -654,7 +651,7 @@ tls {
     acme {
         email "admin@example.com"
         domains "example.com"
-        staging true  // Uses staging, certificates won't be trusted by browsers
+        staging #true  // Uses staging, certificates won't be trusted by browsers
     }
 }
 ```

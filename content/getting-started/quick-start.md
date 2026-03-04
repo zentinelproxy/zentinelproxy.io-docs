@@ -194,11 +194,27 @@ curl -k https://localhost:8443/
 If your backend serves HTTPS (e.g., an external API on port 443), add a `tls` block to the upstream:
 
 ```kdl
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "api-backend"
+    }
+}
+
 upstreams {
     upstream "api-backend" {
-        targets {
-            target { address "api.example.com:443" }
-        }
+        target "api.example.com:443"
         tls {
             sni "api.example.com"
         }

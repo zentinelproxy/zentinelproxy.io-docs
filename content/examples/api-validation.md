@@ -122,7 +122,7 @@ routes {
 }
 
 upstreams {
-    upstream "backend" {
+    upstream "api-backend" {
         target "127.0.0.1:3000"
     }
 }

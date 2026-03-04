@@ -161,7 +161,7 @@ Test how priority affects route matching:
 
 ```kdl
 routes {
-    # High priority - matches first
+    // High priority - matches first
     route "maintenance" {
         priority "high"
         matches {
@@ -170,7 +170,7 @@ routes {
         upstream "maintenance-backend"
     }
 
-    # Normal priority
+    // Normal priority
     route "api" {
         matches {
             path-prefix "/api/"
@@ -178,7 +178,7 @@ routes {
         upstream "api-backend"
     }
 
-    # Low priority - catch-all
+    // Low priority - catch-all
     route "fallback" {
         priority "low"
         matches {
@@ -223,8 +223,7 @@ routes {
             path-prefix "/api/"
         }
         upstream "backend"
-        filters ["rate-limit", "auth"]
-        waf-enabled #true
+        agents "rate-limit" "auth"
     }
 }
 

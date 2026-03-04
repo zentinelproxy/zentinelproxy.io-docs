@@ -52,8 +52,7 @@ targets {
 ### Target Metadata
 
 ```kdl
-target {
-    address "10.0.1.1:8080"
+target "10.0.1.1:8080" {
     metadata {
         "zone" "us-east-1a"
         "version" "v2.1.0"
@@ -348,16 +347,13 @@ Zones can be specified in target metadata or parsed from addresses:
 
 ```kdl
 targets {
-    target {
-        address "10.0.1.1:8080"
+    target "10.0.1.1:8080" {
         metadata { "zone" "us-east-1a" }
     }
-    target {
-        address "10.0.1.2:8080"
+    target "10.0.1.2:8080" {
         metadata { "zone" "us-east-1b" }
     }
-    target {
-        address "10.0.2.1:8080"
+    target "10.0.2.1:8080" {
         metadata { "zone" "us-west-2a" }
     }
 }
@@ -565,14 +561,24 @@ The `service` field specifies which service to check:
 - **Service name**: Checks health of a specific service (e.g., `"my.package.MyService"`)
 
 ```kdl
-// Check overall server health
-type "grpc" {
-    service ""
+upstream "grpc-backend" {
+    target "127.0.0.1:50051"
+    health-check {
+        // Check overall server health
+        type "grpc" {
+            service ""
+        }
+    }
 }
 
-// Check specific service
-type "grpc" {
-    service "myapp.UserService"
+upstream "grpc-app" {
+    target "127.0.0.1:50052"
+    health-check {
+        // Check specific service
+        type "grpc" {
+            service "myapp.UserService"
+        }
+    }
 }
 ```
 
@@ -620,12 +626,33 @@ When a target fails health checks:
 ## Connection Pool
 
 ```kdl
-upstream "backend" {
-    connection-pool {
-        max-connections 100
-        max-idle 20
-        idle-timeout-secs 60
-        max-lifetime-secs 3600
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        target "127.0.0.1:3000"
+        connection-pool {
+            max-connections 100
+            max-idle 20
+            idle-timeout-secs 60
+            max-lifetime-secs 3600
+        }
     }
 }
 ```
@@ -654,12 +681,33 @@ upstream "backend" {
 ## Timeouts
 
 ```kdl
-upstream "backend" {
-    timeouts {
-        connect-secs 10
-        request-secs 60
-        read-secs 30
-        write-secs 30
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        target "127.0.0.1:3000"
+        timeouts {
+            connect-secs 10
+            request-secs 60
+            read-secs 30
+            write-secs 30
+        }
     }
 }
 ```
@@ -689,12 +737,30 @@ When your backend serves HTTPS (typically on port 443), you **must** add a `tls`
 ### Basic TLS to Upstream
 
 ```kdl
-upstream "secure-backend" {
-    targets {
-        target { address "backend.internal:443" }
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
     }
-    tls {
-        sni "backend.internal"
+}
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "secure-backend"
+    }
+}
+
+upstreams {
+    upstream "secure-backend" {
+        target "backend.internal:443"
+        tls {
+            sni "backend.internal"
+        }
     }
 }
 ```
@@ -702,15 +768,33 @@ upstream "secure-backend" {
 ### mTLS to Upstream
 
 ```kdl
-upstream "mtls-backend" {
-    targets {
-        target { address "secure.internal:443" }
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
     }
-    tls {
-        sni "secure.internal"
-        client-cert "/etc/zentinel/certs/client.crt"
-        client-key "/etc/zentinel/certs/client.key"
-        ca-cert "/etc/zentinel/certs/backend-ca.crt"
+}
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "mtls-backend"
+    }
+}
+
+upstreams {
+    upstream "mtls-backend" {
+        target "secure.internal:443"
+        tls {
+            sni "secure.internal"
+            client-cert "/etc/zentinel/certs/client.crt"
+            client-key "/etc/zentinel/certs/client.key"
+            ca-cert "/etc/zentinel/certs/backend-ca.crt"
+        }
     }
 }
 ```
@@ -972,6 +1056,7 @@ routes {
 
 upstreams {
     upstream "backend" {
+        target "127.0.0.1:3000"
         discovery "consul" {
             address "http://consul.internal:8500"
             service "backend-api"

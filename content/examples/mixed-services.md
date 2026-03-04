@@ -290,8 +290,10 @@ observability {
     tracing {
         enabled #true
         service-name "api-gateway"
-        endpoint "http://jaeger.internal:4317"
         sample-rate 0.1  // Sample 10% of requests
+        backend "otlp" {
+            endpoint "http://jaeger.internal:4317"
+        }
     }
 }
 

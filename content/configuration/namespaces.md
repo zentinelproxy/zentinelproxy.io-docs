@@ -52,7 +52,9 @@ namespace "public-api" {
     }
 
     upstreams {
-        upstream "api-backend" { ... }
+        upstream "api-backend" {
+            target "127.0.0.1:3000"
+        }
     }
 
     routes {
@@ -73,7 +75,9 @@ namespace "internal-api" {
     }
 
     upstreams {
-        upstream "internal-backend" { ... }
+        upstream "internal-backend" {
+            target "127.0.0.1:4000"
+        }
     }
 
     routes {
@@ -99,7 +103,9 @@ namespace "payments" {
 
     // Shared upstream for the namespace
     upstreams {
-        upstream "shared-db" { ... }
+        upstream "shared-db" {
+            target "127.0.0.1:5432"
+        }
     }
 
     service "checkout" {
@@ -141,7 +147,9 @@ namespace "payments" {
         }
 
         upstreams {
-            upstream "refunds-backend" { ... }
+            upstream "refunds-backend" {
+                target "127.0.0.1:3002"
+            }
         }
 
         routes {
@@ -373,8 +381,12 @@ Existing flat configurations continue to work unchanged. All resources are treat
 
 ```kdl
 upstreams {
-    upstream "api-backend" { ... }
-    upstream "web-backend" { ... }
+    upstream "api-backend" {
+        target "127.0.0.1:3000"
+    }
+    upstream "web-backend" {
+        target "127.0.0.1:3001"
+    }
 }
 
 routes {
@@ -392,12 +404,16 @@ routes {
 ```kdl
 // Shared infrastructure remains global
 upstreams {
-    upstream "shared-auth" { ... }
+    upstream "shared-auth" {
+        target "127.0.0.1:4000"
+    }
 }
 
 namespace "api" {
     upstreams {
-        upstream "backend" { ... }  // Renamed from api-backend
+        upstream "backend" {
+            target "127.0.0.1:3000"  // Renamed from api-backend
+        }
     }
 
     routes {
@@ -410,7 +426,9 @@ namespace "api" {
 
 namespace "web" {
     upstreams {
-        upstream "backend" { ... }  // Same local name, different scope
+        upstream "backend" {
+            target "127.0.0.1:3001"  // Same local name, different scope
+        }
     }
 
     routes {
@@ -428,6 +446,13 @@ namespace "web" {
 system {
     worker-threads 0
     trace-id-format "tinyflake"
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
 }
 
 // Global shared resources
@@ -567,15 +592,20 @@ zentinel --config zentinel.kdl --validate
 
 ```kdl
 // Use descriptive, hierarchical names
-namespace "payments" { ... }
-namespace "users" { ... }
-
-// Within namespaces, use simple names
-service "api" { ... }
-service "worker" { ... }
-
-// Upstreams can use generic names within their scope
-upstream "backend" { ... }  // Clear within api:users context
+namespace "payments" {
+    upstreams {
+        upstream "backend" {
+            target "127.0.0.1:3000"
+        }
+    }
+}
+namespace "users" {
+    upstreams {
+        upstream "backend" {
+            target "127.0.0.1:3001"
+        }
+    }
+}
 ```
 
 ### Scope Organization
@@ -601,9 +631,15 @@ Only export resources that genuinely need cross-namespace access:
 ```kdl
 namespace "infrastructure" {
     upstreams {
-        upstream "redis" { ... }
-        upstream "postgres" { ... }
-        upstream "internal-tool" { ... }  // Don't export
+        upstream "redis" {
+            target "127.0.0.1:6379"
+        }
+        upstream "postgres" {
+            target "127.0.0.1:5432"
+        }
+        upstream "internal-tool" {
+            target "127.0.0.1:9000"  // Don't export
+        }
     }
 
     exports {

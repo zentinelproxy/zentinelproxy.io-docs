@@ -468,7 +468,7 @@ reverse-listener {
     // tcp-address "0.0.0.0:9090"
 
     // Security settings
-    require-auth true
+    require-auth #true
     allowed-agents "waf-*" "auth-agent"
 }
 ```
