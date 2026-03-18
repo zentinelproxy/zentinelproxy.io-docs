@@ -113,6 +113,8 @@ cache {
 | `lock-timeout` | `10` | Cache lock timeout in seconds |
 | `disk-path` | None | Path for disk cache (required for disk/hybrid) |
 | `disk-shards` | `16` | Number of disk cache shards |
+| `status-header` | `false` | Add `Cache-Status` response header ([RFC 9211](https://www.rfc-editor.org/rfc/rfc9211)) |
+| `status-header-name` | `"zentinel"` | Custom cache identifier in the `Cache-Status` header |
 
 ## Per-Route Caching
 
@@ -286,6 +288,54 @@ When a cache miss occurs:
 2. Subsequent requests wait for the lock (up to timeout)
 3. All waiting requests receive the cached response
 4. If lock times out, request proceeds to upstream
+
+## Cache-Status Header (RFC 9211)
+
+Enable the `Cache-Status` response header to expose cache hit/miss information to clients and debugging tools:
+
+```kdl
+cache {
+    enabled #true
+    backend "memory"
+    max-size 104857600
+    status-header #true
+}
+```
+
+This produces headers like:
+
+```
+Cache-Status: zentinel; hit; detail=memory
+Cache-Status: zentinel; fwd=miss
+Cache-Status: zentinel; fwd=bypass; detail=method
+```
+
+### Custom Cache Name
+
+By default the cache identifier is `zentinel`. Use `status-header-name` to set a custom name:
+
+```kdl
+cache {
+    enabled #true
+    status-header #true
+    status-header-name "my-cdn"
+}
+```
+
+Produces: `Cache-Status: my-cdn; hit; detail=memory`
+
+### Status Values
+
+| Value | Meaning |
+|-------|---------|
+| `hit` | Response served from cache |
+| `hit; detail=memory` | Hit from memory tier |
+| `hit; detail=disk` | Hit from disk tier |
+| `fwd=stale` | Stale response served, revalidation pending |
+| `fwd=miss` | Cache miss, fetched from upstream |
+| `fwd=bypass` | Caching bypassed |
+| `fwd=bypass; detail=method` | Bypassed due to non-cacheable method |
+| `fwd=bypass; detail=disabled` | Bypassed because caching is disabled |
 
 ## Complete Examples
 
