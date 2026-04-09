@@ -147,7 +147,7 @@ Contributions are welcome! See our [Contributing Guide](./development/contributi
 
 ## Version Information
 
-This documentation covers Zentinel release **26.03**. For the latest updates and changes, see the [Changelog](./appendix/changelog.md). For details on the versioning scheme, see [Versioning](./appendix/versioning.md).
+This documentation covers Zentinel release **26.04**. For the latest updates and changes, see the [Changelog](./appendix/changelog.md). For details on the versioning scheme, see [Versioning](./appendix/versioning.md).
 
 ## License
 

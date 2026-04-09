@@ -1,7 +1,7 @@
 +++
 title = "Versioning"
 weight = 2
-updated = 2026-03-01
+updated = 2026-04-09
 +++
 
 How Zentinel versions work, mapping between release and crate versions, and changelogs.
@@ -70,7 +70,8 @@ This table maps CalVer release versions to their corresponding crate versions:
 
 | Release (CalVer) | Crate Version (SemVer) | Protocol | Release Date | Status |
 |---------|---------------|----------|--------------|--------|
-| **26.03_1** | `0.5.12` | `0.2.0` | 2026-03-01 | Current |
+| **26.04_1** | `0.6.4` | `0.2.0` | 2026-04-09 | Current |
+| **26.03_1** | `0.5.12` | `0.2.0` | 2026-03-01 | Previous |
 | **26.02_5** | `0.5.11` | `0.2.0` | 2026-02-27 | Previous |
 | **26.02_4** | `0.4.10` | `0.2.0` | 2026-02-04 | Previous |
 | **26.01_0** | `0.2.0` | `0.2.0` | 2026-01-01 | Previous |
@@ -83,7 +84,7 @@ This table maps CalVer release versions to their corresponding crate versions:
 
 ```bash
 zentinel --version
-# zentinel 26.03_1 (0.5.12)
+# zentinel 26.04_1 (0.6.4)
 ```
 
 The CalVer release version is shown first, with the crate SemVer in parentheses.
@@ -91,13 +92,13 @@ The CalVer release version is shown first, with the crate SemVer in parentheses.
 **From Docker:**
 
 ```bash
-docker inspect ghcr.io/zentinelproxy/zentinel:26.03_1 --format '{{ index .Config.Labels "org.opencontainers.image.version" }}'
-# 26.03_1
+docker inspect ghcr.io/zentinelproxy/zentinel:26.04_1 --format '{{ index .Config.Labels "org.opencontainers.image.version" }}'
+# 26.04_1
 ```
 
 **From the documentation URL:**
 
-- `/docs/` — Current release (26.03)
+- `/docs/` — Current release (26.04)
 - `/docs/v/26.02/` — Previous release
 - `/docs/v/25.12/` — Archive
 
@@ -106,6 +107,21 @@ docker inspect ghcr.io/zentinelproxy/zentinel:26.03_1 --format '{{ index .Config
 ## Changelogs
 
 For the full changelog with all patch releases, see [Changelog](../changelog/).
+
+### Release 26.04
+
+**Crate version:** `0.6.4`
+**Release date:** April 2026
+
+#### Changed
+
+- Numeric route priorities (priority accepts integers and named aliases)
+- Route matcher host extraction fix (HTTP/2 and relative-URI support)
+- Docker image GLIBC fix (pinned to ubuntu-22.04)
+- Gateway API conformance CI restored (42/235 baseline)
+- Dependency updates (sha2 0.11, hmac 0.13, tokio 1.51, hyper 1.9, wasmtime 43)
+
+---
 
 ### Release 26.03
 
@@ -244,7 +260,7 @@ No breaking changes. Direct upgrade supported.
 systemctl stop zentinel
 
 # Install new version
-VERSION="26.03_1"
+VERSION="26.04_1"
 curl -Lo /usr/local/bin/zentinel \
     "https://github.com/zentinelproxy/zentinel/releases/download/${VERSION}/zentinel-${VERSION}-linux-amd64.tar.gz"
 tar -xzf "zentinel-${VERSION}-linux-amd64.tar.gz"
@@ -280,6 +296,7 @@ No breaking changes. Direct upgrade supported.
 
 | Zentinel Release | Protocol | Compatible Agent Versions |
 |------------------|----------|---------------------------|
+| 26.04 | `0.2.0` | Agents built with protocol `0.2.x` |
 | 26.03 | `0.2.0` | Agents built with protocol `0.2.x` |
 | 26.02 | `0.2.0` | Agents built with protocol `0.2.x` |
 | 26.01 | `0.2.0` | Agents built with protocol `0.2.x` |
@@ -289,6 +306,7 @@ No breaking changes. Direct upgrade supported.
 
 | Zentinel Release | Minimum Rust Version | Recommended |
 |------------------|----------------------|-------------|
+| 26.04 | 1.85.0 | 1.92.0+ |
 | 26.03 | 1.85.0 | 1.92.0+ |
 | 26.02 | 1.85.0 | 1.85.0+ |
 | 26.01 | 1.75.0 | 1.83.0+ |
@@ -307,7 +325,8 @@ Zentinel follows a monthly release cadence:
 
 | Release | Status | Security Fixes Until |
 |---------|--------|----------------------|
-| 26.03 | Current | Active development |
+| 26.04 | Current | Active development |
+| 26.03 | Previous | 26.07 (3 months) |
 | 26.02 | Previous | 26.06 (3 months) |
 | 26.01 | Previous | 26.04 (3 months) |
 | 25.12 | EOL | No support |
