@@ -1,7 +1,7 @@
 +++
 title = "Changelog"
 weight = 1
-updated = 2026-03-01
+updated = 2026-04-09
 +++
 
 All notable changes to Zentinel are documented here.
@@ -15,6 +15,7 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 
 | CalVer | Crate Version | Date | Highlights |
 |--------|---------------|------|------------|
+| [26.04_1](#26-04-1) | 0.6.4 | 2026-04-09 | Numeric route priorities, host extraction fix, GLIBC fix, Gateway API conformance CI |
 | [26.03_1](#26-03-1) | 0.5.12 | 2026-03-01 | March release, image optimization agent v0.2.0 |
 | [26.02_5](#26-02-5) | 0.5.11 | 2026-02-27 | `include` directive support in single-file config loading |
 | [26.02_4](#26-02-4) | 0.4.10 | 2026-02-04 | Install script fix, CI workflows, Pingora fork security fix |
@@ -31,6 +32,20 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 | [26.01_3](#26-01-3) | 0.2.3 | 2026-01-05 | Bug fixes |
 | [26.01_0](#26-01-0) | 0.2.0 | 2026-01-01 | First CalVer release |
 | [25.12](#25-12) | 0.1.x | 2025-12 | Initial public releases |
+
+---
+
+## 26.04_1
+
+**Date:** 2026-04-09
+**Crate version:** 0.6.4
+
+### Changed
+- **Numeric route priorities** — `priority` now accepts integers and named aliases
+- **Route matcher host extraction fix** — HTTP/2 and relative-URI support
+- **Docker image GLIBC fix** — pinned to ubuntu-22.04
+- **Gateway API conformance CI restored** — 42/235 baseline
+- **Dependency updates:** sha2 0.11, hmac 0.13, tokio 1.51, hyper 1.9, wasmtime 43
 
 ---
 
