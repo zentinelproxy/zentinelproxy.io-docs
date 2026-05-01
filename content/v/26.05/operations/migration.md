@@ -1,0 +1,559 @@
++++
+title = "Migration Guide"
+weight = 3
+updated = 2026-02-19
++++
+
+Guides for migrating to Zentinel from other reverse proxies.
+
+## Migration Overview
+
+### General Steps
+
+1. **Audit current configuration** - Document routes, upstreams, TLS settings
+2. **Create Zentinel config** - Translate configuration to KDL
+3. **Test in parallel** - Run Zentinel alongside existing proxy
+4. **Gradual cutover** - Shift traffic incrementally
+5. **Monitor and validate** - Compare metrics and behavior
+6. **Decommission old proxy** - Remove after validation period
+
+### Key Differences
+
+| Feature | nginx | HAProxy | Traefik | Zentinel |
+|---------|-------|---------|---------|----------|
+| Config format | nginx.conf | haproxy.cfg | YAML/TOML | KDL |
+| Hot reload | `nginx -s reload` | `kill -USR2` | Automatic | `SIGHUP` |
+| Health checks | `upstream` block | `option httpchk` | Built-in | `health-check` block |
+| Load balancing | `upstream` | `balance` | `loadBalancer` | `load-balancing` |
+
+## From nginx
+
+### Basic Proxy
+
+**nginx:**
+```nginx
+upstream backend {
+    server 10.0.1.1:8080;
+    server 10.0.1.2:8080;
+}
+
+system {
+    listen 80;
+    server_name api.example.com;
+
+    location /api/ {
+        proxy_pass http://backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+**Zentinel:**
+```kdl
+listeners {
+    listener "http" {
+        address "0.0.0.0:80"
+        protocol "http"
+    }
+}
+
+routes {
+    route "api" {
+        matches {
+            host "api.example.com"
+            path-prefix "/api/"
+        }
+        upstream "backend"
+        policies {
+            request-headers {
+                set {
+                    "X-Forwarded-Proto" "https"
+                }
+            }
+        }
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "10.0.1.1:8080" }
+            target { address "10.0.1.2:8080" }
+        }
+    }
+}
+```
+
+### TLS Termination
+
+**nginx:**
+```nginx
+system {
+    listen 443 ssl http2;
+    server_name api.example.com;
+
+    ssl_certificate /etc/nginx/ssl/server.crt;
+    ssl_certificate_key /etc/nginx/ssl/server.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256;
+
+    location / {
+        proxy_pass http://backend;
+    }
+}
+```
+
+**Zentinel:**
+```kdl
+listeners {
+    listener "https" {
+        address "0.0.0.0:443"
+        protocol "https"
+        tls {
+            cert-file "/etc/zentinel/certs/server.crt"
+            key-file "/etc/zentinel/certs/server.key"
+            min-version "1.2"
+        }
+    }
+}
+```
+
+### Load Balancing
+
+**nginx:**
+```nginx
+upstream backend {
+    least_conn;
+    server 10.0.1.1:8080 weight=3;
+    server 10.0.1.2:8080 weight=2;
+    server 10.0.1.3:8080 weight=1;
+}
+```
+
+**Zentinel:**
+```kdl
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "10.0.1.1:8080" weight=3 }
+            target { address "10.0.1.2:8080" weight=2 }
+            target { address "10.0.1.3:8080" weight=1 }
+        }
+        load-balancing "least_connections"  // or "weighted"
+    }
+}
+```
+
+### HTTPS Upstream (proxy_pass https://)
+
+**nginx:**
+```nginx
+upstream secure_backend {
+    server api.example.com:443;
+}
+
+server {
+    listen 80;
+    location /api/ {
+        proxy_pass https://secure_backend;
+        proxy_ssl_server_name on;
+        proxy_ssl_name api.example.com;
+    }
+}
+```
+
+**Zentinel:**
+```kdl
+listeners {
+    listener "http" {
+        address "0.0.0.0:80"
+        protocol "http"
+    }
+}
+
+routes {
+    route "api" {
+        matches {
+            path-prefix "/api/"
+        }
+        upstream "secure-backend"
+    }
+}
+
+upstreams {
+    upstream "secure-backend" {
+        targets {
+            target { address "api.example.com:443" }
+        }
+        // Required: tells Zentinel to connect with TLS
+        tls {
+            sni "api.example.com"
+        }
+    }
+}
+```
+
+> **Important:** In nginx, `proxy_pass https://` enables TLS to the upstream. In Zentinel, you must add a `tls` block to the upstream. Without it, Zentinel connects with plaintext HTTP regardless of the port, which causes 502 errors or redirect loops.
+
+### Rate Limiting
+
+**nginx:**
+```nginx
+limit_req_zone $binary_remote_addr zone=api:10m rate=100r/s;
+
+location /api/ {
+    limit_req zone=api burst=200 nodelay;
+    proxy_pass http://backend;
+}
+```
+
+**Zentinel:**
+```kdl
+routes {
+    route "api" {
+        matches {
+            path-prefix "/api/"
+        }
+        upstream "backend"
+        policies {
+            rate-limit {
+                requests-per-second 100
+                burst 200
+                key "client_ip"
+            }
+        }
+    }
+}
+```
+
+### nginx Mapping Table
+
+| nginx | Zentinel |
+|-------|----------|
+| `listen 80` | `address "0.0.0.0:80"` |
+| `server_name` | `matches { host "..." }` |
+| `location /path` | `matches { path-prefix "/path" }` |
+| `location = /exact` | `matches { path "/exact" }` |
+| `location ~ regex` | `matches { path-regex "regex" }` |
+| `proxy_pass http://` | `upstream "name"` |
+| `proxy_pass https://` | `upstream "name"` + `tls { sni "..." }` |
+| `upstream { }` | `upstreams { upstream "name" { } }` |
+| `least_conn` | `load-balancing "least_connections"` |
+| `ip_hash` | `load-balancing "ip_hash"` |
+| `proxy_connect_timeout` | `timeouts { connect-secs }` |
+| `proxy_read_timeout` | `timeouts { read-secs }` |
+| `proxy_set_header` | `policies { request-headers { set { } } }` |
+
+## From HAProxy
+
+### Basic Configuration
+
+**HAProxy:**
+```
+frontend http_front
+    bind *:80
+    default_backend http_back
+
+backend http_back
+    balance roundrobin
+    server server1 10.0.1.1:8080 check
+    server server2 10.0.1.2:8080 check
+```
+
+**Zentinel:**
+```kdl
+listeners {
+    listener "http" {
+        address "0.0.0.0:80"
+        protocol "http"
+        default-route "api"
+    }
+}
+
+routes {
+    route "api" {
+        matches {
+            path-prefix "/"
+        }
+        upstream "backend"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        targets {
+            target { address "10.0.1.1:8080" }
+            target { address "10.0.1.2:8080" }
+        }
+        load-balancing "round_robin"
+        health-check {
+            type "http" {
+                path "/health"
+                expected-status 200
+            }
+        }
+    }
+}
+```
+
+### ACLs and Routing
+
+**HAProxy:**
+```
+frontend http_front
+    bind *:80
+
+    acl is_api path_beg /api/
+    acl is_static path_beg /static/
+
+    use_backend api_back if is_api
+    use_backend static_back if is_static
+    default_backend default_back
+```
+
+**Zentinel:**
+```kdl
+routes {
+    route "api" {
+        priority 100
+        matches {
+            path-prefix "/api/"
+        }
+        upstream "api-backend"
+    }
+
+    route "static" {
+        priority 100
+        matches {
+            path-prefix "/static/"
+        }
+        service-type "static"
+        static-files {
+            root "/var/www/static"
+        }
+    }
+
+    route "default" {
+        priority 1
+        matches {
+            path-prefix "/"
+        }
+        upstream "default-backend"
+    }
+}
+```
+
+### Health Checks
+
+**HAProxy:**
+```
+backend http_back
+    option httpchk GET /health
+    http-check expect status 200
+    server server1 10.0.1.1:8080 check inter 10s fall 3 rise 2
+```
+
+**Zentinel:**
+```kdl
+upstreams {
+    upstream "backend" {
+        health-check {
+            type "http" {
+                path "/health"
+                expected-status 200
+            }
+            interval-secs 10
+            unhealthy-threshold 3
+            healthy-threshold 2
+        }
+    }
+}
+```
+
+### HAProxy Mapping Table
+
+| HAProxy | Zentinel |
+|---------|----------|
+| `frontend` | `listeners { listener }` |
+| `backend` | `upstreams { upstream }` |
+| `bind *:80` | `address "0.0.0.0:80"` |
+| `balance roundrobin` | `load-balancing "round_robin"` |
+| `balance leastconn` | `load-balancing "least_connections"` |
+| `balance source` | `load-balancing "ip_hash"` |
+| `server ... weight N` | `target { weight=N }` |
+| `option httpchk` | `health-check { type "http" }` |
+| `inter 10s` | `interval-secs 10` |
+| `fall 3` | `unhealthy-threshold 3` |
+| `rise 2` | `healthy-threshold 2` |
+| `acl ... path_beg` | `matches { path-prefix }` |
+| `acl ... hdr(host)` | `matches { host }` |
+| `use_backend ... if` | Route with matching conditions |
+
+## From Traefik
+
+### Basic Configuration
+
+**Traefik (YAML):**
+```yaml
+entryPoints:
+  web:
+    address: ":80"
+  websecure:
+    address: ":443"
+
+http:
+  routers:
+    api:
+      rule: "PathPrefix(`/api/`)"
+      service: api-service
+      entryPoints:
+        - web
+
+  services:
+    api-service:
+      loadBalancer:
+        servers:
+          - url: "http://10.0.1.1:8080"
+          - url: "http://10.0.1.2:8080"
+```
+
+**Zentinel:**
+```kdl
+listeners {
+    listener "http" {
+        address "0.0.0.0:80"
+        protocol "http"
+    }
+    listener "https" {
+        address "0.0.0.0:443"
+        protocol "https"
+        tls {
+            cert-file "/etc/zentinel/certs/server.crt"
+            key-file "/etc/zentinel/certs/server.key"
+        }
+    }
+}
+
+routes {
+    route "api" {
+        matches {
+            path-prefix "/api/"
+        }
+        upstream "api-service"
+    }
+}
+
+upstreams {
+    upstream "api-service" {
+        targets {
+            target { address "10.0.1.1:8080" }
+            target { address "10.0.1.2:8080" }
+        }
+    }
+}
+```
+
+### Middleware to Policies
+
+**Traefik:**
+```yaml
+http:
+  middlewares:
+    rate-limit:
+      rateLimit:
+        average: 100
+        burst: 200
+    headers:
+      customRequestHeaders:
+        X-Custom-Header: "value"
+
+  routers:
+    api:
+      rule: "PathPrefix(`/api/`)"
+      middlewares:
+        - rate-limit
+        - headers
+      service: api-service
+```
+
+**Zentinel:**
+```kdl
+routes {
+    route "api" {
+        matches {
+            path-prefix "/api/"
+        }
+        upstream "api-service"
+        policies {
+            rate-limit {
+                requests-per-second 100
+                burst 200
+            }
+            request-headers {
+                set {
+                    "X-Custom-Header" "value"
+                }
+            }
+        }
+    }
+}
+```
+
+### Traefik Mapping Table
+
+| Traefik | Zentinel |
+|---------|----------|
+| `entryPoints` | `listeners` |
+| `routers` | `routes` |
+| `services` | `upstreams` |
+| `loadBalancer.servers` | `targets` |
+| `rule: PathPrefix(...)` | `matches { path-prefix }` |
+| `rule: Host(...)` | `matches { host }` |
+| `rule: Headers(...)` | `matches { header }` |
+| `middlewares` | `policies`, `filters` |
+| `healthCheck` | `health-check` |
+
+## Validation Checklist
+
+### Before Migration
+
+- [ ] Document all routes and backends
+- [ ] Export current TLS certificates
+- [ ] Identify backends using HTTPS (`proxy_pass https://`, `ssl` backends)
+- [ ] Note rate limits and timeouts
+- [ ] Record health check configurations
+- [ ] Capture baseline metrics
+
+### After Migration
+
+- [ ] All routes accessible
+- [ ] TLS working correctly (listener and upstream)
+- [ ] HTTPS backends have `tls` block in upstream config
+- [ ] No redirect loops (check with `curl -L`)
+- [ ] Health checks passing
+- [ ] Load balancing functioning
+- [ ] Rate limits enforced
+- [ ] Metrics comparable to baseline
+- [ ] Error rates normal
+- [ ] Latency acceptable
+
+### Parallel Running
+
+```bash
+# Run Zentinel on different port
+zentinel --config zentinel.kdl  # Listens on 8080
+
+# Test both proxies
+curl http://localhost:80/api/test    # Old proxy
+curl http://localhost:8080/api/test  # Zentinel
+
+# Compare responses
+diff <(curl -s old-proxy/api/test) <(curl -s zentinel/api/test)
+```
+
+## See Also
+
+- [Configuration](../../configuration/) - Full configuration reference
+- [Troubleshooting](../troubleshooting/) - Common issues
+- [Quick Start](../../getting-started/quick-start/) - Getting started guide
