@@ -1,20 +1,36 @@
 +++
 title = "Installation"
 weight = 1
-updated = 2026-02-19
+updated = 2026-05-03
 +++
 
 Zentinel can be installed via the install script, from pre-built binaries, built from source, or run as an OCI container.
 
 ## Install Script (Recommended)
 
-The easiest way to install Zentinel is using the install script, which automatically detects your OS and architecture:
+The install script detects your OS and architecture and installs the binary. On Linux hosts running systemd it also drops a managed-service layout: unit file, sysusers snippet, and a starter config at `/etc/zentinel/zentinel.kdl`.
 
 ```bash
+# Binary + service files (service is installed but NOT started)
 curl -fsSL https://get.zentinelproxy.io | sh
+
+# Install and start the service in one shot
+curl -fsSL https://get.zentinelproxy.io | sh -s -- --enable-service
+
+# Binary only, even on systemd hosts
+curl -fsSL https://get.zentinelproxy.io | sh -s -- --skip-service
 ```
 
-The script downloads the appropriate binary and installs it to `~/.local/bin`. You may need to add this to your PATH:
+When run as root or via sudo on a systemd host, the script creates:
+
+| Path | Purpose |
+|------|---------|
+| `/usr/local/bin/zentinel` | Binary |
+| `/etc/systemd/system/zentinel.service` | Unit file with `CAP_NET_BIND_SERVICE` and sandboxing |
+| `/usr/lib/sysusers.d/zentinel.conf` | System user declaration (applied via `systemd-sysusers`) |
+| `/etc/zentinel/zentinel.kdl` | Starter config (preserved across re-installs) |
+
+When run as a regular user, when systemd is unavailable, or with `--skip-service`, only the binary is installed. The fallback location is `~/.local/bin`. Add it to your `PATH` if needed:
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
@@ -27,6 +43,21 @@ Add this line to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.) to make it p
 ```bash
 zentinel --version
 ```
+
+### Service flow
+
+On systemd hosts the script does not enable or start the service by default. After the install completes:
+
+```bash
+sudoedit /etc/zentinel/zentinel.kdl   # edit listeners and routes
+zentinel test --config /etc/zentinel/zentinel.kdl
+sudo systemctl enable --now zentinel
+journalctl -u zentinel -f
+```
+
+To bind ports below 1024 (such as 80 and 443), edit the listener address in the config. The shipped unit grants `AmbientCapabilities=CAP_NET_BIND_SERVICE`, so this works without running the proxy as root.
+
+For details on the unit, file layout, capabilities, and uninstall, see [systemd Deployment](/docs/deployment/systemd/).
 
 ## Install with Bundled Agents
 
@@ -240,39 +271,53 @@ zentinel -c zentinel.kdl --log-level debug
 
 ## Systemd Service
 
-For production deployments on Linux, create a systemd service:
+The install script provisions the unit, sysusers, and starter config automatically. The block below is the equivalent manual setup, useful when installing from source or behind air-gapped networks.
 
 ```bash
+# Create zentinel user
+sudo useradd --system --shell /usr/sbin/nologin --home-dir /var/lib/zentinel zentinel
+
+# Drop the unit file
 sudo cat > /etc/systemd/system/zentinel.service << 'EOF'
 [Unit]
-Description=Zentinel Reverse Proxy
-After=network.target
+Description=Zentinel Security-First Reverse Proxy
+Documentation=https://docs.zentinelproxy.io
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
 User=zentinel
 Group=zentinel
-ExecStart=/usr/local/bin/zentinel -c /etc/zentinel/zentinel.kdl
+ExecStart=/usr/local/bin/zentinel --config /etc/zentinel/zentinel.kdl
 ExecReload=/bin/kill -HUP $MAINPID
-Restart=always
+Restart=on-failure
 RestartSec=5
 LimitNOFILE=65535
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+StateDirectory=zentinel
+LogsDirectory=zentinel
+RuntimeDirectory=zentinel
+ConfigurationDirectory=zentinel
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-# Create zentinel user
-sudo useradd -r -s /sbin/nologin zentinel
-
-# Set permissions
+# Permissions
 sudo chown -R zentinel:zentinel /etc/zentinel
 
 # Enable and start
 sudo systemctl daemon-reload
-sudo systemctl enable zentinel
-sudo systemctl start zentinel
+sudo systemctl enable --now zentinel
 ```
+
+The shipped unit also includes a stricter sandboxing block (`Protect{Kernel,Tunables,Modules}=true`, `RestrictAddressFamilies=`, `SystemCallFilter=@system-service`, etc.). See [systemd Deployment](/docs/deployment/systemd/) for the complete reference.
 
 ### Managing the Service
 
