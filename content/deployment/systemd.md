@@ -1,10 +1,42 @@
 +++
 title = "systemd Deployment"
 weight = 3
-updated = 2026-02-19
+updated = 2026-05-03
 +++
 
 systemd is the recommended deployment method for production Zentinel installations on Linux. It provides robust process supervision, socket activation, resource limits, and integration with system logging.
+
+## Quick install via the official script
+
+For most users, the install script handles the entire systemd layout:
+
+```bash
+# Drops the unit, sysusers snippet, and starter config; service is NOT started.
+curl -fsSL https://get.zentinelproxy.io | sh
+
+# Drops everything and runs `systemctl enable --now zentinel.service`.
+curl -fsSL https://get.zentinelproxy.io | sh -s -- --enable-service
+```
+
+It installs:
+
+| Path | Purpose |
+|------|---------|
+| `/usr/local/bin/zentinel` | Binary |
+| `/etc/systemd/system/zentinel.service` | Unit with sandboxing and `CAP_NET_BIND_SERVICE` |
+| `/usr/lib/sysusers.d/zentinel.conf` | System user, applied via `systemd-sysusers` |
+| `/etc/zentinel/zentinel.kdl` | Starter config (preserved across re-installs) |
+
+After install:
+
+```bash
+sudoedit /etc/zentinel/zentinel.kdl
+zentinel test --config /etc/zentinel/zentinel.kdl
+sudo systemctl enable --now zentinel
+journalctl -u zentinel -f
+```
+
+The rest of this page documents the manual setup (useful when installing from source, on hosts without `systemd-sysusers`, or when adding agents alongside the proxy).
 
 ## Overview
 
@@ -53,8 +85,8 @@ sudo chown -R zentinel:zentinel /var/log/zentinel
 ### Install Binaries
 
 ```bash
-# Download and install
-curl -sSL https://zentinelproxy.io/install.sh | sudo sh
+# Download and install (binary only)
+curl -fsSL https://get.zentinelproxy.io | sudo sh -s -- --skip-service
 
 # Or from source
 cargo build --release
