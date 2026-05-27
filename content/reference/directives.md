@@ -85,9 +85,7 @@ Top-level block containing all upstream definitions. Upstreams are reusable grou
 ```kdl
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "10.0.1.1:8080" }
-        }
+        target "10.0.1.1:8080"
     }
 }
 ```
@@ -1805,7 +1803,7 @@ Defines a group of backend servers.
 ```kdl
 upstreams {
     upstream "backend" {
-        targets { }
+        target "127.0.0.1:8080"
         load-balancing "round_robin"
     }
 }
@@ -1857,10 +1855,8 @@ Container for upstream target definitions.
 
 ```kdl
 upstream "backend" {
-    targets {
-        target { address "10.0.1.1:8080" }
-        target { address "10.0.1.2:8080" }
-    }
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
 }
 ```
 
@@ -1873,10 +1869,7 @@ Defines an individual backend server.
 **Context:** `targets`
 
 ```kdl
-target {
-    address "10.0.1.1:8080"
-    weight 1
-}
+target "10.0.1.1:8080" weight=1
 ```
 
 ---
@@ -1889,10 +1882,7 @@ Relative weight for load balancing.
 **Default:** `1`
 
 ```kdl
-target {
-    address "10.0.1.1:8080"
-    weight 3
-}
+target "10.0.1.1:8080" weight=3
 ```
 
 ---
@@ -1904,10 +1894,7 @@ Maximum requests through this target before rotation.
 **Context:** `target`
 
 ```kdl
-target {
-    address "10.0.1.1:8080"
-    max-requests 10000
-}
+target "10.0.1.1:8080" max-requests=10000
 ```
 
 ---

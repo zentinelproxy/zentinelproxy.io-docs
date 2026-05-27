@@ -67,17 +67,13 @@ routes {
 
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "api.internal:8080" }
-            target { address "api.internal:8081" }
-        }
+        target "api.internal:8080"
+        target "api.internal:8081"
         load-balancing "round-robin"
     }
 
     upstream "static-backend" {
-        targets {
-            target { address "static.internal:80" }
-        }
+        target "static.internal:80"
     }
 }
 ```
@@ -198,11 +194,9 @@ The playground simulates deterministic load balancing:
 ```kdl
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "10.0.0.1:8080" weight 3 }
-            target { address "10.0.0.2:8080" weight 2 }
-            target { address "10.0.0.3:8080" weight 1 }
-        }
+        target "10.0.0.1:8080" weight=3
+        target "10.0.0.2:8080" weight=2
+        target "10.0.0.3:8080" weight=1
         load-balancing "weighted"
     }
 }

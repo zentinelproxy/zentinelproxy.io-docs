@@ -54,9 +54,7 @@ routes {
 
 upstreams {
     upstream "api-backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
-        }
+        target "127.0.0.1:3000"
     }
 }
 ```
@@ -278,15 +276,11 @@ routes {
 
 upstreams {
     upstream "api-backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
-        }
+        target "127.0.0.1:3000"
     }
 
     upstream "backend" {
-        targets {
-            target { address "127.0.0.1:3001" }
-        }
+        target "127.0.0.1:3001"
     }
 }
 ```
@@ -356,9 +350,7 @@ routes {
 
 upstreams {
     upstream "api-backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
-        }
+        target "127.0.0.1:3000"
         health-check {
             type "http" { path "/health" }
             interval-secs 10
@@ -366,9 +358,7 @@ upstreams {
     }
 
     upstream "web-backend" {
-        targets {
-            target { address "127.0.0.1:3001" }
-        }
+        target "127.0.0.1:3001"
     }
 }
 ```

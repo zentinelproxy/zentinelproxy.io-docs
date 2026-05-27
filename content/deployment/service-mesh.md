@@ -103,9 +103,7 @@ routes {
 
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
-        }
+        target "127.0.0.1:3000"
     }
 }
 
@@ -160,9 +158,7 @@ routes {
 
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
-        }
+        target "127.0.0.1:3000"
     }
 }
 
@@ -279,9 +275,7 @@ In this mode, Zentinel routes to `localhost` and Istio handles service discovery
 
 ```kdl
 upstream "backend" {
-    targets {
-        target { address "127.0.0.1:15001" }  // Istio outbound
-    }
+    target "127.0.0.1:15001"  // Istio outbound
     // Istio sidecar handles discovery and mTLS
 }
 ```

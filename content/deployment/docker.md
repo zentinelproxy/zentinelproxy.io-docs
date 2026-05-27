@@ -134,9 +134,7 @@ docker run -d \
 # In zentinel.kdl
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "host.docker.internal:3000" }
-        }
+        target "host.docker.internal:3000"
     }
 }
 ```

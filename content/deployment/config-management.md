@@ -88,9 +88,7 @@ listeners {
 
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
-        }
+        target "127.0.0.1:3000"
     }
 }
 
@@ -154,9 +152,7 @@ routes {
 
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
-        }
+        target "127.0.0.1:3000"
     }
 }
 
@@ -195,9 +191,7 @@ routes {
 
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
-        }
+        target "127.0.0.1:3000"
     }
 }
 
@@ -255,9 +249,7 @@ system {
 }
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "${BACKEND_HOST}:${BACKEND_PORT}" }
-        }
+        target "${BACKEND_HOST}:${BACKEND_PORT}"
     }
 }
 EOF
@@ -288,11 +280,9 @@ listeners {
 upstreams {
 {% for upstream in zentinel_upstreams %}
     upstream "{{ upstream.name }}" {
-        targets {
 {% for target in upstream.targets %}
-            target { address "{{ target }}" }
+        target "{{ target }}"
 {% endfor %}
-        }
     }
 {% endfor %}
 }
@@ -319,11 +309,9 @@ data:
     upstreams {
         {{- range .Values.upstreams }}
         upstream "{{ .name }}" {
-            targets {
-                {{- range .targets }}
-                target { address "{{ . }}" }
-                {{- end }}
-            }
+            {{- range .targets }}
+            target "{{ . }}"
+            {{- end }}
         }
         {{- end }}
     }

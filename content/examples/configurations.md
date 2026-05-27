@@ -117,27 +117,21 @@ routes {
 
 upstreams {
     upstream "openai" {
-        targets {
-            target { address "api.openai.com:443" }
-        }
+        target "api.openai.com:443"
         tls {
             sni "api.openai.com"
         }
     }
 
     upstream "anthropic" {
-        targets {
-            target { address "api.anthropic.com:443" }
-        }
+        target "api.anthropic.com:443"
         tls {
             sni "api.anthropic.com"
         }
     }
 
     upstream "azure-openai" {
-        targets {
-            target { address "your-resource.openai.azure.com:443" }
-        }
+        target "your-resource.openai.azure.com:443"
         tls {
             sni "your-resource.openai.azure.com"
         }

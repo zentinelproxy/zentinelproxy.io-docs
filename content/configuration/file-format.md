@@ -85,13 +85,7 @@ routes {
 
 upstreams {
     upstream "backend" {
-        targets {
-            target {
-                address "127.0.0.1:3000"
-                // Numbers (float)
-                weight 1.5
-            }
-        }
+        target "127.0.0.1:3000" weight=1.5
 
         // Null values (#null)
         health-check #null
@@ -273,11 +267,9 @@ routes {
 
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "10.0.1.1:8080" weight=3 }
-            target { address "10.0.1.2:8080" weight=2 }
-            target { address "10.0.1.3:8080" weight=1 }
-        }
+        target "10.0.1.1:8080" weight=3
+        target "10.0.1.2:8080" weight=2
+        target "10.0.1.3:8080" weight=1
         load-balancing "weighted_round_robin"
         health-check {
             type "http"
