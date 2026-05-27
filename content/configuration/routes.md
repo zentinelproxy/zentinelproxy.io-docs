@@ -242,14 +242,10 @@ routes {
 
 upstreams {
     upstream "api-backend" {
-        targets {
-            target { address "127.0.0.1:3001" }
-        }
+        target "127.0.0.1:3001"
     }
     upstream "backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
-        }
+        target "127.0.0.1:3000"
     }
 }
 
@@ -742,9 +738,7 @@ routes {
 
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
-        }
+        target "127.0.0.1:3000"
     }
 }
 

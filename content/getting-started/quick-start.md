@@ -61,15 +61,11 @@ routes {
 
 upstreams {
     upstream "api-backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
-        }
+        target "127.0.0.1:3000"
     }
 
     upstream "web-backend" {
-        targets {
-            target { address "127.0.0.1:3001" }
-        }
+        target "127.0.0.1:3001"
     }
 }
 
@@ -139,9 +135,7 @@ Update your config to add health checks:
 ```kdl
 upstreams {
     upstream "api-backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
-        }
+        target "127.0.0.1:3000"
         health-check {
             type "http" {
                 path "/health"

@@ -133,9 +133,7 @@ async fn test_proxy_forwards_request() {
         }}
         upstreams {{
             upstream "backend" {{
-                targets {{
-                    target {{ address "{}" }}
-                }}
+                target "{}"
             }}
         }}
     "#, backend.addr);
@@ -198,9 +196,7 @@ async fn test_upstream_unavailable() {
         }
         upstreams {
             upstream "backend" {
-                targets {
-                    target { address "127.0.0.1:59999" }
-                }
+                target "127.0.0.1:59999"
             }
         }
     "#;
@@ -277,9 +273,7 @@ async fn test_waf_blocks_sql_injection() {
         }}
         upstreams {{
             upstream "backend" {{
-                targets {{
-                    target {{ address "{}" }}
-                }}
+                target "{}"
             }}
         }}
     "#, waf.socket_path.display(), backend.addr);
@@ -419,10 +413,8 @@ async fn test_health_check_removes_unhealthy_target() {
     let config = format!(r#"
         upstreams {{
             upstream "backend" {{
-                targets {{
-                    target {{ address "{}" }}
-                    target {{ address "{}" }}
-                }}
+                target "{}"
+                target "{}"
                 health-check {{
                     type "http" {{ path "/health" }}
                     interval-secs 1

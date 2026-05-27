@@ -584,10 +584,8 @@ routes {
 
 upstreams {
     upstream "api-backend" {
-        targets {
-            target { address "10.0.1.1:8080" weight 5 }
-            target { address "10.0.1.2:8080" weight 5 }
-        }
+        target "10.0.1.1:8080" weight=5
+        target "10.0.1.2:8080" weight=5
         load-balancing "round_robin"
         health-check {
             path "/health"

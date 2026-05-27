@@ -22,9 +22,7 @@ Zentinel supports three scope levels:
 namespace "api" {
     upstreams {
         upstream "backend" {
-            targets {
-                target { address "10.0.1.1:8080" }
-            }
+            target "10.0.1.1:8080"
         }
     }
 
@@ -124,10 +122,8 @@ namespace "payments" {
 
         upstreams {
             upstream "checkout-backend" {
-                targets {
-                    target { address "checkout-1:8080" }
-                    target { address "checkout-2:8080" }
-                }
+                target "checkout-1:8080"
+                target "checkout-2:8080"
             }
         }
 
@@ -179,7 +175,7 @@ When a route references an upstream, Zentinel resolves it in order:
 // Global upstream (available everywhere)
 upstreams {
     upstream "shared-auth" {
-        targets { target { address "auth:8080" } }
+        target "auth:8080"
     }
 }
 
@@ -187,7 +183,7 @@ namespace "api" {
     // Namespace-level upstream
     upstreams {
         upstream "backend" {
-            targets { target { address "api-backend:8080" } }
+            target "api-backend:8080"
         }
     }
 
@@ -203,7 +199,7 @@ namespace "api" {
     service "users" {
         upstreams {
             upstream "backend" {  // Shadows namespace backend
-                targets { target { address "users-backend:8080" } }
+                target "users-backend:8080"
             }
         }
 
@@ -250,10 +246,10 @@ Make namespace resources available globally:
 namespace "infrastructure" {
     upstreams {
         upstream "redis" {
-            targets { target { address "redis:6379" } }
+            target "redis:6379"
         }
         upstream "postgres" {
-            targets { target { address "postgres:5432" } }
+            target "postgres:5432"
         }
     }
 
@@ -458,10 +454,8 @@ listeners {
 // Global shared resources
 upstreams {
     upstream "auth-service" {
-        targets {
-            target { address "auth-1:8080" }
-            target { address "auth-2:8080" }
-        }
+        target "auth-1:8080"
+        target "auth-2:8080"
         load-balancing "round_robin"
     }
 }
@@ -475,10 +469,8 @@ namespace "api" {
 
     upstreams {
         upstream "backend" {
-            targets {
-                target { address "api-1:8080" }
-                target { address "api-2:8080" }
-            }
+            target "api-1:8080"
+            target "api-2:8080"
         }
     }
 
@@ -505,9 +497,7 @@ namespace "api" {
 
         upstreams {
             upstream "users-backend" {
-                targets {
-                    target { address "users-1:8080" }
-                }
+                target "users-1:8080"
             }
         }
 
@@ -541,9 +531,7 @@ namespace "web" {
 
     upstreams {
         upstream "frontend" {
-            targets {
-                target { address "web-1:3000" }
-            }
+            target "web-1:3000"
         }
     }
 

@@ -33,11 +33,7 @@ routes {
 
 upstreams {
     upstream "backend" {
-        targets {
-            target {
-                address "127.0.0.1:3000"
-            }
-        }
+        target "127.0.0.1:3000"
     }
 }
 ```
@@ -191,16 +187,8 @@ Upstreams define backend server pools:
 ```kdl
 upstreams {
     upstream "backend" {
-        targets {
-            target {
-                address "10.0.1.10:8080"
-                weight 3
-            }
-            target {
-                address "10.0.1.11:8080"
-                weight 1
-            }
-        }
+        target "10.0.1.10:8080" weight=3
+        target "10.0.1.11:8080" weight=1
 
         load-balancing "round_robin"
 
@@ -305,9 +293,7 @@ routes {
 
 upstreams {
     upstream "api-backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
-        }
+        target "127.0.0.1:3000"
         load-balancing "round_robin"
         health-check {
             type "http" {
@@ -318,9 +304,7 @@ upstreams {
     }
 
     upstream "web-backend" {
-        targets {
-            target { address "127.0.0.1:3001" }
-        }
+        target "127.0.0.1:3001"
     }
 }
 

@@ -170,10 +170,8 @@ Use `ip_hash` or `consistent_hash` load balancing:
 upstreams {
     upstream "backend" {
         load-balancing "ip_hash"
-        targets {
-            target { address "10.0.1.1:8080" }
-            target { address "10.0.1.2:8080" }
-        }
+        target "10.0.1.1:8080"
+        target "10.0.1.2:8080"
     }
 }
 ```
@@ -184,11 +182,9 @@ Set its weight to 0 or remove it from the configuration and reload:
 
 ```kdl
 // Before
-target { address "10.0.1.1:8080" weight=1 }
-
+target "10.0.1.1:8080" weight=1
 // Draining
-target { address "10.0.1.1:8080" weight=0 }
-```
+target "10.0.1.1:8080" weight=0```
 
 Existing connections will complete; new requests go to other servers.
 
@@ -288,9 +284,7 @@ This usually happens when your backend expects HTTPS but Zentinel connects with 
 ```kdl
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "api.example.com:443" }
-        }
+        target "api.example.com:443"
         tls {
             sni "api.example.com"
         }

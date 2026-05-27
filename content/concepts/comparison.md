@@ -104,9 +104,7 @@ routes {
 
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "backend:3000" }
-        }
+        target "backend:3000"
     }
 }
 ```
@@ -175,10 +173,8 @@ routes {
 
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
-            target { address "127.0.0.1:3001" }
-        }
+        target "127.0.0.1:3000"
+        target "127.0.0.1:3001"
         load-balancing "round_robin"
         health-check {
             path "/health"
@@ -257,10 +253,8 @@ routes {
 
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
-            target { address "127.0.0.1:3001" }
-        }
+        target "127.0.0.1:3000"
+        target "127.0.0.1:3001"
     }
 }
 ```
@@ -343,9 +337,7 @@ routes {
 
 upstreams {
     upstream "app" {
-        targets {
-            target { address "127.0.0.1:3000" }
-        }
+        target "127.0.0.1:3000"
     }
 }
 ```
@@ -427,9 +419,7 @@ routes {
 
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "localhost:3000" }
-        }
+        target "localhost:3000"
     }
 }
 ```
