@@ -83,9 +83,7 @@ routes {
 
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
-        }
+        target "127.0.0.1:3000"
     }
 }
 ```
@@ -185,9 +183,7 @@ routes {
 
 upstreams {
     upstream "secure-backend" {
-        targets {
-            target { address "10.0.0.1:8443" }
-        }
+        target "10.0.0.1:8443"
         tls {
             sni "backend.internal"
             client-cert "/etc/zentinel/certs/client.crt"
@@ -263,9 +259,7 @@ routes {
 
 upstreams {
     upstream "admin-backend" {
-        targets {
-            target { address "127.0.0.1:3001" }
-        }
+        target "127.0.0.1:3001"
     }
 }
 
@@ -311,14 +305,10 @@ routes {
 
 upstreams {
     upstream "api-backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
-        }
+        target "127.0.0.1:3000"
     }
     upstream "auth-backend" {
-        targets {
-            target { address "127.0.0.1:3001" }
-        }
+        target "127.0.0.1:3001"
     }
 }
 
@@ -368,9 +358,7 @@ routes {
 
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
-        }
+        target "127.0.0.1:3000"
     }
 }
 

@@ -96,9 +96,7 @@ routes {
 
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
-        }
+        target "127.0.0.1:3000"
         connection-pool {
             max-connections 500
             max-idle 100

@@ -63,10 +63,8 @@ routes {
 
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "10.0.1.1:8080" }
-            target { address "10.0.1.2:8080" }
-        }
+        target "10.0.1.1:8080"
+        target "10.0.1.2:8080"
         load-balancing "round_robin"
         health-check {
             type "http" {

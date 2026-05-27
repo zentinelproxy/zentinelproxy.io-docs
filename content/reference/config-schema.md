@@ -52,9 +52,7 @@ routes {
 
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
-        }
+        target "127.0.0.1:3000"
     }
 }
 ```
@@ -111,9 +109,7 @@ routes {
 
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
-        }
+        target "127.0.0.1:3000"
     }
 }
 ```
@@ -273,9 +269,7 @@ routes {
 
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
-        }
+        target "127.0.0.1:3000"
     }
 }
 ```
@@ -306,12 +300,10 @@ listeners {
 
 upstreams {
     upstream "id" {
-        targets {
-            target "10.0.1.1:8080" {
-                weight 1
-                max-requests 1000
-                metadata { "zone" "us-east-1" }
-            }
+        target "10.0.1.1:8080" {
+            weight 1
+            max-requests 1000
+            metadata { "zone" "us-east-1" }
         }
         load-balancing "round_robin"
 
@@ -471,9 +463,7 @@ routes {
 
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
-        }
+        target "127.0.0.1:3000"
     }
 }
 ```
@@ -531,10 +521,8 @@ routes {
 
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "10.0.1.1:8080" }
-            target { address "10.0.1.2:8080" }
-        }
+        target "10.0.1.1:8080"
+        target "10.0.1.2:8080"
         load-balancing "least_connections"
         health-check {
             type "http" { path "/health" expected-status 200 }

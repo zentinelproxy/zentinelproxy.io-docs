@@ -230,9 +230,7 @@ Add a `tls` block to your upstream when connecting to an HTTPS backend:
 ```kdl
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "api.example.com:443" }
-        }
+        target "api.example.com:443"
         // Required when the backend serves HTTPS
         tls {
             sni "api.example.com"
@@ -440,9 +438,7 @@ routes {
 
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "127.0.0.1:3000" }
-        }
+        target "127.0.0.1:3000"
     }
 }
 ```

@@ -11,11 +11,9 @@ The `upstreams` block defines backend server pools. Each upstream contains one o
 ```kdl
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "10.0.1.1:8080" }
-            target { address "10.0.1.2:8080" }
-            target { address "10.0.1.3:8080" }
-        }
+        target "10.0.1.1:8080"
+        target "10.0.1.2:8080"
+        target "10.0.1.3:8080"
         load-balancing "round_robin"
     }
 }
@@ -26,21 +24,9 @@ upstreams {
 ### Target Definition
 
 ```kdl
-targets {
-    target {
-        address "10.0.1.1:8080"
-        weight 3
-        max-requests 1000
-    }
-    target {
-        address "10.0.1.2:8080"
-        weight 2
-    }
-    target {
-        address "10.0.1.3:8080"
-        weight 1
-    }
-}
+target "10.0.1.1:8080" weight=3 max-requests=1000
+target "10.0.1.2:8080" weight=2
+target "10.0.1.3:8080" weight=1
 ```
 
 | Option | Default | Description |
@@ -122,11 +108,9 @@ routes {
 
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "10.0.1.1:8080" weight=3 }
-            target { address "10.0.1.2:8080" weight=2 }
-            target { address "10.0.1.3:8080" weight=1 }
-        }
+        target "10.0.1.1:8080" weight=3
+        target "10.0.1.2:8080" weight=2
+        target "10.0.1.3:8080" weight=1
         load-balancing "weighted"
     }
 }
@@ -247,11 +231,9 @@ For each request, the adaptive balancer:
 
 ```kdl
 upstream "api" {
-    targets {
-        target { address "api-1.internal:8080" weight=100 }
-        target { address "api-2.internal:8080" weight=100 }
-        target { address "api-3.internal:8080" weight=100 }
-    }
+    target "api-1.internal:8080" weight=100
+    target "api-2.internal:8080" weight=100
+    target "api-3.internal:8080" weight=100
     load-balancing "adaptive"
     health-check {
         type "http" {
@@ -346,16 +328,14 @@ Prefers targets in the same zone or region as the proxy, falling back to other z
 Zones can be specified in target metadata or parsed from addresses:
 
 ```kdl
-targets {
-    target "10.0.1.1:8080" {
-        metadata { "zone" "us-east-1a" }
-    }
-    target "10.0.1.2:8080" {
-        metadata { "zone" "us-east-1b" }
-    }
-    target "10.0.2.1:8080" {
-        metadata { "zone" "us-west-2a" }
-    }
+target "10.0.1.1:8080" {
+    metadata { "zone" "us-east-1a" }
+}
+target "10.0.1.2:8080" {
+    metadata { "zone" "us-east-1b" }
+}
+target "10.0.2.1:8080" {
+    metadata { "zone" "us-west-2a" }
 }
 ```
 
@@ -449,11 +429,9 @@ routes {
 upstreams {
     // Large server can handle 2x traffic, medium is standard, small is half capacity
     upstream "mixed-capacity" {
-        targets {
-            target { address "large-server:8080" weight=200 }
-            target { address "medium-server:8080" weight=100 }
-            target { address "small-server:8080" weight=50 }
-        }
+        target "large-server:8080" weight=200
+        target "medium-server:8080" weight=100
+        target "small-server:8080" weight=50
         load-balancing "weighted_least_conn"
     }
 }
@@ -596,10 +574,8 @@ upstream "grpc-app" {
 
 ```kdl
 upstream "user-service" {
-    targets {
-        target { address "user-svc-1.internal:50051" }
-        target { address "user-svc-2.internal:50051" }
-    }
+    target "user-svc-1.internal:50051"
+    target "user-svc-2.internal:50051"
     load-balancing "least_connections"
     health-check {
         type "grpc" {
@@ -838,9 +814,7 @@ routes {
 
 upstreams {
     upstream "external-api" {
-        targets {
-            target { address "api.example.com:443" }
-        }
+        target "api.example.com:443"
         tls {
             sni "api.example.com"
         }
@@ -865,11 +839,9 @@ upstreams {
 upstreams {
     // Web tier
     upstream "web" {
-        targets {
-            target { address "web-1.internal:8080" weight=2 }
-            target { address "web-2.internal:8080" weight=2 }
-            target { address "web-3.internal:8080" weight=1 }
-        }
+        target "web-1.internal:8080" weight=2
+        target "web-2.internal:8080" weight=2
+        target "web-3.internal:8080" weight=1
         load-balancing "weighted"
         health-check {
             type "http" {
@@ -887,10 +859,8 @@ upstreams {
 
     // API tier
     upstream "api" {
-        targets {
-            target { address "api-1.internal:8080" }
-            target { address "api-2.internal:8080" }
-        }
+        target "api-1.internal:8080"
+        target "api-2.internal:8080"
         load-balancing "least_connections"
         health-check {
             type "http" {
@@ -908,11 +878,9 @@ upstreams {
 
     // Cache tier
     upstream "cache" {
-        targets {
-            target { address "cache-1.internal:6379" }
-            target { address "cache-2.internal:6379" }
-            target { address "cache-3.internal:6379" }
-        }
+        target "cache-1.internal:6379"
+        target "cache-2.internal:6379"
+        target "cache-3.internal:6379"
         load-balancing "consistent_hash"
         health-check {
             type "tcp"
@@ -929,28 +897,22 @@ upstreams {
 upstreams {
     // Blue environment (current)
     upstream "api-blue" {
-        targets {
-            target { address "api-blue-1.internal:8080" }
-            target { address "api-blue-2.internal:8080" }
-        }
+        target "api-blue-1.internal:8080"
+        target "api-blue-2.internal:8080"
     }
 
     // Green environment (new version)
     upstream "api-green" {
-        targets {
-            target { address "api-green-1.internal:8080" }
-            target { address "api-green-2.internal:8080" }
-        }
+        target "api-green-1.internal:8080"
+        target "api-green-2.internal:8080"
     }
 
     // Canary routing (90% blue, 10% green)
     upstream "api-canary" {
-        targets {
-            target { address "api-blue-1.internal:8080" weight=45 }
-            target { address "api-blue-2.internal:8080" weight=45 }
-            target { address "api-green-1.internal:8080" weight=5 }
-            target { address "api-green-2.internal:8080" weight=5 }
-        }
+        target "api-blue-1.internal:8080" weight=45
+        target "api-blue-2.internal:8080" weight=45
+        target "api-green-1.internal:8080" weight=5
+        target "api-green-2.internal:8080" weight=5
         load-balancing "weighted"
     }
 }
@@ -961,9 +923,7 @@ upstreams {
 ```kdl
 upstreams {
     upstream "payment-service" {
-        targets {
-            target { address "payment.internal:443" }
-        }
+        target "payment.internal:443"
         tls {
             sni "payment.internal"
             client-cert "/etc/zentinel/certs/zentinel-client.crt"

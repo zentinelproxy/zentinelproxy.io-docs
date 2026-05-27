@@ -77,10 +77,8 @@ routes {
 
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "10.0.1.1:8080" }
-            target { address "10.0.1.2:8080" }
-        }
+        target "10.0.1.1:8080"
+        target "10.0.1.2:8080"
     }
 }
 ```
@@ -135,11 +133,9 @@ upstream backend {
 ```kdl
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "10.0.1.1:8080" weight=3 }
-            target { address "10.0.1.2:8080" weight=2 }
-            target { address "10.0.1.3:8080" weight=1 }
-        }
+        target "10.0.1.1:8080" weight=3
+        target "10.0.1.2:8080" weight=2
+        target "10.0.1.3:8080" weight=1
         load-balancing "least_connections"  // or "weighted"
     }
 }
@@ -183,9 +179,7 @@ routes {
 
 upstreams {
     upstream "secure-backend" {
-        targets {
-            target { address "api.example.com:443" }
-        }
+        target "api.example.com:443"
         // Required: tells Zentinel to connect with TLS
         tls {
             sni "api.example.com"
@@ -282,10 +276,8 @@ routes {
 
 upstreams {
     upstream "backend" {
-        targets {
-            target { address "10.0.1.1:8080" }
-            target { address "10.0.1.2:8080" }
-        }
+        target "10.0.1.1:8080"
+        target "10.0.1.2:8080"
         load-balancing "round_robin"
         health-check {
             type "http" {
@@ -381,7 +373,7 @@ upstreams {
 | `balance roundrobin` | `load-balancing "round_robin"` |
 | `balance leastconn` | `load-balancing "least_connections"` |
 | `balance source` | `load-balancing "ip_hash"` |
-| `server ... weight N` | `target { weight=N }` |
+| `server ... weight N` | `target "host:port" weight=N` |
 | `option httpchk` | `health-check { type "http" }` |
 | `inter 10s` | `interval-secs 10` |
 | `fall 3` | `unhealthy-threshold 3` |
@@ -446,10 +438,8 @@ routes {
 
 upstreams {
     upstream "api-service" {
-        targets {
-            target { address "10.0.1.1:8080" }
-            target { address "10.0.1.2:8080" }
-        }
+        target "10.0.1.1:8080"
+        target "10.0.1.2:8080"
     }
 }
 ```
