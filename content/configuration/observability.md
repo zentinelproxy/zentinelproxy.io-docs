@@ -136,7 +136,9 @@ observability {
 
 ### Error Log
 
-Error and warning logging. **Error logging is enabled by default** — even without explicit configuration, Zentinel writes errors and warnings to `/var/log/zentinel/error.log`. The directory is created automatically if it doesn't exist.
+Error and warning logging. **Error logging is enabled by default** — even without explicit configuration, Zentinel writes errors and warnings to `/var/log/zentinel/error.log`. The directory is created automatically if the process can write to its parent.
+
+> **Containers and non-root users:** if the process cannot create or write `/var/log/zentinel` (for example the official Docker image runs as a non-root user), file logging is skipped with a warning and the proxy continues — errors still go to stdout/stderr. In containers, prefer logging to stdout (disable the error log, as the bundled image config does) and let `docker logs` / Kubernetes capture it, or mount a writable volume at `/var/log/zentinel`. The systemd unit handles this for you via `LogsDirectory=`.
 
 To customize:
 
@@ -247,6 +249,8 @@ observability {
 | `address` | `0.0.0.0:9090` | Metrics server address |
 | `path` | `/metrics` | Metrics endpoint path |
 | `high-cardinality` | `false` | Include high-cardinality labels |
+
+The metrics endpoint is served by a **dedicated HTTP listener** on `address`, separate from your route listeners — so metrics are never exposed to client traffic by accident, and you can bind them to an internal interface (e.g. `127.0.0.1:9090`) to keep them private. On startup the proxy logs `Metrics server listening address=… path=…`; if the address cannot be bound, that failure is logged and the endpoint is disabled, but the proxy keeps running.
 
 ### Available Metrics
 
