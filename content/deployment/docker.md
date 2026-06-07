@@ -237,6 +237,8 @@ docker inspect --format='{{json .State.Health}}' zentinel | jq
 
 ## Logging
 
+The image runs as a non-root user and the bundled config logs to **stdout/stderr**, so `docker logs` (and your Docker log driver) captures everything out of the box — no volume required. The `/var/log/zentinel` mount is only needed if you explicitly enable file logging (error/access/audit logs); mount a **writable** volume there in that case, since a `tmpfs` or bind mount owned by root is not writable by the non-root user. See [Observability](/configuration/observability/) for details.
+
 ### Log Drivers
 
 ```bash
