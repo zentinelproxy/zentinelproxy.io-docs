@@ -775,7 +775,7 @@ Backoff uses exponential delay: `min(base * 2^attempt, max)`
 
 ## Circuit Breaker
 
-> **Not supported at route scope.** The route-level `circuit-breaker` block is dropped by the KDL parser (the proxy logs `Unrecognized directive in route block (will be ignored)` for it). Configure circuit breaking at the **upstream** level instead — the `circuit-breaker` block inside `upstream { ... }` is supported as of [zentinelproxy/zentinel#260](https://github.com/zentinelproxy/zentinel/pull/260). The block below describes the intended route-scope configuration only.
+> **Not supported at route scope.** The route-level `circuit-breaker` block is dropped by the KDL parser (the proxy logs `Unrecognized directive in route block (will be ignored)` for it). Configure circuit breaking at the **upstream** level instead — the `circuit-breaker` block inside `upstream { ... }` is parsed and configurable as of [zentinelproxy/zentinel#267](https://github.com/zentinelproxy/zentinel/pull/267). The block below describes the intended route-scope configuration only. (Note: recovery from the open state has a known bug — see [zentinelproxy/zentinel#261](https://github.com/zentinelproxy/zentinel/issues/261).)
 
 ```kdl
 route "api" {
