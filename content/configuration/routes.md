@@ -748,7 +748,7 @@ Buffering is required for body inspection by agents. Be mindful of memory usage 
 
 ## Retry Policy
 
-> **Not yet implemented at route scope.** The route-level `retry-policy` block is documented but currently dropped by the KDL parser (the proxy logs `Unrecognized directive in route block (will be ignored)` for it). Tracked in [zentinelproxy/zentinel#262](https://github.com/zentinelproxy/zentinel/issues/262). Until the parser lands, this section describes the intended configuration only.
+> **Behavior partially implemented.** As of [zentinelproxy/zentinel#267](https://github.com/zentinelproxy/zentinel/pull/267) the route-level `retry-policy` block is parsed. `max-attempts` is honored — it bounds the number of upstream peer-selection attempts. `timeout-ms`, `backoff-base-ms`, `backoff-max-ms`, and `retryable-status-codes` are parsed but **not yet applied at runtime** (the proxy logs that each setting is "parsed, but not implemented"). The remaining behavior is tracked in [zentinelproxy/zentinel#279](https://github.com/zentinelproxy/zentinel/issues/279).
 
 ```kdl
 route "api" {
@@ -775,7 +775,7 @@ Backoff uses exponential delay: `min(base * 2^attempt, max)`
 
 ## Circuit Breaker
 
-> **Not yet implemented at route scope.** The route-level `circuit-breaker` block is documented but currently dropped by the KDL parser (the proxy logs `Unrecognized directive in route block (will be ignored)` for it). Tracked in [zentinelproxy/zentinel#262](https://github.com/zentinelproxy/zentinel/issues/262). Upstream-level configuration via the `circuit-breaker` block inside `upstream { ... }` is in flight in [zentinelproxy/zentinel#260](https://github.com/zentinelproxy/zentinel/pull/260). Until the route-level parser lands, this section describes the intended configuration only.
+> **Not supported at route scope.** The route-level `circuit-breaker` block is dropped by the KDL parser (the proxy logs `Unrecognized directive in route block (will be ignored)` for it). Configure circuit breaking at the **upstream** level instead — the `circuit-breaker` block inside `upstream { ... }` is parsed and configurable as of [zentinelproxy/zentinel#267](https://github.com/zentinelproxy/zentinel/pull/267). The block below describes the intended route-scope configuration only. (Note: recovery from the open state has a known bug — see [zentinelproxy/zentinel#261](https://github.com/zentinelproxy/zentinel/issues/261).)
 
 ```kdl
 route "api" {
