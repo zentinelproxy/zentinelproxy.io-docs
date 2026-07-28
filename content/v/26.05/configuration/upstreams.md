@@ -728,6 +728,38 @@ upstreams {
 | Slow/batch | 10 | 300 | 120 | 60 |
 | File upload | 10 | 600 | 30 | 300 |
 
+## Circuit Breaker
+
+A circuit breaker is configured by default at each upstream scope. If no circuit breaker is configured, default values specified below are used. When an upstream fails to respond up to `failure-threshold` times, it will trip (open) the circuit breaker. After `timeout-seconds`, up to `half-open-max-requests` are allowed concurrently in half-open mode. When `success-threshold` worth of requests are observed, the circuit breaker recloses, and traffic resumes.
+
+> **Critical bug in transitioning to half-open** The upstream-level circuit breaker currently has a bug where after `failure-threshold`, no requests make it to the circuit breaker, and therefore it never enters half-open after `timeout-seconds`. Tracked in [zentinelproxy/zentinel#261](https://github.com/zentinelproxy/zentinel/issues/261). As a workaround for single-backend upstreams that are intermittent (i.e. not load balanced), set `failure-threshold` sufficiently high so the circuit breaker doesn't permanently block.
+
+```kdl
+upstreams {
+    upstream "backend" {
+        target "127.0.0.1:8000"
+        circuit-breaker {
+            failure-threshold 5
+            success-threshold 2
+            timeout-seconds 30
+            half-open-max-requests 1
+        }
+    }
+}
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `failure-threshold` | `5` | Failures before opening circuit |
+| `success-threshold` | `2` | Successes to close circuit |
+| `timeout-seconds` | `30` | Time before trying half-open |
+| `half-open-max-requests` | `1` | Requests allowed in half-open |
+
+Circuit breaker states:
+- **Closed**: Normal operation, requests flow through
+- **Open**: Requests fail immediately (circuit tripped)
+- **Half-Open**: Limited requests to test recovery
+
 ## Upstream TLS
 
 When your backend serves HTTPS (typically on port 443), you **must** add a `tls` block to the upstream. Without it, Zentinel connects with plaintext HTTP, which causes TLS handshake failures, connection resets, or redirect loops.
