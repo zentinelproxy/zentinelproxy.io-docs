@@ -116,12 +116,12 @@ waf {
 
 ### CRS Version and Custom Rules
 
-Configure the Core Rule Set version and custom rules directory:
+The ZentinelSec engine loads and evaluates the stock OWASP Core Rule Set v4. Configure the Core Rule Set version and custom rules directory:
 
 ```kdl
 waf {
     ruleset {
-        crs-version "3.3.4"
+        crs-version "4.0"
         custom-rules-dir "/etc/zentinel/waf/custom-rules"
         paranoia-level 2
     }
@@ -244,7 +244,7 @@ waf {
     audit-log #true
 
     ruleset {
-        crs-version "3.3.4"
+        crs-version "4.0"
         custom-rules-dir "/etc/zentinel/waf/custom-rules"
         paranoia-level 2
         anomaly-threshold 5
@@ -280,7 +280,7 @@ waf {
     engine "coraza"
     mode "prevention"
     ruleset {
-        crs-version "3.3.4"
+        crs-version "4.0"
         paranoia-level 2
     }
 }
@@ -323,7 +323,7 @@ WAF operations are tracked via Prometheus metrics:
 | `engine` | `coraza` |
 | `mode` | `prevention` |
 | `audit-log` | `true` |
-| `ruleset.crs-version` | `3.3.4` |
+| `ruleset.crs-version` | `4.0` |
 | `ruleset.paranoia-level` | `1` |
 | `ruleset.anomaly-threshold` | `5` |
 | `body-inspection.inspect-request-body` | `true` |
