@@ -27,6 +27,12 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 | [26.05_3](#26-05-3) | — (not released) | 2026-05-05 | Embedded config uses `system` block, ACME hickory-resolver 0.26 fix |
 | [26.05_2](#26-05-2) | 0.6.13 | 2026-05-03 | Install script provisions systemd unit, system user, and starter config |
 | [26.05_1](#26-05-1) | 0.6.12 | 2026-05-01 | Per-SNI ACME certificates for multi-tenant TLS |
+| [26.04_7](#26-04-7) | 0.6.11 | 2026-04-28 | Security: rand unsoundness fix in zentinel-sim (GHSA-cq8v-f236-94qc) |
+| [26.04_6](#26-04-6) | 0.6.10 | 2026-04-25 | Security: openssl 0.10.78 (4 high-severity), rand 0.8.6; ACME schema docs |
+| [26.04_5](#26-04-5) | 0.6.9 | 2026-04-20 | Configurable ACME certificate key type (ECDSA P-256/P-384) |
+| [26.04_4](#26-04-4) | 0.6.8 | 2026-04-19 | Cloudflare DNS-01, custom ACME directory URLs, EAB, SAN renewal fix |
+| [26.04_3](#26-04-3) | 0.6.7 | 2026-04-16 | Security: rand unsoundness across pingora fork, aes 0.9; Rust 1.94.1 |
+| [26.04_2](#26-04-2) | 0.6.6 | 2026-04-10 | Security: wasmtime 43.0.1 (critical aarch64 sandbox escape, CVE-2026-34971) |
 | [26.04_1](#26-04-1) | 0.6.4 | 2026-04-09 | Numeric route priorities, host extraction fix, GLIBC fix, Gateway API conformance CI |
 | [26.03_1](#26-03-1) | 0.5.12 | 2026-03-01 | March release, image optimization agent v0.2.0 |
 | [26.02_5](#26-02-5) | 0.5.11 | 2026-02-27 | `include` directive support in single-file config loading |
@@ -207,6 +213,80 @@ Dependency-only release. No proxy behavior, configuration schema, or agent proto
 
 ### Changed
 - **Dependency updates**
+
+---
+
+## 26.04_7
+
+**Date:** 2026-04-28
+**Crate version:** 0.6.11
+
+### Security
+- **`rand` 0.9.2 → 0.9.4 in `zentinel-sim`** — closes [GHSA-cq8v-f236-94qc](https://github.com/advisories/GHSA-cq8v-f236-94qc), an unsoundness issue affecting `rand::rng()` with a custom logger
+
+---
+
+## 26.04_6
+
+**Date:** 2026-04-25
+**Crate version:** 0.6.10
+
+### Security
+- **`openssl` 0.10.77 → 0.10.78** — fixes four high-severity vulnerabilities: buffer overflows in `Deriver::derive` and `MdCtxRef::digest_final`, AES key-wrap bounds, and unchecked PSK/cookie callback lengths leaking memory to peers
+- **`rand` 0.8.5 → 0.8.6** — unsoundness fix
+
+### Documentation
+- ACME configuration schema — documented `server-url`, `eab`, `key-type`, and `cloudflare` options
+
+---
+
+## 26.04_5
+
+**Date:** 2026-04-20
+**Crate version:** 0.6.9
+
+### Added
+- **Configurable ACME certificate key type** via `key-type`, supporting `ecdsa-p256` (default) and `ecdsa-p384`. Invalid values produce a clear config parse error
+
+---
+
+## 26.04_4
+
+**Date:** 2026-04-19
+**Crate version:** 0.6.8
+
+### Added
+- **Cloudflare DNS-01 provider** for ACME challenges, enabling wildcard certificate issuance via the Cloudflare DNS API v4, with zone ID caching
+- **Custom ACME directory URLs** via `server-url`, supporting non-Let's Encrypt CAs such as ZeroSSL and Step-ca
+- **External Account Binding (EAB)** for ACME account creation, required by providers like ZeroSSL; configured via an `eab { kid "..." hmac-key "..." }` block
+
+### Fixed
+- **SAN certificate renewal loop** — the renewal scheduler iterated every domain in a multi-domain certificate, triggering redundant renewals. It now checks only the primary domain
+
+---
+
+## 26.04_3
+
+**Date:** 2026-04-16
+**Crate version:** 0.6.7
+
+### Security
+- **`rand` unsoundness advisory** — updates the pingora fork to `rand` 0.9 across all pingora crates, plus direct and transitive bumps
+- **`aes` 0.8 → 0.9** — migrates to cipher 0.5
+
+### Changed
+- Rust toolchain and MSRV raised to 1.94.1
+- **Dependency updates:** `jsonschema` 0.46, `tiktoken-rs` 0.11
+
+---
+
+## 26.04_2
+
+**Date:** 2026-04-10
+**Crate version:** 0.6.6
+
+### Security
+- **`wasmtime` 43.0.0 → 43.0.1** — resolves 10 advisories, including **CVE-2026-34971**, a critical sandbox escape on aarch64 caused by miscompiled guest heap access in Cranelift, plus six medium-severity issues (out-of-bounds memory access, host panics) and three low-severity ones
 
 ---
 
