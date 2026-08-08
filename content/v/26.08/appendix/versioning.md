@@ -66,7 +66,7 @@ MAJOR.MINOR.PATCH
 
 ## Version Mapping
 
-This table maps CalVer release versions to the crate version actually **published to crates.io** — the version to depend on. It is not the version in `Cargo.toml` at the tagged commit; the release pipeline publishes that value plus one. Rows from 26.05 onward were reconciled against crates.io on 2026-08-08; earlier rows are unverified.
+This table maps CalVer release versions to the crate version actually **published to crates.io** — the version to depend on. It is not the version in `Cargo.toml` at the tagged commit; the release pipeline publishes that value plus one. Rows from 26.04_1 onward were reconciled against crates.io on 2026-08-08; rows before 26.04_1 are unverified.
 
 | Release (CalVer) | Crate Version (SemVer) | Protocol | Release Date | Status |
 |---------|---------------|----------|--------------|--------|
