@@ -16,17 +16,17 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 | CalVer | Crate Version | Date | Highlights |
 |--------|---------------|------|------------|
 | [26.08_1](#26-08-1) | 0.6.24 | 2026-08-08 | Security: rustls 0.23.43 hardening; dependency maintenance (pem 4.0, base64 0.23, jsonschema 0.49, validator 0.21, async-memcached 0.7) |
-| [26.07_4](#26-07-4) | 0.6.22 | 2026-07-30 | Dependency maintenance: wasmtime 47, quinn-proto 0.11.16, maxminddb 0.30, rust-minor batch (17 updates) |
-| [26.07_3](#26-07-3) | 0.6.21 | 2026-07-18 | Security: serde_with 3.21 (GHSA-7gcf-g7xr-8hxj); tokio-tungstenite 0.30, jsonschema 0.48 |
-| [26.07_2](#26-07-2) | 0.6.20 | 2026-07-06 | Dependency maintenance: quick-xml 0.41, cmov 0.5.4, rust-minor batch |
-| [26.07_1](#26-07-1) | 0.6.19 | 2026-07-01 | Dependency maintenance: maxminddb 0.29, wasmtime 46, rust-minor batch (12 updates) |
-| [26.06_3](#26-06-3) | 0.6.17 | 2026-06-23 | Multi-file KDL block merging, circuit-breaker recovery fix, counter underflow guard |
-| [26.06_2](#26-06-2) | 0.6.16 | 2026-06-16 | Agent body limits and bounded limiter state, route-level retry-policy parsing, Pingora 0.8.1 |
-| [26.06_1](#26-06-1) | 0.6.15 | 2026-06-07 | Standalone Prometheus metrics server, per-listener route sets, non-root Docker fix |
-| [26.05_4](#26-05-4) | 0.6.14 | 2026-05-12 | OpenTelemetry 0.32 stack, sysinfo 0.39, Rust toolchain 1.95 |
-| [26.05_3](#26-05-3) | 0.6.13 | 2026-05-05 | Embedded config uses `system` block, ACME hickory-resolver 0.26 fix |
-| [26.05_2](#26-05-2) | 0.6.12 | 2026-05-03 | Install script provisions systemd unit, system user, and starter config |
-| [26.05_1](#26-05-1) | 0.6.11 | 2026-05-01 | Per-SNI ACME certificates for multi-tenant TLS |
+| [26.07_4](#26-07-4) | 0.6.23 | 2026-07-30 | Dependency maintenance: wasmtime 47, quinn-proto 0.11.16, maxminddb 0.30, rust-minor batch (17 updates) |
+| [26.07_3](#26-07-3) | 0.6.22 | 2026-07-18 | Security: serde_with 3.21 (GHSA-7gcf-g7xr-8hxj); tokio-tungstenite 0.30, jsonschema 0.48 |
+| [26.07_2](#26-07-2) | 0.6.21 | 2026-07-06 | Dependency maintenance: quick-xml 0.41, cmov 0.5.4, rust-minor batch |
+| [26.07_1](#26-07-1) | 0.6.20 | 2026-07-01 | Dependency maintenance: maxminddb 0.29, wasmtime 46, rust-minor batch (12 updates) |
+| [26.06_3](#26-06-3) | 0.6.18 | 2026-06-23 | Multi-file KDL block merging, circuit-breaker recovery fix, counter underflow guard |
+| [26.06_2](#26-06-2) | 0.6.17 | 2026-06-16 | Agent body limits and bounded limiter state, route-level retry-policy parsing, Pingora 0.8.1 |
+| [26.06_1](#26-06-1) | 0.6.16 | 2026-06-07 | Standalone Prometheus metrics server, per-listener route sets, non-root Docker fix |
+| [26.05_4](#26-05-4) | 0.6.15 | 2026-05-12 | OpenTelemetry 0.32 stack, sysinfo 0.39, Rust toolchain 1.95 |
+| [26.05_3](#26-05-3) | — (not released) | 2026-05-05 | Embedded config uses `system` block, ACME hickory-resolver 0.26 fix |
+| [26.05_2](#26-05-2) | 0.6.13 | 2026-05-03 | Install script provisions systemd unit, system user, and starter config |
+| [26.05_1](#26-05-1) | 0.6.12 | 2026-05-01 | Per-SNI ACME certificates for multi-tenant TLS |
 | [26.04_1](#26-04-1) | 0.6.4 | 2026-04-09 | Numeric route priorities, host extraction fix, GLIBC fix, Gateway API conformance CI |
 | [26.03_1](#26-03-1) | 0.5.12 | 2026-03-01 | March release, image optimization agent v0.2.0 |
 | [26.02_5](#26-02-5) | 0.5.11 | 2026-02-27 | `include` directive support in single-file config loading |
@@ -65,7 +65,7 @@ Dependency-only release. No proxy behavior, configuration schema, or agent proto
 ## 26.07_4
 
 **Date:** 2026-07-30
-**Crate version:** 0.6.22
+**Crate version:** 0.6.23
 
 ### Changed
 - **Dependency updates:** wasmtime group 46 → 47, `quinn-proto` 0.11.16, `maxminddb` 0.30, rust-minor batch (17 updates) including `tokio` 1.53.1, `hyper` 1.11.0, `serde` 1.0.229, `clap` 4.6.4
@@ -75,7 +75,7 @@ Dependency-only release. No proxy behavior, configuration schema, or agent proto
 ## 26.07_3
 
 **Date:** 2026-07-18
-**Crate version:** 0.6.21
+**Crate version:** 0.6.22
 
 ### Security
 - **`serde_with` 3.18.0 → 3.21.0** — fixes GHSA-7gcf-g7xr-8hxj, a serialization panic (DoS) in `KeyValueMap`. Zentinel's exposure was low (transitive via `ip2location`, no `KeyValueMap` usage); resolved regardless.
@@ -88,7 +88,7 @@ Dependency-only release. No proxy behavior, configuration schema, or agent proto
 ## 26.07_2
 
 **Date:** 2026-07-06
-**Crate version:** 0.6.20
+**Crate version:** 0.6.21
 
 ### Changed
 - **Dependency updates:** `quick-xml` 0.41, `cmov` 0.5.4, rust-minor batch (`html-escape`, `jsonschema`, `rand`, `xxhash-rust`)
@@ -98,7 +98,7 @@ Dependency-only release. No proxy behavior, configuration schema, or agent proto
 ## 26.07_1
 
 **Date:** 2026-07-01
-**Crate version:** 0.6.19
+**Crate version:** 0.6.20
 
 ### Changed
 - **Dependency updates:** `maxminddb` 0.29, wasmtime group 45 → 46, rust-minor batch (12 updates)
@@ -108,7 +108,7 @@ Dependency-only release. No proxy behavior, configuration schema, or agent proto
 ## 26.06_3
 
 **Date:** 2026-06-23
-**Crate version:** 0.6.17
+**Crate version:** 0.6.18
 
 ### Added
 - **Merge duplicate top-level blocks across included KDL files** — `listeners`, `routes`, `upstreams`, `filters`, and `agents` blocks now merge across `include`d files instead of the last file silently winning; duplicate IDs are rejected at parse time. Singleton blocks (`system`/`server`/`waf`) keep last-wins semantics but now warn on duplicates.
@@ -125,7 +125,7 @@ Dependency-only release. No proxy behavior, configuration schema, or agent proto
 ## 26.06_2
 
 **Date:** 2026-06-16
-**Crate version:** 0.6.16
+**Crate version:** 0.6.17
 
 ### Added
 - **Agent request/response body limits are now enforced** — agent body inspection honors the configured `max-request-body-bytes` / `max-response-body-bytes`, and per-key rate-limiter state is bounded so it can no longer grow without limit
@@ -145,7 +145,7 @@ Dependency-only release. No proxy behavior, configuration schema, or agent proto
 ## 26.06_1
 
 **Date:** 2026-06-07
-**Crate version:** 0.6.15
+**Crate version:** 0.6.16
 
 ### Added
 - **Standalone Prometheus metrics server** — when `observability.metrics.enabled` is set, the proxy binds a dedicated HTTP listener on `observability.metrics.address` (default `0.0.0.0:9090`) and serves the Prometheus exposition format at `observability.metrics.path` (default `/metrics`). Previously `address` was parsed but never consumed, so nothing bound the port
@@ -163,7 +163,7 @@ Dependency-only release. No proxy behavior, configuration schema, or agent proto
 ## 26.05_4
 
 **Date:** 2026-05-12
-**Crate version:** 0.6.14
+**Crate version:** 0.6.15
 
 ### Changed
 - **OpenTelemetry 0.31 → 0.32** — `opentelemetry`, `opentelemetry_sdk`, and `opentelemetry-otlp` bumped as a coordinated stack; bumping individually leaves two versions of `opentelemetry` in the dependency graph and breaks trait resolution at the proxy boundary
@@ -175,7 +175,7 @@ Dependency-only release. No proxy behavior, configuration schema, or agent proto
 ## 26.05_3
 
 **Date:** 2026-05-05
-**Crate version:** 0.6.13
+**Crate version:** — never tagged; changes first shipped in 26.05_4 (`0.6.15`)
 
 ### Fixed
 - **Embedded default configuration no longer emits a deprecation warning on first run** — the fallback configuration baked into the binary declared a `server { ... }` block; switched to `system { ... }` so fresh containers and binaries with no external config start cleanly
@@ -190,7 +190,7 @@ Dependency-only release. No proxy behavior, configuration schema, or agent proto
 ## 26.05_2
 
 **Date:** 2026-05-03
-**Crate version:** 0.6.12
+**Crate version:** 0.6.13
 
 ### Added
 - **Systemd service bootstrap in the install script** — the install script now installs a systemd unit, a sysusers snippet, and a starter config at `/etc/zentinel/zentinel.kdl` on Linux hosts running systemd. Service enable and start are opt-in via `--enable-service` (or `ZENTINEL_ENABLE_SERVICE=1`). An existing config file is preserved on re-install
@@ -200,7 +200,7 @@ Dependency-only release. No proxy behavior, configuration schema, or agent proto
 ## 26.05_1
 
 **Date:** 2026-05-01
-**Crate version:** 0.6.11
+**Crate version:** 0.6.12
 
 ### Added
 - **Per-SNI ACME certificates for multi-tenant TLS** — each `sni { ... }` block may carry its own `acme { ... }` configuration, so distinct hostnames on one listener can obtain and renew independent certificates

@@ -66,14 +66,14 @@ MAJOR.MINOR.PATCH
 
 ## Version Mapping
 
-This table maps CalVer release versions to their corresponding crate versions:
+This table maps CalVer release versions to the crate version actually **published to crates.io** — the version to depend on. It is not the version in `Cargo.toml` at the tagged commit; the release pipeline publishes that value plus one. Rows from 26.05 onward were reconciled against crates.io on 2026-08-08; earlier rows are unverified.
 
 | Release (CalVer) | Crate Version (SemVer) | Protocol | Release Date | Status |
 |---------|---------------|----------|--------------|--------|
 | **26.08_1** | `0.6.24` | `2` | 2026-08-08 | Current |
-| **26.07_4** | `0.6.22` | `2` | 2026-07-30 | Previous |
-| **26.06_3** | `0.6.17` | `2` | 2026-06-23 | Previous |
-| **26.05_4** | `0.6.14` | `2` | 2026-05-12 | Previous |
+| **26.07_4** | `0.6.23` | `2` | 2026-07-30 | Previous |
+| **26.06_3** | `0.6.18` | `2` | 2026-06-23 | Previous |
+| **26.05_4** | `0.6.15` | `2` | 2026-05-12 | Previous |
 | **26.04_1** | `0.6.4` | `0.2.0` | 2026-04-09 | Previous |
 | **26.03_1** | `0.5.12` | `0.2.0` | 2026-03-01 | Previous |
 | **26.02_5** | `0.5.11` | `0.2.0` | 2026-02-27 | Previous |
@@ -129,7 +129,7 @@ For the full changelog with all patch releases, see [Changelog](../changelog/).
 
 ### Release 26.07
 
-**Crate version:** `0.6.19` -- `0.6.22`
+**Crate version:** `0.6.20` -- `0.6.23`
 **Release date:** July 2026
 
 #### Security
@@ -144,7 +144,7 @@ For the full changelog with all patch releases, see [Changelog](../changelog/).
 
 ### Release 26.06
 
-**Crate version:** `0.6.15` -- `0.6.17`
+**Crate version:** `0.6.16` -- `0.6.18`
 **Release date:** June 2026
 
 #### Added
@@ -169,7 +169,7 @@ For the full changelog with all patch releases, see [Changelog](../changelog/).
 
 ### Release 26.05
 
-**Crate version:** `0.6.11` -- `0.6.14`
+**Crate version:** `0.6.12` -- `0.6.15`
 **Release date:** May 2026
 
 #### Added
