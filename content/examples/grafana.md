@@ -427,6 +427,6 @@ Check logs for `X-WAF-Detected` headers.
 
 ## Next Steps
 
-- [Observability](../observability/) - Monitor security events
+- [Observability](/examples/prometheus/) - Monitor security events
 - [API Gateway](../api-gateway/) - Complete API management
-- [Microservices](../microservices/) - Secure service mesh
+- [Microservices](/examples/mixed-services/) - Secure service mesh

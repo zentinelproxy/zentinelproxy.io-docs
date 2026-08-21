@@ -258,7 +258,7 @@ impl AgentHandlerV2 for MyAgent {
 }
 ```
 
-3. See [Custom Agents](/agents/custom/) for full guide.
+3. See [Custom Agents](/agents/v2/) for full guide.
 
 ### Agent Repository Setup
 

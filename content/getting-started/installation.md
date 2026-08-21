@@ -57,7 +57,7 @@ journalctl -u zentinel -f
 
 To bind ports below 1024 (such as 80 and 443), edit the listener address in the config. The shipped unit grants `AmbientCapabilities=CAP_NET_BIND_SERVICE`, so this works without running the proxy as root.
 
-For details on the unit, file layout, capabilities, and uninstall, see [systemd Deployment](/docs/deployment/systemd/).
+For details on the unit, file layout, capabilities, and uninstall, see [systemd Deployment](/deployment/systemd/).
 
 ## Install with Bundled Agents
 
@@ -82,7 +82,7 @@ Check installation status:
 zentinel bundle status
 ```
 
-For detailed bundle documentation, see [Deploying with Agents](/docs/deployment/zentinel-stack/).
+For detailed bundle documentation, see [Deploying with Agents](/deployment/zentinel-stack/).
 
 ## Pre-built Binaries
 
@@ -313,7 +313,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now zentinel
 ```
 
-The shipped unit also includes a stricter sandboxing block (`Protect{Kernel,Tunables,Modules}=true`, `RestrictAddressFamilies=`, `SystemCallFilter=@system-service`, etc.). See [systemd Deployment](/docs/deployment/systemd/) for the complete reference.
+The shipped unit also includes a stricter sandboxing block (`Protect{Kernel,Tunables,Modules}=true`, `RestrictAddressFamilies=`, `SystemCallFilter=@system-service`, etc.). See [systemd Deployment](/deployment/systemd/) for the complete reference.
 
 ### Managing the Service
 
@@ -343,7 +343,7 @@ curl -I http://localhost:8080/
 curl http://localhost:9090/metrics
 ```
 
-> **Production deployments:** Before deploying to production, verify binary authenticity using cosign signatures and SLSA provenance. See [Supply Chain Security](/docs/operations/supply-chain/).
+> **Production deployments:** Before deploying to production, verify binary authenticity using cosign signatures and SLSA provenance. See [Supply Chain Security](/operations/supply-chain/).
 
 ## Next Steps
 

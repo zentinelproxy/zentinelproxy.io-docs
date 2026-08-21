@@ -370,6 +370,6 @@ route "api-v2" {
 
 ## Next Steps
 
-- [Security](../security/) - Add WAF protection
-- [Observability](../observability/) - Complete monitoring setup
+- [Security](/configuration/waf/) - Add WAF protection
+- [Observability](/examples/prometheus/) - Complete monitoring setup
 - [Load Balancer](../load-balancer/) - Advanced load balancing

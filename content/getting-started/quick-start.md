@@ -291,5 +291,5 @@ Common issues:
 
 - [Basic Configuration](../basic-configuration/) - Detailed configuration reference
 - [First Route](../first-route/) - Deep dive into routing
-- [Service Types](/service-types/overview/) - Learn about API, web, and static modes
-- [Health Checks](/features/health-checks/) - Configure upstream monitoring
+- [Service Types](/configuration/routes/) - Learn about API, web, and static modes
+- [Health Checks](/configuration/upstreams/) - Configure upstream monitoring

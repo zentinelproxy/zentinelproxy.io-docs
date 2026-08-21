@@ -208,4 +208,4 @@ upstreams {
 
 - [Load Balancer](../load-balancer/) - Multiple backends with load balancing
 - [API Gateway](../api-gateway/) - Add authentication and rate limiting
-- [Observability](../observability/) - Full monitoring stack
+- [Observability](/examples/prometheus/) - Full monitoring stack

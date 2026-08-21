@@ -419,5 +419,5 @@ static-files {
 ## Next Steps
 
 - [API Gateway](../api-gateway/) - Add backend APIs
-- [Security](../security/) - Add WAF protection
-- [Observability](../observability/) - Monitor traffic
+- [Security](/configuration/waf/) - Add WAF protection
+- [Observability](/examples/prometheus/) - Monitor traffic

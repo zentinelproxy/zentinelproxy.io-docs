@@ -403,7 +403,7 @@ Dependency-only release. No proxy behavior, configuration schema, or agent proto
 ### Removed
 - `[patch.crates-io]` section with 16 git overrides pointing to `raskell-io/pingora` fork
 
-See the [blog post](/blog/pingora-0-7-upgrade/) for a detailed writeup.
+See the [blog post](https://zentinelproxy.io/blog/pingora-0-7-upgrade/) for a detailed writeup.
 
 ---
 
@@ -421,7 +421,7 @@ See the [blog post](/blog/pingora-0-7-upgrade/) for a detailed writeup.
   - Sigstore bundles (`.bundle`), SBOMs (`.cdx.json`, `.spdx.json`), and SLSA provenance (`.intoto.jsonl`) attached to every GitHub release
   - Supply chain verification commands in release notes
 
-See [Supply Chain Security](/docs/operations/supply-chain/) for verification procedures.
+See [Supply Chain Security](/operations/supply-chain/) for verification procedures.
 
 ---
 
@@ -600,4 +600,4 @@ See [GitHub Releases](https://github.com/zentinelproxy/zentinel/releases?q=25.12
 
 - [GitHub Releases](https://github.com/zentinelproxy/zentinel/releases)
 - [Versioning](../versioning/) -- CalVer/SemVer scheme, LTS windows, version mapping
-- [Supply Chain Security](/docs/operations/supply-chain/) -- Verify binary and container authenticity
+- [Supply Chain Security](/operations/supply-chain/) -- Verify binary and container authenticity

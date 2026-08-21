@@ -437,6 +437,6 @@ upstreams {
 
 ## Next Steps
 
-- [Security](../security/) - Add WAF protection
-- [Observability](../observability/) - Monitor connections
-- [Microservices](../microservices/) - Multi-service WebSocket
+- [Security](/configuration/waf/) - Add WAF protection
+- [Observability](/examples/prometheus/) - Monitor connections
+- [Microservices](/examples/mixed-services/) - Multi-service WebSocket
