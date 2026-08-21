@@ -329,4 +329,4 @@ observability {
 
 - [First Route](../first-route/) - Create your first routing rule
 - [Installation](../installation/) - Install Zentinel
-- [Configuration Reference](/configuration/overview/) - Full configuration options
+- [Configuration Reference](/configuration/) - Full configuration options

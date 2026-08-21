@@ -113,7 +113,7 @@ We tested all three engines with [wafworth](https://github.com/zentinelproxy/waf
 | Balanced accuracy | 67.0% | **68.1%** | 64.8% |
 | p95 latency | **2.8 ms** | 3.1 ms | 2.9 ms |
 
-> **Note:** Detection rates of 32-43% reflect the 67-rule baseline, not full CRS. A full CRS PL1 deployment would likely score 60-80% detection with a 1-3% FP rate. See the [full blog post](/blog/waf-agent-comparison/) for methodology, per-category breakdowns, and detailed analysis.
+> **Note:** Detection rates of 32-43% reflect the 67-rule baseline, not full CRS. A full CRS PL1 deployment would likely score 60-80% detection with a 1-3% FP rate. See the [full blog post](https://zentinelproxy.io/blog/waf-agent-comparison/) for methodology, per-category breakdowns, and detailed analysis.
 
 Key takeaways:
 
@@ -134,5 +134,5 @@ Key takeaways:
 
 ## Configuration reference
 
-- [WAF configuration block](../configuration/waf/) — Global WAF settings: engine selection, rule sets, body inspection, paranoia levels
-- [Agent configuration](../configuration/agents/) — Agent transport, pooling, circuit breakers, timeouts, and failure modes
+- [WAF configuration block](/configuration/waf/) — Global WAF settings: engine selection, rule sets, body inspection, paranoia levels
+- [Agent configuration](/configuration/agents/) — Agent transport, pooling, circuit breakers, timeouts, and failure modes

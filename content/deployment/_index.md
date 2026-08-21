@@ -54,7 +54,7 @@ Regardless of deployment model, agents connect via:
 - **Unix sockets** — Local agents, lowest latency (~50-100µs)
 - **gRPC** — Remote agents, scalable, polyglot (~100-500µs)
 
-See [Agent Transports](/agents/transports/) for protocol details.
+See [Agent Transports](/agents/v2/transports/) for protocol details.
 
 ## Documentation
 

@@ -521,5 +521,5 @@ Key panels for a Zentinel dashboard:
 
 ## See Also
 
-- [Observability](../../features/observability/) - Logging and tracing
+- [Observability](/configuration/observability/) - Logging and tracing
 - [Error Codes](../error-codes/) - Error types and codes

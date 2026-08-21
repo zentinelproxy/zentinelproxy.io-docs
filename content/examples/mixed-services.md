@@ -442,6 +442,6 @@ route "api" {
 
 ## Next Steps
 
-- [Observability](../observability/) - Distributed tracing setup
-- [Security](../security/) - Add WAF protection
+- [Observability](/examples/tracing/) - Distributed tracing setup
+- [Security](/configuration/waf/) - Add WAF protection
 - [Load Balancer](../load-balancer/) - Advanced load balancing

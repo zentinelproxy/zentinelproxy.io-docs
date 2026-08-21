@@ -5,7 +5,7 @@ updated = 2026-02-26
 +++
 
 {% callout(type="warning", title="V1 Protocol Removed") %}
-This page documents the **removed** v1 protocol. For current documentation, see [Building Agents (v2)](../../v2/building/).
+This page documents the **removed** v1 protocol. For current documentation, see [Building Agents (v2)](/agents/v2/api/).
 {% end %}
 
 This guide covers two approaches to building Zentinel agents:
@@ -650,7 +650,7 @@ grpcurl -plaintext \
 
 ## Building Agents in Other Languages
 
-With gRPC support, you can build agents in any language. See the [Protocol Specification](protocol/) for the protobuf definitions.
+With gRPC support, you can build agents in any language. See the [Protocol Specification](/agents/v1/protocol/) for the protobuf definitions.
 
 ### Python Example
 

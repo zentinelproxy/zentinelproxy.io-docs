@@ -18,12 +18,12 @@ Complete, production-ready configuration examples for common Zentinel use cases.
 | [Traffic Mirroring](traffic-mirroring/) | Canary deployments | Shadow traffic, safe testing, sampling |
 | [Static Site](static-site/) | File serving | Caching, compression, SPA |
 | [Multi-tenant TLS](multi-tenant-tls/) | SaaS with per-customer domains | Per-SNI ACME, independent schedulers |
-| [Microservices](microservices/) | Service mesh | Multi-service routing |
-| [Security](security/) | WAF + Auth | Agents, protection layers |
-| [Observability](observability/) | Monitoring stack | Prometheus, Grafana, tracing |
+| [Microservices](mixed-services/) | Service mesh | Multi-service routing |
+| [Security](/configuration/waf/) | WAF + Auth | Agents, protection layers |
+| [Observability](prometheus/) | Monitoring stack | Prometheus, Grafana, tracing |
 | [WebSocket](websocket/) | Real-time apps | WS proxying, inspection |
 | [Image Optimization](image-optimization/) | WebP/AVIF conversion | Accept negotiation, caching |
-| [AI Gateway](ai-gateway/) | LLM API proxy | Prompt security, PII filtering |
+| [AI Gateway](inference-routing/) | LLM API proxy | Prompt security, PII filtering |
 
 ## Getting Started
 

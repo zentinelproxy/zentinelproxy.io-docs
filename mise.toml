@@ -55,7 +55,12 @@ run = """
 set -e
 echo "Checking documentation..."
 zola check
+python3 scripts/check_links.py content
 """
+
+[tasks.check-links]
+description = "Check internal markdown links (zola check misses absolute paths)"
+run = "python3 scripts/check_links.py content"
 
 [tasks.update-theme]
 description = "Update Tanuki theme to latest version"

@@ -188,7 +188,7 @@ Zentinel is a next-generation reverse proxy built on [Cloudflare's Pingora](http
 - Configurable caching headers
 
 ### Inference / LLM
-<small class="docs-ref">[Inference](/configuration/inference/)</small>
+<small class="docs-ref">[Inference](/examples/inference-routing/)</small>
 <small class="source-ref">[`crates/proxy/src/inference/`](https://github.com/zentinelproxy/zentinel/tree/main/crates/proxy/src/inference)</small>
 
 - **Token-based rate limiting** — Limit by tokens per minute, not just requests

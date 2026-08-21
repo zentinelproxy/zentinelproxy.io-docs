@@ -536,6 +536,6 @@ Without the `tls` block, Zentinel connects with plaintext HTTP. This causes heal
 
 ## Next Steps
 
-- [Observability](../observability/) - Monitor load distribution
+- [Observability](/examples/prometheus/) - Monitor load distribution
 - [API Gateway](../api-gateway/) - Add authentication layer
-- [Security](../security/) - Protect against attacks
+- [Security](/operations/security-hardening/) - Protect against attacks

@@ -648,6 +648,6 @@ route "api-v2" {
 
 ## Next Steps
 
-- [Routes Configuration](../configuration/routes/) - Full route configuration reference
-- [Upstreams](../configuration/upstreams/) - Backend service setup
-- [Error Pages](../configuration/routes/#error-pages) - Custom error handling
+- [Routes Configuration](/configuration/routes/) - Full route configuration reference
+- [Upstreams](/configuration/upstreams/) - Backend service setup
+- [Error Pages](/configuration/routes/#error-pages) - Custom error handling

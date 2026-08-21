@@ -881,6 +881,6 @@ This checks:
 
 ## Next Steps
 
-- [Agent Protocol](../../agents/protocol/) - Wire protocol specification
-- [Building Agents](../../agents/building/) - Creating custom agents
+- [Agent Protocol](/agents/v2/protocol/) - Wire protocol specification
+- [Building Agents](/agents/v2/api/) - Creating custom agents
 - [Filters](../filters/) - Using agents in filter chains

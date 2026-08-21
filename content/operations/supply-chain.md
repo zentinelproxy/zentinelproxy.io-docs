@@ -10,7 +10,7 @@ Verifying the authenticity and integrity of Zentinel releases before deploying t
 
 Zentinel sits at the edge of your network and handles all inbound traffic. Verifying that the binary or container image you deploy is the exact artifact built by the Zentinel CI pipeline is a critical operational practice.
 
-> Examples on this page use [CalVer](/docs/appendix/versioning/) release versions (e.g., `26.01_0`). Replace with your target version. See [Versioning](/docs/appendix/versioning/) for the full versioning scheme and LTS windows.
+> Examples on this page use [CalVer](/appendix/versioning/) release versions (e.g., `26.01_0`). Replace with your target version. See [Versioning](/appendix/versioning/) for the full versioning scheme and LTS windows.
 
 Every release includes:
 
@@ -285,10 +285,10 @@ Zentinel's supply chain security practices align with the following standards an
 | **SSDF (NIST SP 800-218)** | Secure software development practices |
 | **CIS Software Supply Chain** | Signed artifacts, dependency management |
 
-For organizations requiring specific compliance documentation, see the [Enterprise Builds](/support/) offering which includes CalVer-based LTS releases, early security advisories, and configuration stability guarantees.
+For organizations requiring specific compliance documentation, see the [Enterprise Builds](https://zentinelproxy.io/support/) offering which includes CalVer-based LTS releases, early security advisories, and configuration stability guarantees.
 
 ## See Also
 
-- [Versioning](/docs/appendix/versioning/) — CalVer/SemVer scheme, LTS windows, version mapping
+- [Versioning](/appendix/versioning/) — CalVer/SemVer scheme, LTS windows, version mapping
 - [Security Hardening](../security-hardening/) — Production security best practices
-- [Installation](/docs/getting-started/installation/) — Download and verify Zentinel
+- [Installation](/getting-started/installation/) — Download and verify Zentinel
