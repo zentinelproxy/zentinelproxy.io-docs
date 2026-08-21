@@ -280,7 +280,7 @@ let listener = ReverseConnectionListener::bind_tcp(
 ).await?;
 ```
 
-See [Reverse Connections](reverse-connections/) for detailed setup instructions.
+See [Reverse Connections](/agents/v2/reverse-connections/) for detailed setup instructions.
 
 ---
 

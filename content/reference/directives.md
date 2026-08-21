@@ -3021,7 +3021,7 @@ waf {
 ---
 
 ## Inference Directives
-<small class="docs-ref">[Inference](/configuration/inference/)</small>
+<small class="docs-ref">[Inference](/examples/inference-routing/)</small>
 <small class="source-ref">[`crates/config/src/routes.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/routes.rs)</small>
 
 ### `inference`

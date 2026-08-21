@@ -412,6 +412,6 @@ curl -H "X-Request-Id: test-trace-123" http://localhost:8080/api/users
 
 ## Next Steps
 
-- [Security](../security/) - Add WAF and auth monitoring
-- [Microservices](../microservices/) - Trace across services
+- [Security](/configuration/waf/) - Add WAF and auth monitoring
+- [Microservices](/examples/mixed-services/) - Trace across services
 - [Load Balancer](../load-balancer/) - Monitor upstream distribution

@@ -431,6 +431,6 @@ const response = await openai.chat.completions.create({
 
 ## Next Steps
 
-- [Security](../security/) - Additional WAF protection
-- [Observability](../observability/) - Monitor AI API usage
+- [Security](/configuration/waf/) - Additional WAF protection
+- [Observability](/examples/prometheus/) - Monitor AI API usage
 - [API Gateway](../api-gateway/) - Full API management

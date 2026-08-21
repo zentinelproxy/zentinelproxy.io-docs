@@ -341,7 +341,7 @@ Zentinel's agent model runs security logic in separate processes. This adds IPC 
 
 For most security workloads, the 50–500µs overhead is negligible compared to the network latency of the upstream request (typically 5–50ms). The isolation and operational benefits outweigh the cost.
 
-> **Note:** Zentinel also supports [WASM agents](/agents/wasm/) for cases where in-process latency is critical. WASM agents run inside the proxy process with Wasmtime sandboxing, offering a middle ground between pure in-process and out-of-process execution.
+> **Note:** Zentinel also supports [WASM agents](/agents/) for cases where in-process latency is critical. WASM agents run inside the proxy process with Wasmtime sandboxing, offering a middle ground between pure in-process and out-of-process execution.
 
 See [Comparison](../comparison/) for how Zentinel's agent overhead compares to Envoy ext_proc, HAProxy SPOE, and NGINX njs.
 

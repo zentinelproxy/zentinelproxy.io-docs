@@ -388,6 +388,6 @@ curl -X POST -d '{"name":"test"}' -H "Content-Type: application/json" \
 ## Next Steps
 
 - [Basic Configuration](../basic-configuration/) - Full configuration reference
-- [Route Matching](/concepts/route-matching/) - Advanced matching patterns
+- [Route Matching](/configuration/routes/) - Advanced matching patterns
 - [Load Balancing](/concepts/routing/) - Multiple upstream targets
-- [Filters](/features/filters/) - Request/response processing
+- [Filters](/configuration/filters/) - Request/response processing

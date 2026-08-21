@@ -12,7 +12,7 @@ Agent Protocol v1 was **removed** in Zentinel release 26.02_18 (February 2026). 
 
 | Page | Description |
 |------|-------------|
-| [Protocol Specification](protocol/) | Wire protocol and message formats |
+| [Protocol Specification](/agents/v1/protocol/) | Wire protocol and message formats |
 | [Events & Hooks](events/) | Request lifecycle events agents can handle |
 | [Building Agents](building/) | How to create your own agent |
 | [Transport Protocols](transports/) | Unix sockets and gRPC connectivity |

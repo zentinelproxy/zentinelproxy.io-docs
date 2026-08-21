@@ -5,7 +5,7 @@ updated = 2026-02-26
 +++
 
 {% callout(type="warning", title="V1 Protocol Removed") %}
-This page documents the **removed** v1 protocol. For current documentation, see [Events & Hooks (v2)](../../v2/events/).
+This page documents the **removed** v1 protocol. For current documentation, see [Events & Hooks (v2)](/agents/v2/protocol/).
 {% end %}
 
 Agents receive events at key points in the request/response lifecycle. Each event carries relevant data and expects a response with a decision and optional mutations.

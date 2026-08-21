@@ -120,7 +120,7 @@ Community agents are created and maintained by the Zentinel community. They foll
 
 To submit a community agent:
 
-1. Implement the [Agent Protocol](protocol/)
+1. Implement the [Agent Protocol](/agents/v1/protocol/)
 2. Include a `zentinel-agent.toml` manifest
 3. Provide documentation and examples
 4. Open an issue with the `community-agent` template

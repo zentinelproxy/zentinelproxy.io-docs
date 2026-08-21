@@ -355,7 +355,7 @@ systemctl start zentinel
 
 **New features to consider:**
 
-- [Supply Chain Security](/docs/operations/supply-chain/) -- verify binary and container authenticity
+- [Supply Chain Security](/operations/supply-chain/) -- verify binary and container authenticity
 - DNS-01 ACME challenges for wildcard certificates
 - Agent Protocol v2 connection pooling
 
@@ -427,7 +427,7 @@ LTS branches receive:
 - **Patch releases** on the same CalVer series (e.g., `26.01_1`, `26.01_2`, ...)
 - **Early security advisories** before public disclosure
 
-LTS is available through the [Enterprise Builds](/support/) offering. See [Supply Chain Security](/docs/operations/supply-chain/) for verification procedures.
+LTS is available through the [Enterprise Builds](https://zentinelproxy.io/support/) offering. See [Supply Chain Security](/operations/supply-chain/) for verification procedures.
 
 ---
 

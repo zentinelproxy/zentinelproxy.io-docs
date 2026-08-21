@@ -81,4 +81,4 @@ All agents use the shared protocol library:
 zentinel-agent-protocol = "0.1"
 ```
 
-See [Agent Development](/agents/custom/) for creating custom agents.
+See [Agent Development](/agents/v2/) for creating custom agents.

@@ -27,6 +27,9 @@ jobs:
       - name: Install mise
         uses: jdx/mise-action@v2
 
+      - name: Check internal links
+        run: python3 scripts/check_links.py content
+
       - name: Build documentation
         run: mise run build
 
