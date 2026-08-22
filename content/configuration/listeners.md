@@ -162,7 +162,8 @@ listeners {
             ocsp-stapling #true       // OCSP stapling
 
             // Cipher control (optional)
-            cipher-suites "TLS_AES_256_GCM_SHA384" "TLS_CHACHA20_POLY1305_SHA256"
+            cipher-suite "TLS_AES_256_GCM_SHA384"
+            cipher-suite "TLS_CHACHA20_POLY1305_SHA256"
         }
     }
 }
@@ -299,7 +300,8 @@ Benefits:
 
 ```kdl
 tls {
-    cipher-suites "TLS_AES_256_GCM_SHA384" "TLS_CHACHA20_POLY1305_SHA256"
+    cipher-suite "TLS_AES_256_GCM_SHA384"
+    cipher-suite "TLS_CHACHA20_POLY1305_SHA256"
 }
 ```
 
@@ -331,24 +333,22 @@ listener "https" {
         key-file "/etc/zentinel/certs/default.key"
 
         // Additional certificates for SNI
-        additional-certs {
-            sni-cert {
-                hostnames "example.com" "www.example.com"
-                cert-file "/etc/zentinel/certs/example.crt"
-                key-file "/etc/zentinel/certs/example.key"
-            }
+        sni {
+            hostnames "example.com" "www.example.com"
+            cert-file "/etc/zentinel/certs/example.crt"
+            key-file "/etc/zentinel/certs/example.key"
+        }
 
-            sni-cert {
-                hostnames "api.example.com"
-                cert-file "/etc/zentinel/certs/api.crt"
-                key-file "/etc/zentinel/certs/api.key"
-            }
+        sni {
+            hostnames "api.example.com"
+            cert-file "/etc/zentinel/certs/api.crt"
+            key-file "/etc/zentinel/certs/api.key"
+        }
 
-            sni-cert {
-                hostnames "*.staging.example.com"
-                cert-file "/etc/zentinel/certs/staging-wildcard.crt"
-                key-file "/etc/zentinel/certs/staging-wildcard.key"
-            }
+        sni {
+            hostnames "*.staging.example.com"
+            cert-file "/etc/zentinel/certs/staging-wildcard.crt"
+            key-file "/etc/zentinel/certs/staging-wildcard.key"
         }
     }
 }
@@ -380,34 +380,32 @@ listener "https" {
         cert-file "/etc/zentinel/certs/default.crt"
         key-file "/etc/zentinel/certs/default.key"
 
-        additional-certs {
             // Production domains
-            sni-cert {
-                hostnames "myapp.com" "www.myapp.com"
-                cert-file "/etc/zentinel/certs/myapp.crt"
-                key-file "/etc/zentinel/certs/myapp.key"
-            }
-
             // API subdomain with separate cert
-            sni-cert {
-                hostnames "api.myapp.com"
-                cert-file "/etc/zentinel/certs/api.myapp.crt"
-                key-file "/etc/zentinel/certs/api.myapp.key"
-            }
-
             // Customer domains
-            sni-cert {
-                hostnames "customer1.myapp.com" "customer1-custom.com"
-                cert-file "/etc/zentinel/certs/customer1.crt"
-                key-file "/etc/zentinel/certs/customer1.key"
-            }
-
             // Wildcard for all other subdomains
-            sni-cert {
-                hostnames "*.myapp.com"
-                cert-file "/etc/zentinel/certs/wildcard.myapp.crt"
-                key-file "/etc/zentinel/certs/wildcard.myapp.key"
-            }
+        sni {
+            hostnames "myapp.com" "www.myapp.com"
+            cert-file "/etc/zentinel/certs/myapp.crt"
+            key-file "/etc/zentinel/certs/myapp.key"
+        }
+
+        sni {
+            hostnames "api.myapp.com"
+            cert-file "/etc/zentinel/certs/api.myapp.crt"
+            key-file "/etc/zentinel/certs/api.myapp.key"
+        }
+
+        sni {
+            hostnames "customer1.myapp.com" "customer1-custom.com"
+            cert-file "/etc/zentinel/certs/customer1.crt"
+            key-file "/etc/zentinel/certs/customer1.key"
+        }
+
+        sni {
+            hostnames "*.myapp.com"
+            cert-file "/etc/zentinel/certs/wildcard.myapp.crt"
+            key-file "/etc/zentinel/certs/wildcard.myapp.key"
         }
     }
 }
@@ -432,7 +430,7 @@ Connections in progress continue with old certificates. New connections use upda
 
 > Available since `26.05_1`.
 
-Each `sni-cert` block can carry its own `acme` configuration, in which case the certificate for that SNI slot is issued and renewed automatically rather than read from disk. This lets multiple tenants on the same listener have **independent ACME accounts, challenge providers, storage paths, and renewal cycles** — a stuck issuance for one tenant does not block renewals for the others.
+Each `sni` block can carry its own `acme` configuration, in which case the certificate for that SNI slot is issued and renewed automatically rather than read from disk. This lets multiple tenants on the same listener have **independent ACME accounts, challenge providers, storage paths, and renewal cycles** — a stuck issuance for one tenant does not block renewals for the others.
 
 ```kdl
 listener "https" {
@@ -446,37 +444,34 @@ listener "https" {
             domains "example.com"
         }
 
-        additional-certs {
             // Tenant A: HTTP-01 challenge, default storage layout.
-            sni-cert {
-                acme {
-                    email "tenant-a@example.com"
-                    domains "tenant-a.com"
-                }
-            }
-
             // Tenant B: DNS-01 challenge for a wildcard, separate
             // storage path so cert state is isolated from Tenant A.
-            sni-cert {
-                acme {
-                    email "tenant-b@example.com"
-                    domains "*.tenant-b.com" "tenant-b.com"
-                    challenge-type "dns-01"
-                    storage "/var/lib/zentinel/acme/tenant-b"
-                    dns-provider {
-                        cloudflare {
-                            api-token-file "/etc/zentinel/secrets/tenant-b-cf-token"
-                        }
-                    }
+            // A manual certificate alongside ACME-managed siblings is fine.
+        sni {
+            acme {
+                email "tenant-a@example.com"
+                domains "tenant-a.com"
+            }
+        }
+
+        sni {
+            acme {
+                email "tenant-b@example.com"
+                domains "*.tenant-b.com" "tenant-b.com"
+                challenge-type "dns-01"
+                storage "/var/lib/zentinel/acme/tenant-b"
+                dns-provider {
+                    type "cloudflare"
+                    credentials-file "/etc/zentinel/secrets/tenant-b-cf-token"
                 }
             }
+        }
 
-            // A manual certificate alongside ACME-managed siblings is fine.
-            sni-cert {
-                hostnames "manual.example.com"
-                cert-file "/etc/zentinel/certs/manual.crt"
-                key-file "/etc/zentinel/certs/manual.key"
-            }
+        sni {
+            hostnames "manual.example.com"
+            cert-file "/etc/zentinel/certs/manual.crt"
+            key-file "/etc/zentinel/certs/manual.key"
         }
     }
 }
@@ -484,7 +479,7 @@ listener "https" {
 
 #### Required: either manual files or ACME, not both
 
-A `sni-cert` block must specify exactly one cert source. The parser rejects both states explicitly:
+A `sni` block must specify exactly one cert source. The parser rejects both states explicitly:
 
 | `cert-file` / `key-file` | `acme {}` | Result |
 |---|---|---|
@@ -498,7 +493,7 @@ A `sni-cert` block must specify exactly one cert source. The parser rejects both
 When an SNI block has an `acme` block but no explicit `hostnames`, the routing hostnames are derived from `acme.domains`. This avoids having to repeat the same domain list in two places:
 
 ```kdl
-sni-cert {
+sni {
     // No hostnames — taken from acme.domains below.
     acme {
         email "ops@example.com"
@@ -507,7 +502,7 @@ sni-cert {
 }
 ```
 
-The hostname-resolution precedence inside an `sni-cert` block is, in order:
+The hostname-resolution precedence inside an `sni` block is, in order:
 
 1. Explicit `hostnames` (if non-empty), used verbatim.
 2. `priority-hostnames` set, in which case hostnames are auto-extracted from the certificate's CN/SAN, with the listed names tie-breaking ambiguous matches.
@@ -516,7 +511,7 @@ The hostname-resolution precedence inside an `sni-cert` block is, in order:
 
 #### Global domain uniqueness
 
-A single domain may appear in **at most one ACME block** across the entire configuration — root listener `acme` and any `sni-cert { acme }` blocks combined. The check is case-insensitive (DNS labels are case-insensitive), so `Example.com` and `example.com` count as the same domain.
+A single domain may appear in **at most one ACME block** across the entire configuration — root listener `acme` and any `sni { acme }` blocks combined. The check is case-insensitive (DNS labels are case-insensitive), so `Example.com` and `example.com` count as the same domain.
 
 This rule prevents two ACME blocks from racing for the same `<storage>/domains/<domain>/` directory and from claiming overlapping SNI routes. Violations are reported at config-validation time:
 
@@ -528,9 +523,9 @@ Each domain must be managed by exactly one ACME block.
 
 #### Cold-start behavior
 
-When an ACME-managed `sni-cert` is configured but its certificate hasn't been issued yet (first start, or storage was wiped), Zentinel does **not** fail to start. It logs a structured warning carrying `listener_id`, `sni_index`, and `primary_domain`, increments the `zentinel_tls_sni_cert_skip_total` counter, and continues. The certificate is loaded automatically once the renewal scheduler completes the challenge flow.
+When an ACME-managed `sni` is configured but its certificate hasn't been issued yet (first start, or storage was wiped), Zentinel does **not** fail to start. It logs a structured warning carrying `listener_id`, `sni_index`, and `primary_domain`, increments the `zentinel_tls_sni_cert_skip_total` counter, and continues. The certificate is loaded automatically once the renewal scheduler completes the challenge flow.
 
-During the cold-start window, requests to that SNI may be served the listener's default certificate (or a covering wildcard from another `sni-cert` if one exists), which can produce a CN/SAN-mismatch warning in the client. The metric exists so operators can detect tenants stuck in this state — a non-zero value an hour after startup means an issuance is failing and needs investigation.
+During the cold-start window, requests to that SNI may be served the listener's default certificate (or a covering wildcard from another `sni` if one exists), which can produce a CN/SAN-mismatch warning in the client. The metric exists so operators can detect tenants stuck in this state — a non-zero value an hour after startup means an issuance is failing and needs investigation.
 
 A complete worked example is at [Multi-tenant TLS](@/examples/multi-tenant-tls.md).
 
@@ -897,12 +892,10 @@ listener "https" {
         }
 
         // SNI for domain-specific certificates
-        additional-certs {
-            sni-cert {
-                hostnames "api.example.com"
-                cert-file "/etc/zentinel/certs/api.crt"
-                key-file "/etc/zentinel/certs/api.key"
-            }
+        sni {
+            hostnames "api.example.com"
+            cert-file "/etc/zentinel/certs/api.crt"
+            key-file "/etc/zentinel/certs/api.key"
         }
     }
 }

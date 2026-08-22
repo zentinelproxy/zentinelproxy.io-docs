@@ -50,8 +50,9 @@ zentinel -c zentinel.kdl
 For examples using agents, install the required agents first:
 
 ```bash
-# Example: Install WAF and auth agents
-cargo install zentinel-agent-waf zentinel-agent-auth
+# Example: Install WAF and auth agents (one agent per invocation)
+zentinel bundle install waf
+zentinel bundle install auth
 ```
 
 ## Example Files

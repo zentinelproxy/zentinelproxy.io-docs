@@ -199,7 +199,9 @@ observability {
 ### Install Agents
 
 ```bash
-cargo install zentinel-agent-waf zentinel-agent-auth zentinel-agent-ratelimit
+zentinel bundle install waf
+zentinel bundle install auth
+zentinel bundle install ratelimit
 ```
 
 ### Start WAF Agent
@@ -323,7 +325,7 @@ For full OWASP CRS support, use the ModSecurity agent:
 
 ```bash
 # Install ModSecurity agent
-cargo install zentinel-agent-modsec
+zentinel bundle install modsec
 
 # Download OWASP CRS
 git clone https://github.com/coreruleset/coreruleset /etc/modsecurity/crs
@@ -375,7 +377,7 @@ zentinel-agent-ratelimit \
 ### IP Denylist
 
 ```bash
-cargo install zentinel-agent-denylist
+zentinel bundle install denylist
 
 zentinel-agent-denylist \
     --socket /var/run/zentinel/denylist.sock \

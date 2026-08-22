@@ -134,7 +134,7 @@ observability {
 ### Install WebSocket Inspector
 
 ```bash
-cargo install zentinel-agent-websocket-inspector
+zentinel bundle install websocket-inspector
 ```
 
 ### Start WebSocket Inspector

@@ -43,38 +43,35 @@ listener "https" {
             domains "example.com" "www.example.com"
         }
 
-        additional-certs {
-            // Tenant A: HTTP-01, default storage layout.
-            sni-cert {
-                acme {
-                    email "tenant-a@example.com"
-                    domains "customer-a.com" "www.customer-a.com"
+        // Tenant A: HTTP-01, default storage layout.
+        sni {
+            acme {
+                email "tenant-a@example.com"
+                domains "customer-a.com" "www.customer-a.com"
+            }
+        }
+
+        // Tenant B: DNS-01 wildcard via Cloudflare,
+        // separate storage path, separate ACME account.
+        sni {
+            acme {
+                email "tenant-b@example.com"
+                domains "*.customer-b.com" "customer-b.com"
+                challenge-type "dns-01"
+                storage "/var/lib/zentinel/acme/tenant-b"
+                dns-provider {
+                    type "cloudflare"
+                    credentials-file "/etc/zentinel/secrets/tenant-b-cf-token"
                 }
             }
+        }
 
-            // Tenant B: DNS-01 wildcard via Cloudflare,
-            // separate storage path, separate ACME account.
-            sni-cert {
-                acme {
-                    email "tenant-b@example.com"
-                    domains "*.customer-b.com" "customer-b.com"
-                    challenge-type "dns-01"
-                    storage "/var/lib/zentinel/acme/tenant-b"
-                    dns-provider {
-                        cloudflare {
-                            api-token-file "/etc/zentinel/secrets/tenant-b-cf-token"
-                        }
-                    }
-                }
-            }
-
-            // A partner who supplied their own certificate — manual
-            // and ACME-managed sni-certs coexist on the same listener.
-            sni-cert {
-                hostnames "partner-domain.com"
-                cert-file "/etc/zentinel/certs/partner.crt"
-                key-file "/etc/zentinel/certs/partner.key"
-            }
+        // A partner who supplied their own certificate — manual
+        // and ACME-managed sni blocks coexist on the same listener.
+        sni {
+            hostnames "partner-domain.com"
+            cert-file "/etc/zentinel/certs/partner.crt"
+            key-file "/etc/zentinel/certs/partner.key"
         }
     }
 }

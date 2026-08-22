@@ -337,9 +337,6 @@ routes {
 
         retry-policy {
             max-attempts 2
-            timeout-ms 10000
-            backoff-base-ms 500
-            retryable-status-codes 502 503 504
         }
     }
 
