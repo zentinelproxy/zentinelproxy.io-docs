@@ -747,22 +747,75 @@ Buffering is required for body inspection by agents. Be mindful of memory usage 
 
 ## Retry Policy
 
-> **Only `max-attempts` is supported.** It bounds the number of upstream peer-selection attempts — it does not re-send a request that already reached an upstream. `timeout-ms`, `backoff-base-ms`, `backoff-max-ms` and `retryable-status-codes` are **rejected at parse time** (`Got unknown key timeout-ms`), not silently ignored, so a config using them fails to load. The remaining behavior is tracked in [zentinelproxy/zentinel#279](https://github.com/zentinelproxy/zentinel/issues/279).
+Re-sends a request when the upstream fails to answer usefully.
 
 ```kdl
 route "api" {
     upstream "backend"
     retry-policy {
         max-attempts 3
+        retryable-status-codes 502 503 504
+        backoff "100ms"
+        max-backoff "2s"
+        per-attempt-timeout "1s"
     }
 }
 ```
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `max-attempts` | `3` | Upstream peer-selection attempts, including the first |
+| `max-attempts` | `3` | Total attempts including the first, so `3` means one try and two retries |
+| `retryable-status-codes` | *(none)* | Upstream statuses that discard the response and retry |
+| `backoff` | `100ms` | Delay before the first retry; doubles each attempt |
+| `max-backoff` | `2s` | Ceiling for the doubling backoff |
+| `per-attempt-timeout` | *(inherits)* | Connection timeout applied to each attempt |
+| `retry-non-idempotent` | `false` | Allow replaying `POST` and other non-idempotent methods |
 
-No other key is accepted; the parser rejects them.
+### Nothing is retried unless you ask
+
+`retryable-status-codes` is empty by default, so a bare `retry-policy` block retries only connection failures. Retrying a status code replays the request, and which codes are safe to replay depends on the application: a `503` from a load shedder is worth another try; a `500` from a handler that already charged a card is not.
+
+### `POST` is not replayed by default
+
+Idempotent methods — `GET`, `HEAD`, `PUT`, `DELETE`, `OPTIONS`, `TRACE` — are safe to replay by definition. Anything else is not retried unless you set `retry-non-idempotent`, because replaying it can duplicate a side effect the origin already performed and the proxy cannot tell whether it did.
+
+```kdl
+retry-policy {
+    max-attempts 3
+    retryable-status-codes 503
+    retry-non-idempotent #true   // only if your endpoints are safe to replay
+}
+```
+
+### The last response is the one your client sees
+
+When the retry budget runs out, the client receives the upstream's own response — three failed tries against a struggling backend end with its `503`, not a generic gateway error. Retries are only visible in the logs and in the extra latency.
+
+### Set `per-attempt-timeout` if you set `max-attempts`
+
+Without it, each attempt waits the full connection timeout. Three attempts against a black-holed upstream take three times as long as one, so a policy meant to improve availability makes the worst case worse. `per-attempt-timeout` bounds each try.
+
+### Large request bodies are not retried
+
+Retrying a request means re-sending its body, which requires having buffered it. A body too large to buffer cannot be replayed, so the response is forwarded as-is and Zentinel logs:
+
+```
+WARN Not retrying: request body exceeded the retry buffer and cannot be replayed
+```
+
+If retries matter for an endpoint that takes large uploads, that is the message to look for.
+
+### Backoff must fit under its ceiling
+
+A `backoff` larger than `max-backoff` is rejected at load, because the delay would never grow and the ceiling would silently become the only value:
+
+```
+retry-policy backoff (10s) is greater than max-backoff (1s); the backoff would never grow
+```
+
+### What `max-attempts` used to mean
+
+Before this was implemented, `max-attempts` bounded upstream *peer-selection* attempts — retrying the choice of backend from the pool, not the request. Peer selection only fails when no member of the pool is healthy, so the setting rarely did anything, and never what its name suggested. It now governs request retries. Peer selection has its own small fixed retry count and is not configurable.
 
 ## Circuit Breaker
 
@@ -1184,6 +1237,9 @@ routes {
 | `static-files.directory-listing` | `false` |
 | `static-files.compress` | `true` |
 | `retry-policy.max-attempts` | `3` |
+| `retry-policy.backoff` | `100ms` |
+| `retry-policy.max-backoff` | `2s` |
+| `retry-policy.retry-non-idempotent` | `false` |
 | `circuit-breaker.failure-threshold` | `5` |
 
 ## Route Evaluation Order
