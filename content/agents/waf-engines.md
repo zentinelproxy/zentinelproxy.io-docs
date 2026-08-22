@@ -7,7 +7,7 @@ updated = 2026-03-04
 Zentinel ships three WAF agents, each with different trade-offs in detection approach, rule ecosystem, and operational requirements. This guide helps you choose the right one for your deployment.
 
 - **WAF** — Pure Rust, 285 hand-tuned rules with anomaly scoring, statistical classification, API security, and bot detection.
-- **ZentinelSec** — Pure Rust reimplementation of ModSecurity that runs the stock OWASP CRS v4 rule set, 4-13x faster than the C++ original depending on workload.
+- **ZentinelSec** — Pure Rust reimplementation of ModSecurity that runs the stock OWASP CRS v4 rule set, 4-11x faster than the C++ original depending on workload.
 - **ModSecurity** — C libmodsecurity wrapper providing maximum CRS compatibility for existing ModSecurity deployments.
 
 ## Quick comparison
@@ -22,7 +22,7 @@ Zentinel ships three WAF agents, each with different trade-offs in detection app
 | Bot detection | Behavioral + TLS fingerprinting | No | UA only |
 | Dependencies | Pure Rust | Pure Rust | libmodsecurity (C) |
 | Binary size | ~6 MB | ~10 MB | ~50 MB |
-| Throughput | 1.6M req/s | 797K req/s | 177K req/s |
+| Throughput | 1.6M req/s | 676K req/s | 168K req/s |
 | Latency (p99) | <5 µs | <1 µs | ~15 ms |
 
 ## WAF agent
@@ -46,7 +46,7 @@ See the [WAF agent registry page](https://registry.zentinelproxy.io/agents/waf/)
 
 ## ZentinelSec agent
 
-ZentinelSec is a pure Rust reimplementation of the ModSecurity rule engine, powered by [zentinel-modsec](https://github.com/zentinelproxy/zentinel-modsec). It parses and evaluates standard SecLang `SecRule` directives — including `@detectSQLi`, `@detectXSS`, `@contains`, and `@rx` operators — with zero C dependencies. As of [zentinel-modsec 0.1.3](https://github.com/zentinelproxy/zentinel-modsec) it loads and evaluates the stock OWASP Core Rule Set v4, and benchmarks at 4-13x the performance of the C++ libmodsecurity — 4.4x on clean requests, 12.9x on SQLi detection.
+ZentinelSec is a pure Rust reimplementation of the ModSecurity rule engine, powered by [zentinel-modsec](https://github.com/zentinelproxy/zentinel-modsec). It parses and evaluates standard SecLang `SecRule` directives — including `@detectSQLi`, `@detectXSS`, `@contains`, and `@rx` operators — with zero C dependencies. As of [zentinel-modsec 0.1.3](https://github.com/zentinelproxy/zentinel-modsec) it loads and evaluates the stock OWASP Core Rule Set v4, and benchmarks at 4-11x the performance of the C++ libmodsecurity — 4.2x on clean requests, 11.5x on SQLi detection.
 
 Install it with `zentinel bundle install zentinelsec`, a release binary, or `cargo install --git https://github.com/zentinelproxy/zentinel-agent-zentinelsec` — no system libraries required. (The agent crates are not published on crates.io, so a bare `cargo install zentinel-agent-zentinelsec` does not work.)
 
@@ -126,7 +126,7 @@ Key takeaways:
 
 **Use WAF when** you need API security features (GraphQL protection, JWT validation, schema validation), bot detection with TLS fingerprinting, or threat intelligence integration. It provides the broadest detection surface out of the box with zero rule files, making it ideal for teams that want a single agent covering web attacks, API abuse, and automated threats.
 
-**Use ZentinelSec when** you need full OWASP CRS compatibility without C dependencies. It offers the best balanced accuracy (lowest false positives while maintaining strong detection), deployment with no system libraries to install, and 4-13x better performance than C libmodsecurity. This is the recommended default for production deployments focused on CRS compliance.
+**Use ZentinelSec when** you need full OWASP CRS compatibility without C dependencies. It offers the best balanced accuracy (lowest false positives while maintaining strong detection), deployment with no system libraries to install, and 4-11x better performance than C libmodsecurity. This is the recommended default for production deployments focused on CRS compliance.
 
 **Use ModSecurity when** you have existing ModSecurity/SecLang deployments with complex custom rules that depend on libmodsecurity-specific features, or when maximum compatibility with the C implementation is required for compliance reasons.
 
