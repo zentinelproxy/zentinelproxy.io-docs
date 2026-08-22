@@ -589,7 +589,6 @@ route "user-api" {
     // Resilience
     retry-policy {
         max-attempts 3
-        retryable-status-codes 502 503 504
     }
 }
 ```
@@ -748,30 +747,22 @@ Buffering is required for body inspection by agents. Be mindful of memory usage 
 
 ## Retry Policy
 
-> **Behavior partially implemented.** As of [zentinelproxy/zentinel#267](https://github.com/zentinelproxy/zentinel/pull/267) the route-level `retry-policy` block is parsed. `max-attempts` is honored — it bounds the number of upstream peer-selection attempts. `timeout-ms`, `backoff-base-ms`, `backoff-max-ms`, and `retryable-status-codes` are parsed but **not yet applied at runtime** (the proxy logs that each setting is "parsed, but not implemented"). The remaining behavior is tracked in [zentinelproxy/zentinel#279](https://github.com/zentinelproxy/zentinel/issues/279).
+> **Only `max-attempts` is supported.** It bounds the number of upstream peer-selection attempts — it does not re-send a request that already reached an upstream. `timeout-ms`, `backoff-base-ms`, `backoff-max-ms` and `retryable-status-codes` are **rejected at parse time** (`Got unknown key timeout-ms`), not silently ignored, so a config using them fails to load. The remaining behavior is tracked in [zentinelproxy/zentinel#279](https://github.com/zentinelproxy/zentinel/issues/279).
 
 ```kdl
 route "api" {
     upstream "backend"
     retry-policy {
         max-attempts 3
-        timeout-ms 30000
-        backoff-base-ms 100
-        backoff-max-ms 10000
-        retryable-status-codes 502 503 504
     }
 }
 ```
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `max-attempts` | `3` | Maximum retry attempts |
-| `timeout-ms` | `30000` | Total timeout for all attempts |
-| `backoff-base-ms` | `100` | Initial backoff delay |
-| `backoff-max-ms` | `10000` | Maximum backoff delay |
-| `retryable-status-codes` | `502, 503, 504` | Status codes to retry |
+| `max-attempts` | `3` | Upstream peer-selection attempts, including the first |
 
-Backoff uses exponential delay: `min(base * 2^attempt, max)`
+No other key is accepted; the parser rejects them.
 
 ## Circuit Breaker
 
@@ -989,7 +980,6 @@ routes {
         filters "auth" "rate-limit"
         retry-policy {
             max-attempts 3
-            retryable-status-codes 502 503 504
         }
     }
 
@@ -1083,7 +1073,6 @@ routes {
         filters "auth" "rate-limit"
         retry-policy {
             max-attempts 3
-            retryable-status-codes 502 503 504
         }
         policies {
             timeout-secs 30

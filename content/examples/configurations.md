@@ -178,7 +178,7 @@ observability {
 ### Install AI Gateway Agent
 
 ```bash
-cargo install zentinel-agent-ai-gateway
+zentinel bundle install ai-gateway
 ```
 
 ### Start AI Gateway Agent

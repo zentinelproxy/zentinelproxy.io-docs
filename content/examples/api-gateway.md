@@ -82,7 +82,6 @@ routes {
         service-type "api"
         retry-policy {
             max-attempts 3
-            retryable-status-codes 502 503 504
         }
         policies {
             timeout-secs 30
@@ -212,7 +211,8 @@ observability {
 ### 1. Install Agents
 
 ```bash
-cargo install zentinel-agent-auth zentinel-agent-ratelimit
+zentinel bundle install auth
+zentinel bundle install ratelimit
 ```
 
 ### 2. Start Agents
