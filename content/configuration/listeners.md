@@ -411,6 +411,114 @@ listener "https" {
 }
 ```
 
+### Certificate Folders
+
+Listing every certificate in the configuration means editing and reloading the
+configuration whenever one is added or removed. An `sni-certs` block instead
+points at a folder, and every certificate/key pair found there is registered
+with the hostnames from its own CN and SANs.
+
+```kdl
+tls {
+    cert-file "/etc/zentinel/certs/default.crt"
+    key-file "/etc/zentinel/certs/default.key"
+
+    sni-certs {
+        cert-folder "/etc/zentinel/certs/dynamic/"
+        reload-mode "watch"
+        reload-interval "30s"
+    }
+}
+```
+
+A pair is a certificate and a key sharing a stem — `example.com.crt` alongside
+`example.com.key`. Certificates may use `.crt`, `.pem` or `.cert`; keys use
+`.key`, and a `.pem` file holding both is accepted on its own.
+
+| Option | Default | Description |
+|---|---|---|
+| `cert-folder` | *required* | Directory to scan. Not recursive. |
+| `reload-mode` | `off` | `off`, `interval` or `watch` (see below). |
+| `reload-interval` | `30s` | Rescan period for `interval`, and the fallback for `watch`. |
+
+#### Reload modes
+
+- **`off`** — scanned once at startup, and again on `SIGHUP` along with the
+  rest of the configuration.
+- **`interval`** — rescanned every `reload-interval`. Predictable, and works on
+  filesystems that report no change events, such as some network mounts.
+- **`watch`** — rescanned when the folder changes, so a renewed certificate is
+  served within a second or so. If a watcher cannot be established, Zentinel
+  logs a warning and falls back to `reload-interval` rather than leaving the
+  folder silently unwatched.
+
+Under `watch`, Zentinel waits briefly after the first change before rescanning.
+Certificates are usually written as two files in quick succession, and reading
+midway through would find a key without its certificate.
+
+#### Files that cannot be used
+
+A folder is a moving target: files appear while being written, and a renewal
+can leave a truncated file behind. One unusable file therefore does not stop
+the others from loading — it is skipped, logged, and counted in
+`zentinel_tls_folder_entries_skipped_total`:
+
+```
+WARN Certificate in scanned folder has no matching key file; skipping
+     listener_id=https cert_file=/etc/zentinel/certs/dynamic/orphan.crt
+```
+
+Check that counter after adding certificates. A non-zero value means something
+in the folder is not being served.
+
+#### Overlapping hostnames
+
+Because hostnames are read from each certificate, two certificates can end up
+claiming the same name. By default that is an error: which one wins would
+otherwise depend on the order the filesystem happened to list them.
+
+```
+Ambiguous SNI configuration: hostname 'example.com' matches multiple
+certificates (including "/etc/zentinel/certs/dynamic/b.crt"). Use explicit
+'hostnames' or 'priority-hostnames' to resolve the conflict, or set
+'allow-sni-overlaps true' to accept the first match in path order.
+```
+
+This is easier to hit than it sounds. Certificates issued for the same
+environment often share a SAN — several carrying `localhost`, for example — and
+the failure arrives when a file is dropped into the folder rather than when the
+configuration is written.
+
+Two ways out:
+
+```kdl
+tls {
+    // Accept overlaps: the first certificate in sorted path order wins.
+    // Deterministic across machines and reloads, unlike directory order.
+    allow-sni-overlaps #true
+
+    sni-certs {
+        cert-folder "/etc/zentinel/certs/dynamic/"
+    }
+}
+```
+
+or keep the strict default and name the winner explicitly with an `sni` block
+using `priority-hostnames`, which takes precedence over anything found by
+scanning.
+
+#### Metrics
+
+| Metric | Type | Description |
+|---|---|---|
+| `zentinel_tls_certificates_loaded` | gauge | Certificates currently in service, per listener |
+| `zentinel_tls_reload_total` | counter | Reload attempts, labelled `result="success"` or `"failure"` |
+| `zentinel_tls_folder_entries_skipped_total` | counter | Files skipped, labelled `reason="no_key"` or `"unreadable"` |
+
+A failed reload leaves the previous certificates in use, so it is invisible in
+traffic. `zentinel_tls_reload_total{result="failure"}` is how it becomes
+visible; alert on it.
+
 ### Certificate Hot Reload
 
 All SNI certificates are reloaded during configuration reload:
