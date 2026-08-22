@@ -95,7 +95,6 @@ routes {
         }
         retry-policy {
             max-attempts 2
-            retryable-status-codes 502 503 504
         }
         policies {
             timeout-secs 30
@@ -120,7 +119,6 @@ routes {
         }
         retry-policy {
             max-attempts 3
-            retryable-status-codes 502 503 504
         }
         policies {
             timeout-secs 60

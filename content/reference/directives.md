@@ -647,7 +647,7 @@ tls {
 
 ---
 
-### `cipher-suites`
+### `cipher-suite`
 
 Restricts allowed TLS cipher suites. Empty uses secure defaults.
 
@@ -655,7 +655,8 @@ Restricts allowed TLS cipher suites. Empty uses secure defaults.
 
 ```kdl
 tls {
-    cipher-suites "TLS_AES_256_GCM_SHA384" "TLS_CHACHA20_POLY1305_SHA256"
+    cipher-suite "TLS_AES_256_GCM_SHA384"
+    cipher-suite "TLS_CHACHA20_POLY1305_SHA256"
 }
 ```
 
@@ -1553,13 +1554,16 @@ circuit-breaker {
 
 Configures automatic retry behavior for failed requests.
 
+`max-attempts` is the only supported key; it bounds upstream peer-selection
+attempts. Per-attempt timeouts, backoff tuning and status-code retries are not
+implemented, and any other key is rejected at parse time. Tracked in
+[zentinel#279](https://github.com/zentinelproxy/zentinel/issues/279).
+
 **Context:** `route`
 
 ```kdl
 retry-policy {
     max-attempts 3
-    backoff-base-ms 100
-    retryable-status-codes 502 503 504
 }
 ```
 
@@ -1575,66 +1579,6 @@ Maximum retry attempts including initial try.
 ```kdl
 retry-policy {
     max-attempts 5
-}
-```
-
----
-
-### `timeout-ms`
-
-Total timeout for all retry attempts.
-
-**Context:** `retry-policy`
-**Default:** `5000`
-
-```kdl
-retry-policy {
-    timeout-ms 30000
-}
-```
-
----
-
-### `backoff-base-ms`
-
-Initial retry delay in milliseconds.
-
-**Context:** `retry-policy`
-**Default:** `100`
-
-```kdl
-retry-policy {
-    backoff-base-ms 200
-}
-```
-
----
-
-### `backoff-max-ms`
-
-Maximum retry delay.
-
-**Context:** `retry-policy`
-**Default:** `2000`
-
-```kdl
-retry-policy {
-    backoff-max-ms 5000
-}
-```
-
----
-
-### `retryable-status-codes`
-
-HTTP status codes that trigger retries.
-
-**Context:** `retry-policy`
-**Default:** `502 503 504`
-
-```kdl
-retry-policy {
-    retryable-status-codes 500 502 503 504
 }
 ```
 

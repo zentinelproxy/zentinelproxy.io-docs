@@ -52,8 +52,6 @@ Install the image optimization agent:
 # Via bundle (recommended)
 zentinel bundle install image-optimization
 
-# Or via cargo
-cargo install zentinel-agent-image-optimization
 ```
 
 ## Configuration

@@ -95,7 +95,7 @@ listeners {
             client-auth #false
             ocsp-stapling #true
             session-resumption #true
-            cipher-suites "..."
+            cipher-suite "..."
         }
     }
 }
@@ -135,7 +135,7 @@ upstreams {
 | `client-auth` | bool | `false` | Require client certs |
 | `ocsp-stapling` | bool | `true` | Enable OCSP stapling |
 | `session-resumption` | bool | `true` | Enable session tickets |
-| `cipher-suites` | list | - | Allowed cipher suites |
+| `cipher-suite` | string (repeatable) | - | Allowed cipher suite; repeat the node per suite |
 
 ### ACME Options
 
@@ -235,10 +235,6 @@ routes {
 
         retry-policy {
             max-attempts 3
-            timeout-ms 30000
-            backoff-base-ms 100
-            backoff-max-ms 10000
-            retryable-status-codes 502 503 504
         }
 
         circuit-breaker {
@@ -514,7 +510,6 @@ routes {
         upstream "backend"
         retry-policy {
             max-attempts 3
-            retryable-status-codes 502 503 504
         }
     }
 }
