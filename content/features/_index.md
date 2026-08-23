@@ -278,7 +278,7 @@ Zentinel is a next-generation reverse proxy built on [Cloudflare's Pingora](http
 
 - **HTTP/1.1** — Full support
 - **HTTP/2** — Over TLS, configurable max streams
-- **HTTP/3 / QUIC** — Infrastructure ready (optional feature)
+- **HTTP/3 / QUIC** — Not implemented. A listener configured with `protocol "h3"` is rejected at validation.
 
 ### WebSocket
 <small class="source-ref">[`crates/proxy/src/websocket/`](https://github.com/zentinelproxy/zentinel/tree/main/crates/proxy/src/websocket)</small>

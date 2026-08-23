@@ -59,7 +59,15 @@ listener "secure" {
 | `http` | Plain HTTP/1.1 | No |
 | `https` | HTTP/1.1 over TLS | Yes |
 | `h2` | HTTP/2 (with TLS via ALPN) | Yes |
-| `h3` | HTTP/3 (QUIC) | Yes |
+| `h3` | **Not implemented** — rejected at validation | — |
+
+`h2` and `https` produce the same listener: an `https` listener already
+advertises HTTP/2 through ALPN, so either spelling gets you HTTP/2 with an
+HTTP/1.1 fallback.
+
+`h3` is accepted by the parser but there is no QUIC support in the proxy, so a
+config naming it is rejected before startup rather than binding a socket that
+serves nothing.
 
 ### Timeouts
 
