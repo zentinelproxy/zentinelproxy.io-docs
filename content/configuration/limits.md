@@ -1,7 +1,7 @@
 +++
 title = "Limits"
 weight = 6
-updated = 2026-02-19
+updated = 2026-08-23
 +++
 
 The `limits` block configures request/response limits, connection limits, and rate limiting. These settings are critical for predictable behavior, resource protection, and "sleepable operations."
@@ -424,6 +424,85 @@ limits {
     max-memory-percent 80.0
 }
 ```
+
+## Bounds Outside the `limits` Block
+
+The `limits` block above bounds individual requests and connections. Several
+other resource bounds live elsewhere in the config — in `system`, in an
+upstream's `connection-pool`, and on each agent. They are easy to overlook
+precisely because they are not in `limits`, and they are the ones that decide
+how the proxy behaves when it runs out of something.
+
+```kdl
+system {
+    max-connections 10000
+    route-cache-size 1000
+}
+
+upstreams {
+    upstream "backend" {
+        target "10.0.0.1:8080"
+        connection-pool {
+            max-connections 100
+            max-idle 20
+        }
+    }
+}
+
+agents {
+    agent "waf" {
+        max-concurrent-calls 100
+    }
+}
+```
+
+| Setting | Block | Default | Bounds |
+|---------|-------|---------|--------|
+| `max-connections` | `system` | `10000` | Concurrent client connections |
+| `route-cache-size` | `system` | `1000` | Cached route-match entries |
+| `max-connections` | `connection-pool` | `100` | Connections per upstream target |
+| `max-idle` | `connection-pool` | `20` | Idle connections kept per target |
+| `max-concurrent-calls` | `agent` | `100` | In-flight calls to one agent |
+
+**A `0` here means unbounded, not disabled.** `system.max-connections 0` accepts
+connections without limit, and a `connection-pool` with `max-connections 0`
+accumulates connections against a slow upstream until the process runs out of
+them. If you want a component effectively off, give it a small number rather
+than zero.
+
+**`max-idle` above `max-connections` is unreachable.** The idle bound is capped
+by the total, so the larger number silently has no effect.
+
+## Checking Bounds with `zentinel lint`
+
+`zentinel lint` inspects a config for bounds that are missing, unreachable, or
+so generous they are indistinguishable from unbounded:
+
+```bash
+zentinel lint --config /etc/zentinel/zentinel.kdl
+```
+
+It reports, among other things:
+
+| Condition | Why it is flagged |
+|-----------|-------------------|
+| `system.max-connections` is `0` | Accepts connections without limit; the process grows until it is killed |
+| `system.max-connections` above `100000` | The file descriptor limit will be reached first — check `ulimit -n` |
+| `route-cache-size` above `1000000` | Entries are keyed by method, host, path and any matched headers or query parameters, so a large cache on varied traffic holds a lot of memory for little hit rate |
+| pool `max-connections` is `0` | The pool is unbounded against a slow upstream |
+| pool `max-connections` above `10000` | More than most origins accept; the real limit becomes the origin's, and it surfaces as errors rather than backpressure |
+| pool `max-idle` above `max-connections` | The idle bound can never be reached |
+| `max-concurrent-calls` is `0` | Unbounded in-flight calls to a single agent |
+| `max-concurrent-calls` above `10000` | Far past what an agent process will service |
+| route `max-body-size` above 128 MB | With buffering that is held in memory per concurrent request |
+
+These are warnings, not errors — a config that trips them still starts. They
+mark places where behaviour under load will not match what the file appears to
+say.
+
+**Run it in CI.** The failure these catch shows up under load, which is the
+worst time to find out. `zentinel test` validates that a config parses;
+`zentinel lint` is what tells you whether its limits are meaningful.
 
 ## Default Values Summary
 
