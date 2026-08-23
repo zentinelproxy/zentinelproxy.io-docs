@@ -48,7 +48,7 @@ Zentinel understands different service types and optimizes behavior accordingly:
 - Request validation and sanitization
 - Rate limiting capabilities
 - TLS/SSL with modern cipher suites
-- HTTP/3 preparation with QUIC support (ready for activation)
+- HTTP/1.1 and HTTP/2, downstream and upstream (HTTP/3 is not implemented)
 
 ### Configuration
 - Human-friendly KDL configuration format
