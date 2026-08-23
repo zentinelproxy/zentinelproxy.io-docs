@@ -500,6 +500,31 @@ These are warnings, not errors — a config that trips them still starts. They
 mark places where behaviour under load will not match what the file appears to
 say.
 
+### Keys no parser reads
+
+`zentinel lint` also reports settings inside a known block that nothing reads:
+
+```
+⚠  'failure_mode' is not a setting in the 'policies' block and is being
+   ignored. Did you mean 'failure-mode'?
+⚠  'connect-seconds' is not a setting in the 'timeouts' block and is being
+   ignored. Did you mean 'connect-secs'?
+```
+
+KDL accepts any key inside a block, so a misspelling produces no parse error —
+the setting is simply discarded, and the proxy runs on the default while your
+config file says otherwise. That is how `ratelimit` (missing a hyphen) can
+silently disable rate limiting on a route.
+
+Checked blocks are those with a fixed set of valid keys: `connection-pool`,
+`timeouts`, `policies` and the WAF `ruleset`. Blocks that legitimately hold
+arbitrary keys — a JSON schema's properties, header maps — are not inspected,
+so this check stays quiet on valid configuration.
+
+Settings inside `mcp` and `a2a` blocks go further and are refused at load time
+rather than warned about, since a discarded key in a security policy is not
+something to discover later. See [Agentic Protocols](../agentic/).
+
 **Run it in CI.** The failure these catch shows up under load, which is the
 worst time to find out. `zentinel test` validates that a config parses;
 `zentinel lint` is what tells you whether its limits are meaningful.

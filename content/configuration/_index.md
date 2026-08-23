@@ -23,6 +23,7 @@ Zentinel uses KDL (a human-friendly document language) for configuration. This s
 | [Agents](agents/) | External processing agent configuration |
 | [WAF](waf/) | Web Application Firewall configuration |
 | [Namespaces & Services](namespaces/) | Hierarchical organization and runtime isolation |
+| [Agentic Protocols](agentic/) | MCP and A2A method and tool policy |
 
 ## Quick Example
 

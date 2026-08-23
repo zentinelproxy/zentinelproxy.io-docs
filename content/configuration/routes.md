@@ -583,7 +583,8 @@ route "user-api" {
     policies {
         timeout-secs 30
         max-body-size "10MB"
-        buffer-requests #true  // Required for validation
+        // buffer-requests is not implemented and has no effect (#366).
+        // Request validation does not require it.
     }
 
     // Resilience
@@ -743,7 +744,20 @@ upstreams {
 
 ```
 
-Buffering is required for body inspection by agents. Be mindful of memory usage with large bodies.
+> **`buffer-requests` and `buffer-responses` are not implemented.** They appear
+> in the configuration schema but have no KDL parser and are read by nothing in
+> the proxy, so writing them has no effect — the keys are discarded silently.
+> Tracked in [zentinelproxy/zentinel#366](https://github.com/zentinelproxy/zentinel/issues/366),
+> where the decision is whether to implement them or remove them.
+>
+> Body inspection by agents does not depend on these settings and works without
+> them.
+
+## MCP and A2A
+
+Routes carrying Model Context Protocol or Agent2Agent traffic can declare which
+methods and tools are permitted, enforced by reading the JSON-RPC envelope. See
+[Agentic Protocols](../agentic/).
 
 ## Retry Policy
 
