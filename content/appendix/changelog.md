@@ -1,7 +1,7 @@
 +++
 title = "Changelog"
 weight = 1
-updated = 2026-08-08
+updated = 2026-08-24
 +++
 
 All notable changes to Zentinel are documented here.
@@ -15,6 +15,9 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 
 | CalVer | Crate Version | Date | Highlights |
 |--------|---------------|------|------------|
+| [26.08_4](#26-08-4) | 0.6.27 | 2026-08-23 | Native MCP and A2A support; settings that were parsed and discarded now take effect (upstream timeouts, route policies, `failure-mode`); certificate folders; agent and mTLS authentication hardening |
+| [26.08_3](#26-08-3) | 0.6.26 | 2026-08-22 | Per-SNI certificates, mTLS and TLS hardening settings now reach the listener |
+| [26.08_2](#26-08-2) | 0.6.25 | 2026-08-22 | ACME DNS-01 idempotency; **breaking** listener TLS config schema |
 | [26.08_1](#26-08-1) | 0.6.24 | 2026-08-08 | Security: rustls 0.23.43 hardening; dependency maintenance (pem 4.0, base64 0.23, jsonschema 0.49, validator 0.21, async-memcached 0.7) |
 | [26.07_4](#26-07-4) | 0.6.23 | 2026-07-30 | Dependency maintenance: wasmtime 47, quinn-proto 0.11.16, maxminddb 0.30, rust-minor batch (17 updates) |
 | [26.07_3](#26-07-3) | 0.6.22 | 2026-07-18 | Security: serde_with 3.21 (GHSA-7gcf-g7xr-8hxj); tokio-tungstenite 0.30, jsonschema 0.48 |
@@ -50,6 +53,69 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 | [26.01_3](#26-01-3) | 0.2.3 | 2026-01-05 | Bug fixes |
 | [26.01_0](#26-01-0) | 0.2.0 | 2026-01-01 | First CalVer release |
 | [25.12](#25-12) | 0.1.x | 2025-12 | Initial public releases |
+
+---
+
+## 26.08_4
+
+**Date:** 2026-08-23
+**Crate version:** 0.6.27
+
+> **Read this before deploying.** A number of settings in this release were previously parsed and then discarded, and now take effect. Nothing about your configuration files changes — but configurations you have been running will start behaving the way they read, which for some deployments is a change in behavior even though nothing was edited.
+>
+> Affected: every `upstream.timeouts` setting, `connection-pool.idle-timeout-secs` and `max-lifetime-secs`, route `policies` (including `failure-mode`, `timeout-secs` and `rate-limit`), the distributed rate-limit fallback and TTL settings, and WAF rule exclusions. Separately, `retry-policy.max-attempts` changes meaning, host matching becomes case-insensitive, and two configurations that previously started with a warning now refuse to start: `client-auth` without a `ca-file`, and a listener with `protocol "h3"`.
+
+### Added
+- **Native MCP and A2A awareness.** Routes can carry an `mcp` or `a2a` block, and the proxy inspects the JSON-RPC envelope: per-method and per-tool allow/deny lists, resolved against the request body. MCP's Streamable HTTP transport mirrors the method and tool name into `Mcp-Method` and `Mcp-Name` headers so intermediaries can route without parsing bodies — taken at face value that is a bypass, since a header saying `read_file` can accompany a body calling `delete_everything`. Zentinel resolves policy from the body and refuses a request whose headers disagree with it. Requests claiming a protocol revision older than `2026-07-28` are refused by default. See [Agentic Protocols](../../configuration/agentic/).
+- **`zentinel lint` reports config keys that no parser reads.** A misspelled key in a nested KDL block was accepted and discarded, so `failure_mode` with an underscore silently disabled a policy while the config file said otherwise. The lint now names the key and suggests the intended spelling.
+- **Certificate folders.** An `sni-certs` block points at a directory, and every certificate/key pair found there is registered with the hostnames from its own CN and SANs. `reload-mode` selects `off`, `interval` or `watch`.
+- **`retry-policy` gains `retryable-status-codes`, `backoff`, `max-backoff`, `per-attempt-timeout` and `retry-non-idempotent`.** Nothing is retried on a status code unless configured, and `POST` is not replayed without opting in.
+
+### Fixed
+- **Upstream timeouts, connection-pool bounds and route policies are applied.** These were parsed and discarded, so every deployment ran on defaults regardless of what its configuration said.
+- **`failure-mode "open"` works.** The field was never populated, pinning every route to fail-closed — routes deliberately set to fail open would block traffic when an agent died.
+- **Agent `require-auth` verifies the token.** It previously checked only that a token was present, so any non-empty string authenticated.
+- **`client-auth` without a `ca-file` refuses to start.** It previously logged a warning and served ordinary TLS, so a listener configured for mutual TLS would pass validation and then accept unauthenticated clients.
+
+### Changed
+- **`retry-policy.max-attempts` now means request retries, not peer selections.** Re-check the value if you set it.
+- **Host matching is case-insensitive**, per RFC 9110.
+- **`protocol "h3"` is rejected at load time.** HTTP/3 was never served; the listener silently fell back to HTTPS.
+
+---
+
+## 26.08_3
+
+**Date:** 2026-08-22
+**Crate version:** 0.6.26
+
+> Closes the gap 26.08_2 warned about. **Re-check that your configuration says what you intend before upgrading** — a listener that previously ignored `client-auth` will now require and verify client certificates.
+
+### Fixed
+- **Per-SNI certificates are served.** A client is now sent the certificate matching the SNI hostname it requested, with wildcard matching and fallback to the default. Previously every client received the primary certificate regardless of the name requested.
+- **`client-auth` (mTLS) is enforced.** The listener requests and verifies client certificates against `ca-file`. Previously it did neither, so a listener configured for mTLS accepted unauthenticated connections.
+- **`min-version`, `max-version`, `cipher-suite` and `session-resumption` are applied.** The listener previously used Pingora's built-in intermediate profile and ignored all four.
+- **Certificates reload on SIGHUP.** ACME renewals previously reached disk but not the listener.
+
+### Changed
+- The startup warnings added in 26.08_2 for unapplied TLS settings are removed — there is nothing left for them to warn about.
+
+---
+
+## 26.08_2
+
+**Date:** 2026-08-22
+**Crate version:** 0.6.25
+
+> **Contains a breaking configuration change** (listener TLS schema, below). Released as a SemVer patch, so pinning `0.6` will pick it up: check your listener `tls` blocks before upgrading. Configs using `additional-certs` or `cipher-suites` will fail to load.
+
+### Changed
+- **BREAKING — listener TLS config schema.** SNI certificates now use repeated `sni { ... }` blocks instead of `additional-certs { cert ... }`, and cipher suites use repeated `cipher-suite "NAME"` nodes instead of a `cipher-suites { ... }` list. Unknown nodes inside `tls` and `sni` blocks are now rejected at parse time (previously silently ignored), with descriptive errors and legacy-syntax hints, so a config can no longer imply TLS behavior the proxy never applies.
+- Route match conditions with a missing or non-string value are now a hard error rather than being silently skipped.
+
+### Fixed
+- **ACME DNS-01 is idempotent.** Creating a TXT record behaves as an *ensure* operation across the Cloudflare, Hetzner and webhook providers, so a stale `_acme-challenge` record left by a failed run no longer breaks issuance on restart. Only exact value matches are reused — the previous heuristic could select an unrelated record and delete it during cleanup.
+- **DNS-01 propagation is visible.** An empty `propagation.nameservers` list now falls back to public resolvers instead of silently failing every lookup at `TRACE` level.
 
 ---
 
