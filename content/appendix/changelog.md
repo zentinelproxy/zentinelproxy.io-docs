@@ -15,6 +15,7 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 
 | CalVer | Crate Version | Date | Highlights |
 |--------|---------------|------|------------|
+| [26.08_5](#26-08-5) | 0.6.28 | 2026-08-24 | MCP and A2A policy is now **enforced** — it was parsed and ignored in 26.08_4; `cargo install zentinel-proxy` works again; **breaking**: dead buffering fields removed |
 | [26.08_4](#26-08-4) | 0.6.27 | 2026-08-23 | Native MCP and A2A support; settings that were parsed and discarded now take effect (upstream timeouts, route policies, `failure-mode`); certificate folders; agent and mTLS authentication hardening |
 | [26.08_3](#26-08-3) | 0.6.26 | 2026-08-22 | Per-SNI certificates, mTLS and TLS hardening settings now reach the listener |
 | [26.08_2](#26-08-2) | 0.6.25 | 2026-08-22 | ACME DNS-01 idempotency; **breaking** listener TLS config schema |
@@ -53,6 +54,30 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 | [26.01_3](#26-01-3) | 0.2.3 | 2026-01-05 | Bug fixes |
 | [26.01_0](#26-01-0) | 0.2.0 | 2026-01-01 | First CalVer release |
 | [25.12](#25-12) | 0.1.x | 2025-12 | Initial public releases |
+
+---
+
+## 26.08_5
+
+**Date:** 2026-08-24
+**Crate version:** 0.6.28
+
+> **If you configured `mcp` or `a2a` in 26.08_4, it did nothing.** The blocks parsed, validated and rejected unknown keys — and no request was ever checked against them. A route declaring `tools { allow "get_weather" }` permitted every tool there is. That is fixed here, which means these routes begin enforcing policy for the first time: **check your allow and deny lists say what you intend before upgrading.**
+>
+> Also breaking: `buffer-requests` and `buffer-responses` are removed. Neither ever had any effect, so nothing changes behaviourally, but a config setting them is now reported by `zentinel lint` as a key nothing reads.
+
+### Fixed
+- **MCP and A2A route policy is enforced.** Policy runs during body handling, resolved from the JSON-RPC envelope, with the body accumulated across chunks and judged once at end of stream — never on a partial envelope, and before anything reaches an upstream. Denials return 403 with an operator-readable reason. Allowed requests record the method and tool resolved *from the body*, so metrics describe what the upstream will execute rather than what a header claimed. Accumulation stops at 1 MiB, past which `on-uninspectable-body` decides rather than a truncated prefix being judged as the whole request. See [Agentic Protocols](../../configuration/agentic/).
+- **`cargo install zentinel-proxy` works again.** `cargo publish` strips git sources, so the published crate resolved `pingora-core` from crates.io — upstream, without the fork's TLS hook — and failed to compile. Broken in 0.6.26 and 0.6.27. The fork's affected crates are now published under `zentinel-pingora-*` names and depended on by version.
+- **`workers` was read by nothing** — the parser reads `worker-threads`, so two shipped configs ran on the default worker count while the file said otherwise.
+- **`circuit-breaker` inside a `route` block did nothing.** Circuit breakers are configured per upstream and per agent. Eight occurrences across five shipped configs, including the default `zentinel.kdl`, are removed.
+
+### Added
+- **Unknown-key checking covers `route`, `system` and `server`.** A misspelled key inside those blocks was accepted and discarded; `zentinel lint` now names it and suggests the intended spelling.
+
+### Changed
+- **BREAKING — `buffer-requests` and `buffer-responses` removed.** No KDL key set them and nothing read them, so they could never be anything but `false`. No behaviour changes.
+- Dependency maintenance: wasmtime 48, `jsonschema` 0.50, rust-minor batch.
 
 ---
 

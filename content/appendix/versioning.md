@@ -70,7 +70,8 @@ This table maps CalVer release versions to the crate version actually **publishe
 
 | Release (CalVer) | Crate Version (SemVer) | Protocol | Release Date | Status |
 |---------|---------------|----------|--------------|--------|
-| **26.08_4** | `0.6.27` | `2` | 2026-08-23 | Current |
+| **26.08_5** | `0.6.28` | `2` | 2026-08-24 | Current |
+| **26.08_4** | `0.6.27` | `2` | 2026-08-23 | Previous |
 | **26.08_2** | `0.6.25` | `2` | 2026-08-22 | Previous — breaking TLS config schema |
 | **26.08_1** | `0.6.24` | `2` | 2026-08-08 | Previous |
 | **26.07_4** | `0.6.23` | `2` | 2026-07-30 | Previous |
