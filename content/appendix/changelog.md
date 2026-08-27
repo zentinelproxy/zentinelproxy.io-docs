@@ -15,6 +15,7 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 
 | CalVer | Crate Version | Date | Highlights |
 |--------|---------------|------|------------|
+| [26.08_6](#26-08-6) | 0.6.29 | 2026-08-27 | Listener `namespace` isolation and per-listener timeouts now work on wildcard binds — both were silently ignored on `0.0.0.0` listeners; certificate reloads report what changed instead of only counts |
 | [26.08_5](#26-08-5) | 0.6.28 | 2026-08-24 | MCP and A2A policy is now **enforced** — it was parsed and ignored in 26.08_4; `cargo install zentinel-proxy` works again; **breaking**: dead buffering fields removed |
 | [26.08_4](#26-08-4) | 0.6.27 | 2026-08-23 | Native MCP and A2A support; settings that were parsed and discarded now take effect (upstream timeouts, route policies, `failure-mode`); certificate folders; agent and mTLS authentication hardening |
 | [26.08_3](#26-08-3) | 0.6.26 | 2026-08-22 | Per-SNI certificates, mTLS and TLS hardening settings now reach the listener |
@@ -54,6 +55,24 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 | [26.01_3](#26-01-3) | 0.2.3 | 2026-01-05 | Bug fixes |
 | [26.01_0](#26-01-0) | 0.2.0 | 2026-01-01 | First CalVer release |
 | [25.12](#25-12) | 0.1.x | 2025-12 | Initial public releases |
+
+---
+
+## 26.08_6
+
+**Date:** 2026-08-27
+**Crate version:** 0.6.29
+
+> **If you set `namespace` on a listener bound to `0.0.0.0` or `[::]`, it was doing nothing.** The listener served the *global* route set instead of its namespace's, with no warning, log line or validation error. `namespace` is an isolation control, so this failed in the permissive direction: routes an operator believed were scoped away were reachable. Concrete binds such as `127.0.0.1:9000` were unaffected, which is why this survived — the documented admin-listener example is loopback-bound.
+>
+> **Check any wildcard-bound listener that carries a `namespace` before upgrading:** it begins enforcing isolation for the first time, so routes that have been served from the global set will stop being reachable there. The same listeners' `request-timeout-secs` and `keepalive-timeout-secs` also begin taking effect, having run on defaults until now.
+
+### Fixed
+- **Listener `namespace` is enforced on wildcard binds.** Namespace route sets were stored against the *configured* bind address and looked up by the address the connection actually arrived on. A connection accepted on `0.0.0.0:443` reports the concrete interface it landed on — `203.0.113.5:443` — and never `0.0.0.0:443`, so the lookup could not match and the request fell through to the global route set. Resolution now compares parsed socket addresses: exact binds by equality, wildcard binds by port across the address families that bind can accept, with IPv4-mapped addresses normalised so a dual-stack listener resolves both families alike. A concrete bind takes precedence over a wildcard bind on the same port. See [Listeners](../../configuration/listeners/).
+- **Per-listener `request-timeout-secs` and `keepalive-timeout-secs` apply on wildcard binds.** The same comparison meant a config setting either on a `0.0.0.0` listener validated cleanly and then ran on the defaults.
+
+### Added
+- **Certificate reloads report what changed.** A reload logged counts and a bare success line, which cannot answer whether anything actually changed: a renewal covers the same hostnames as the certificate it replaces, so every count stays identical. Reloads now log `added`, `removed` and `replaced` hostnames, where `replaced` names a hostname whose certificate changed and carries the SHA-256 fingerprints on both sides — the same digest `openssl x509 -fingerprint -sha256` prints. A rescan that changed nothing says so explicitly, and the default certificate participates as `<default>`. See [Knowing what a reload changed](../../configuration/listeners/#knowing-what-a-reload-changed).
 
 ---
 
