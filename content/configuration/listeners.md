@@ -464,6 +464,54 @@ Under `watch`, Zentinel waits briefly after the first change before rescanning.
 Certificates are usually written as two files in quick succession, and reading
 midway through would find a key without its certificate.
 
+#### Knowing what a reload changed
+
+Under `watch` a rescan is unattended by design, so the log is the only record
+that one happened. Each reload reports what actually changed, at `info`:
+
+```
+INFO TLS certificates reloaded successfully listener_id=https hostnames=12
+     added=shop.example.com removed=old.example.com replaced=-
+```
+
+Three fields, each `-` when empty:
+
+| Field | Meaning |
+|---|---|
+| `added` | Hostnames served now that were not served before. |
+| `removed` | Hostnames no longer served. |
+| `replaced` | Hostnames still served, by a **different** certificate. |
+
+`replaced` is the one to watch, because it is the only evidence a renewal
+happened. A renewed certificate covers the same names as the one it replaces,
+so the hostname set does not move and every count stays identical:
+
+```
+INFO TLS certificates reloaded successfully listener_id=https hostnames=12
+     added=- removed=- replaced=shop.example.com (0700948452ddf7bd->e0286ff98b379b79)
+```
+
+The two values are the leading bytes of the certificate's SHA-256 fingerprint,
+so they can be matched against a file on disk:
+
+```
+$ openssl x509 -in /etc/zentinel/certs/dynamic/shop.example.com.crt \
+      -fingerprint -sha256 -noout
+sha256 Fingerprint=E0:28:6F:F9:8B:37:9B:79:...
+```
+
+A rescan that found nothing new says so explicitly, rather than logging a bare
+success that reads the same as one that changed something:
+
+```
+INFO TLS certificates reloaded successfully; no change to served certificates
+     listener_id=https hostnames=12
+```
+
+The default certificate participates under the name `<default>`. It has no SNI
+hostname of its own, but it is what an unmatched name is served, so a rotation
+of it appears in `replaced` like any other.
+
 #### Files that cannot be used
 
 A folder is a moving target: files appear while being written, and a renewal
