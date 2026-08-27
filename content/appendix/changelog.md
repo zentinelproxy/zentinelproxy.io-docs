@@ -15,6 +15,7 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 
 | CalVer | Crate Version | Date | Highlights |
 |--------|---------------|------|------------|
+| [26.08_7](#26-08-7) | 0.6.30 | 2026-08-27 | `zentinel lint` reports settings that parse but are read by nothing: run-together lines, and keys written into the wrong one of two same-named blocks |
 | [26.08_6](#26-08-6) | 0.6.29 | 2026-08-27 | Listener `namespace` isolation and per-listener timeouts now work on wildcard binds — both were silently ignored on `0.0.0.0` listeners; certificate reloads report what changed instead of only counts |
 | [26.08_5](#26-08-5) | 0.6.28 | 2026-08-24 | MCP and A2A policy is now **enforced** — it was parsed and ignored in 26.08_4; `cargo install zentinel-proxy` works again; **breaking**: dead buffering fields removed |
 | [26.08_4](#26-08-4) | 0.6.27 | 2026-08-23 | Native MCP and A2A support; settings that were parsed and discarded now take effect (upstream timeouts, route policies, `failure-mode`); certificate folders; agent and mTLS authentication hardening |
@@ -55,6 +56,29 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 | [26.01_3](#26-01-3) | 0.2.3 | 2026-01-05 | Bug fixes |
 | [26.01_0](#26-01-0) | 0.2.0 | 2026-01-01 | First CalVer release |
 | [25.12](#25-12) | 0.1.x | 2025-12 | Initial public releases |
+
+---
+
+## 26.08_7
+
+**Date:** 2026-08-27
+**Crate version:** 0.6.30
+
+> Configuration checking only — nothing about how the proxy handles traffic changes. `zentinel lint` reports more of the configuration that parses cleanly and then does nothing. If it warns about a config you have been running, the setting was already being ignored: the warning is new, the behaviour is not. No config that loaded before will fail to load.
+
+### Added
+- **Settings swallowed by a run-together line are reported.** KDL separates settings by a newline or a `;`. Written on one line with neither, `listener "public" { address "0.0.0.0:8080" namespace "iso" }` is not two settings — it is a single `address` node carrying three arguments, and `namespace` never reaches the parser at all. The config loads, validates and starts without it. The check reports an argument after the first whose value names a setting of the same block, so a setting that legitimately takes a list (`hostnames "a.com" "b.com"`) is unaffected. See [Listeners](../../configuration/listeners/).
+- **Settings written into the wrong one of two same-named blocks are reported, with where they belong.** Block names are not unique. The top-level `cache` block configures the storage backend (`backend`, `disk-path`); a route's `cache` block configures that route's policy (`default-ttl-secs`). They share a single setting between them, so storage settings placed in a route's cache block parse and do nothing — a silently empty cache directory. `tls` has the same split, meaning one thing on a listener and another on an upstream. The warning names the block the setting belongs to rather than guessing at a spelling:
+
+  ```
+  'disk-path' is a setting of the top-level 'cache' block, not of a 'route'
+  block's 'cache' block, so it is ignored here.
+  ```
+
+- **Unknown-setting checking now covers eleven more blocks:** `listener`, both `cache` blocks, `sni`, `sni-certs`, `acme`, `eab`, `upstream`, an upstream's `tls`, and `target`. See [Cache](../../configuration/cache/) and [Upstreams](../../configuration/upstreams/).
+
+### Fixed
+- **`verify` in the inference-routing example did nothing.** Two upstream `tls` blocks in the shipped `inference-routing.kdl` example set `verify #true`. No parser reads it — upstream certificate verification is controlled by `insecure-skip-verify` and is on by default — so the example got the behaviour it intended by accident while stating it in a setting that has never existed. Found by the new checks on their first run against the shipped configurations.
 
 ---
 
