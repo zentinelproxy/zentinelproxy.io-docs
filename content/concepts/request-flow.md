@@ -527,8 +527,8 @@ routes {
     route "api" {
         retry-policy {
             max-attempts 3
-            retry-on "connection_error" "5xx"
-            backoff-ms 100
+            retryable-status-codes 502 503 504
+            backoff "100ms"
         }
     }
 }

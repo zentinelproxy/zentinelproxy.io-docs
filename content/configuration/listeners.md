@@ -662,6 +662,13 @@ sni {
     acme {
         email "ops@example.com"
         domains "tenant-a.com" "*.tenant-a.com"
+
+        // Required: a wildcard domain cannot be validated over HTTP-01.
+        challenge-type "dns-01"
+        dns-provider {
+            type "cloudflare"
+            credentials-file "/etc/zentinel/secrets/cloudflare-token.txt"
+        }
     }
 }
 ```

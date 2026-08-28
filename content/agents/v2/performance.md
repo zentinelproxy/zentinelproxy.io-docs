@@ -228,14 +228,17 @@ let config = AgentPoolConfig {
 
 ### Body Inspection (WAF)
 
-Enable binary transport for body-heavy workloads:
+For body-heavy workloads, build the agent with the `binary-uds` feature (see
+[Transports](../transports/)) and point the proxy at its socket. Binary framing is a
+compile-time choice in the agent, not a proxy setting — the configuration below only
+names the transport and bounds how much body is forwarded:
 
 ```kdl
 agents {
     agent "waf" type="waf" {
-        binary-uds "/var/run/zentinel/waf.sock"
+        unix-socket "/var/run/zentinel/waf.sock"
         events "request_headers" "request_body"
-        buffer-size 65536
+        max-request-body-bytes 65536
     }
 }
 ```

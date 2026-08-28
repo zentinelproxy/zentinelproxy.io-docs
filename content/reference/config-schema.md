@@ -415,19 +415,17 @@ agents {
     agent "id" {
         type "auth"                        // auth, rate_limit, waf, custom
 
-        transport "unix_socket" {
-            path "/var/run/agent.sock"
-        }
-        // Or: transport "grpc" { address "127.0.0.1:50051" }
+        unix-socket "/var/run/agent.sock"
+        // Or: grpc "http://127.0.0.1:50051"
 
         timeout-ms 100
         failure-mode "closed"              // closed, open
         max-body-bytes 1048576
-        events "on_request_headers" "on_response_headers"
+        events "request_headers" "response_headers"
 
         circuit-breaker {
             failure-threshold 5
-            recovery-timeout-secs 30
+            timeout-seconds 30
         }
     }
 }

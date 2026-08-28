@@ -168,9 +168,7 @@ routes {
 agents {
     agent "waf" {
         type "waf"
-        transport "unix_socket" {
-            path "/var/run/zentinel/waf.sock"
-        }
+        unix-socket "/var/run/zentinel/waf.sock"
         events "request_headers" "request_body"
         timeout-ms 200
         failure-mode "closed"
