@@ -66,9 +66,11 @@ listeners {
             min-version "1.2"
 
             // Strong cipher suites only
-            ciphers "TLS_AES_256_GCM_SHA384" "TLS_AES_128_GCM_SHA256" "TLS_CHACHA20_POLY1305_SHA256" "ECDHE-ECDSA-AES256-GCM-SHA384" "ECDHE-RSA-AES256-GCM-SHA384"
-
-            // OCSP stapling
+            cipher-suite "TLS_AES_256_GCM_SHA384"
+            cipher-suite "TLS_AES_128_GCM_SHA256"
+            cipher-suite "TLS_CHACHA20_POLY1305_SHA256"
+            cipher-suite "ECDHE-ECDSA-AES256-GCM-SHA384"
+            cipher-suite "ECDHE-RSA-AES256-GCM-SHA384"// OCSP stapling
             ocsp-stapling #true
         }
     }
