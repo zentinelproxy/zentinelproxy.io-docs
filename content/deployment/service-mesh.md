@@ -104,13 +104,6 @@ routes {
         upstream "backend"
     }
 }
-
-upstreams {
-    upstream "backend" {
-        target "127.0.0.1:3000"
-    }
-}
-
 ```
 
 | Option | Default | Description |
@@ -132,16 +125,16 @@ system {
 }
 
 listeners {
-    listener "http" {
-            tls {
-                // Use Consul-provisioned certificates
-                cert-file "/etc/consul/certs/client.crt"
-                key-file "/etc/consul/certs/client.key"
-                ca-file "/etc/consul/certs/ca.crt"
-                client-auth #true
-            }
-        address "0.0.0.0:8080"
-        protocol "http"
+    listener "https" {
+        address "0.0.0.0:8443"
+        protocol "https"
+        tls {
+            // Use Consul-provisioned certificates
+            cert-file "/etc/consul/certs/client.crt"
+            key-file "/etc/consul/certs/client.key"
+            ca-file "/etc/consul/certs/ca.crt"
+            client-auth #true
+        }
     }
 }
 
@@ -152,23 +145,15 @@ upstreams {
             service "backend"
             only-passing #true
         }
-
     }
 }
 
 routes {
     route "default" {
         matches { path-prefix "/" }
-        upstream "backend"
+        upstream "secure-backend"
     }
 }
-
-upstreams {
-    upstream "backend" {
-        target "127.0.0.1:3000"
-    }
-}
-
 ```
 
 ### Kubernetes Endpoint Discovery

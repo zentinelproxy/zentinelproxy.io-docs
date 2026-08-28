@@ -1005,6 +1005,45 @@ upstreams {
 
 Instead of static targets, upstreams can discover backends dynamically from external sources.
 
+### How discovery behaves
+
+The same lifecycle applies to every discovery backend:
+
+- **Resolved before serving.** The source is queried once while the proxy
+  starts, so an upstream is populated before it takes its first request.
+- **Refreshed in the background.** Each source is re-queried on its own
+  `refresh-interval` (`watch-interval` for `file`). When the set of backends
+  changes, the upstream is rebuilt and swapped in atomically; in-flight requests
+  finish against the pool they started on.
+- **Circuit breaker state survives a refresh.** A backend that is still present
+  after a refresh keeps its circuit breaker, so a failing backend stays ejected
+  instead of being treated as healthy again on every interval. Backends that
+  disappear have their breaker discarded.
+- **Static targets are kept.** A `target` listed alongside a `discovery` block
+  is always part of the pool. Discovered backends are added to it, which lets
+  you pin a fixed backend next to a discovered set.
+- **Failure keeps the last known good set.** If the source cannot be reached,
+  the upstream keeps serving the backends it already has and retries on the next
+  interval. If it cannot be reached during startup, the upstream begins with
+  only its static targets (if any) rather than preventing the proxy from
+  starting.
+- **An empty result is honoured.** A source that answers with no backends leaves
+  the upstream with none, and requests to it fail until backends reappear. This
+  is logged at `WARN`.
+
+Two metrics are exported per discovery-backed upstream:
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `zentinel_upstream_discovery_refreshes_total` | counter | Refreshes that changed the target set |
+| `zentinel_upstream_discovery_targets` | gauge | Targets currently resolved |
+
+{% callout(type="note") %}
+Settings are validated against the discovery type you name. Putting a `hostname`
+inside a `discovery "consul"` block is a configuration error rather than a
+silently ignored key.
+{% end %}
+
 ### DNS Discovery
 
 ```kdl
@@ -1198,6 +1237,51 @@ One backend per line with optional weight parameter:
 - Lines starting with `#` are comments
 - Empty lines are ignored
 - Format: `host:port` or `host:port weight=N`
+
+### Static Discovery
+
+A fixed list of backends, written as a discovery source rather than as `target`
+nodes. Useful when a configuration is generated from a template that switches
+between discovery backends, so the shape of the upstream does not change with
+it.
+
+```kdl
+upstream "api" {
+    discovery "static" {
+        backends "10.0.1.1:8080" "10.0.1.2:8080"
+    }
+}
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `backends` | Required | One or more `host:port` addresses |
+
+A static list cannot change, so it is resolved once and never refreshed.
+
+### DNS SRV Discovery
+
+```kdl
+upstream "api" {
+    discovery "dns-srv" {
+        service "_http._tcp.api.internal.example.com"
+        refresh-interval 30
+    }
+}
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `service` | Required | SRV record name |
+| `refresh-interval` | `30` | Seconds between lookups |
+
+{% callout(type="warning") %}
+SRV records are not yet resolved directly. The service name is reduced to its
+hostname (`_http._tcp.api.example.com` becomes `api.example.com`), which is then
+resolved as an A/AAAA record on port 80, and a warning is logged at startup. The
+port and weight carried by the SRV record are ignored. Prefer `dns` discovery
+with an explicit port until this is implemented.
+{% end %}
 - Hostnames are resolved via DNS
 - Default weight is `1` if not specified
 
