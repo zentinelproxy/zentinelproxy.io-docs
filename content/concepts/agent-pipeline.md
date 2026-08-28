@@ -506,8 +506,8 @@ listeners {
     listener "https" {
         address "0.0.0.0:443"
         tls {
-            cert-path "/etc/zentinel/certs/api.crt"
-            key-path "/etc/zentinel/certs/api.key"
+            cert-file "/etc/zentinel/certs/api.crt"
+            key-file "/etc/zentinel/certs/api.key"
         }
     }
 }
