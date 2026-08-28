@@ -49,11 +49,13 @@ Zentinel supports multiple discovery backends that integrate with service mesh c
 Works with any service mesh that provides DNS-based service discovery (all major meshes do).
 
 ```kdl
-upstream "api-service" {
-    discovery "dns" {
-        hostname "api.default.svc.cluster.local"
-        port 8080
-        refresh-interval 30
+upstreams {
+    upstream "api-service" {
+        discovery "dns" {
+            hostname "api.default.svc.cluster.local"
+            port 8080
+            refresh-interval 30
+        }
     }
 }
 ```
@@ -83,14 +85,16 @@ listeners {
     }
 }
 
-upstream "backend" {
-    discovery "consul" {
-        address "http://consul.service.consul:8500"
-        service "backend-api"
-        datacenter "dc1"
-        only-passing #true
-        tag "production"
-        refresh-interval 10
+upstreams {
+    upstream "backend" {
+        discovery "consul" {
+            address "http://consul.service.consul:8500"
+            service "backend-api"
+            datacenter "dc1"
+            only-passing #true
+            tag "production"
+            refresh-interval 10
+        }
     }
 }
 
@@ -131,22 +135,25 @@ listeners {
     listener "http" {
             tls {
                 // Use Consul-provisioned certificates
-                client-cert "/etc/consul/certs/client.crt"
-                client-key "/etc/consul/certs/client.key"
-                ca-cert "/etc/consul/certs/ca.crt"
+                cert-file "/etc/consul/certs/client.crt"
+                key-file "/etc/consul/certs/client.key"
+                ca-file "/etc/consul/certs/ca.crt"
+                client-auth #true
             }
         address "0.0.0.0:8080"
         protocol "http"
     }
 }
 
-upstream "secure-backend" {
-    discovery "consul" {
-        address "http://consul:8500"
-        service "backend"
-        only-passing #true
-    }
+upstreams {
+    upstream "secure-backend" {
+        discovery "consul" {
+            address "http://consul:8500"
+            service "backend"
+            only-passing #true
+        }
 
+    }
 }
 
 routes {
@@ -169,12 +176,14 @@ upstreams {
 Direct integration with Kubernetes Endpoints API for real-time pod discovery.
 
 ```kdl
-upstream "k8s-backend" {
-    discovery "kubernetes" {
-        namespace "production"
-        service "api-server"
-        port-name "http"
-        refresh-interval 10
+upstreams {
+    upstream "k8s-backend" {
+        discovery "kubernetes" {
+            namespace "production"
+            service "api-server"
+            port-name "http"
+            refresh-interval 10
+        }
     }
 }
 ```
@@ -184,11 +193,13 @@ upstream "k8s-backend" {
 **In-cluster (recommended for K8s deployments):**
 
 ```kdl
-upstream "backend" {
-    discovery "kubernetes" {
-        namespace "default"
-        service "my-service"
-        // Uses service account token automatically
+upstreams {
+    upstream "backend" {
+        discovery "kubernetes" {
+            namespace "default"
+            service "my-service"
+            // Uses service account token automatically
+        }
     }
 }
 ```
@@ -196,11 +207,13 @@ upstream "backend" {
 **Kubeconfig file (for external access):**
 
 ```kdl
-upstream "backend" {
-    discovery "kubernetes" {
-        namespace "production"
-        service "api"
-        kubeconfig "~/.kube/config"
+upstreams {
+    upstream "backend" {
+        discovery "kubernetes" {
+            namespace "production"
+            service "api"
+            kubeconfig "~/.kube/config"
+        }
     }
 }
 ```
@@ -241,13 +254,15 @@ spec:
 Configure Zentinel to discover Istio services:
 
 ```kdl
-upstream "frontend" {
-    discovery "kubernetes" {
-        namespace "default"
-        service "frontend"
-        port-name "http"
+upstreams {
+    upstream "frontend" {
+        discovery "kubernetes" {
+            namespace "default"
+            service "frontend"
+            port-name "http"
+        }
+        // Connect directly to pods, bypassing Istio sidecar
     }
-    // Connect directly to pods, bypassing Istio sidecar
 }
 ```
 
@@ -274,9 +289,11 @@ spec:
 In this mode, Zentinel routes to `localhost` and Istio handles service discovery:
 
 ```kdl
-upstream "backend" {
-    target "127.0.0.1:15001"  // Istio outbound
-    // Istio sidecar handles discovery and mTLS
+upstreams {
+    upstream "backend" {
+        target "127.0.0.1:15001"  // Istio outbound
+        // Istio sidecar handles discovery and mTLS
+    }
 }
 ```
 
@@ -303,13 +320,15 @@ spec:
 Zentinel discovers services normally; Linkerd handles mTLS:
 
 ```kdl
-upstream "api" {
-    discovery "kubernetes" {
-        namespace "default"
-        service "api"
-        port-name "http"
+upstreams {
+    upstream "api" {
+        discovery "kubernetes" {
+            namespace "default"
+            service "api"
+            port-name "http"
+        }
+        // Linkerd proxy handles connection security
     }
-    // Linkerd proxy handles connection security
 }
 ```
 
@@ -326,12 +345,14 @@ metadata:
 Use Kubernetes discovery to find meshed services:
 
 ```kdl
-upstream "meshed-service" {
-    discovery "kubernetes" {
-        namespace "production"
-        service "api"
+upstreams {
+    upstream "meshed-service" {
+        discovery "kubernetes" {
+            namespace "production"
+            service "api"
+        }
+        // Direct connection to pod IPs
     }
-    // Direct connection to pod IPs
 }
 ```
 
@@ -340,16 +361,18 @@ upstream "meshed-service" {
 For direct mTLS (without mesh sidecar), configure upstream TLS:
 
 ```kdl
-upstream "secure-backend" {
-    discovery "kubernetes" {
-        namespace "production"
-        service "secure-api"
-    }
-    tls {
-        sni "secure-api.production.svc.cluster.local"
-        client-cert "/etc/zentinel/certs/client.crt"
-        client-key "/etc/zentinel/certs/client.key"
-        ca-cert "/etc/zentinel/certs/ca.crt"
+upstreams {
+    upstream "secure-backend" {
+        discovery "kubernetes" {
+            namespace "production"
+            service "secure-api"
+        }
+        tls {
+            sni "secure-api.production.svc.cluster.local"
+            client-cert "/etc/zentinel/certs/client.crt"
+            client-key "/etc/zentinel/certs/client.key"
+            ca-cert "/etc/zentinel/certs/ca.crt"
+        }
     }
 }
 ```
@@ -399,18 +422,20 @@ spec:
 Configure health checks that work with mesh health reporting:
 
 ```kdl
-upstream "backend" {
-    discovery "kubernetes" {
-        namespace "default"
-        service "api"
-    }
-    health-check {
-        type "http" {
-            path "/health"
-            expected-status 200
+upstreams {
+    upstream "backend" {
+        discovery "kubernetes" {
+            namespace "default"
+            service "api"
         }
-        interval-secs 10
-        unhealthy-threshold 3
+        health-check {
+            type "http" {
+                path "/health"
+                expected-status 200
+            }
+            interval-secs 10
+            unhealthy-threshold 3
+        }
     }
 }
 ```
@@ -422,12 +447,14 @@ Zentinel health checks run independently of mesh health checks, providing defens
 Zentinel performs client-side load balancing across discovered endpoints:
 
 ```kdl
-upstream "api" {
-    discovery "kubernetes" {
-        namespace "default"
-        service "api"
+upstreams {
+    upstream "api" {
+        discovery "kubernetes" {
+            namespace "default"
+            service "api"
+        }
+        load-balancing "least_connections"
     }
-    load-balancing "least_connections"
 }
 ```
 

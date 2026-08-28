@@ -177,15 +177,12 @@ matches {
 | `example.com` | No |
 | `deep.sub.example.com` | No (single level only) |
 
-#### Host Regex
+#### Host patterns beyond wildcards
 
-For complex host patterns:
-
-```kdl
-matches {
-    host-regex "^(api|www)\\.example\\.(com|io)$"
-}
-```
+`host` accepts an exact name or a single-level wildcard, and nothing else — there
+is no host regular-expression condition. To match a set of hosts, give the route
+several `host` conditions, or match on `path-regex` where the distinction is in
+the path.
 
 ### Method Matching
 

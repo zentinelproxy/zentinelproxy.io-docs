@@ -16,8 +16,8 @@ listeners {
         address "0.0.0.0:443"
         protocol "https"
         tls {
-            cert "/etc/zentinel/certs/server.crt"
-            key "/etc/zentinel/certs/server.key"
+            cert-file "/etc/zentinel/certs/server.crt"
+            key-file "/etc/zentinel/certs/server.key"
         }
     }
 }
@@ -439,8 +439,8 @@ listeners {
         address "0.0.0.0:443"
         protocol "https"
         tls {
-            cert "/etc/zentinel/certs/wildcard.crt"
-            key "/etc/zentinel/certs/wildcard.key"
+            cert-file "/etc/zentinel/certs/wildcard.crt"
+            key-file "/etc/zentinel/certs/wildcard.key"
         }
     }
 }
