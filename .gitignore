@@ -20,3 +20,7 @@ validation_errors.txt
 !llms.txt
 !static/robots.txt
 !static/llms.txt
+
+# Python bytecode from the analysis scripts in this directory
+__pycache__/
+*.pyc
