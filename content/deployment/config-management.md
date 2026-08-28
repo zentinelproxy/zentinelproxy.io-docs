@@ -127,6 +127,8 @@ system {
 
 listeners {
     listener "https" {
+        address "0.0.0.0:443"
+        protocol "https"
         tls {
             cert-file "/run/secrets/tls.crt"
             key-file "/run/secrets/tls.key"

@@ -244,14 +244,25 @@ agent "metrics" type="custom" {
 ### 2. Set Appropriate Timeouts
 
 ```kdl
-// Auth should be fast
-agent "auth" { timeout-ms 50 }
+agents {
+    // Auth should be fast
+    agent "auth" type="auth" {
+        unix-socket "/var/run/zentinel/auth.sock"
+        timeout-ms 50
+    }
 
-// WAF inspecting bodies needs more time
-agent "waf" { timeout-ms 200 }
+    // WAF inspecting bodies needs more time
+    agent "waf" type="waf" {
+        unix-socket "/var/run/zentinel/waf.sock"
+        timeout-ms 200
+    }
 
-// External services need buffer
-agent "external" { timeout-ms 500 }
+    // External services need buffer
+    agent "external" {
+        grpc "http://external.internal:50051"
+        timeout-ms 500
+    }
+}
 ```
 
 ### 3. Use Circuit Breakers

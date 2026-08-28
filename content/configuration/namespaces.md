@@ -322,7 +322,7 @@ namespace "critical" {
             circuit-breaker {
                 failure-threshold 3
                 success-threshold 2
-                timeout-secs 30
+                timeout-seconds 30
             }
         }
     }
@@ -333,7 +333,7 @@ namespace "best-effort" {
         upstream "backend" {
             circuit-breaker {
                 failure-threshold 10  // More tolerant
-                timeout-secs 10
+                timeout-seconds 10
             }
         }
     }

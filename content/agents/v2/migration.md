@@ -238,7 +238,7 @@ agents {
         // New v2 options
         circuit-breaker {
             failure-threshold 5
-            reset-timeout-seconds 30
+            timeout-seconds 30
         }
     }
 }

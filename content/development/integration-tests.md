@@ -258,10 +258,8 @@ async fn test_waf_blocks_sql_injection() {
     let config = format!(r#"
         agents {{
             agent "waf" {{
-                transport "unix_socket" {{
-                    path "{}"
-                }}
-                events ["request_headers"]
+                unix-socket "{}"
+                events "request_headers"
             }}
         }}
         routes {{

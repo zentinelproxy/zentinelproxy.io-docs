@@ -265,14 +265,16 @@ Each agent filter configures its own failure behavior independently:
 ```kdl
 filters {
     filter "auth" {
+        type "agent"
         agent "auth-agent"
-        fail-mode "fail-closed"     // Auth failure = block
+        failure-mode "closed"     // Auth failure = block
         timeout-ms 5000
     }
 
     filter "analytics" {
+        type "agent"
         agent "analytics-agent"
-        fail-mode "fail-open"       // Analytics failure = continue
+        failure-mode "open"       // Analytics failure = continue
         timeout-ms 2000
     }
 }
@@ -366,14 +368,16 @@ route "api" {
         }
 
         filter "auth" {
+            type "agent"
             agent "auth-agent"
-            fail-mode "fail-closed"
+            failure-mode "closed"
             timeout-ms 5000
         }
 
         filter "waf" {
+            type "agent"
             agent "waf-agent"
-            fail-mode "fail-closed"
+            failure-mode "closed"
             timeout-ms 3000
         }
     }
@@ -396,20 +400,23 @@ route "partner-api" {
 
     filters {
         filter "auth" {
+            type "agent"
             agent "auth-agent"
-            fail-mode "fail-closed"
+            failure-mode "closed"
             timeout-ms 5000
         }
 
         filter "transform" {
+            type "agent"
             agent "transform-agent"
-            fail-mode "fail-closed"
+            failure-mode "closed"
             timeout-ms 2000
         }
 
         filter "audit" {
+            type "agent"
             agent "audit-logger-agent"
-            fail-mode "fail-open"
+            failure-mode "open"
             timeout-ms 1000
         }
     }
@@ -429,14 +436,16 @@ route "all-traffic" {
 
     filters {
         filter "access-log" {
+            type "agent"
             agent "audit-logger-agent"
-            fail-mode "fail-open"
+            failure-mode "open"
             timeout-ms 1000
         }
 
         filter "analytics" {
+            type "agent"
             agent "analytics-agent"
-            fail-mode "fail-open"
+            failure-mode "open"
             timeout-ms 500
         }
     }
@@ -465,26 +474,30 @@ route "admin" {
         }
 
         filter "ip-reputation" {
+            type "agent"
             agent "ip-reputation-agent"
-            fail-mode "fail-closed"
+            failure-mode "closed"
             timeout-ms 3000
         }
 
         filter "auth" {
+            type "agent"
             agent "auth-agent"
-            fail-mode "fail-closed"
+            failure-mode "closed"
             timeout-ms 5000
         }
 
         filter "waf" {
+            type "agent"
             agent "waf-agent"
-            fail-mode "fail-closed"
+            failure-mode "closed"
             timeout-ms 3000
         }
 
         filter "content-scanner" {
+            type "agent"
             agent "content-scanner-agent"
-            fail-mode "fail-closed"
+            failure-mode "closed"
             timeout-ms 5000
         }
     }
@@ -551,15 +564,17 @@ routes {
             }
 
             filter "auth" {
+                type "agent"
                 agent "auth-agent"
-                fail-mode "fail-closed"
+                failure-mode "closed"
                 timeout-ms 5000
                 max-concurrent 100
             }
 
             filter "waf" {
+                type "agent"
                 agent "waf-agent"
-                fail-mode "fail-closed"
+                failure-mode "closed"
                 timeout-ms 3000
                 max-concurrent 50
             }
@@ -573,8 +588,9 @@ routes {
             }
 
             filter "audit" {
+                type "agent"
                 agent "audit-agent"
-                fail-mode "fail-open"
+                failure-mode "open"
                 timeout-ms 1000
                 max-concurrent 200
             }

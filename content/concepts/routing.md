@@ -475,8 +475,11 @@ routes {
 Or specify a default route explicitly:
 
 ```kdl
-routing {
-    default-route "fallback"
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        default-route "fallback"
+    }
 }
 
 routes {
