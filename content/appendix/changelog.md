@@ -15,6 +15,7 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 
 | CalVer | Crate Version | Date | Highlights |
 |--------|---------------|------|------------|
+| [26.08_10](#26-08-10) | 0.6.33 | 2026-08-28 | `tracing { enabled #false }` now actually disables tracing, having previously been read by nothing; the access log's `include-trace-id` is honoured |
 | [26.08_9](#26-08-9) | 0.6.32 | 2026-08-28 | Configuration checking now covers the observability blocks; three settings the documentation describes and no parser reads are removed from the shipped configs |
 | [26.08_8](#26-08-8) | 0.6.31 | 2026-08-28 | Configuration checking reaches the remaining blocks and the browser playground, which was running a different set of checks entirely; an agent's `type` is read as a child node as well as a property |
 | [26.08_7](#26-08-7) | 0.6.30 | 2026-08-27 | `zentinel lint` reports settings that parse but are read by nothing: run-together lines, and keys written into the wrong one of two same-named blocks |
@@ -58,6 +59,21 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 | [26.01_3](#26-01-3) | 0.2.3 | 2026-01-05 | Bug fixes |
 | [26.01_0](#26-01-0) | 0.2.0 | 2026-01-01 | First CalVer release |
 | [25.12](#25-12) | 0.1.x | 2025-12 | Initial public releases |
+
+---
+
+## 26.08_10
+
+**Date:** 2026-08-28
+**Crate version:** 0.6.33
+
+> **Read this one if you configure tracing.** Unlike the preceding releases, this is not configuration-checking only. If any of your configurations set `tracing { enabled #false }`, tracing has been running regardless, and **stops** after this upgrade. That is the setting doing what it says, but spans will cease reaching your collector — check anything downstream that expects them before upgrading.
+
+### Fixed
+- **`tracing { enabled }` is read.** Tracing was switched on by the *presence* of the `tracing` block; `enabled` was read by nothing, so a configuration asking for it to be off got it anyway, with no indication. The setting defaults to `true`, so a `tracing` block without it behaves exactly as before, and a disabled tracer is now logged rather than silently skipped. See [Observability](../../configuration/observability/).
+- **`access-log { include-trace-id }` is read.** The access log writer already consults a trace-id field flag, and the field list has no configuration syntax of its own, so this setting was the only way to reach it — and nothing read it, leaving the choice permanently at its default.
+
+  `logging { timestamps }` is still read by nothing and is reported by `zentinel lint`. Honouring it would mean starting the log subscriber after the configuration is read, and it currently starts first so that configuration discovery is logged at all; that trade-off is still being decided.
 
 ---
 
