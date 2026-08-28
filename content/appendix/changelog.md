@@ -15,6 +15,7 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 
 | CalVer | Crate Version | Date | Highlights |
 |--------|---------------|------|------------|
+| [26.08_9](#26-08-9) | 0.6.32 | 2026-08-28 | Configuration checking now covers the observability blocks; three settings the documentation describes and no parser reads are removed from the shipped configs |
 | [26.08_8](#26-08-8) | 0.6.31 | 2026-08-28 | Configuration checking reaches the remaining blocks and the browser playground, which was running a different set of checks entirely; an agent's `type` is read as a child node as well as a property |
 | [26.08_7](#26-08-7) | 0.6.30 | 2026-08-27 | `zentinel lint` reports settings that parse but are read by nothing: run-together lines, and keys written into the wrong one of two same-named blocks |
 | [26.08_6](#26-08-6) | 0.6.29 | 2026-08-27 | Listener `namespace` isolation and per-listener timeouts now work on wildcard binds — both were silently ignored on `0.0.0.0` listeners; certificate reloads report what changed instead of only counts |
@@ -57,6 +58,25 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 | [26.01_3](#26-01-3) | 0.2.3 | 2026-01-05 | Bug fixes |
 | [26.01_0](#26-01-0) | 0.2.0 | 2026-01-01 | First CalVer release |
 | [25.12](#25-12) | 0.1.x | 2025-12 | Initial public releases |
+
+---
+
+## 26.08_9
+
+**Date:** 2026-08-28
+**Crate version:** 0.6.32
+
+> Configuration checking only — nothing about how the proxy handles traffic changes. As before: a setting that starts being reported was already being ignored, and nothing that loaded before will fail to load.
+
+### Added
+- **Observability blocks are checked**: `observability`, `logging`, `access-log`, `error-log`, `audit-log`, `metrics`, `tracing`, and a tracing `backend`. The access log takes `format` where the error log takes `level` — two blocks that look alike and accept different settings — so each is checked against its own list. Forty-three configuration blocks are now covered in total. See [Observability](../../configuration/observability/).
+
+### Fixed
+- **Three settings that no parser reads are removed from the shipped configurations.** `timestamps` in `logging`, `include-trace-id` in `access-log`, and `enabled` in `tracing` appeared across seven files, the default `zentinel.kdl` included. Every occurrence was `#true`, so nothing changes behaviourally — they were already doing nothing.
+
+  > **If you configure tracing, read this one.** Tracing is switched on by the **presence** of the `tracing` block, not by an `enabled` setting. A configuration reading `tracing { enabled #false }` gets tracing regardless. `zentinel lint` now reports that setting instead of passing over it.
+
+  All three are also described in this documentation. Whether they should be implemented or the documentation corrected is being decided separately.
 
 ---
 
