@@ -31,7 +31,7 @@ jobs:
       - name: Compare deployed payload against the latest zentinel release
         id: check
         run: |
-          deployed=$(cat themes/tanuki/static/wasm/PAYLOAD_VERSION | tr -d '[:space:]')
+          deployed=$(cat static/wasm/PAYLOAD_VERSION | tr -d '[:space:]')
           latest=$(curl -sf -H 'User-Agent: zentinelproxy-io-docs-staleness' \
             https://crates.io/api/v1/crates/zentinel-proxy \
             | python3 -c 'import sys,json; print(json.load(sys.stdin)["crate"]["max_version"])')
@@ -66,12 +66,13 @@ jobs:
             "" \
             '```bash' \
             "wasm-pack build --target web crates/playground-wasm" \
-            "cp crates/playground-wasm/pkg/zentinel_playground_wasm{.js,_bg.wasm} \\" \
-            "   ../zentinelproxy.io-docs/themes/tanuki/static/wasm/" \
-            "echo $LATEST > ../zentinelproxy.io/themes/tanuki/static/wasm/PAYLOAD_VERSION" \
+            "for site in ../zentinelproxy.io-docs ../zentinelproxy.io; do" \
+            "  cp crates/playground-wasm/pkg/zentinel_playground_wasm{.js,_bg.wasm} \$site/static/wasm/" \
+            "  echo $LATEST > \$site/static/wasm/PAYLOAD_VERSION" \
+            "done" \
             '```' \
             "" \
-            "The payload lives in the tanuki theme submodule, so it needs a commit there and a pin bump here. The main site carries its own copy needing the same refresh.")
+            "Both sites keep their own copy under \`static/wasm/\`, so this is one commit in each repository and no submodule pin to bump.")
           if [ -n "$existing" ]; then
             gh issue edit "$existing" --title "$title" --body "$body"
           else
