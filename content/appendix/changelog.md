@@ -15,6 +15,7 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 
 | CalVer | Crate Version | Date | Highlights |
 |--------|---------------|------|------------|
+| [26.08_13](#26-08-13) | 0.6.36 | 2026-08-29 | `dns-srv` discovery reads SRV records: the port and weight come from the record, where it previously resolved the bare domain on port 80 |
 | [26.08_12](#26-08-12) | 0.6.35 | 2026-08-29 | `Cache-Status` no longer erases what an upstream cache reported, so a Zentinel in front of another cache shows the whole path rather than only its own member |
 | [26.08_11](#26-08-11) | 0.6.34 | 2026-08-29 | Upstream `discovery` blocks now reach the proxy: targets are resolved from DNS, Consul, Kubernetes or a file before serving and refreshed in the background, where previously the block parsed into nothing and the upstream routed nowhere |
 | [26.08_10](#26-08-10) | 0.6.33 | 2026-08-28 | `tracing { enabled #false }` now actually disables tracing, having previously been read by nothing; the access log's `include-trace-id` is honoured |
@@ -61,6 +62,22 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 | [26.01_3](#26-01-3) | 0.2.3 | 2026-01-05 | Bug fixes |
 | [26.01_0](#26-01-0) | 0.2.0 | 2026-01-01 | First CalVer release |
 | [25.12](#25-12) | 0.1.x | 2025-12 | Initial public releases |
+
+---
+
+## 26.08_13
+
+**Date:** 2026-08-29
+**Crate version:** 0.6.36
+
+> **If any upstream of yours uses `discovery "dns-srv"`, the backends it selects will change after this upgrade.** It was resolving the wrong host on the wrong port; it now resolves what the SRV record actually names. Check that the targets it picks are the ones you expect before rolling this out widely.
+
+### Fixed
+- **`dns-srv` discovery reads SRV records.** It never did. The service name had its underscore labels stripped — `_http._tcp.api.example.com` became `api.example.com` — and that was resolved as A/AAAA on port 80, discarding the port and weight the record exists to carry. A warning was logged and the limitation documented, but any upstream configured this way pointed at the wrong host and port.
+
+  Resolution now follows [RFC 2782](https://www.rfc-editor.org/rfc/rfc2782): only the lowest-numbered priority receives traffic (higher numbers are standby targets, and mixing them in would put live traffic on backups); the record's weight becomes the backend weight, with `0` treated as `1` because it means "no preference" rather than "never select"; and a `.` target means the service is explicitly unavailable, yielding no backends rather than being resolved as a hostname.
+
+  Each SRV target is then resolved to its A/AAAA addresses, both families included. A target that fails to resolve is skipped with a warning rather than discarding the rest of the set. See [DNS SRV Discovery](../../configuration/upstreams/#dns-srv-discovery).
 
 ---
 
