@@ -1,7 +1,7 @@
 +++
 title = "Changelog"
 weight = 1
-updated = 2026-08-24
+updated = 2026-08-29
 +++
 
 All notable changes to Zentinel are documented here.
@@ -15,6 +15,7 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 
 | CalVer | Crate Version | Date | Highlights |
 |--------|---------------|------|------------|
+| [26.08_11](#26-08-11) | 0.6.34 | 2026-08-29 | Upstream `discovery` blocks now reach the proxy: targets are resolved from DNS, Consul, Kubernetes or a file before serving and refreshed in the background, where previously the block parsed into nothing and the upstream routed nowhere |
 | [26.08_10](#26-08-10) | 0.6.33 | 2026-08-28 | `tracing { enabled #false }` now actually disables tracing, having previously been read by nothing; the access log's `include-trace-id` is honoured |
 | [26.08_9](#26-08-9) | 0.6.32 | 2026-08-28 | Configuration checking now covers the observability blocks; three settings the documentation describes and no parser reads are removed from the shipped configs |
 | [26.08_8](#26-08-8) | 0.6.31 | 2026-08-28 | Configuration checking reaches the remaining blocks and the browser playground, which was running a different set of checks entirely; an agent's `type` is read as a child node as well as a property |
@@ -59,6 +60,30 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 | [26.01_3](#26-01-3) | 0.2.3 | 2026-01-05 | Bug fixes |
 | [26.01_0](#26-01-0) | 0.2.0 | 2026-01-01 | First CalVer release |
 | [25.12](#25-12) | 0.1.x | 2025-12 | Initial public releases |
+
+---
+
+## 26.08_11
+
+**Date:** 2026-08-29
+**Crate version:** 0.6.34
+
+> **Read this one if any upstream of yours has a `discovery` block.** It has been routing to nothing, and **starts routing to real backends** after this upgrade. That is the block finally doing what it says, but an upstream that reliably returned errors will begin forwarding traffic. If you added a static `target` alongside `discovery` to work around this, the upstream will now serve **both** the pinned target and the discovered set.
+
+### Added
+- **Upstream service discovery reaches the request path.** `discovery` blocks are documented throughout these pages and backed by working DNS, DNS SRV, Consul, Kubernetes, file and static implementations, but nothing connected the two: the configuration type had no `discovery` field, so the block parsed into nothing and the upstream was left with no targets. Targets are now resolved before the pool serves traffic and re-resolved on the interval the source declares. See [Upstreams › Service Discovery](../../configuration/upstreams/#service-discovery).
+
+  Discovered targets are *added* to statically configured ones, so a fixed backend can be pinned alongside a discovered set; an address appearing in both is listed once. Circuit breaker state and pool statistics survive a refresh, so a failing backend stays ejected rather than looking healthy again on every interval, and breakers for backends that disappear are dropped.
+
+  A source that cannot be reached leaves the upstream serving the targets it already has and retries on the next interval; one that fails during startup leaves it with only its static targets. Neither stops the proxy from starting, so an unreachable registry cannot take unrelated upstreams down with it. A source that answers with *no* backends is honoured and logged at `WARN`.
+
+  Two metrics are exported: `zentinel_upstream_discovery_refreshes_total` and `zentinel_upstream_discovery_targets`.
+
+- **`static` and `dns-srv` discovery are documented.** Both were implemented and undocumented. `dns-srv` still reduces the service name to a hostname and resolves it as A/AAAA on port 80 rather than reading SRV records, ignoring the port and weight the record carries; it is documented with that limitation rather than presented as working.
+
+### Fixed
+- **Sticky-session affinity survives a pool rebuild.** The key signing affinity cookies is generated randomly per load balancer, so rebuilding one rotated it and invalidated every cookie already issued. Configuration reload did this once; with discovery refresh it would have happened every time a backend appeared or disappeared, resetting all sessions on a churning backend set.
+- **Discovery settings are checked against the backend they name.** A `hostname` inside a `discovery "consul"` block, an unknown discovery type, a missing required setting, or a zero refresh interval are now errors rather than keys that parse and are ignored.
 
 ---
 
