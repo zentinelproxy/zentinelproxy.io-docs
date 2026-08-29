@@ -324,6 +324,27 @@ cache {
 
 Produces: `Cache-Status: my-cdn; hit; detail=memory`
 
+### Multiple Caches on the Path
+
+`Cache-Status` is a List: every cache that handles a request adds its own member
+and preserves the ones already there, so one response shows the whole path. The
+**first** member is the cache closest to the origin, the last is the one closest
+to the client.
+
+```
+Cache-Status: origin-shield; hit, edge; fwd=miss
+```
+
+Read right to left in request order: the edge missed and forwarded, the shield
+had it. Give each node a distinct `status-header-name` or the members are
+indistinguishable — see [Tiered Caching](#tiered-caching-origin-shield).
+
+{% callout(type="note") %}
+Older releases replaced the field instead of adding to it, so a Zentinel placed
+in front of another cache erased what that cache had reported. If you see only
+one member in a tiered deployment, check your version.
+{% end %}
+
 ### Status Values
 
 | Value | Meaning |
@@ -336,6 +357,127 @@ Produces: `Cache-Status: my-cdn; hit; detail=memory`
 | `fwd=bypass` | Caching bypassed |
 | `fwd=bypass; detail=method` | Bypassed due to non-cacheable method |
 | `fwd=bypass; detail=disabled` | Bypassed because caching is disabled |
+
+## Tiered Caching (Origin Shield)
+
+The backends above describe storage *inside one node*. `hybrid` is two tiers of
+storage on a single machine — it is not the same thing as putting one Zentinel
+in front of another.
+
+A tiered deployment puts a shared cache between your edge nodes and the origin:
+
+```
+client → edge cache → origin shield → origin
+```
+
+This needs no special configuration. A shield is a Zentinel whose upstream is
+the origin; an edge is a Zentinel whose upstream is the shield. Both simply have
+caching enabled.
+
+### Why add a shield
+
+The shield collapses requests. Zentinel takes a cache lock per key, so
+concurrent misses for the same object become **one** upstream fetch rather than
+one per request. With several edge nodes that turns `edges × concurrent misses`
+into a single origin request — the shield absorbs the herd instead of the origin.
+
+It also raises the hit rate: edges each hold their own slice of traffic, while
+the shield sees the union of all of them.
+
+### Shield node
+
+Nearest the origin. Larger cache, longer `lock-timeout` because it is the one
+absorbing concurrency:
+
+```kdl
+cache {
+    enabled #true
+    backend "disk"
+    disk-path "/var/cache/zentinel"
+    max-size 10737418240
+    lock-timeout 15
+    status-header #true
+    status-header-name "origin-shield"
+}
+
+upstreams {
+    upstream "origin" {
+        target "10.0.0.10:8080"
+    }
+}
+
+routes {
+    route "app" {
+        matches { path-prefix "/" }
+        upstream "origin"
+        cache {
+            enabled #true
+            default-ttl-secs 86400
+            stale-while-revalidate-secs 60
+            stale-if-error-secs 300
+        }
+    }
+}
+```
+
+### Edge node
+
+Nearest the client. Its upstream is the shield, not the origin:
+
+```kdl
+cache {
+    enabled #true
+    backend "disk"
+    disk-path "/var/cache/zentinel"
+    max-size 1073741824
+    status-header #true
+    status-header-name "edge"
+}
+
+upstreams {
+    upstream "shield" {
+        target "10.0.0.20:8080"
+    }
+}
+
+routes {
+    route "app" {
+        matches { path-prefix "/" }
+        upstream "shield"
+        cache {
+            enabled #true
+            default-ttl-secs 86400
+            stale-while-revalidate-secs 60
+            stale-if-error-secs 300
+        }
+    }
+}
+```
+
+### Name each tier
+
+{% callout(type="warning") %}
+Set `status-header-name` on every node. Two nodes both defaulting to `zentinel`
+produce `Cache-Status: zentinel; hit, zentinel; fwd=miss` — preserved, but with
+no way to tell which tier did what.
+{% end %}
+
+With distinct names a single response tells you where it came from:
+
+| Response | Meaning |
+|----------|---------|
+| `origin-shield; fwd=miss, edge; fwd=miss` | Cold at both tiers; the origin was hit |
+| `origin-shield; hit, edge; fwd=miss` | Edge cold, shield warm — the origin was spared |
+| `edge; hit` | Served at the edge; the shield was never consulted |
+
+The third case has only one member because the request never reached the shield.
+
+### What a shield does not do
+
+It is still a cache: entries are bounded by `max-size` and evicted under
+pressure. If you need files that outlive the proxy and are served or copied by
+something else, that is a mirror rather than a cache, and it belongs outside the
+dataplane — see [external agents](https://github.com/zentinelproxy/zentinel/blob/main/doc/design/why-external-agents.md).
 
 ## Complete Examples
 
