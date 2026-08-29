@@ -15,6 +15,7 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 
 | CalVer | Crate Version | Date | Highlights |
 |--------|---------------|------|------------|
+| [26.08_12](#26-08-12) | 0.6.35 | 2026-08-29 | `Cache-Status` no longer erases what an upstream cache reported, so a Zentinel in front of another cache shows the whole path rather than only its own member |
 | [26.08_11](#26-08-11) | 0.6.34 | 2026-08-29 | Upstream `discovery` blocks now reach the proxy: targets are resolved from DNS, Consul, Kubernetes or a file before serving and refreshed in the background, where previously the block parsed into nothing and the upstream routed nowhere |
 | [26.08_10](#26-08-10) | 0.6.33 | 2026-08-28 | `tracing { enabled #false }` now actually disables tracing, having previously been read by nothing; the access log's `include-trace-id` is honoured |
 | [26.08_9](#26-08-9) | 0.6.32 | 2026-08-28 | Configuration checking now covers the observability blocks; three settings the documentation describes and no parser reads are removed from the shipped configs |
@@ -60,6 +61,26 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 | [26.01_3](#26-01-3) | 0.2.3 | 2026-01-05 | Bug fixes |
 | [26.01_0](#26-01-0) | 0.2.0 | 2026-01-01 | First CalVer release |
 | [25.12](#25-12) | 0.1.x | 2025-12 | Initial public releases |
+
+---
+
+## 26.08_12
+
+**Date:** 2026-08-29
+**Crate version:** 0.6.35
+
+### Fixed
+- **`Cache-Status` preserves an upstream cache's member.** The header was written in a way that replaced every existing value under that name. [RFC 9211](https://www.rfc-editor.org/rfc/rfc9211) makes `Cache-Status` a List carrying one member per cache on the path, ordered origin-closest first, and says a cache "SHOULD preserve the existing field value, to allow debugging of the entire chain of caches handling the request".
+
+  A Zentinel placed in front of another cache therefore erased whatever that cache reported. A response that should read
+
+  ```
+  Cache-Status: origin-shield; hit, edge; fwd=miss
+  ```
+
+  arrived carrying `edge; fwd=miss` alone, with no way to tell whether the tier behind it hit or missed. This affected any deployment with a cache upstream of Zentinel, not only Zentinel-in-front-of-Zentinel.
+
+  If you run tiers, give each one its own `status-header-name` — two nodes both defaulting to `zentinel` produce members that are preserved but indistinguishable. See [Tiered Caching](../../configuration/cache/#tiered-caching-origin-shield).
 
 ---
 
