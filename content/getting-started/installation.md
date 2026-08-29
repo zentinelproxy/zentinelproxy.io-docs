@@ -97,15 +97,29 @@ Alternatively, download binaries manually from [GitHub Releases](https://github.
 Download the archive for your platform from the [latest release](https://github.com/zentinelproxy/zentinel/releases), extract, and install:
 
 ```bash
-# Example for Linux amd64 — replace version and platform as needed
-curl -LO https://github.com/zentinelproxy/zentinel/releases/download/26.02_4/zentinel-26.02_4-linux-amd64.tar.gz
-tar xzf zentinel-26.02_4-linux-amd64.tar.gz
+# Resolve the latest release, then download for your platform.
+# Replace linux-amd64 with linux-arm64, darwin-arm64 or darwin-amd64 as needed.
+VERSION=$(curl -fsSL https://api.github.com/repos/zentinelproxy/zentinel/releases/latest \
+  | grep '"tag_name"' | cut -d'"' -f4)
+PLATFORM=linux-amd64
+
+curl -LO "https://github.com/zentinelproxy/zentinel/releases/download/${VERSION}/zentinel-${VERSION}-${PLATFORM}.tar.gz"
+curl -LO "https://github.com/zentinelproxy/zentinel/releases/download/${VERSION}/zentinel-${VERSION}-${PLATFORM}.tar.gz.sha256"
+shasum -a 256 -c "zentinel-${VERSION}-${PLATFORM}.tar.gz.sha256"
+
+tar xzf "zentinel-${VERSION}-${PLATFORM}.tar.gz"
 sudo mv zentinel /usr/local/bin/
 ```
 
+{% callout(type="note") %}
+Releases before the project was renamed ship archives named `sentinel-*` rather
+than `zentinel-*`. The command above resolves the current release, so this only
+matters if you pin an old version by hand.
+{% end %}
+
 ## Build from Source
 
-Building from source requires Rust 1.85 or later.
+Building from source requires Rust 1.95 or later.
 
 ### Prerequisites
 
@@ -113,7 +127,7 @@ Building from source requires Rust 1.85 or later.
 # Install Rust via rustup
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
-# Ensure you have Rust 1.85+
+# Ensure you have Rust 1.95+
 rustup update stable
 ```
 

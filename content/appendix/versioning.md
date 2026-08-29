@@ -438,4 +438,4 @@ LTS is available through the [Enterprise Builds](https://zentinelproxy.io/suppor
 
 - [Release Process](/development/releases/) — How releases are made
 - [GitHub Releases](https://github.com/zentinelproxy/zentinel/releases) — Download binaries
-- [crates.io](https://crates.io/crates/zentinel) — Rust crate registry
+- [crates.io](https://crates.io/crates/zentinel-proxy) — Rust crate registry
