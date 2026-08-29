@@ -34,7 +34,8 @@ include_content = true
 
 [extra]
 mode = "docs"
-author = "raskell.io"
+# Structured form: the theme reads `author.name` (and optionally `author.avatar`).
+author = { name = "raskell.io" }
 keywords = "zentinel, reverse proxy, documentation, configuration, KDL, agents, Pingora, Rust, security"
 github = "https://github.com/zentinelproxy/zentinel"
 
