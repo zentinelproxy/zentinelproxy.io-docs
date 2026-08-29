@@ -311,7 +311,7 @@ upstreams {
         discovery "dns" {
             hostname "users.service.internal"
             port 3001
-            refresh-interval-secs 30
+            refresh-interval 30
         }
         load-balancing "round-robin"
     }
