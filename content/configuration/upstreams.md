@@ -1275,13 +1275,23 @@ upstream "api" {
 | `service` | Required | SRV record name |
 | `refresh-interval` | `30` | Seconds between lookups |
 
-{% callout(type="warning") %}
-SRV records are not yet resolved directly. The service name is reduced to its
-hostname (`_http._tcp.api.example.com` becomes `api.example.com`), which is then
-resolved as an A/AAAA record on port 80, and a warning is logged at startup. The
-port and weight carried by the SRV record are ignored. Prefer `dns` discovery
-with an explicit port until this is implemented.
-{% end %}
+Resolves SRV records directly: the **port and weight come from the record**,
+which is the reason to use SRV rather than `dns` with a fixed port. Each SRV
+target is then resolved to its A/AAAA addresses, and both address families are
+used.
+
+Selection follows [RFC 2782](https://www.rfc-editor.org/rfc/rfc2782):
+
+- Only the **lowest-numbered priority** present receives traffic. Higher numbers
+  are standby targets and are not mixed into the active set.
+- Within that priority, the record's **weight** becomes the backend weight, so
+  SRV weighting reaches the load balancer. A weight of `0` is treated as `1`,
+  since `0` means "no preference" rather than "never select".
+- A target of `.` means the service is explicitly unavailable and yields no
+  backends rather than being resolved as a hostname.
+
+A target that fails to resolve is skipped with a warning rather than discarding
+the rest of the set.
 - Hostnames are resolved via DNS
 - Default weight is `1` if not specified
 
