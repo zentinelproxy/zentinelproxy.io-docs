@@ -662,40 +662,23 @@
     return prefix + result + '\n' + extra;
   }
 
-  // Normalize current config syntax to match the WASM validator (v0.2.4)
+  // Prepare a documentation snippet for validation.
+  //
+  // This may only make a *fragment* parseable — wrapping loose nodes in the
+  // block they belong to, and supplying the `system` and `listeners` blocks a
+  // whole configuration requires. It must never correct the snippet's content.
+  //
+  // It used to. Rewrites mapped cert-path onto cert-file, socket onto
+  // unix-socket, bare `true` onto `#true`, `#` comments onto `//`, and workers
+  // onto worker-threads — every one of them turning a setting that is wrong on
+  // the page into one that validates. The check then passed precisely when it
+  // should have failed, and `cert-path` sat green on two pages for months
+  // configuring an HTTPS listener with no certificate.
+  //
+  // If a snippet needs one of those rewrites to validate, the snippet is wrong.
+  // Fix the page. See zentinelproxy/zentinelproxy.io-docs#39.
   function preprocessConfig(config) {
     let result = config;
-
-    // Rename cert-path → cert-file, key-path → key-file
-    result = result.replace(/\bcert-path\b/g, 'cert-file');
-    result = result.replace(/\bkey-path\b/g, 'key-file');
-
-    // Rename socket "/path" → unix-socket "/path" (agent transport shorthand)
-    // Use negative lookbehind to avoid matching "unix-socket" → "unix-unix-socket"
-    result = result.replace(/(?<![-\w])socket\s+"(\/[^"]*)"/g, 'unix-socket "$1"');
-
-    // Fix bare booleans: true → #true, false → #false (KDL requires # prefix)
-    // Only replace bare true/false that are KDL values (after a key name),
-    // not ones inside strings or comments
-    var boolLines = result.split('\n');
-    for (var bi = 0; bi < boolLines.length; bi++) {
-      var bline = boolLines[bi];
-      // Skip comment lines
-      var commentIdx = bline.indexOf('//');
-      var codePart = commentIdx >= 0 ? bline.substring(0, commentIdx) : bline;
-      var commentPart = commentIdx >= 0 ? bline.substring(commentIdx) : '';
-      // Replace bare true/false not preceded by # and not inside strings
-      // Simple heuristic: replace word-boundary true/false not after #
-      codePart = codePart.replace(/(?<!#)\b(true|false)\b/g, '#$1');
-      boolLines[bi] = codePart + commentPart;
-    }
-    result = boolLines.join('\n');
-
-    // Fix # comments → // comments (# is not a valid KDL comment marker)
-    result = result.replace(/^(\s*)#\s+/gm, '$1// ');
-
-    // Rename workers → worker-threads (old config name)
-    result = result.replace(/\bworkers\s+(\d+)/g, 'worker-threads $1');
 
     // Flatten target { address "addr" [weight N] } → target "addr" [weight=N]
     result = result.replace(
