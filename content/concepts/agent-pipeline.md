@@ -527,19 +527,19 @@ listeners {
 
 agents {
     agent "auth-agent" {
-        socket "/var/run/zentinel/auth.sock"
+        unix-socket "/var/run/zentinel/auth.sock"
         pool-size 4
         events "request_headers"
     }
 
     agent "waf-agent" {
-        socket "/var/run/zentinel/waf.sock"
+        unix-socket "/var/run/zentinel/waf.sock"
         pool-size 8
         events "request_headers" "request_body" "response_body"
     }
 
     agent "audit-agent" {
-        socket "/var/run/zentinel/audit.sock"
+        unix-socket "/var/run/zentinel/audit.sock"
         pool-size 2
         events "request_headers" "response_headers"
     }
