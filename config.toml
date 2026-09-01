@@ -56,9 +56,10 @@ logo = "img/zentinel-mascot.png"
 
 # Version picker
 [extra.versions]
-current = "26.08"
+current = "26.09"
 list = [
-    { version = "26.08", url = "/", label = "latest" },
+    { version = "26.09", url = "/", label = "latest" },
+    { version = "26.08", url = "/v/26.08/", label = "" },
     { version = "26.07", url = "/v/26.07/", label = "" },
     { version = "26.06", url = "/v/26.06/", label = "" },
     { version = "26.05", url = "/v/26.05/", label = "" },
