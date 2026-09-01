@@ -1,7 +1,7 @@
 +++
 title = "Changelog"
 weight = 1
-updated = 2026-09-01
+updated = 2026-08-29
 +++
 
 All notable changes to Zentinel are documented here.
@@ -15,7 +15,6 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 
 | CalVer | Crate Version | Date | Highlights |
 |--------|---------------|------|------------|
-| [26.09_1](#26-09-1) | 0.6.38 | 2026-09-01 | Dependency maintenance: `quick-xml` 0.42 (data-masking XML parser ported), `jsonschema` 0.52, `uuid` 1.26, `maxminddb` 0.30.3 |
 | [26.08_14](#26-08-14) | 0.6.37 | 2026-08-29 | `zentinel` with no configuration starts instead of retrying port 9090 forever; `logging { timestamps }` is read |
 | [26.08_13](#26-08-13) | 0.6.36 | 2026-08-29 | `dns-srv` discovery reads SRV records: the port and weight come from the record, where it previously resolved the bare domain on port 80 |
 | [26.08_12](#26-08-12) | 0.6.35 | 2026-08-29 | `Cache-Status` no longer erases what an upstream cache reported, so a Zentinel in front of another cache shows the whole path rather than only its own member |
@@ -64,23 +63,6 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 | [26.01_3](#26-01-3) | 0.2.3 | 2026-01-05 | Bug fixes |
 | [26.01_0](#26-01-0) | 0.2.0 | 2026-01-01 | First CalVer release |
 | [25.12](#25-12) | 0.1.x | 2025-12 | Initial public releases |
-
----
-
-## 26.09_1
-
-**Date:** 2026-09-01
-**Crate version:** 0.6.38
-
-Dependency maintenance only. Nothing in this release changes how Zentinel
-routes, inspects or blocks traffic, and no configuration change is needed.
-
-### Changed
-- **Dependency updates:** `quick-xml` 0.42, `jsonschema` 0.52, `uuid` 1.26,
-  `maxminddb` 0.30.3
-- The XML parser in the data-masking agent was ported to the `quick-xml` 0.42
-  API, which decodes as it reads. Attribute values remain unnormalised, as
-  before, so masking sees the same text it saw on 0.41.
 
 ---
 

@@ -1,7 +1,7 @@
 +++
 title = "Versioning"
 weight = 2
-updated = 2026-09-01
+updated = 2026-08-08
 +++
 
 How Zentinel versions work, mapping between release and crate versions, and changelogs.
@@ -70,9 +70,7 @@ This table maps CalVer release versions to the crate version actually **publishe
 
 | Release (CalVer) | Crate Version (SemVer) | Protocol | Release Date | Status |
 |---------|---------------|----------|--------------|--------|
-| **26.09_1** | `0.6.38` | `2` | 2026-09-01 | Current |
-| **26.08_14** | `0.6.37` | `2` | 2026-08-29 | Previous — last of the 26.08 series |
-| **26.08_5** | `0.6.28` | `2` | 2026-08-24 | Previous |
+| **26.08_5** | `0.6.28` | `2` | 2026-08-24 | Current |
 | **26.08_4** | `0.6.27` | `2` | 2026-08-23 | Previous |
 | **26.08_2** | `0.6.25` | `2` | 2026-08-22 | Previous — breaking TLS config schema |
 | **26.08_1** | `0.6.24` | `2` | 2026-08-08 | Previous |
@@ -93,7 +91,7 @@ This table maps CalVer release versions to the crate version actually **publishe
 
 ```bash
 zentinel --version
-# zentinel 26.09_1 (0.6.38)
+# zentinel 26.08_1 (0.6.24)
 ```
 
 The CalVer release version is shown first, with the crate SemVer in parentheses.
@@ -101,13 +99,13 @@ The CalVer release version is shown first, with the crate SemVer in parentheses.
 **From Docker:**
 
 ```bash
-docker inspect ghcr.io/zentinelproxy/zentinel:26.09_1 --format '{{ index .Config.Labels "org.opencontainers.image.version" }}'
-# 26.09_1
+docker inspect ghcr.io/zentinelproxy/zentinel:26.08_1 --format '{{ index .Config.Labels "org.opencontainers.image.version" }}'
+# 26.08_1
 ```
 
 **From the documentation URL:**
 
-- `/docs/` — Current release (26.09)
+- `/docs/` — Current release (26.08)
 - `/docs/v/26.02/` — Previous release
 - `/docs/v/25.12/` — Archive
 
