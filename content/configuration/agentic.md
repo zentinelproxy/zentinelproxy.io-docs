@@ -1,7 +1,7 @@
 +++
 title = "Agentic Protocols"
 weight = 12
-updated = 2026-08-23
+updated = 2026-09-02
 +++
 
 Zentinel understands the Model Context Protocol (MCP) and Agent2Agent (A2A)
@@ -98,6 +98,7 @@ downstream makes decisions from them.
 mcp {
     require-validated-version #true       // default
     validate-param-headers #true          // default
+    filter-tool-list #true                // default
     on-uninspectable-body "deny"          // default
 
     methods {
@@ -116,6 +117,7 @@ mcp {
 |---------|---------|---------|
 | `require-validated-version` | `#true` | Refuse revisions older than `2026-07-28` |
 | `validate-param-headers` | `#true` | Check `Mcp-Param-*` against tool arguments |
+| `filter-tool-list` | `#true` | Hide tools this route forbids from listing responses |
 | `on-uninspectable-body` | `"deny"` | What to do with a body that cannot be read |
 | `methods` | *(unset)* | `allow` / `deny` lists for JSON-RPC methods |
 | `tools` | *(unset)* | `allow` / `deny` lists for tools and resources |
@@ -127,6 +129,62 @@ applied after `allow`, so a name in both is refused.
 Writing `allow` with no entries is rejected at parse time rather than read as an
 empty allowlist, because "allow nothing listed" and "no restriction" are
 opposite meanings for the same line.
+
+### What the client is shown
+
+Refusing a call to a forbidden tool leaves a gap: the upstream still advertises
+it. A client asks `tools/list`, receives all eighty tools the server offers,
+picks one of the seventy-five this route forbids, and is refused. The policy
+held, but everything about the exchange was avoidable.
+
+So Zentinel also removes from `tools/list`, `resources/list` and `prompts/list`
+responses exactly the entries it would refuse a call to. What is advertised and
+what is permitted become the same set.
+
+```kdl
+mcp {
+    tools {
+        allow "search_docs" "get_weather"
+    }
+}
+```
+
+An upstream offering `search_docs`, `get_weather` and `execute_sql` now
+advertises the first two. The third is neither listed nor callable.
+
+This matters beyond tidiness:
+
+- **Tool descriptions are spent from the model's context window.** MCP clients
+  degrade well before a hundred tools. A route permitting five of eighty should
+  be advertising five.
+- **A tool list is an inventory.** Names and descriptions routinely disclose
+  which internal systems exist and what they can be made to do. A client
+  permitted to call none of them could still read all of it.
+
+Filtering does nothing unless the route sets a tool `allow` or `deny` list, so
+routes without one are untouched and pay nothing. Set `filter-tool-list #false`
+to keep enforcement while forwarding listings whole.
+
+Entries are matched by the same identity the request path uses — a tool by its
+`name`, a resource by its `uri` — so what is hidden is precisely what would be
+refused, and never more. `resources/templates/list` is left alone: a template
+names a family of URIs rather than one, and hiding by exact match would remove
+entries the proxy would happily permit a call to. Calls to the URIs a template
+expands to are still checked.
+
+Pagination survives — `nextCursor` is preserved, so a filtered page still leads
+to the next one.
+
+#### When a listing cannot be filtered
+
+A listing that arrives compressed, exceeds 1 MiB, or is not parseable as
+JSON-RPC is **refused with a 502** rather than forwarded. Forwarding it would
+advertise what the route forbids, which is the one thing this exists to
+prevent, and the reason for the refusal says which of the three it was.
+
+In practice the case worth knowing about is compression: if an upstream gzips
+its listing responses, either serve them uncompressed on this route or set
+`filter-tool-list #false`.
 
 ### `Mcp-Param-*` headers
 
@@ -247,6 +305,18 @@ an operator rather than parsed:
 ```
 "execute_sql" is not permitted for tools/call on this route
 ```
+
+Entries removed from a listing are counted separately, by route and by listing
+method:
+
+```
+zentinel_mcp_listing_entries_hidden_total{route="mcp",method="tools/list"}
+```
+
+It counts entries rather than responses, because the useful question is how much
+of an upstream's surface a route hides. A route where it is persistently zero
+while a tool policy is set is worth a look — either the upstream advertises
+nothing extra, or listings are not reaching the filter.
 
 ## Checking your configuration
 
