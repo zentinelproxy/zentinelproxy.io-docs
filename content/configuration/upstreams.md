@@ -1,7 +1,7 @@
 +++
 title = "Upstreams"
 weight = 5
-updated = 2026-02-19
+updated = 2026-09-02
 +++
 
 The `upstreams` block defines backend server pools. Each upstream contains one or more targets with load balancing, health checks, and connection pooling.
@@ -496,7 +496,7 @@ upstream "backend" {
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `type` | Required | Check type (`http`, `tcp`, `grpc`) |
+| `type` | Required | Check type (`http`, `tcp`, `grpc`, `mcp`, `inference`) |
 | `interval-secs` | `10` | Time between checks |
 | `timeout-secs` | `5` | Check timeout |
 | `healthy-threshold` | `2` | Successes to mark healthy |
@@ -588,6 +588,79 @@ upstream "user-service" {
     }
 }
 ```
+
+### MCP Health Check
+
+```kdl
+upstream "mcp-pool" {
+    target "mcp-1:8090"
+    target "mcp-2:8090"
+    health-check {
+        type "mcp" {
+            path "/mcp"
+            expected-tools "search_docs" "get_weather"
+        }
+        interval-secs 30
+        timeout-secs 5
+    }
+}
+```
+
+Speaks the Model Context Protocol rather than checking that a socket is open.
+
+A TCP check proves something is listening. An HTTP check proves something
+answered 200. Neither says the server still speaks MCP — and many MCP servers
+expose no `/health` endpoint at all, so for an upstream whose entire purpose is
+serving tool calls, the usual checks confirm the least interesting property
+available.
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `path` | `"/"` | Path to POST the probe to |
+| `expected-tools` | *(unset)* | Tools that must be present for the backend to be healthy |
+
+#### What it checks
+
+The probe sends `initialize`, which is the one method a server must answer
+without an established session, and requires a JSON-RPC result carrying a
+`protocolVersion`.
+
+With `expected-tools` set it then asks `tools/list` and requires every named
+tool to be present. This is the case worth configuring: a server that is
+listening and initialising but has lost the backend behind its tools is
+**unhealthy**, and gets taken out of rotation instead of being left to fail
+real calls.
+
+A JSON-RPC error is treated as unhealthy even though it arrives with HTTP 200 —
+which is precisely the failure a plain HTTP check cannot see.
+
+Both response framings are understood: `application/json` and the
+`text/event-stream` of Streamable HTTP.
+
+#### Failover
+
+Health checking only buys you something with somewhere to fail over to. With
+two or more targets, a backend that stops satisfying the check is removed from
+selection until it satisfies it again, subject to `healthy-threshold` and
+`unhealthy-threshold`.
+
+#### Watch the run-together trap
+
+Written on one line, `expected-tools` is swallowed as an argument to `path` and
+the check silently degrades to liveness only:
+
+```kdl
+// Wrong — expected-tools is read as an argument to path
+type "mcp" { path "/mcp" expected-tools "search_docs" }
+
+// Right
+type "mcp" {
+    path "/mcp"
+    expected-tools "search_docs"
+}
+```
+
+`zentinel lint` reports this, so run it after editing a health check.
 
 ### Health Check Behavior
 
