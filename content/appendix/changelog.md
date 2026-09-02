@@ -1,7 +1,7 @@
 +++
 title = "Changelog"
 weight = 1
-updated = 2026-09-01
+updated = 2026-09-02
 +++
 
 All notable changes to Zentinel are documented here.
@@ -15,6 +15,7 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 
 | CalVer | Crate Version | Date | Highlights |
 |--------|---------------|------|------------|
+| [26.09_2](#26-09-2) | 0.6.39 | 2026-09-02 | **Health checks never probed anything** — every `health-check` block, for every check type, was inert, so failover was an appearance rather than a fact; MCP gateway: per-tool metrics, per-tool rate limiting, tool-list filtering, and an MCP-native health check |
 | [26.09_1](#26-09-1) | 0.6.38 | 2026-09-01 | Dependency maintenance: `quick-xml` 0.42 (data-masking XML parser ported), `jsonschema` 0.52, `uuid` 1.26, `maxminddb` 0.30.3 |
 | [26.08_14](#26-08-14) | 0.6.37 | 2026-08-29 | `zentinel` with no configuration starts instead of retrying port 9090 forever; `logging { timestamps }` is read |
 | [26.08_13](#26-08-13) | 0.6.36 | 2026-08-29 | `dns-srv` discovery reads SRV records: the port and weight come from the record, where it previously resolved the bare domain on port 80 |
@@ -64,6 +65,31 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 | [26.01_3](#26-01-3) | 0.2.3 | 2026-01-05 | Bug fixes |
 | [26.01_0](#26-01-0) | 0.2.0 | 2026-01-01 | First CalVer release |
 | [25.12](#25-12) | 0.1.x | 2025-12 | Initial public releases |
+
+---
+
+## 26.09_2
+
+**Date:** 2026-09-02
+**Crate version:** 0.6.39
+
+> **If you configure `health-check` on any upstream, upgrade.** On 0.6.38 and earlier it never sent a single probe.
+
+### Fixed
+- **Health checks never probed anything.** The health checker built its backend set from the configured targets and never populated it from discovery, so every cycle checked zero backends — for every check type: `http`, `tcp`, `grpc` and `inference` alike.
+
+  It failed silently in both directions. No probe was sent, so a backend that was down was never detected; and no backend was ever marked unhealthy, so nothing was taken out of rotation. There was no error anywhere: the runner started, logged that it had, and ticked on schedule. Measured against a real backend at `interval-secs 2`, it sent **0 probes in twelve seconds; it now sends 29**.
+
+  **What to expect on upgrade:** no configuration change is needed, but existing `health-check` blocks begin working. Backends that have been quietly failing may be marked unhealthy and removed from rotation for the first time.
+- **The Docker image builds again**, against Rust 1.95.
+- **The integration suite runs**, having never been executed by CI since it was written; fixing that surfaced four further faults in the suite itself.
+- **The post-release version bump lands** instead of leaving an orphan branch and a `Cargo.lock` a release behind.
+
+### Added
+- **MCP calls are counted per tool** — `zentinel_mcp_calls_total`, labelled by route, JSON-RPC method, target and decision. Both client-supplied labels are bounded by what the route's configuration names, so series count is bounded by config rather than by traffic. See [Agentic protocols](../../configuration/agentic/).
+- **Rate limiting per MCP tool**, via the `mcp-tool` and `client-ip-and-mcp-tool` [rate-limit keys](../../configuration/filters/). An MCP endpoint otherwise shares one limit across every tool it exposes. These are the first keys resolved from the request body rather than from headers, so they apply once the body has arrived and only on routes carrying an `mcp` block.
+- **Tools a route forbids are hidden from listing responses.** `tools/list`, `resources/list` and `prompts/list` are filtered to exactly what the route permits, using the same identity rule as the enforcer. Previously a route refused the call but let the upstream advertise the tool, so a client discovered tools it would only ever be refused — and read an inventory of the upstream's capabilities in the process. Set `filter-tool-list #false` to restore the previous behaviour.
+- **An MCP-native health check**, `health-check { type "mcp" }`. Sends `initialize`, and given `expected-tools` also asks `tools/list` and requires those tools to be present, so a server that is up but can no longer enumerate its tools is taken out of rotation. See [Upstreams](../../configuration/upstreams/).
 
 ---
 
