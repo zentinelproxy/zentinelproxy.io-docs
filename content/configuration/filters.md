@@ -1,7 +1,7 @@
 +++
 title = "Filters"
 weight = 6
-updated = 2026-02-27
+updated = 2026-09-02
 +++
 
 Filters provide a flexible pipeline for request and response processing. They can be built-in (rate-limit, headers, CORS, compression) or external agents. Filters are defined centrally in the `filters` block with unique IDs, then referenced by name in route configurations.
@@ -65,6 +65,57 @@ filter "rate-limiter" {
 | `route` | Global rate limit for the route |
 | `client-ip-and-path` | Combined client IP and path |
 | `header:X-API-Key` | Rate limit by specific header value |
+| `mcp-tool` | Rate limit per MCP tool or resource named in the request body |
+| `client-ip-and-mcp-tool` | Combined client IP and MCP tool |
+
+##### Rate limiting MCP calls per tool
+
+An MCP endpoint otherwise shares one limit across every tool it exposes, so a
+client hammering an expensive tool exhausts the quota for the cheap ones.
+`mcp-tool` gives each its own bucket:
+
+```kdl
+filters {
+    filter "per-tool" {
+        type "rate-limit"
+        max-rps 5
+        key "mcp-tool"
+    }
+}
+
+routes {
+    route "mcp" {
+        matches {
+            path-prefix "/mcp"
+        }
+        upstream "mcp-server"
+        filters "per-tool"
+        mcp {
+            tools {
+                allow "search_docs" "get_weather"
+            }
+        }
+    }
+}
+```
+
+Two things behave differently from the other keys, both deliberately.
+
+**The tool is read from the request body, not the `Mcp-Name` header.** The
+header exists so intermediaries can route without parsing JSON, but a client
+can set it to one tool while the body calls another — so a limit keyed on it
+would never apply to what the server actually runs. Zentinel resolves the tool
+from the body for the same reason its
+[MCP policy](@/configuration/agentic.md) does.
+
+**The limit is therefore applied once the body has arrived**, rather than on
+headers like every other key. In practice this means it only applies to routes
+carrying an `mcp` block, and a request whose body cannot be parsed is counted
+against a shared `unknown` bucket rather than escaping the limit.
+
+Refusals appear on `zentinel_mcp_calls_total` with `decision="rate_limited"`,
+labelled by tool, so a limit that starts firing is visible per tool rather than
+only as a total.
 
 #### Rate Limit Actions
 

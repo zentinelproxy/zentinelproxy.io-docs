@@ -1,7 +1,7 @@
 +++
 title = "Agentic Protocols"
 weight = 12
-updated = 2026-08-23
+updated = 2026-09-02
 +++
 
 Zentinel understands the Model Context Protocol (MCP) and Agent2Agent (A2A)
@@ -154,6 +154,11 @@ argument it mirrors is refused.
 >
 > **If you route or rate-limit on `Mcp-Param-*` headers, keep the label equal to
 > the property name**, or the proxy cannot confirm the two still agree.
+>
+> To rate limit by *tool* rather than by argument, prefer the
+> [`mcp-tool` rate-limit key](@/configuration/filters.md#rate-limiting-mcp-calls-per-tool),
+> which reads the tool from the body and so cannot be misdirected by a header at
+> all.
 
 ### Bodies that cannot be inspected
 
