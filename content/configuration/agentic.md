@@ -118,6 +118,8 @@ mcp {
 | `require-validated-version` | `#true` | Refuse revisions older than `2026-07-28` |
 | `validate-param-headers` | `#true` | Check `Mcp-Param-*` against tool arguments |
 | `filter-tool-list` | `#true` | Hide tools this route forbids from listing responses |
+| `upstreams` | *(unset)* | MCP servers to present as one endpoint |
+| `session-key` | *(unset)* | 32-byte hex key for the session token; required with 2+ upstreams |
 | `on-uninspectable-body` | `"deny"` | What to do with a body that cannot be read |
 | `methods` | *(unset)* | `allow` / `deny` lists for JSON-RPC methods |
 | `tools` | *(unset)* | `allow` / `deny` lists for tools and resources |
@@ -185,6 +187,99 @@ prevent, and the reason for the refusal says which of the three it was.
 In practice the case worth knowing about is compression: if an upstream gzips
 its listing responses, either serve them uncompressed on this route or set
 `filter-tool-list #false`.
+
+### Several servers behind one endpoint
+
+A route can front several MCP servers and present them to a client as one. The
+merged endpoint answers `tools/list` with everything the upstreams offer, and
+routes each call to the server the tool belongs to.
+
+```kdl
+route "mcp" {
+    matches { path-prefix "/mcp" }
+    upstream "docs"
+
+    mcp {
+        upstreams {
+            upstream "docs" prefix="docs"
+            upstream "warehouse" prefix="warehouse" path="/mcp"
+        }
+        session-key "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+        tools {
+            deny "warehouse.execute_sql"
+        }
+    }
+}
+```
+
+A client asking `tools/list` sees `docs.search`, `docs.get_weather`,
+`warehouse.query` — one list, from two servers. Calling `warehouse.query` sends
+the call to the `warehouse` upstream as `query`; the prefix never reaches it.
+
+#### Prefixes are declared, not derived
+
+Every upstream needs a `prefix`, and it is required rather than inferred. Two
+servers will eventually both offer `search`, and the prefix is what keeps them
+apart — but a tool's name is also what the model reasons about and remembers, so
+it must not change because someone added an unrelated upstream that happened to
+collide, or renamed an existing one.
+
+Two upstreams sharing a prefix, or a prefix containing `.`, is refused at load
+rather than accepted into something ambiguous.
+
+#### Policy applies to the name the client sees
+
+`methods`, `tools` and everything else in the `mcp` block apply to the **merged,
+namespaced** view. Write `deny "warehouse.execute_sql"`, not `deny "execute_sql"`
+— the second would be a rule about a tool no client can name, and if two
+upstreams both offered `execute_sql` there would be no way to write a rule about
+only one of them.
+
+Denied tools are both hidden from the merged listing and refused when called,
+the same as on a single-upstream route.
+
+#### Sessions
+
+MCP gives each server its own session, so a client talking to a merged endpoint
+is holding several without knowing it. Zentinel keeps that mapping in the
+session token itself — the `Mcp-Session-Id` it hands the client is an encrypted
+envelope containing the upstream session IDs — rather than in the proxy.
+
+That is why `session-key` is required once there is more than one upstream. It
+must be **32 bytes, hex-encoded** (64 characters), and it must be *configured*
+rather than generated:
+
+- A key generated at startup would rotate on every configuration reload and drop
+  every live session.
+- Two Zentinel instances need the same key to read each other's tokens. Without
+  that, a merged endpoint would only work behind a load balancer pinned to one
+  instance.
+
+Generate one with `openssl rand -hex 32`, and treat it like any other secret.
+
+A client presenting a token this Zentinel cannot decrypt — from a rotated key,
+or another deployment — is treated as not having a session yet, and initialises
+again. Rotating the key costs a wave of re-initialisation, not a wall of errors.
+
+Upstream sessions are opened **lazily**, the first time a call actually routes to
+that upstream. A client that lists twenty tools and calls one holds one upstream
+session, not twenty.
+
+#### What this does not do yet
+
+- **No failover.** A call to an upstream that is down fails. An upstream that
+  cannot be reached during `tools/list` has its tools omitted from the merged
+  list rather than failing the whole listing, so one bad server costs its own
+  tools and no others.
+- **Resources are not namespaced.** Prefixing a URI would produce
+  `docs.file:///a.txt`, which is not a URI. Only tools and prompts, which carry
+  bare names, are merged.
+- **These routes originate rather than forward.** Merging a listing means asking
+  several servers and composing an answer, which is not proxying. Requests to
+  the upstreams are made by Zentinel itself, so they do not use the connection
+  pool or the route's retry policy — though they do go through the upstream's
+  own load balancing, service discovery and health checking.
 
 ### `Mcp-Param-*` headers
 
