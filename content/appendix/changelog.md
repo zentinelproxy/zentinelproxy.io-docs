@@ -15,6 +15,7 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 
 | CalVer | Crate Version | Date | Highlights |
 |--------|---------------|------|------------|
+| [26.09_4](#26-09-4) | 0.6.41 | 2026-09-03 | **An agent the proxy could not reach at startup was lost until the proxy restarted**, silently — including any agent that restarts; multiplexed MCP tool calls are now proxied rather than originated |
 | [26.09_3](#26-09-3) | 0.6.40 | 2026-09-03 | **Agents in the container images could not create their sockets**, so agent routes silently forwarded requests unprocessed; one route can now also front several MCP servers as a single endpoint, merging their listings and routing calls by tool |
 | [26.09_2](#26-09-2) | 0.6.39 | 2026-09-02 | **Health checks never probed anything** — every `health-check` block, for every check type, was inert, so failover was an appearance rather than a fact; MCP gateway: per-tool metrics, per-tool rate limiting, tool-list filtering, and an MCP-native health check |
 | [26.09_1](#26-09-1) | 0.6.38 | 2026-09-01 | Dependency maintenance: `quick-xml` 0.42 (data-masking XML parser ported), `jsonschema` 0.52, `uuid` 1.26, `maxminddb` 0.30.3 |
@@ -66,6 +67,29 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 | [26.01_3](#26-01-3) | 0.2.3 | 2026-01-05 | Bug fixes |
 | [26.01_0](#26-01-0) | 0.2.0 | 2026-01-01 | First CalVer release |
 | [25.12](#25-12) | 0.1.x | 2025-12 | Initial public releases |
+
+---
+
+## 26.09_4
+
+**Date:** 2026-09-03
+**Crate version:** 0.6.41
+
+> **If you run agents, upgrade.** An agent that restarts was lost until the proxy restarted, and with `failure-mode "open"` nothing reported it.
+
+### Fixed
+- **An agent the proxy could not reach at startup was lost for the life of the process.** With `failure-mode "open"` — the default in the shipped examples — this was silent: requests were forwarded unprocessed, the agent process looked healthy, and nothing anywhere reported it.
+
+  Three ordinary situations produced it: an agent slower to start than the proxy, **an agent that restarts** (a crash, an upgrade, a rolling deploy), and a socket on a volume that is not ready yet.
+
+  Four things had to change, each of which alone kept the agent dead: registration **refused** an unreachable agent instead of recording it, so the pool had nothing to reconnect; pool maintenance was started after registration and behind it, so a failed registration also took down the loop meant to recover it; reconnection **gave up permanently** after three attempts, roughly fifteen seconds, which covers most restarts; and reconnection never learned the agent's capabilities, so a recovered agent would have answered calls while the proxy believed it supported nothing.
+
+  No configuration change is needed. If you added start-ordering to work around this, it is no longer required — though ordering agents before the proxy remains sensible.
+
+### Changed
+- **Multiplexed MCP tool calls are proxied rather than originated.** A route fronting several MCP servers answered every request itself, so tool calls used neither the connection pool, nor the route's retry policy, nor the upstream's TLS settings. A tool call goes to exactly one upstream, so it now takes the normal proxy path and gets all three. See [Agentic protocols](../../configuration/agentic/).
+
+  Listings still cannot be proxied — merging several answers into one is composition, not proxying — nor can the single `initialize` handshake per upstream, which happens before the client's own request. So the first call to an upstream costs one extra round trip and every call after it is proxied.
 
 ---
 
