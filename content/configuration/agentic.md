@@ -1,7 +1,7 @@
 +++
 title = "Agentic Protocols"
 weight = 12
-updated = 2026-09-02
+updated = 2026-09-03
 +++
 
 Zentinel understands the Model Context Protocol (MCP) and Agent2Agent (A2A)
@@ -268,18 +268,50 @@ session, not twenty.
 
 #### What this does not do yet
 
-- **No failover.** A call to an upstream that is down fails. An upstream that
-  cannot be reached during `tools/list` has its tools omitted from the merged
-  list rather than failing the whole listing, so one bad server costs its own
-  tools and no others.
-- **Resources are not namespaced.** Prefixing a URI would produce
-  `docs.file:///a.txt`, which is not a URI. Only tools and prompts, which carry
-  bare names, are merged.
-- **These routes originate rather than forward.** Merging a listing means asking
-  several servers and composing an answer, which is not proxying. Requests to
-  the upstreams are made by Zentinel itself, so they do not use the connection
-  pool or the route's retry policy — though they do go through the upstream's
-  own load balancing, service discovery and health checking.
+- **No failover for a call.** A tool lives on one upstream, so there is nowhere
+  else to send it: a call to a server that is down fails, and fails fast rather
+  than hanging. A listing degrades instead — an upstream that cannot be reached
+  during `tools/list` has its tools omitted rather than the listing failing, so
+  one bad server costs its own tools and no others.
+
+  Measured with one of two upstreams stopped: the merged listing came back in
+  58 ms and the call was refused in 17 ms. Configuring an
+  [MCP health check](@/configuration/upstreams.md) improves this further, since
+  an upstream already known to be unhealthy is skipped rather than tried — which
+  matters most for a server that accepts connections but never answers.
+
+### Resources are not served here
+
+`resources/list` and `resources/read` are **refused** on a multiplexing route,
+with a reason:
+
+```
+resources/list is not available on a route that fronts several MCP servers:
+resources are identified by URI and cannot be attributed to an upstream
+```
+
+A tool is namespaced by prefixing its name. A resource is identified by a URI,
+and a URI cannot carry a prefix — `docs.file:///a.txt` is not a URI. Merging
+them anyway would show the same URI from two servers with no way to tell them
+apart, and no way to read either.
+
+Refusing is deliberate rather than returning an empty list: empty would claim
+there are none, which is false. **A route with a single upstream is unaffected**
+and serves resources normally.
+
+### How requests reach the upstreams
+
+A **tool call** is proxied. It goes to exactly one upstream, so it takes the
+normal path and gets the connection pool, the route's retry policy and the
+upstream's TLS settings.
+
+A **listing** is not, and cannot be: merging means asking several servers and
+composing one answer, which is not proxying. Zentinel makes those requests
+itself. The same is true of the one `initialize` handshake per upstream, which
+happens before the client's own request and so has nowhere to be forwarded.
+
+Both paths go through the upstream's own load balancing, service discovery and
+health checking, so a fan-out reaches the same targets a proxied request would.
 
 ### `Mcp-Param-*` headers
 
