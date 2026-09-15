@@ -1,7 +1,7 @@
 +++
 title = "Pingora Foundation"
 weight = 4
-updated = 2026-02-19
+updated = 2026-09-15
 +++
 
 Zentinel is built on [Cloudflare's Pingora](https://github.com/cloudflare/pingora), a battle-tested HTTP proxy framework written in Rust. This page explains what Pingora provides and how Zentinel extends it.
@@ -400,16 +400,19 @@ Pingora's architecture enables:
 Zentinel uses these Pingora crates:
 
 ```toml
-[dependencies]
-pingora = { version = "0.7", features = ["proxy", "lb"] }
-pingora-core = "0.7"
-pingora-http = "0.7"
-pingora-proxy = "0.7"
-pingora-load-balancing = "0.7"
-pingora-timeout = "0.7"
+[workspace.dependencies]
+pingora = { package = "zentinel-pingora", version = "0.9.0", features = ["proxy", "lb", "rustls"] }
+pingora-core = { package = "zentinel-pingora-core", version = "0.9.0", features = ["rustls"] }
+pingora-proxy = { package = "zentinel-pingora-proxy", version = "0.9.0" }
+pingora-load-balancing = { package = "zentinel-pingora-load-balancing", version = "0.9.0" }
+pingora-cache = { package = "zentinel-pingora-cache", version = "0.9.0" }
+pingora-http = "0.9.0"
+pingora-timeout = "0.9.0"
+pingora-limits = "0.9.0"
+pingora-memory-cache = "0.9.0"
 ```
 
-> **Note:** Zentinel uses a fork (`raskell-io/pingora`) that disables the prometheus protobuf default feature to remove the RUSTSEC-2024-0437 vulnerability. The fork tracks upstream Pingora 0.7 with this single change.
+> **Note:** Zentinel builds against a fork, [`zentinelproxy/pingora`](https://github.com/zentinelproxy/pingora), that tracks upstream Pingora 0.9.0 with two additions: `TlsSettings::with_server_config`, so a listener can take a complete rustls `ServerConfig` (per-SNI certificates, mTLS, protocol versions and cipher suites), and a `should_retry_response` hook, so a `retry-policy` can retry on an upstream status code rather than only on transport errors. The five crates the patches touch, or that depend on them, are published as `zentinel-pingora-*`; everything else resolves from upstream crates.io. The fork's `NOTICE` file lists the modified files.
 
 ## Next Steps
 

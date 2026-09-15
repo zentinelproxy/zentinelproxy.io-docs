@@ -1,7 +1,7 @@
 +++
 title = "Versioning"
 weight = 2
-updated = 2026-09-01
+updated = 2026-09-15
 +++
 
 How Zentinel versions work, mapping between release and crate versions, and changelogs.
@@ -70,7 +70,8 @@ This table maps CalVer release versions to the crate version actually **publishe
 
 | Release (CalVer) | Crate Version (SemVer) | Protocol | Release Date | Status |
 |---------|---------------|----------|--------------|--------|
-| **26.09_1** | `0.6.38` | `2` | 2026-09-01 | Current |
+| **26.09_6** | `0.6.43` | `2` | 2026-09-15 | Current — Pingora 0.9.0 |
+| **26.09_1** | `0.6.38` | `2` | 2026-09-01 | Previous |
 | **26.08_14** | `0.6.37` | `2` | 2026-08-29 | Previous — last of the 26.08 series |
 | **26.08_5** | `0.6.28` | `2` | 2026-08-24 | Previous |
 | **26.08_4** | `0.6.27` | `2` | 2026-08-23 | Previous |
@@ -93,7 +94,7 @@ This table maps CalVer release versions to the crate version actually **publishe
 
 ```bash
 zentinel --version
-# zentinel 26.09_1 (0.6.38)
+# zentinel 26.09_6 (0.6.43)
 ```
 
 The CalVer release version is shown first, with the crate SemVer in parentheses.
@@ -101,8 +102,8 @@ The CalVer release version is shown first, with the crate SemVer in parentheses.
 **From Docker:**
 
 ```bash
-docker inspect ghcr.io/zentinelproxy/zentinel:26.09_1 --format '{{ index .Config.Labels "org.opencontainers.image.version" }}'
-# 26.09_1
+docker inspect ghcr.io/zentinelproxy/zentinel:26.09_6 --format '{{ index .Config.Labels "org.opencontainers.image.version" }}'
+# 26.09_6
 ```
 
 **From the documentation URL:**
@@ -116,6 +117,29 @@ docker inspect ghcr.io/zentinelproxy/zentinel:26.09_1 --format '{{ index .Config
 ## Changelogs
 
 For the full changelog with all patch releases, see [Changelog](../changelog/).
+
+### Release 26.09
+
+**Crate version:** `0.6.38` -- `0.6.43`
+**Release date:** September 2026
+
+#### Security
+
+- Pingora 0.9.0 — request-target and authority hardening, hop-by-hop request headers stripped before the upstream, no HTTP/1 upstream reuse after an incomplete response, bounded HTTP/2 server limits, `daemonize` replaced by `daemonix`
+- `google.golang.org/grpc` 1.83.2 in the conformance suite (GHSA-2v4p-qf9q-27wj)
+
+#### Fixed
+
+- Health checks now probe upstreams; every `health-check` block was inert before 26.09_2
+- An agent unreachable at startup is recovered instead of lost until restart (26.09_4)
+- Agents in the container images can create their sockets (26.09_3); `zentinel bundle install` works for non-root users (26.09_5)
+
+#### Changed
+
+- Hop-by-hop request headers and non-WebSocket HTTP/1 upgrades are no longer forwarded to upstreams (Pingora 0.9.0)
+- MCP gateway: per-tool metrics and rate limiting, tool-list filtering, MCP-native health check, several MCP servers behind one route (26.09_2, 26.09_3)
+
+---
 
 ### Release 26.08
 
