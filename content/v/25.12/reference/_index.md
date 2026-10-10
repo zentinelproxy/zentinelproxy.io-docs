@@ -1,4 +1,5 @@
 +++
+in_search_index = false
 title = "Reference"
 weight = 10
 sort_by = "weight"

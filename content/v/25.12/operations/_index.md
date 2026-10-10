@@ -1,4 +1,5 @@
 +++
+in_search_index = false
 title = "Operations"
 weight = 9
 sort_by = "weight"

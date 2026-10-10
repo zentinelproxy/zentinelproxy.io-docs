@@ -1,4 +1,5 @@
 +++
+in_search_index = false
 title = "Development"
 weight = 12
 sort_by = "weight"

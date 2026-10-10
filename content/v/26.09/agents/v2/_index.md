@@ -1,4 +1,5 @@
 +++
+in_search_index = false
 title = "Protocol v2 (Current)"
 weight = 10
 sort_by = "weight"

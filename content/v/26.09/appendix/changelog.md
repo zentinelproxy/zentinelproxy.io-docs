@@ -1,7 +1,7 @@
 +++
 title = "Changelog"
 weight = 1
-updated = 2026-08-29
+updated = 2026-09-15
 +++
 
 All notable changes to Zentinel are documented here.
@@ -15,6 +15,12 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 
 | CalVer | Crate Version | Date | Highlights |
 |--------|---------------|------|------------|
+| [26.09_6](#26-09-6) | 0.6.43 | 2026-09-15 | **Pingora 0.9.0**: request-target and authority hardening, hop-by-hop request headers stripped before the upstream, no HTTP/1 upstream reuse after an incomplete response; gRPC-Go advisory in the conformance suite; dependency maintenance |
+| [26.09_5](#26-09-5) | 0.6.42 | 2026-09-04 | **`zentinel bundle install` failed for every non-root user**, so no agent could be installed by following the documented instructions |
+| [26.09_4](#26-09-4) | 0.6.41 | 2026-09-03 | **An agent the proxy could not reach at startup was lost until the proxy restarted**, silently — including any agent that restarts; multiplexed MCP tool calls are now proxied rather than originated |
+| [26.09_3](#26-09-3) | 0.6.40 | 2026-09-03 | **Agents in the container images could not create their sockets**, so agent routes silently forwarded requests unprocessed; one route can now also front several MCP servers as a single endpoint, merging their listings and routing calls by tool |
+| [26.09_2](#26-09-2) | 0.6.39 | 2026-09-02 | **Health checks never probed anything** — every `health-check` block, for every check type, was inert, so failover was an appearance rather than a fact; MCP gateway: per-tool metrics, per-tool rate limiting, tool-list filtering, and an MCP-native health check |
+| [26.09_1](#26-09-1) | 0.6.38 | 2026-09-01 | Dependency maintenance: `quick-xml` 0.42 (data-masking XML parser ported), `jsonschema` 0.52, `uuid` 1.26, `maxminddb` 0.30.3 |
 | [26.08_14](#26-08-14) | 0.6.37 | 2026-08-29 | `zentinel` with no configuration starts instead of retrying port 9090 forever; `logging { timestamps }` is read |
 | [26.08_13](#26-08-13) | 0.6.36 | 2026-08-29 | `dns-srv` discovery reads SRV records: the port and weight come from the record, where it previously resolved the bare domain on port 80 |
 | [26.08_12](#26-08-12) | 0.6.35 | 2026-08-29 | `Cache-Status` no longer erases what an upstream cache reported, so a Zentinel in front of another cache shows the whole path rather than only its own member |
@@ -63,6 +69,160 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 | [26.01_3](#26-01-3) | 0.2.3 | 2026-01-05 | Bug fixes |
 | [26.01_0](#26-01-0) | 0.2.0 | 2026-01-01 | First CalVer release |
 | [25.12](#25-12) | 0.1.x | 2025-12 | Initial public releases |
+
+---
+
+## 26.09_6
+
+**Date:** 2026-09-15
+**Crate version:** 0.6.43
+
+> **Pingora 0.9.0.** The proxy engine under Zentinel moves from 0.8.1 to 0.9.0. No configuration changes are needed, but one forwarding behaviour changes: hop-by-hop request headers no longer reach the upstream. See *Changed*.
+
+### Security
+- **Bump Pingora 0.8.1 → 0.9.0** ([cloudflare/pingora release](https://github.com/cloudflare/pingora/releases/tag/0.9.0)). The fork was rebased in [zentinelproxy/pingora#10](https://github.com/zentinelproxy/pingora/pull/10) and republished as `zentinel-pingora-* 0.9.0`; both fork patches (`TlsSettings::with_server_config`, `should_retry_response`) carry over unchanged in behaviour. What 0.9.0 brings that matters here:
+  - **HTTP request-target hardening.** Path and authority validation share one parser; ambiguous request authorities are rejected on ingress and egress, CR/LF bytes in an HTTP/2 `:path` are rejected, and non-origin-form request targets are preserved without mangling the URI.
+  - **Hop-by-hop request headers are stripped before the upstream sees them** (`Connection`, `Keep-Alive`, `Proxy-Connection`, `Proxy-Authenticate`, `Proxy-Authorization`, `TE`, `Trailer`, `Transfer-Encoding`, `Upgrade`, `HTTP2-Settings`), along with any header the client nominates in `Connection`. A request that nominates `Host`, a forwarding header or a pseudo-header-shaped name is rejected rather than forwarded with the protection removed.
+  - **HTTP/1 upstream connections are never reused after an incomplete response or a failed write**, which previously could leave a reused connection out of step with the next request.
+  - Obsolete line folding in upstream response headers is normalized before the response is forwarded.
+  - Default HTTP/2 server limits are bounded rather than unbounded (memory exhaustion).
+  - The unmaintained `daemonize` crate is replaced by `daemonix`; `nix` 0.31, `lru` 0.18, `h2` ≥ 0.4.16.
+- **`google.golang.org/grpc` 1.83.2 in the conformance suite** ([GHSA-2v4p-qf9q-27wj](https://github.com/advisories/GHSA-2v4p-qf9q-27wj), xDS server crash on missing `:authority`/`Host`). The conformance harness is the only Go code in the repository; the proxy is unaffected.
+
+### Changed
+- **Forwarding behaviour: WebSocket upgrades still work, other HTTP/1 upgrades are no longer forwarded.** Pingora 0.9.0 forwards a normalized `Upgrade: websocket` handshake and drops every other `Upgrade` (for example `h2c`), as part of the hop-by-hop stripping above. `Proxy-Authorization` is likewise not passed on. Nothing in Zentinel's configuration turns the legacy pass-through back on; if you depended on it, open an issue.
+- **Cache storage moved to the 0.9.0 `Storage` API.** The disk and hybrid caches take a `PurgeTarget` and report a `PurgeOutcome` instead of a bool; `CacheKey` no longer has a namespace argument. Zentinel always passed an empty namespace, so cache keys and on-disk hashes are unchanged and no cache goes cold.
+- **Dependency maintenance:** `brotli` 9.0, `jsonschema` 0.53, and the rust-minor group of 13 — `rustls` 0.23.44, `hyper` 1.11.1, `aws-lc-rs` 1.18.1, `reqwest` 0.13.5, `hickory-resolver` 0.26.3, `tokio-rustls` 0.26.5, `smallvec` 1.16, `redis` 1.7, `uuid` 1.26.1, `flate2` 1.1.10, `toml` 1.1.6, `rcgen` 0.14.10, `aes` 0.9.3.
+
+---
+
+## 26.09_5
+
+**Date:** 2026-09-04
+**Crate version:** 0.6.42
+
+> **If you install agents with `zentinel bundle install`, upgrade.** It could not succeed for a non-root user on a standard Unix system.
+
+### Fixed
+- **`zentinel bundle install <agent>` failed for every non-root user**, which is the documented first step for installing any agent:
+
+  ```
+  Install path:   /usr/local/bin
+  Mode:           system-wide (requires root)
+  Error: Failed to create installation directories
+  Caused by: Permission denied: /etc/zentinel/agents
+  ```
+
+  The writability check asked the wrong question. It used `Permissions::readonly()`, which on Unix is `mode & 0o222 == 0` — *"can anyone write here?"*, not *"can I?"*. `/usr/local/bin` is `root:wheel drwxr-xr-x` on a standard install, so the owner's write bit made it look writable to every user on the machine. The installer therefore chose a system-wide install for everyone and then failed creating `/etc/zentinel/agents`, and the user-local fallback beneath it was unreachable.
+
+  It now uses `access(2)`, and checks every directory the install creates rather than only the binary one.
+
+  A user-local install places the binary in `~/.local/bin` and its configuration in `~/.config/zentinel/agents/`. Use `--prefix` to choose somewhere else, or run as root for the system-wide install.
+
+  Reported by [@alanorth](https://github.com/alanorth), who also spotted that the agent registry pages named a path — `~/.zentinel/agents/` — that the installer has never used. All 23 pages have been corrected.
+
+---
+
+## 26.09_4
+
+**Date:** 2026-09-03
+**Crate version:** 0.6.41
+
+> **If you run agents, upgrade.** An agent that restarts was lost until the proxy restarted, and with `failure-mode "open"` nothing reported it.
+
+### Fixed
+- **An agent the proxy could not reach at startup was lost for the life of the process.** With `failure-mode "open"` — the default in the shipped examples — this was silent: requests were forwarded unprocessed, the agent process looked healthy, and nothing anywhere reported it.
+
+  Three ordinary situations produced it: an agent slower to start than the proxy, **an agent that restarts** (a crash, an upgrade, a rolling deploy), and a socket on a volume that is not ready yet.
+
+  Four things had to change, each of which alone kept the agent dead: registration **refused** an unreachable agent instead of recording it, so the pool had nothing to reconnect; pool maintenance was started after registration and behind it, so a failed registration also took down the loop meant to recover it; reconnection **gave up permanently** after three attempts, roughly fifteen seconds, which covers most restarts; and reconnection never learned the agent's capabilities, so a recovered agent would have answered calls while the proxy believed it supported nothing.
+
+  No configuration change is needed. If you added start-ordering to work around this, it is no longer required — though ordering agents before the proxy remains sensible.
+
+### Changed
+- **Multiplexed MCP tool calls are proxied rather than originated.** A route fronting several MCP servers answered every request itself, so tool calls used neither the connection pool, nor the route's retry policy, nor the upstream's TLS settings. A tool call goes to exactly one upstream, so it now takes the normal proxy path and gets all three. See [Agentic protocols](../../configuration/agentic/).
+
+  Listings still cannot be proxied — merging several answers into one is composition, not proxying — nor can the single `initialize` handshake per upstream, which happens before the client's own request. So the first call to an upstream costs one extra round trip and every call after it is proxied.
+
+---
+
+## 26.09_3
+
+**Date:** 2026-09-03
+**Crate version:** 0.6.40
+
+> **If you run the container images with agents over a shared socket volume, upgrade and read the first item.** Agent routes have been forwarding requests unprocessed.
+
+### Fixed
+- **Agents could not create their sockets.** `/var/run/zentinel` — where agents place their listening sockets and where the proxy looks for them — was not created in any image. A Docker named volume mounted at a path the image does not contain is created **root-owned**, and the agent images run as `nonroot`, so the bind failed with a permission error. The proxy then had nothing to connect to, and because `failure-mode "open"` is the default in the shipped examples, every agent route silently forwarded requests unprocessed. The symptom was agents appearing to do nothing, with no error anywhere.
+
+  **The image change alone is not a reliable fix**, and you should not depend on it: both the Debian and distroless bases have `/var/run` as a symlink to `/run`, so a directory placed at `/var/run/zentinel` is not necessarily where Docker looks when it initialises a volume mounted there, and whichever container starts first decides whose layout is used. **If you write your own Compose file, prepare the volume explicitly:**
+
+  ```yaml
+  socket-init:
+    image: busybox
+    user: "0:0"
+    command: ["sh", "-c", "mkdir -p /sockets && chmod 1777 /sockets"]
+    volumes:
+      - agent-sockets:/sockets
+  ```
+
+  and have the agents wait on it with `condition: service_completed_successfully`. Mode `1777` because the proxy and the agents may run as different users; sticky so one agent cannot remove another's socket.
+
+- **Start agents before the proxy.** The proxy registers each agent once, at startup, and a registration that fails is not retried — the agent is then absent for the life of the process, and every call to it answers `Agent <id> not found` while the agent sits there listening. With `failure-mode "open"` that is silent. The shipped Compose file now orders them; if you run your own, do the same. Tracked in [#465](https://github.com/zentinelproxy/zentinel/issues/465), which also means an agent that *restarts* is lost until the proxy restarts.
+
+- **JSON-RPC response ids preserve their type.** A request with `"id": 42` was answered `"id": "42"`. The specification requires the response id to equal the request id including its type, and a strict client may reject the mismatch.
+
+### Added
+- **A route can front several MCP servers and present them as one endpoint.** `tools/list` is answered by asking every upstream and merging the results, each tool carrying its upstream's prefix; a call is routed to the server its prefix names, with the prefix stripped before the upstream sees it. See [Agentic protocols](../../configuration/agentic/).
+
+  Prefixes are declared, never derived — a tool's name is what a model reasons about, so it must not change because an unrelated upstream was added. `session-key` is required with two or more upstreams and must be configured rather than generated: a startup-generated key would rotate on every reload and drop every live session, and two instances could not read each other's tokens. Policy applies to the namespaced name a client sees.
+
+  **Resources are not served on a multiplexing route.** They are identified by URI, and a URI cannot carry an upstream prefix, so a merged listing would show the same URI from two servers with no way to tell them apart and no way to read either. Tools and prompts merge and route normally; a single-upstream route is unaffected.
+
+  When an upstream is down its tools are omitted from the merged listing rather than the listing failing, and a call routed to it fails fast rather than hanging — measured with one of two upstreams stopped, the listing came back in 58 ms and the call was refused in 17 ms. There is no failover in the sense of retrying elsewhere: a tool lives on one upstream.
+
+---
+
+## 26.09_2
+
+**Date:** 2026-09-02
+**Crate version:** 0.6.39
+
+> **If you configure `health-check` on any upstream, upgrade.** On 0.6.38 and earlier it never sent a single probe.
+
+### Fixed
+- **Health checks never probed anything.** The health checker built its backend set from the configured targets and never populated it from discovery, so every cycle checked zero backends — for every check type: `http`, `tcp`, `grpc` and `inference` alike.
+
+  It failed silently in both directions. No probe was sent, so a backend that was down was never detected; and no backend was ever marked unhealthy, so nothing was taken out of rotation. There was no error anywhere: the runner started, logged that it had, and ticked on schedule. Measured against a real backend at `interval-secs 2`, it sent **0 probes in twelve seconds; it now sends 29**.
+
+  **What to expect on upgrade:** no configuration change is needed, but existing `health-check` blocks begin working. Backends that have been quietly failing may be marked unhealthy and removed from rotation for the first time.
+- **The Docker image builds again**, against Rust 1.95.
+- **The integration suite runs**, having never been executed by CI since it was written; fixing that surfaced four further faults in the suite itself.
+- **The post-release version bump lands** instead of leaving an orphan branch and a `Cargo.lock` a release behind.
+
+### Added
+- **MCP calls are counted per tool** — `zentinel_mcp_calls_total`, labelled by route, JSON-RPC method, target and decision. Both client-supplied labels are bounded by what the route's configuration names, so series count is bounded by config rather than by traffic. See [Agentic protocols](../../configuration/agentic/).
+- **Rate limiting per MCP tool**, via the `mcp-tool` and `client-ip-and-mcp-tool` [rate-limit keys](../../configuration/filters/). An MCP endpoint otherwise shares one limit across every tool it exposes. These are the first keys resolved from the request body rather than from headers, so they apply once the body has arrived and only on routes carrying an `mcp` block.
+- **Tools a route forbids are hidden from listing responses.** `tools/list`, `resources/list` and `prompts/list` are filtered to exactly what the route permits, using the same identity rule as the enforcer. Previously a route refused the call but let the upstream advertise the tool, so a client discovered tools it would only ever be refused — and read an inventory of the upstream's capabilities in the process. Set `filter-tool-list #false` to restore the previous behaviour.
+- **An MCP-native health check**, `health-check { type "mcp" }`. Sends `initialize`, and given `expected-tools` also asks `tools/list` and requires those tools to be present, so a server that is up but can no longer enumerate its tools is taken out of rotation. See [Upstreams](../../configuration/upstreams/).
+
+---
+
+## 26.09_1
+
+**Date:** 2026-09-01
+**Crate version:** 0.6.38
+
+Dependency maintenance only. Nothing in this release changes how Zentinel
+routes, inspects or blocks traffic, and no configuration change is needed.
+
+### Changed
+- **Dependency updates:** `quick-xml` 0.42, `jsonschema` 0.52, `uuid` 1.26,
+  `maxminddb` 0.30.3
+- The XML parser in the data-masking agent was ported to the `quick-xml` 0.42
+  API, which decodes as it reads. Attribute values remain unnormalised, as
+  before, so masking sees the same text it saw on 0.41.
 
 ---
 
