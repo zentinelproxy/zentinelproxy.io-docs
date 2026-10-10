@@ -1,0 +1,65 @@
++++
+title = "Examples"
+weight = 5
+sort_by = "weight"
+template = "section.html"
++++
+
+Complete, production-ready configuration examples for common Zentinel use cases. Each example includes the full configuration file, setup instructions, and testing commands.
+
+## Quick Reference
+
+| Example | Use Case | Key Features |
+|---------|----------|--------------|
+| [Simple Proxy](simple-proxy/) | Basic reverse proxy | Single upstream, health checks |
+| [API Gateway](api-gateway/) | API management | Versioning, auth, rate limiting |
+| [API Validation](api-validation/) | Schema validation | OpenAPI specs, JSON Schema, contract enforcement |
+| [Load Balancer](load-balancer/) | Traffic distribution | Multiple backends, algorithms |
+| [Traffic Mirroring](traffic-mirroring/) | Canary deployments | Shadow traffic, safe testing, sampling |
+| [Static Site](static-site/) | File serving | Caching, compression, SPA |
+| [Multi-tenant TLS](multi-tenant-tls/) | SaaS with per-customer domains | Per-SNI ACME, independent schedulers |
+| [Microservices](mixed-services/) | Service mesh | Multi-service routing |
+| [Security](/configuration/waf/) | WAF + Auth | Agents, protection layers |
+| [Observability](prometheus/) | Monitoring stack | Prometheus, Grafana, tracing |
+| [WebSocket](websocket/) | Real-time apps | WS proxying, inspection |
+| [Image Optimization](image-optimization/) | WebP/AVIF conversion | Accept negotiation, caching |
+| [AI Gateway](inference-routing/) | LLM API proxy | Prompt security, PII filtering |
+
+## Getting Started
+
+Each example follows this structure:
+
+1. **Overview** - What the example demonstrates
+2. **Configuration** - Complete `zentinel.kdl` file
+3. **Setup** - How to run the example
+4. **Testing** - Commands to verify it works
+5. **Customization** - Common modifications
+
+## Running Examples
+
+All examples assume Zentinel is installed:
+
+```bash
+# Install Zentinel
+cargo install zentinel-proxy
+
+# Run with a configuration
+zentinel -c zentinel.kdl
+```
+
+For examples using agents, install the required agents first:
+
+```bash
+# Example: Install WAF and auth agents (one agent per invocation)
+zentinel bundle install waf
+zentinel bundle install auth
+```
+
+## Example Files
+
+All configuration files in these examples are available in the [examples directory](https://github.com/zentinelproxy/zentinel/tree/main/examples) of the main repository:
+
+```bash
+git clone https://github.com/zentinelproxy/zentinel
+cd zentinel/examples
+```
