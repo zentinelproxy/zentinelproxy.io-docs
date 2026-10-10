@@ -1,4 +1,5 @@
 +++
+in_search_index = false
 title = "Control Plane"
 weight = 7
 sort_by = "weight"

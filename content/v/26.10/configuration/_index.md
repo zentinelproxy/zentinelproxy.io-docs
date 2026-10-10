@@ -1,4 +1,5 @@
 +++
+in_search_index = false
 title = "Configuration"
 weight = 3
 sort_by = "weight"

@@ -1,4 +1,5 @@
 +++
+in_search_index = false
 title = "Protocol v1 (Removed)"
 weight = 20
 sort_by = "weight"

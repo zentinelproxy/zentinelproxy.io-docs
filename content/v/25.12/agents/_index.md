@@ -1,4 +1,5 @@
 +++
+in_search_index = false
 title = "Agents"
 weight = 6
 sort_by = "weight"
