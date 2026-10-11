@@ -1,7 +1,7 @@
 +++
 title = "Listeners"
 weight = 3
-updated = 2026-02-19
+updated = 2026-10-11
 +++
 
 The `listeners` block defines network endpoints where Zentinel accepts incoming connections. Each listener binds to an address, specifies a protocol, and optionally configures TLS.
@@ -1043,6 +1043,17 @@ Certificates are automatically renewed when they're within `renew-before-days` o
 - Let's Encrypt certificates are valid for 90 days
 - After renewal, certificates are hot-reloaded without restart
 
+#### CA-suggested renewal windows (ARI)
+
+When the ACME server supports ACME Renewal Information ([RFC 9773](https://www.rfc-editor.org/rfc/rfc9773)), as Let's Encrypt does, Zentinel also asks the CA *when* each certificate should be renewed, and renews at a random point inside the window the CA suggests. Nothing needs configuring: support is detected from the CA's directory.
+
+- **`renew-before-days` is still a hard floor.** A certificate within `renew-before-days` of expiry is renewed whatever the CA's window says, so ARI can make a renewal earlier, never later.
+- **Early renewal on revocation.** If the CA moves the window forward (for example, to replace certificates ahead of a mass revocation), Zentinel picks a new time inside the new window. The CA's explanation URL, if it gives one, is logged.
+- **Spread out.** Picking a random time inside the window keeps a fleet of proxies from renewing at the same moment.
+- **Linked renewals.** Renewal orders name the certificate they replace, which Let's Encrypt exempts from rate limits. If the CA rejects that, the order is retried once without it.
+- **Cooldown.** A certificate is not renewed through ARI until it is 24 hours old. Expiry-based renewal is not subject to this.
+- **CAs without ARI** keep the behaviour above: renewal at `renew-before-days`, checked every 12 hours. While the CA's renewal-information endpoint is unreachable, Zentinel retries with backoff and falls back to `renew-before-days`.
+
 ### Combining ACME with Manual Certificates
 
 You can use ACME alongside manually managed certificates:
@@ -1127,6 +1138,7 @@ Error: Permission denied writing to storage directory
 Check the Zentinel logs for renewal status. Renewals are attempted:
 - Every 12 hours (check interval)
 - When certificate is within `renew-before-days` of expiry
+- At the time selected inside the CA's suggested renewal window, if the CA supports ARI (see [CA-suggested renewal windows](#ca-suggested-renewal-windows-ari))
 
 Manually trigger a reload to force renewal check:
 ```bash

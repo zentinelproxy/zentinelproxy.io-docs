@@ -1,7 +1,7 @@
 +++
 title = "Changelog"
 weight = 1
-updated = 2026-10-10
+updated = 2026-10-11
 +++
 
 All notable changes to Zentinel are documented here.
@@ -15,6 +15,7 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 
 | CalVer | Crate Version | Date | Highlights |
 |--------|---------------|------|------------|
+| [26.10_2](#26-10-2) | 0.6.45 | 2026-10-11 | ACME certificates renew in the window the CA suggests (ACME Renewal Information, RFC 9773), with `renew-before-days` kept as a hard floor |
 | [26.10_1](#26-10-1) | 0.6.44 | 2026-10-10 | Dependency maintenance: `rustls` 0.23.45 (stricter HelloRetryRequest handling), `maxminddb` 0.32 (bounded decoding of crafted GeoIP databases), `jsonschema` 0.56, rust-minor batch |
 | [26.09_6](#26-09-6) | 0.6.43 | 2026-09-15 | **Pingora 0.9.0**: request-target and authority hardening, hop-by-hop request headers stripped before the upstream, no HTTP/1 upstream reuse after an incomplete response; gRPC-Go advisory in the conformance suite; dependency maintenance |
 | [26.09_5](#26-09-5) | 0.6.42 | 2026-09-04 | **`zentinel bundle install` failed for every non-root user**, so no agent could be installed by following the documented instructions |
@@ -70,6 +71,31 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 | [26.01_3](#26-01-3) | 0.2.3 | 2026-01-05 | Bug fixes |
 | [26.01_0](#26-01-0) | 0.2.0 | 2026-01-01 | First CalVer release |
 | [25.12](#25-12) | 0.1.x | 2025-12 | Initial public releases |
+
+---
+
+## 26.10_2
+
+**Date:** 2026-10-11
+**Crate version:** 0.6.45
+
+ACME Renewal Information (RFC 9773). When the ACME server supports ARI (Let's
+Encrypt does), certificates are renewed inside the window the CA suggests rather
+than only a fixed number of days before expiry. No configuration change is needed.
+See [CA-suggested renewal windows](../../configuration/listeners/#ca-suggested-renewal-windows-ari).
+
+### Added
+- **ARI-guided renewal** at a random point inside the CA's `suggestedWindow`,
+  re-checked on the CA's schedule; an earlier window (for example ahead of a
+  revocation) is followed.
+- **Renewal orders name the certificate they replace**, which Let's Encrypt exempts
+  from rate limits; retried once without it if the CA refuses.
+
+### Changed
+- **`renew-before-days` stays a hard floor**: ARI can make a renewal earlier, never later.
+- CAs without ARI behave as before (renewal at `renew-before-days`, checked every 12 hours).
+- A certificate is not renewed through ARI until it is 24 hours old; expiry-based
+  renewal is exempt.
 
 ---
 
