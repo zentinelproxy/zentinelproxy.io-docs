@@ -1,0 +1,48 @@
+{% extends "section.html" %}
+
+{#
+  /v/ — the version archive index.
+
+  Lists every snapshot under content/v/ that Zola finds, so adding or pruning a
+  snapshot directory needs no change here. The theme's sidebar links every
+  top-level section, including this one, so it must render (it used to be
+  `render = false`, which made /v/ a 404 linked from every page).
+#}
+
+{% block title %}{{ section.title }}{% endblock %}
+
+{% block content %}
+<article class="section-page">
+    <header class="section-page__header">
+        <h1>{{ section.title }}</h1>
+        {% if section.description %}
+        <p class="section-page__description">{{ section.description }}</p>
+        {% endif %}
+    </header>
+
+    {% if section.content %}
+    <div class="section-page__content">
+        {{ section.content | safe }}
+    </div>
+    {% endif %}
+
+    <ul class="page-list">
+        {% if config.extra.versions is defined %}
+        <li>
+            <a href="{{ get_url(path='/') | safe }}">{{ config.extra.versions.current }}</a>
+            <p>Latest — the documentation at the site root.</p>
+        </li>
+        {% endif %}
+        {% for subsection_path in section.subsections | sort | reverse %}
+        {% set snapshot = get_section(path=subsection_path, metadata_only=true) %}
+        {% set version = snapshot.components | last %}
+        {% if config.extra.versions is not defined or version != config.extra.versions.current %}
+        <li>
+            <a href="{{ snapshot.permalink | safe }}">{{ version }}</a>
+            <p>Snapshot of the documentation as of the {{ version }} release series.</p>
+        </li>
+        {% endif %}
+        {% endfor %}
+    </ul>
+</article>
+{% endblock %}
