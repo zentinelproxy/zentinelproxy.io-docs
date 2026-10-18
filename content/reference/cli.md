@@ -237,13 +237,13 @@ zentinel 0.6.45 (release 26.10_3, commit 07c2f6d)
 ```
 
 Version string includes:
-- Semantic version from the workspace `Cargo.toml` at the release tag
+- Semantic version of the crate
 - CalVer release tag
 - Git commit hash (short)
 
-The semantic version printed by the binary is the `Cargo.toml` version at the
-tagged commit. The crate published to crates.io for the same release is one
-patch higher (26.10_3 is `0.6.46` on crates.io); see
+Up to and including 26.10_3, the semantic version printed by release binaries
+is one patch below the crate published for that release (26.10_3 is `0.6.46`
+on crates.io). Releases after 26.10_3 print the published version; see
 [Versioning](../../appendix/versioning/#version-mapping).
 
 ## Configuration Resolution

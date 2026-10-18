@@ -100,10 +100,13 @@ zentinel --version
 # zentinel 0.6.45 (release 26.10_3, commit 07c2f6d)
 ```
 
-The binary prints the workspace SemVer from `Cargo.toml` at the release tag,
-then the CalVer release and the commit. That SemVer is one patch below the
-crate published for the release (see the table above), because the release
-pipeline publishes the tagged version plus one.
+The binary prints the crate SemVer, then the CalVer release and the commit.
+Up to and including 26.10_3, release binaries were built from the tagged tree
+and printed the SemVer one patch below the crate published for that release
+(26.10_3 prints `0.6.45`; crates.io has `0.6.46`). From the next release on,
+the build applies the published version first
+([zentinel#513](https://github.com/zentinelproxy/zentinel/pull/513)), so the
+binary and crates.io agree.
 
 **From Docker:**
 
