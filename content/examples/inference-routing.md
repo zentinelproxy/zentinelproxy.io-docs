@@ -1,7 +1,7 @@
 +++
 title = "Inference Routing"
 weight = 18
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 Configure Zentinel for LLM/AI inference endpoints with token-based rate limiting, model routing, cost tracking, and intelligent load balancing. This example demonstrates how to build a production-ready AI gateway.
@@ -70,11 +70,10 @@ upstreams {
     upstream "openai" {
         target "api.openai.com:443" weight=1
 
-        load-balancing "round-robin"
+        load-balancing "round_robin"
 
         tls {
             sni "api.openai.com"
-            verify #true
         }
 
         health-check {
@@ -96,11 +95,10 @@ upstreams {
     upstream "anthropic" {
         target "api.anthropic.com:443" weight=1
 
-        load-balancing "round-robin"
+        load-balancing "round_robin"
 
         tls {
             sni "api.anthropic.com"
-            verify #true
         }
 
         timeouts {
@@ -117,7 +115,7 @@ upstreams {
         target "10.0.1.12:8000" weight=2
 
         // Use least-tokens-queued for optimal GPU utilization
-        load-balancing "least-tokens-queued"
+        load-balancing "least_tokens_queued"
 
         health-check {
             type "http" {
@@ -135,13 +133,20 @@ upstreams {
             max-idle 10
             idle-timeout-secs 60
         }
+
+        circuit-breaker {
+            failure-threshold 5
+            success-threshold 2
+            timeout-seconds 60
+            half-open-max-requests 3
+        }
     }
 
     // Fallback provider (cheaper, lower quality)
     upstream "fallback-llm" {
         target "inference-fallback.internal:8080" weight=1
 
-        load-balancing "round-robin"
+        load-balancing "round_robin"
     }
 }
 
@@ -169,31 +174,30 @@ routes {
             rate-limit {
                 tokens-per-minute 100000
                 burst-tokens 20000
-                key "header:X-API-Key"  // Rate limit per API key
             }
 
             // Token budget for cumulative tracking
             budget {
                 limit 10000000  // 10M tokens per period
                 period "monthly"
-                key "header:X-Org-Id"  // Budget per organization
             }
 
-            // Cost attribution for billing
+            // Cost attribution for billing (prices per million tokens)
             cost-attribution {
                 enabled #true
-                models {
+                currency "USD"
+                pricing {
                     model "gpt-4" {
-                        input-cost-per-1k 0.03
-                        output-cost-per-1k 0.06
+                        input-cost-per-million 30.0
+                        output-cost-per-million 60.0
                     }
                     model "gpt-4-turbo" {
-                        input-cost-per-1k 0.01
-                        output-cost-per-1k 0.03
+                        input-cost-per-million 10.0
+                        output-cost-per-million 30.0
                     }
                     model "gpt-3.5-turbo" {
-                        input-cost-per-1k 0.0005
-                        output-cost-per-1k 0.0015
+                        input-cost-per-million 0.5
+                        output-cost-per-million 1.5
                     }
                 }
             }
@@ -208,7 +212,6 @@ routes {
             timeout-secs 300
             max-body-size "1MB"
             failure-mode "closed"
-            buffer-requests #true  // Required for token counting
         }
     }
 
@@ -230,23 +233,14 @@ routes {
             rate-limit {
                 tokens-per-minute 50000
                 burst-tokens 10000
-                key "header:X-API-Key"
             }
 
-            // Model routing with fallback
+            // Model routing: model name pattern -> upstream
             model-routing {
-                mappings {
-                    mapping "claude-3-opus*" {
-                        upstream "anthropic"
-                    }
-                    mapping "claude-3-sonnet*" {
-                        upstream "anthropic"
-                    }
-                    // Fallback unknown models to local
-                    mapping "*" {
-                        upstream "local-llm"
-                    }
-                }
+                model "claude-3-opus*" upstream="anthropic"
+                model "claude-3-sonnet*" upstream="anthropic"
+                // Unknown models go to the local cluster
+                default-upstream "local-llm"
             }
         }
 
@@ -272,13 +266,14 @@ routes {
         inference {
             provider "generic"
 
-            // Token estimation when provider doesn't report tokens
-            token-estimation "chars"  // chars, words, or tiktoken
+            // Header that carries the model name
+            model-header "X-Model-Name"
 
             rate-limit {
                 tokens-per-minute 500000
                 burst-tokens 100000
-                key "client-ip"
+                // Token estimation when the provider doesn't report tokens
+                estimation-method "chars"  // chars, words, or tiktoken
             }
 
             routing {
@@ -287,27 +282,14 @@ routes {
 
             // Model routing for multi-model deployments
             model-routing {
-                model-header "X-Model-Name"
-                mappings {
-                    mapping "llama-70b*" {
-                        upstream "local-llm"
-                        weight 1
-                    }
-                    mapping "llama-7b*" {
-                        upstream "local-llm"
-                        weight 3  // Prefer smaller model
-                    }
-                    mapping "mistral*" {
-                        upstream "local-llm"
-                    }
-                }
+                model "llama-70b*" upstream="local-llm"
+                model "llama-7b*" upstream="local-llm"
+                model "mistral*" upstream="local-llm"
             }
         }
 
         // Automatic fallback on errors
         fallback {
-            upstream "fallback-llm"
-
             triggers {
                 on-health-failure #true
                 on-budget-exhausted #true
@@ -315,10 +297,11 @@ routes {
                 on-error-codes 502 503 504 429
             }
 
-            // Model mapping for cross-provider fallback
-            model-mapping {
-                "llama-70b" "llama-7b"  // Fall back to smaller model
-                "claude-3-opus" "gpt-4"
+            fallback-upstream "fallback-llm" {
+                // Model mapping for the fallback provider
+                model-mapping {
+                    "llama-70b" "llama-7b"  // Fall back to smaller model
+                }
             }
         }
 
@@ -326,13 +309,6 @@ routes {
             timeout-secs 120
             max-body-size "10MB"
             failure-mode "open"
-        }
-
-        circuit-breaker {
-            failure-threshold 5
-            success-threshold 2
-            timeout-seconds 60
-            half-open-max-requests 3
         }
 
         retry-policy {
@@ -394,11 +370,11 @@ limits {
 
 Instead of request-based limits, inference routes can use token-based limits:
 
-```kdl
+```fragment,kdl
+// inside a route's inference { } block
 rate-limit {
     tokens-per-minute 100000  // Total tokens (input + output)
     burst-tokens 20000        // Allow burst above limit
-    key "header:X-API-Key"    // Rate limit per API key
 }
 ```
 
@@ -406,11 +382,12 @@ rate-limit {
 
 Track cumulative token usage per organization or user:
 
-```kdl
+```fragment,kdl
+// inside a route's inference { } block
 budget {
     limit 10000000       // 10M tokens
-    period "monthly"     // Reset period
-    key "header:X-Org-Id"
+    period "monthly"     // hourly, daily, monthly, or seconds
+    alert-thresholds 0.8 0.9 0.95
 }
 ```
 
@@ -418,13 +395,14 @@ budget {
 
 Track costs per model for billing:
 
-```kdl
+```fragment,kdl
+// inside a route's inference { } block
 cost-attribution {
     enabled #true
-    models {
+    pricing {
         model "gpt-4" {
-            input-cost-per-1k 0.03
-            output-cost-per-1k 0.06
+            input-cost-per-million 30.0
+            output-cost-per-million 60.0
         }
     }
 }
@@ -434,13 +412,12 @@ cost-attribution {
 
 Route requests to different backends based on model name:
 
-```kdl
+```fragment,kdl
+// inside a route's inference { } block
 model-routing {
-    mappings {
-        mapping "gpt-4*" { upstream "openai" }
-        mapping "claude*" { upstream "anthropic" }
-        mapping "*" { upstream "local-llm" }
-    }
+    model "gpt-4*" upstream="openai"
+    model "claude*" upstream="anthropic" provider="anthropic"
+    default-upstream "local-llm"
 }
 ```
 
@@ -526,30 +503,11 @@ curl -X POST http://localhost:8080/inference \
 
 ## Customizations
 
-### Streaming Support
+### Streaming and Priority
 
-```kdl
-route "streaming-inference" {
-    inference {
-        streaming {
-            enabled #true
-            // Count tokens from streamed chunks
-            token-counting "stream"
-        }
-    }
-}
-```
-
-### Priority Queuing
-
-```kdl
-route "premium-inference" {
-    inference {
-        priority "high"  // Process before normal priority
-        queue-timeout-ms 30000
-    }
-}
-```
+Streaming-specific token counting and per-request priority queuing are not
+configurable in the `inference` block. Route priority (`priority "high"`)
+only affects route matching order.
 
 ### GPU-Aware Load Balancing
 
@@ -559,12 +517,11 @@ upstream "gpu-cluster" {
     target "gpu-2:8000" weight=4   // 4x A100
     target "gpu-3:8000" weight=2   // 2x A100
 
-    load-balancing "least-tokens-queued"
+    load-balancing "least_tokens_queued"
 
     health-check {
         type "http" {
             path "/health"
-            // Check GPU memory availability
         }
     }
 }

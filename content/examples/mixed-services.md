@@ -1,7 +1,7 @@
 +++
 title = "Microservices"
 weight = 5
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 Route traffic to multiple backend services based on path, headers, and other criteria. This example demonstrates a microservices architecture with Zentinel as the API gateway.
@@ -87,12 +87,8 @@ routes {
             path-prefix "/api/users/"
         }
         upstream "user-service"
-        agents "auth" "ratelimit"
+        filters "auth" "ratelimit"
         service-type "api"
-        circuit-breaker {
-            failure-threshold 5
-            timeout-seconds 30
-        }
         retry-policy {
             max-attempts 2
         }
@@ -111,12 +107,8 @@ routes {
             path-prefix "/api/orders/"
         }
         upstream "order-service"
-        agents "auth" "ratelimit"
+        filters "auth" "ratelimit"
         service-type "api"
-        circuit-breaker {
-            failure-threshold 3
-            timeout-seconds 60
-        }
         retry-policy {
             max-attempts 3
         }
@@ -137,7 +129,7 @@ routes {
             method "GET"
         }
         upstream "product-service"
-        agents "ratelimit"  // No auth for public product listing
+        filters "ratelimit"  // No auth for public product listing
         service-type "api"
         retry-policy {
             max-attempts 3
@@ -158,7 +150,7 @@ routes {
             method "POST" "PUT" "DELETE"
         }
         upstream "product-service"
-        agents "auth" "ratelimit"
+        filters "auth" "ratelimit"
         service-type "api"
         policies {
             timeout-secs 30
@@ -173,10 +165,6 @@ routes {
         }
         upstream "search-service"
         service-type "api"
-        circuit-breaker {
-            failure-threshold 10
-            timeout-seconds 15
-        }
         policies {
             timeout-secs 5  // Fast timeout, search should be quick
             failure-mode "open"  // Degrade gracefully if search is down
@@ -219,10 +207,14 @@ upstreams {
     upstream "user-service" {
         target "users-1.internal:3001"
         target "users-2.internal:3001"
-        load-balancing "least-connections"
+        load-balancing "least_connections"
         health-check {
             type "http" { path "/health" }
             interval-secs 5
+        }
+        circuit-breaker {
+            failure-threshold 5
+            timeout-seconds 30
         }
     }
 
@@ -230,17 +222,21 @@ upstreams {
         target "orders-1.internal:3002"
         target "orders-2.internal:3002"
         target "orders-3.internal:3002"
-        load-balancing "round-robin"
+        load-balancing "round_robin"
         health-check {
             type "http" { path "/health" }
             interval-secs 5
+        }
+        circuit-breaker {
+            failure-threshold 3
+            timeout-seconds 60
         }
     }
 
     upstream "product-service" {
         target "products-1.internal:3003"
         target "products-2.internal:3003"
-        load-balancing "round-robin"
+        load-balancing "round_robin"
         health-check {
             type "http" { path "/health" }
             interval-secs 10
@@ -252,6 +248,10 @@ upstreams {
         health-check {
             type "http" { path "/health" }
             interval-secs 5
+        }
+        circuit-breaker {
+            failure-threshold 10
+            timeout-seconds 15
         }
     }
 
@@ -276,6 +276,18 @@ agents {
     }
 }
 
+// Routes attach agents through filters
+filters {
+    filter "auth" {
+        type "agent"
+        agent "auth"
+    }
+    filter "ratelimit" {
+        type "agent"
+        agent "ratelimit"
+    }
+}
+
 observability {
     metrics {
         enabled #true
@@ -288,7 +300,7 @@ observability {
     tracing {
         enabled #true
         service-name "api-gateway"
-        sample-rate 0.1  // Sample 10% of requests
+        sampling-rate 0.1  // Sample 10% of requests
         backend "otlp" {
             endpoint "http://jaeger.internal:4317"
         }
@@ -313,7 +325,7 @@ upstreams {
             port 3001
             refresh-interval 30
         }
-        load-balancing "round-robin"
+        load-balancing "round_robin"
     }
 }
 ```
@@ -367,41 +379,21 @@ Check Jaeger UI for trace with ID `test-123`.
 
 ### Request Hedging
 
-Send duplicate requests to reduce tail latency:
+Request hedging (sending a duplicate request after a delay to cut tail
+latency) is not configurable; no route parser reads a `hedge` block.
 
-```kdl
-route "search" {
-    upstream "search-service"
-    hedge {
-        enabled #true
-        delay-ms 50  // Hedge after 50ms
-        max-requests 2
-    }
-}
-```
+### Traffic Mirroring (Shadowing)
 
-### Traffic Mirroring
-
-Mirror production traffic to staging:
+Mirror a share of production traffic to a staging upstream. Responses from
+the shadow upstream are discarded:
 
 ```kdl
 route "products" {
+    matches { path-prefix "/api/products/" }
     upstream "product-service"
-    mirror {
-        upstream "product-service-staging"
-        percentage 10  // Mirror 10% of traffic
-    }
-}
-```
-
-### Request Shadowing
-
-```kdl
-route "api" {
-    upstream "api-v2"
     shadow {
-        upstream "api-v3-canary"
-        percentage 5
+        upstream "product-service-staging"
+        percentage 10.0  // Mirror 10% of traffic
     }
 }
 ```
@@ -424,19 +416,9 @@ zentinel-agent-ratelimit \
 
 ### Service-Specific Error Pages
 
-```kdl
-route "api" {
-    error-pages {
-        default-format "json"
-        pages {
-            "503" {
-                format "json"
-                message "Service temporarily unavailable"
-            }
-        }
-    }
-}
-```
+Error pages are not configurable from KDL: no parser reads an `error-pages`
+block. The error format follows the route's `service-type` — JSON for `api`,
+`builtin` and `inference`, HTML for `web` and `static`.
 
 ## Next Steps
 

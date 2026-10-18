@@ -1,7 +1,7 @@
 +++
 title = "Static Site"
 weight = 4
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 Serve static files with Zentinel including caching, compression, SPA support, and CDN-like features.
@@ -357,28 +357,28 @@ routes {
 ### Directory Listing
 
 ```kdl
-static-files {
-    root "/var/www/files"
-    directory-listing #true
+route "files" {
+    matches { path-prefix "/files/" }
+    service-type "static"
+    static-files {
+        root "/var/www/files"
+        directory-listing #true
+    }
 }
 ```
 
-### Custom 404 Page
+### SPA Fallback / Custom 404
+
+`fallback` names the file served when a path does not exist (for a single-page
+app, usually `index.html`):
 
 ```kdl
 route "spa" {
+    matches { path-prefix "/" }
     service-type "static"
     static-files {
         root "/var/www/site"
-        fallback "404.html"
-    }
-    error-pages {
-        pages {
-            "404" {
-                format "html"
-                template "/var/www/site/404.html"
-            }
-        }
+        fallback "index.html"
     }
 }
 ```
@@ -387,6 +387,11 @@ route "spa" {
 
 ```kdl
 route "spa" {
+    matches { path-prefix "/" }
+    service-type "static"
+    static-files {
+        root "/var/www/site"
+    }
     policies {
         response-headers {
             set {
@@ -397,14 +402,21 @@ route "spa" {
 }
 ```
 
-### Brotli Compression
+### Compression
+
+Compression is on by default (`compress #true`); set `compress #false` to turn
+it off. Compression level and the list of compressed content types are not
+configurable.
 
 ```kdl
-static-files {
-    root "/var/www/site"
-    compress #true
-    compression-level 6
-    compression-types "text/html" "text/css" "application/javascript" "application/json"
+route "site" {
+    matches { path-prefix "/" }
+    service-type "static"
+    static-files {
+        root "/var/www/site"
+        compress #true
+        cache-control "public, max-age=3600"
+    }
 }
 ```
 

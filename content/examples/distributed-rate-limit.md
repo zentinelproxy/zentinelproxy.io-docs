@@ -64,7 +64,7 @@ upstreams {
         target "10.0.1.11:8080" weight=1
         target "10.0.1.12:8080" weight=1
 
-        load-balancing "round-robin"
+        load-balancing "round_robin"
 
         health-check {
             type "http" {
@@ -79,7 +79,7 @@ upstreams {
         target "10.0.2.10:8080" weight=1
         target "10.0.2.11:8080" weight=1
 
-        load-balancing "least-connections"
+        load-balancing "least_connections"
     }
 }
 

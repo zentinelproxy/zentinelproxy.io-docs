@@ -1,7 +1,7 @@
 +++
 title = "Image Optimization"
 weight = 17
-updated = 2026-02-24
+updated = 2026-10-18
 +++
 
 Automatically convert JPEG and PNG images to WebP or AVIF on the fly using the image optimization agent. The agent negotiates the best format from the client's `Accept` header, caches converted images on disk, and falls back to the original on any error.
@@ -102,6 +102,14 @@ agents {
     }
 }
 
+// Routes attach agents through filters
+filters {
+    filter "image-opt" {
+        type "agent"
+        agent "image-opt"
+    }
+}
+
 upstreams {
     upstream "origin" {
         target "127.0.0.1:9000"
@@ -112,7 +120,7 @@ routes {
     route "images" {
         matches { path-prefix "/" }
         upstream "origin"
-        agents "image-opt"
+        filters "image-opt"
     }
 }
 ```
@@ -175,7 +183,8 @@ curl -H "Accept: image/avif,image/webp,image/*" \
 
 If you don't need AVIF support:
 
-```kdl
+```fragment,kdl
+// inside agent "image-opt" { } — passed to the agent as-is
 config {
     formats "webp"
     quality {
@@ -188,7 +197,8 @@ config {
 
 Lower the size limits to avoid spending CPU on hero images:
 
-```kdl
+```fragment,kdl
+// inside agent "image-opt" { } — passed to the agent as-is
 config {
     max_input_size_bytes 5242880
     max_pixel_count 10000000
@@ -199,7 +209,8 @@ config {
 
 Skip images that are already optimized or served from a CDN:
 
-```kdl
+```fragment,kdl
+// inside agent "image-opt" { } — passed to the agent as-is
 config {
     passthrough_patterns "\\.gif$" "\\.svg$" "/cdn/" "/thumbnails/"
 }

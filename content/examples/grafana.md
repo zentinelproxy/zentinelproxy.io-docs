@@ -1,7 +1,7 @@
 +++
 title = "Security"
 weight = 7
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 Complete security configuration with WAF, authentication, rate limiting, and security headers.
@@ -73,7 +73,7 @@ routes {
         matches {
             path-prefix "/public/"
         }
-        agents "waf" "ratelimit"
+        filters "waf" "ratelimit"
         upstream "backend"
         policies {
             response-headers {
@@ -97,7 +97,7 @@ routes {
         matches {
             path-prefix "/api/"
         }
-        agents "waf" "auth" "ratelimit"
+        filters "waf" "auth" "ratelimit"
         upstream "backend"
         service-type "api"
         policies {
@@ -112,9 +112,6 @@ routes {
                 remove "Server" "X-Powered-By"
             }
         }
-        error-pages {
-            default-format "json"
-        }
     }
 
     // Admin endpoints - strict security
@@ -123,7 +120,7 @@ routes {
         matches {
             path-prefix "/admin/"
         }
-        agents "waf" "auth" "ratelimit-strict"
+        filters "waf" "auth" "ratelimit-strict"
         upstream "backend"
         policies {
             failure-mode "closed"
@@ -179,6 +176,26 @@ agents {
         events "request_headers"
         timeout-ms 20
         failure-mode "closed"
+    }
+}
+
+// Routes attach agents through filters
+filters {
+    filter "waf" {
+        type "agent"
+        agent "waf"
+    }
+    filter "ratelimit" {
+        type "agent"
+        agent "ratelimit"
+    }
+    filter "auth" {
+        type "agent"
+        agent "auth"
+    }
+    filter "ratelimit-strict" {
+        type "agent"
+        agent "ratelimit-strict"
     }
 }
 

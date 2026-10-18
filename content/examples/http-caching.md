@@ -1,7 +1,7 @@
 +++
 title = "HTTP Caching"
 weight = 16
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 Configure HTTP response caching with different storage backends and per-route cache policies. This example demonstrates memory caching, stale-while-revalidate, and cache control handling.
@@ -65,7 +65,7 @@ upstreams {
         target "10.0.1.10:8080" weight=1
         target "10.0.1.11:8080" weight=1
 
-        load-balancing "round-robin"
+        load-balancing "round_robin"
 
         health-check {
             type "http" {
@@ -79,13 +79,13 @@ upstreams {
     upstream "static-backend" {
         target "10.0.2.10:8080" weight=1
 
-        load-balancing "round-robin"
+        load-balancing "round_robin"
     }
 
     upstream "slow-backend" {
         target "10.0.3.10:8080" weight=1
 
-        load-balancing "round-robin"
+        load-balancing "round_robin"
 
         timeouts {
             request-secs 120
@@ -121,25 +121,22 @@ routes {
 
         policies {
             timeout-secs 30
+        }
 
-            cache {
-                enabled #true
+        cache {
+            enabled #true
 
-                // Cache TTL
-                ttl-secs 300  // 5 minutes
+            // Cache TTL
+            default-ttl-secs 300  // 5 minutes
 
-                // Vary cache by these headers
-                vary-headers "Accept" "Accept-Encoding" "Accept-Language"
+            // Vary cache by these headers
+            vary-headers "Accept" "Accept-Encoding" "Accept-Language"
 
-                // Respect Cache-Control headers from upstream
-                respect-cache-control #true
+            // Stale-while-revalidate: serve stale while refreshing
+            stale-while-revalidate-secs 60
 
-                // Stale-while-revalidate: serve stale while refreshing
-                stale-while-revalidate-secs 60
-
-                // Stale-if-error: serve stale on upstream error
-                stale-if-error-secs 300
-            }
+            // Stale-if-error: serve stale on upstream error
+            stale-if-error-secs 300
         }
     }
 
@@ -157,28 +154,25 @@ routes {
         policies {
             timeout-secs 10
 
-            cache {
-                enabled #true
-
-                // Long TTL for static assets
-                ttl-secs 86400  // 24 hours
-
-                // Only vary by Accept-Encoding
-                vary-headers "Accept-Encoding"
-
-                // Ignore Cache-Control from origin
-                respect-cache-control #false
-
-                // Long stale times for availability
-                stale-while-revalidate-secs 3600
-                stale-if-error-secs 86400
-            }
-
             response-headers {
                 set {
                     "Cache-Control" "public, max-age=86400, immutable"
                 }
             }
+        }
+
+        cache {
+            enabled #true
+
+            // Long TTL for static assets
+            default-ttl-secs 86400  // 24 hours
+
+            // Only vary by Accept-Encoding
+            vary-headers "Accept-Encoding"
+
+            // Long stale times for availability
+            stale-while-revalidate-secs 3600
+            stale-if-error-secs 86400
         }
     }
 
@@ -195,13 +189,12 @@ routes {
 
         policies {
             timeout-secs 30
+        }
 
-            cache {
-                enabled #true
-                ttl-secs 30  // Short TTL
-                vary-headers "Accept" "Authorization"
-                respect-cache-control #true
-            }
+        cache {
+            enabled #true
+            default-ttl-secs 30  // Short TTL
+            vary-headers "Accept" "Authorization"
         }
     }
 
@@ -219,14 +212,13 @@ routes {
 
         policies {
             timeout-secs 30
+        }
 
-            cache {
-                enabled #true
-                ttl-secs 60
-                // Cache varies by API key (per-user cache)
-                vary-headers "X-API-Key" "Accept"
-                respect-cache-control #true
-            }
+        cache {
+            enabled #true
+            default-ttl-secs 60
+            // Cache varies by API key (per-user cache)
+            vary-headers "X-API-Key" "Accept"
         }
     }
 
@@ -243,15 +235,15 @@ routes {
 
         policies {
             timeout-secs 120
+        }
 
-            cache {
-                enabled #true
-                // Long cache for expensive computations
-                ttl-secs 3600  // 1 hour
-                vary-headers "Accept"
-                stale-while-revalidate-secs 600
-                stale-if-error-secs 3600
-            }
+        cache {
+            enabled #true
+            // Long cache for expensive computations
+            default-ttl-secs 3600  // 1 hour
+            vary-headers "Accept"
+            stale-while-revalidate-secs 600
+            stale-if-error-secs 3600
         }
     }
 
@@ -269,11 +261,11 @@ routes {
 
         policies {
             timeout-secs 30
+        }
 
-            // Disable caching for authenticated requests
-            cache {
-                enabled #false
-            }
+        // Disable caching for authenticated requests
+        cache {
+            enabled #false
         }
     }
 
@@ -481,17 +473,21 @@ cache {
 
 ### Cache Key Customization
 
+The per-route cache policy is a `cache` block directly inside the route (a
+`cache` block inside `policies` is not read). Query parameters listed in
+`ignore-query-params` are dropped from the cache key; there is no allow-list of
+query parameters, and no setting to ignore or override the upstream's
+`Cache-Control` headers.
+
 ```kdl
 route "custom-cache-key" {
-    policies {
-        cache {
-            enabled #true
-            ttl-secs 300
-            // Include specific query params in cache key
-            vary-query-params "page" "limit" "sort"
-            // Ignore certain query params
-            ignore-query-params "timestamp" "nonce"
-        }
+    matches { path-prefix "/api/products" }
+    upstream "api-backend"
+    cache {
+        enabled #true
+        default-ttl-secs 300
+        // Ignore certain query params
+        ignore-query-params "timestamp" "nonce"
     }
 }
 ```
@@ -500,15 +496,17 @@ route "custom-cache-key" {
 
 ```kdl
 route "conditional-cache" {
-    policies {
-        cache {
-            enabled #true
-            ttl-secs 300
-            // Only cache successful responses
-            cacheable-status-codes 200 301 302
-            // Don't cache responses larger than 10MB
-            max-cacheable-size-bytes 10485760
-        }
+    matches { path-prefix "/api/catalog" }
+    upstream "api-backend"
+    cache {
+        enabled #true
+        default-ttl-secs 300
+        // Only cache successful responses
+        cacheable-status-codes 200 301 302
+        // Don't cache responses larger than 10MB
+        max-size-bytes 10485760
+        // Only GET and HEAD responses are cached (the default)
+        cacheable-methods "GET" "HEAD"
     }
 }
 ```
@@ -524,19 +522,17 @@ route "site-with-exclusions" {
     }
     upstream "origin"
 
-    policies {
-        cache {
-            enabled #true
-            default-ttl-secs 3600
+    cache {
+        enabled #true
+        default-ttl-secs 3600
 
-            // Don't cache dynamic file types
-            exclude-extensions "php" "html" "asp"
+        // Don't cache dynamic file types
+        exclude-extensions "php" "html" "asp"
 
-            // Don't cache admin or login paths (glob patterns)
-            exclude-paths "/wp-admin/**" "/login" "/api/auth/**"
+        // Don't cache admin or login paths (glob patterns)
+        exclude-paths "/wp-admin/**" "/login" "/api/auth/**"
 
-            vary-headers "Accept-Encoding"
-        }
+        vary-headers "Accept-Encoding"
     }
 }
 ```

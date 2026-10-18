@@ -1,7 +1,7 @@
 +++
 title = "Namespaces"
 weight = 17
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 Organize resources using namespaces for multi-tenant or microservice architectures. This example shows hierarchical configuration with namespace-scoped resources, service definitions, and cross-namespace exports.
@@ -85,7 +85,7 @@ upstreams {
         target "auth.internal:8080" weight=1
         target "auth.internal:8081" weight=1
 
-        load-balancing "round-robin"
+        load-balancing "round_robin"
 
         health-check {
             type "http" {
@@ -111,6 +111,12 @@ filters {
 
     filter "global-cors" {
         type "cors"
+    }
+
+    // Attaches the global WAF agent to routes that list it
+    filter "waf" {
+        type "agent"
+        agent "waf-agent"
     }
 }
 
@@ -143,7 +149,7 @@ namespace "platform" {
             target "users.platform.internal:8080" weight=1
             target "users.platform.internal:8081" weight=1
 
-            load-balancing "least-connections"
+            load-balancing "least_connections"
 
             health-check {
                 type "http" {
@@ -156,7 +162,7 @@ namespace "platform" {
         upstream "notification-service" {
             target "notifications.platform.internal:8080" weight=1
 
-            load-balancing "round-robin"
+            load-balancing "round_robin"
         }
     }
 
@@ -281,19 +287,19 @@ namespace "storefront" {
             target "catalog.storefront.internal:8080" weight=1
             target "catalog.storefront.internal:8081" weight=1
 
-            load-balancing "round-robin"
+            load-balancing "round_robin"
         }
 
         upstream "cart-service" {
             target "cart.storefront.internal:8080" weight=1
 
-            load-balancing "ip-hash"  // Session affinity
+            load-balancing "ip_hash"  // Session affinity
         }
 
         upstream "checkout-service" {
             target "checkout.storefront.internal:8080" weight=1
 
-            load-balancing "round-robin"
+            load-balancing "round_robin"
         }
     }
 
@@ -313,10 +319,11 @@ namespace "storefront" {
 
             policies {
                 timeout-secs 10
-                cache {
-                    enabled #true
-                    ttl-secs 300
-                }
+            }
+
+            cache {
+                enabled #true
+                default-ttl-secs 300
             }
         }
 
@@ -348,7 +355,7 @@ namespace "storefront" {
             upstream "checkout-service"
 
             // Full security for checkout
-            filters "platform:platform-auth" "waf-agent"
+            filters "platform:platform-auth" "waf"
 
             policies {
                 timeout-secs 60
@@ -389,7 +396,7 @@ namespace "analytics" {
             target "ingest.analytics.internal:8081" weight=1
             target "ingest.analytics.internal:8082" weight=1
 
-            load-balancing "least-connections"
+            load-balancing "least_connections"
 
             connection-pool {
                 max-connections 200
@@ -400,7 +407,7 @@ namespace "analytics" {
         upstream "query" {
             target "query.analytics.internal:8080" weight=1
 
-            load-balancing "round-robin"
+            load-balancing "round_robin"
 
             timeouts {
                 request-secs 300  // Long timeout for queries
@@ -523,8 +530,8 @@ Resources are resolved in this order:
 
 Reference exported resources using `namespace:resource` syntax:
 
-```kdl
-// In storefront namespace
+```fragment,kdl
+// In a storefront route
 filters "platform:platform-auth"  // Use auth from platform namespace
 ```
 
@@ -532,7 +539,8 @@ filters "platform:platform-auth"  // Use auth from platform namespace
 
 Namespaces explicitly declare which resources other namespaces can use:
 
-```kdl
+```fragment,kdl
+// inside namespace "platform" { }
 exports {
     upstreams "user-service"
     filters "platform-auth"
@@ -627,15 +635,25 @@ namespace "premium-tenant" {
 
 ### Service-Level Circuit Breakers
 
-```kdl
+Circuit breakers belong to upstreams, not routes:
+
+```fragment,kdl
+// inside namespace "..." { }
 service "critical-api" {
-    routes {
-        route "main" {
+    upstreams {
+        upstream "main" {
+            target "10.0.5.10:8080"
             circuit-breaker {
                 failure-threshold 3
                 success-threshold 2
                 timeout-seconds 30
             }
+        }
+    }
+    routes {
+        route "main" {
+            matches { path-prefix "/critical/" }
+            upstream "main"
         }
     }
 }

@@ -1,7 +1,7 @@
 +++
 title = "Load Balancer"
 weight = 3
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 A load balancer configuration distributing traffic across multiple backend servers with health checks, session affinity, and weighted routing.
@@ -74,7 +74,7 @@ routes {
         priority 999
         matches {
             path "/admin/upstreams"
-            header name="X-Admin-Key" value="${ADMIN_KEY}"
+            header name="X-Admin-Key" value="REPLACE_ME_admin_key"  // placeholder; no env substitution
         }
         service-type "builtin"
         builtin-handler "upstreams"
@@ -86,11 +86,6 @@ routes {
             path-prefix "/"
         }
         upstream "app-cluster"
-        circuit-breaker {
-            failure-threshold 5
-            success-threshold 2
-            timeout-seconds 30
-        }
         retry-policy {
             max-attempts 3
         }
@@ -104,7 +99,7 @@ upstreams {
         target "10.0.1.12:3000" weight=100
         target "10.0.1.13:3000" weight=100
         target "10.0.1.14:3000" weight=100
-        load-balancing "round-robin"
+        load-balancing "round_robin"
         health-check {
             type "http" {
                 path "/health"
@@ -116,8 +111,14 @@ upstreams {
             healthy-threshold 2
         }
         connection-pool {
-            max-idle-connections 100
+            max-idle 100
             idle-timeout-secs 60
+        }
+        // Circuit breakers are configured per upstream
+        circuit-breaker {
+            failure-threshold 5
+            success-threshold 2
+            timeout-seconds 30
         }
     }
 }
@@ -141,7 +142,9 @@ observability {
 ```kdl
 upstreams {
     upstream "app" {
-        load-balancing "round-robin"
+        target "10.0.1.10:3000"
+        target "10.0.1.11:3000"
+        load-balancing "round_robin"
     }
 }
 ```
@@ -174,7 +177,7 @@ upstreams {
 routes {
     route "default" {
         matches { path-prefix "/" }
-        upstream "backend"
+        upstream "app"
     }
 }
 
@@ -185,7 +188,9 @@ routes {
 ```kdl
 upstreams {
     upstream "app" {
-        load-balancing "least-connections"
+        target "10.0.1.10:3000"
+        target "10.0.1.11:3000"
+        load-balancing "least_connections"
     }
 }
 ```
@@ -197,7 +202,9 @@ Routes to the backend with fewest active connections.
 ```kdl
 upstreams {
     upstream "app" {
-        load-balancing "ip-hash"
+        target "10.0.1.10:3000"
+        target "10.0.1.11:3000"
+        load-balancing "ip_hash"
     }
 }
 ```
@@ -209,6 +216,8 @@ Same client IP always routes to the same backend (when available).
 ```kdl
 upstreams {
     upstream "app" {
+        target "10.0.1.10:3000"
+        target "10.0.1.11:3000"
         load-balancing "random"
     }
 }
@@ -249,21 +258,19 @@ Tracks latency using exponential moving average. Automatically routes away from 
 ```kdl
 upstreams {
     upstream "global-api" {
-        target "10.0.1.1:8080" {
-            metadata { "zone" "us-east-1a" }
-        }
-        target "10.0.1.2:8080" {
-            metadata { "zone" "us-east-1b" }
-        }
-        target "10.0.2.1:8080" {
-            metadata { "zone" "eu-west-1a" }
-        }
+        // Zone prefix: "<zone>/<host>:<port>"
+        target "us-east-1a/10.0.1.1:8080"
+        target "us-east-1b/10.0.1.2:8080"
+        target "eu-west-1a/10.0.2.1:8080"
         load-balancing "locality_aware"
     }
 }
 ```
 
 Prefers backends in the same zone as the proxy, reducing cross-region latency.
+The proxy's own zone comes from the `ZENTINEL_ZONE` environment variable
+(falling back to `ZONE`, then `REGION`); targets without a zone prefix are in
+zone `unknown`.
 
 ### Weighted Least Connections
 
@@ -474,35 +481,12 @@ curl http://localhost:9090/metrics | grep -E "zentinel_(upstream|connections)"
 
 ## Customizations
 
-### Connection Draining
+### Connection Draining and Slow Start
 
-```kdl
-upstreams {
-    upstream "app" {
-        connection-draining {
-            enabled #true
-            timeout-secs 30
-        }
-    }
-}
-```
-
-Allows in-flight requests to complete before removing unhealthy targets.
-
-### Slow Start
-
-```kdl
-upstreams {
-    upstream "app" {
-        slow-start {
-            enabled #true
-            duration-secs 60
-        }
-    }
-}
-```
-
-Gradually increases traffic to newly healthy targets.
+Per-upstream connection draining and slow start (gradually ramping traffic to
+a newly healthy target) are not yet configurable; neither `connection-draining`
+nor `slow-start` is read by the upstream parser. On shutdown, in-flight
+requests drain for `graceful-shutdown-timeout-secs` (in `system`).
 
 ### HTTPS Backends
 
@@ -515,7 +499,7 @@ upstreams {
         target "10.0.1.11:443" weight=100
         target "10.0.1.12:443" weight=100
 
-        load-balancing "round-robin"
+        load-balancing "round_robin"
         tls {
             sni "app.internal"
         }

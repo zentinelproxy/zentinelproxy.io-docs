@@ -199,7 +199,7 @@ upstreams {
         target "127.0.0.1:3001" weight=1
         target "127.0.0.1:3002" weight=1
 
-        load-balancing "round-robin"
+        load-balancing "round_robin"
     }
 }
 ```

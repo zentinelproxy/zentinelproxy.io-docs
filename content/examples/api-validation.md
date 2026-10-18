@@ -1,7 +1,7 @@
 +++
 title = "API Schema Validation"
 weight = 3
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 Validate API requests and responses against JSON schemas or OpenAPI specifications at the proxy layer. This example demonstrates contract validation, ensuring all API traffic conforms to your API specifications.
@@ -58,7 +58,7 @@ listeners {
 upstreams {
     upstream "api-backend" {
         target "127.0.0.1:3001" weight=1
-        load-balancing "round-robin"
+        load-balancing "round_robin"
     }
 }
 
@@ -82,7 +82,6 @@ routes {
 
         // Buffer requests for validation
         policies {
-            buffer-requests #true
             max-body-size "10MB"
         }
     }
@@ -115,7 +114,6 @@ routes {
         upstream "api-backend"
 
         policies {
-            buffer-requests #true
             max-body-size "1MB"
         }
     }
@@ -186,7 +184,6 @@ routes {
         }
 
         policies {
-            buffer-requests #true
         }
     }
 }
@@ -265,8 +262,6 @@ routes {
         }
 
         policies {
-            buffer-requests #true
-            buffer-responses #true  // Required for response validation
         }
     }
 }
@@ -370,18 +365,7 @@ routes {
         }
 
         policies {
-            buffer-requests #true
             max-body-size "1MB"
-        }
-
-        error-pages {
-            default-format "json"
-            pages {
-                "400" {
-                    format "json"
-                    message "Invalid order data"
-                }
-            }
         }
     }
 }
@@ -565,17 +549,17 @@ curl -X POST http://localhost:8080/api/register \
 
 - Schemas are compiled once at startup
 - Validation adds ~1ms latency per request
-- Use `buffer-requests #true` for validation
 - Consider validating only critical endpoints
 
 ### Response Validation
 
-Response validation requires buffering:
+Enable response validation in the route's `api-schema` block:
 
-```kdl
-policies {
-    buffer-responses #true
-    max-body-size "10MB"
+```fragment,kdl
+// inside a route
+api-schema {
+    schema-file "/etc/zentinel/schemas/api.yaml"
+    validate-responses #true
 }
 ```
 
@@ -583,10 +567,9 @@ policies {
 
 ### Strict Mode
 
-```kdl
-api-schema {
-    strict-mode #true  // Reject extra fields
-}
+```fragment,kdl
+// inside a route's api-schema { } block
+strict-mode #true  // Reject extra fields
 ```
 
 Catches clients sending unexpected fields, preventing:
@@ -596,46 +579,9 @@ Catches clients sending unexpected fields, preventing:
 
 ### Error Handling
 
-Configure custom error pages:
-
-```kdl
-error-pages {
-    default-format "json"
-    pages {
-        "400" {
-            format "json"
-            message "Request validation failed. Check your payload."
-            headers {
-                "X-Validation-Failed" "true"
-            }
-        }
-    }
-}
-```
-
-### Schema Versioning
-
-Organize schemas by API version:
-
-```
-/etc/zentinel/schemas/
-├── api-v1.yaml
-├── api-v2.yaml
-└── api-v3.yaml
-```
-
-Reference the correct version per route:
-
-```kdl
-route "api-v2" {
-    matches {
-        path-prefix "/api/v2"
-    }
-    api-schema {
-        schema-file "/etc/zentinel/schemas/api-v2.yaml"
-    }
-}
-```
+Error pages are not configurable from KDL: no parser reads an `error-pages`
+block. Validation failures are returned in the route's error format, which is
+JSON for `service-type "api"`.
 
 ## Benefits
 
@@ -650,4 +596,3 @@ route "api-v2" {
 
 - [Routes Configuration](/configuration/routes/) - Full route configuration reference
 - [Upstreams](/configuration/upstreams/) - Backend service setup
-- [Error Pages](/configuration/routes/#error-pages) - Custom error handling
