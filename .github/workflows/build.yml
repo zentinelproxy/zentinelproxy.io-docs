@@ -37,6 +37,8 @@ jobs:
           echo "${ZENTINEL_SHA256}  $RUNNER_TEMP/$archive" | sha256sum -c -
           mkdir -p "$RUNNER_TEMP/zentinel"
           tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP/zentinel"
+          # The release archive does not carry the executable bit.
+          chmod +x "$RUNNER_TEMP/zentinel/zentinel"
           "$RUNNER_TEMP/zentinel/zentinel" --version
           echo "ZENTINEL_BIN=$RUNNER_TEMP/zentinel/zentinel" >> "$GITHUB_ENV"
 
