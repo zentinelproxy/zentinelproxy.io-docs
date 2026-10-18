@@ -244,7 +244,7 @@ cargo yank --version 1.2.0 --undo
 
 ```dockerfile
 # Dockerfile
-FROM rust:1.92 as builder
+FROM rust:1.96 as builder
 WORKDIR /app
 COPY . .
 RUN cargo build --release

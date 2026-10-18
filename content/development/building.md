@@ -17,7 +17,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source ~/.cargo/env
 
 # Verify installation
-rustc --version  # 1.75.0 or later
+rustc --version  # 1.96.0 or later
 cargo --version
 ```
 
