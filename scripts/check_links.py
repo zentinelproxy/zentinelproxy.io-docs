@@ -9,6 +9,11 @@ resolves it against the routes Zola will actually serve.
 Zola routing: content/foo/bar.md    -> /foo/bar/
               content/foo/_index.md -> /foo/
 
+Links to a `.md` file that do not use Zola's `@/` syntax (`./foo/bar.md`,
+`../bar.md`, `/foo/bar.md`) are always reported: Zola passes them through
+verbatim, so the browser requests a literal `bar.md` and gets a 404 even
+though the page exists. Write them as `@/foo/bar.md` or `/foo/bar/`.
+
 Usage: python3 scripts/check_links.py [content] [--include-versioned]
 Exits non-zero if any internal link is broken.
 """
@@ -69,7 +74,23 @@ def normalize(target, src_url):
     url = "/" + url.strip("/")
     if url.endswith(".md"):
         url = url[:-3]
+    if url == "/_index" or url.endswith("/_index"):
+        url = url[: -len("_index")]
     return url.rstrip("/") or "/"
+
+
+MD_FILE_RE = re.compile(r"\.md(?:[#?].*)?$")
+
+
+def raw_md_link(target):
+    """True for a non-@/ internal link that points at a .md source file."""
+    t = target.strip()
+    if t.startswith("<") and t.endswith(">"):
+        t = t[1:-1]
+    t = re.split(r"\s+", t, maxsplit=1)[0]
+    if t.startswith("@/") or re.match(r"^[a-z][a-z0-9+.-]*:", t, re.I):
+        return False
+    return bool(MD_FILE_RE.search(t))
 
 
 def main():
@@ -89,6 +110,9 @@ def main():
             if resolved is None:
                 continue
             total += 1
+            if raw_md_link(target):
+                broken[path].append((label, target, resolved + "  (raw .md link, use @/)"))
+                continue
             # static assets live outside content/
             if re.search(r"\.(png|jpg|jpeg|svg|gif|pdf|zip|txt|css|js|toml|kdl)$", resolved):
                 continue

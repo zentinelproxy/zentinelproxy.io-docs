@@ -116,26 +116,26 @@ Client Response
 
 This documentation will guide you through:
 
-1. **[Installation](./getting-started/installation.md)** — Get Zentinel up and running
-2. **[Quick Start](./getting-started/quick-start.md)** — Your first proxy configuration
-3. **[Core Concepts](./concepts/architecture.md)** — Understand how Zentinel works
-4. **[Configuration](./configuration/file-format.md)** — Master the configuration system
-5. **[Features](./features/)** — Explore all capabilities
-6. **[Deployment](./deployment/docker.md)** — Deploy to production
+1. **[Installation](@/getting-started/installation.md)** — Get Zentinel up and running
+2. **[Quick Start](@/getting-started/quick-start.md)** — Your first proxy configuration
+3. **[Core Concepts](@/concepts/architecture.md)** — Understand how Zentinel works
+4. **[Configuration](@/configuration/file-format.md)** — Master the configuration system
+5. **[Features](@/features/_index.md)** — Explore all capabilities
+6. **[Deployment](@/deployment/docker.md)** — Deploy to production
 
 ## Documentation Structure
 
-- **[Getting Started](./getting-started/)** — Installation and basic setup
-- **[Core Concepts](./concepts/)** — Fundamental architecture and design principles
-- **[Configuration](./configuration/)** — Detailed configuration reference
-- **[Features](./features/)** — Complete feature list with code references
-- **[Agents](./agents/)** — External agent system for extensibility
-- **[Operations](./operations/)** — Production management and troubleshooting
-- **[Deployment](./deployment/)** — Container and cloud deployment guides
-- **[Control Plane](./control-plane/)** — Fleet management, rollouts, and observability
-- **[Examples](./examples/)** — Real-world configuration examples
-- **[Reference](./reference/)** — Metrics, CLI, and API documentation
-- **[Development](./development/)** — Contributing to Zentinel
+- **[Getting Started](@/getting-started/_index.md)** — Installation and basic setup
+- **[Core Concepts](@/concepts/_index.md)** — Fundamental architecture and design principles
+- **[Configuration](@/configuration/_index.md)** — Detailed configuration reference
+- **[Features](@/features/_index.md)** — Complete feature list with code references
+- **[Agents](@/agents/_index.md)** — External agent system for extensibility
+- **[Operations](@/operations/_index.md)** — Production management and troubleshooting
+- **[Deployment](@/deployment/_index.md)** — Container and cloud deployment guides
+- **[Control Plane](@/control-plane/_index.md)** — Fleet management, rollouts, and observability
+- **[Examples](@/examples/_index.md)** — Real-world configuration examples
+- **[Reference](@/reference/_index.md)** — Metrics, CLI, and API documentation
+- **[Development](@/development/_index.md)** — Contributing to Zentinel
 
 ## Community
 
@@ -143,16 +143,16 @@ This documentation will guide you through:
 - 🐛 **[Issues](https://github.com/zentinelproxy/zentinel/issues)** — Bug reports and feature requests
 - 📦 **[GitHub](https://github.com/zentinelproxy/zentinel)** — Source code and releases
 
-Contributions are welcome! See our [Contributing Guide](./development/contributing.md) to get started.
+Contributions are welcome! See our [Contributing Guide](@/development/contributing.md) to get started.
 
 ## Version Information
 
-This documentation covers Zentinel release **26.04**. For the latest updates and changes, see the [Changelog](./appendix/changelog.md). For details on the versioning scheme, see [Versioning](./appendix/versioning.md).
+This documentation covers the latest Zentinel release; documentation for earlier release series is in the [Version Archive](@/v/_index.md). For the latest updates and changes, see the [Changelog](@/appendix/changelog.md). For details on the versioning scheme, see [Versioning](@/appendix/versioning.md).
 
 ## License
 
-Zentinel is open-source software licensed under the Apache License, Version 2.0. See the [License](./appendix/license.md) page for details.
+Zentinel is open-source software licensed under the Apache License, Version 2.0. See the [License](@/appendix/license.md) page for details.
 
 ---
 
-Ready to get started? Head to the [Installation Guide](./getting-started/installation.md) to begin your journey with Zentinel!
+Ready to get started? Head to the [Installation Guide](@/getting-started/installation.md) to begin your journey with Zentinel!
