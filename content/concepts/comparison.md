@@ -1,7 +1,7 @@
 +++
 title = "Comparison with Alternatives"
 weight = 8
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 How Zentinel compares to other popular reverse proxies and load balancers.
@@ -183,7 +183,9 @@ upstreams {
         target "127.0.0.1:3001"
         load-balancing "round_robin"
         health-check {
-            path "/health"
+            type "http" {
+                path "/health"
+            }
             interval-secs 10
         }
     }

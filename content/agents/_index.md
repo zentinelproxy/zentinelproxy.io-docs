@@ -88,7 +88,6 @@ agents {
     // Unix socket agent with pooling
     agent "auth-agent" type="auth" {
         unix-socket "/var/run/zentinel/auth.sock"
-        connections 4
         events "request_headers"
         timeout-ms 100
         failure-mode "closed"
@@ -97,7 +96,6 @@ agents {
     // gRPC agent
     agent "waf-agent" type="waf" {
         grpc "http://localhost:50051"
-        connections 4
         events "request_headers" "request_body"
         timeout-ms 200
         failure-mode "open"
@@ -108,21 +106,31 @@ agents {
     }
 }
 
-// Reverse connection listener
-reverse-listener {
-    path "/var/run/zentinel/agents.sock"
-    max-connections-per-agent 4
-    handshake-timeout "10s"
+// Routes attach agents through filters
+filters {
+    filter "auth" {
+        type "agent"
+        agent "auth-agent"
+    }
+    filter "waf" {
+        type "agent"
+        agent "waf-agent"
+    }
 }
 
 routes {
     route "api" {
         matches { path-prefix "/api/" }
         upstream "backend"
-        agents "auth-agent" "waf-agent"
+        filters "auth" "waf"
     }
 }
 ```
+
+Reverse connections (agents dialing in to Zentinel) exist in the agent
+protocol (`zentinel-agent-protocol`), but as of 26.10_3 no `reverse-listener`
+block is read from the KDL configuration. See
+[Reverse Connections](@/agents/v2/reverse-connections.md).
 
 ## Building Your Own Agent
 

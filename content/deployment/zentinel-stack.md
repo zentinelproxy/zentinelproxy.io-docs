@@ -1,7 +1,7 @@
 +++
 title = "zentinel-stack"
 weight = 2
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 `zentinel-stack` is a lightweight launcher that runs Zentinel and its agents as a single command. It's designed for development and simple deployments where full process supervision isn't needed.
@@ -44,7 +44,14 @@ The proxy itself installs with `curl -fsSL https://get.zentinelproxy.io | sh`
 # Create a simple config
 cat > zentinel.kdl << 'EOF'
 system {
-    listen "0.0.0.0:8080"
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
 }
 
 agents {
@@ -61,11 +68,18 @@ upstreams {
     }
 }
 
+filters {
+    filter "echo" {
+        type "agent"
+        agent "echo"
+    }
+}
+
 routes {
     route "all" {
         matches { path-prefix "/" }
         upstream "backend"
-        agents "echo"
+        filters "echo"
     }
 }
 EOF
@@ -78,9 +92,15 @@ zentinel-stack --config zentinel.kdl
 
 ### Agent Commands
 
-When using `zentinel-stack`, agents include a `command` directive:
+When using `zentinel-stack`, agents include a `command` directive. These
+process-management directives (`command`, `restart-policy`,
+`restart-delay-ms`, `max-restarts`, `env`) are read only by `zentinel-stack`;
+the proxy ignores them, and `zentinel lint` lists them as ignored settings.
 
-```kdl
+<!-- fragment: command, restart-policy, restart-delay-ms, max-restarts and env
+     are read by zentinel-stack (crates/stack/src/main.rs) and ignored by the
+     proxy, so `zentinel lint` reports them as ignored settings. -->
+```fragment,kdl
 agents {
     agent "auth" type="auth" {
         // Command to spawn the agent
@@ -125,11 +145,16 @@ agents {
 
 ### Environment Variables
 
-Pass environment to agents:
+Pass environment to agents. A value written exactly as `"${NAME}"` is
+replaced with that environment variable of the `zentinel-stack` process:
 
-```kdl
+<!-- fragment: command, restart-policy, restart-delay-ms, max-restarts and env
+     are read by zentinel-stack (crates/stack/src/main.rs) and ignored by the
+     proxy, so `zentinel lint` reports them as ignored settings. -->
+```fragment,kdl
 agent "auth" type="auth" {
-    command "zentinel-auth-agent"
+    command "zentinel-auth-agent" "--socket" "/tmp/auth.sock"
+    unix-socket "/tmp/auth.sock"
 
     env {
         AUTH_SECRET "${AUTH_SECRET}"
@@ -150,6 +175,8 @@ Options:
     --proxy-only            Start only the proxy (no agents)
     --agents-only           Start only agents (no proxy)
     --dry-run               Validate config and exit
+    --shutdown-timeout <S>  Shutdown timeout in seconds [default: 30]
+    --startup-timeout <S>   Startup timeout in seconds [default: 10]
     -h, --help              Print help
     -V, --version           Print version
 ```
@@ -192,34 +219,18 @@ On SIGTERM or SIGINT:
 4. Send SIGTERM to agents
 5. Exit
 
-```kdl
-stack {
-    shutdown-timeout-seconds 30    // Max wait for graceful shutdown
-    startup-timeout-seconds 10     // Max wait for agents to be ready
-}
+The timeouts are command-line flags, not configuration (there is no `stack`
+block):
+
+```bash
+zentinel-stack --shutdown-timeout 30 --startup-timeout 10
 ```
 
 ### Health Monitoring
 
-`zentinel-stack` provides a combined health endpoint:
-
-```bash
-curl http://localhost:9090/stack/health
-```
-
-```json
-{
-  "status": "healthy",
-  "proxy": {
-    "status": "healthy",
-    "uptime_seconds": 3600
-  },
-  "agents": {
-    "auth": {"status": "healthy", "pid": 1234, "restarts": 0},
-    "waf": {"status": "healthy", "pid": 1235, "restarts": 1}
-  }
-}
-```
+`zentinel-stack` does not serve a health endpoint of its own. It restarts
+agents according to their `restart-policy` and logs each start, exit and
+restart; use the proxy's own health and metrics endpoints for the traffic side.
 
 ## Logging
 
@@ -240,14 +251,27 @@ zentinel-stack --config zentinel.kdl 2>&1 | jq
 
 ### Development Setup
 
-```kdl
+<!-- fragment: command, restart-policy, restart-delay-ms, max-restarts and env
+     are read by zentinel-stack (crates/stack/src/main.rs) and ignored by the
+     proxy, so `zentinel lint` reports them as ignored settings. -->
+```fragment,kdl
 // dev.kdl - Simple development config
 system {
-    listen "127.0.0.1:8080"
+    worker-threads 0
 }
 
-admin {
-    listen "127.0.0.1:9090"
+listeners {
+    listener "http" {
+        address "127.0.0.1:8080"
+        protocol "http"
+    }
+}
+
+observability {
+    metrics {
+        enabled #true
+        address "127.0.0.1:9090"
+    }
 }
 
 agents {
@@ -256,6 +280,13 @@ agents {
         unix-socket "/tmp/echo.sock"
         events "request_headers"
         restart-policy "always"
+    }
+}
+
+filters {
+    filter "echo" {
+        type "agent"
+        agent "echo"
     }
 }
 
@@ -269,25 +300,35 @@ routes {
     route "api" {
         matches { path-prefix "/" }
         upstream "backend"
-        agents "echo"
+        filters "echo"
     }
 }
 ```
 
 ### Production-like Local
 
-```kdl
+<!-- fragment: command, restart-policy, restart-delay-ms, max-restarts and env
+     are read by zentinel-stack (crates/stack/src/main.rs) and ignored by the
+     proxy, so `zentinel lint` reports them as ignored settings. -->
+```fragment,kdl
 // local-prod.kdl - Production-like but local
+// Run with: zentinel-stack --config local-prod.kdl --shutdown-timeout 30
 system {
-    listen "0.0.0.0:8080"
+    worker-threads 0
 }
 
-admin {
-    listen "127.0.0.1:9090"
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
 }
 
-stack {
-    shutdown-timeout-seconds 30
+observability {
+    metrics {
+        enabled #true
+        address "127.0.0.1:9090"
+    }
 }
 
 agents {
@@ -311,13 +352,27 @@ agents {
     }
 }
 
+filters {
+    filter "auth" {
+        type "agent"
+        agent "auth"
+    }
+    filter "waf" {
+        type "agent"
+        agent "waf"
+    }
+}
+
 upstreams {
     upstream "api" {
-        targets "127.0.0.1:3001" "127.0.0.1:3002"
-        load-balancer "round-robin"
+        target "127.0.0.1:3001"
+        target "127.0.0.1:3002"
+        load-balancing "round_robin"
         health-check {
-            path "/health"
-            interval-ms 5000
+            type "http" {
+                path "/health"
+            }
+            interval-secs 5
         }
     }
 }
@@ -326,7 +381,7 @@ routes {
     route "api" {
         matches { path-prefix "/api/" }
         upstream "api"
-        agents "auth" "waf"
+        filters "auth" "waf"
     }
 }
 ```

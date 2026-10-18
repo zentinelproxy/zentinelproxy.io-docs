@@ -1,7 +1,7 @@
 +++
 title = "FAQ"
 weight = 2
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 Frequently asked questions about Zentinel.
@@ -115,7 +115,11 @@ Zentinel supports TLS 1.2 and TLS 1.3. Configure minimum version in the listener
 ```kdl
 listeners {
     listener "https" {
+        address "0.0.0.0:443"
+        protocol "https"
         tls {
+            cert-file "/path/to/server.crt"
+            key-file "/path/to/server.key"
             min-version "1.2"  // or "1.3"
         }
     }
@@ -129,6 +133,8 @@ Enable client authentication in the TLS block:
 ```kdl
 listeners {
     listener "https" {
+        address "0.0.0.0:443"
+        protocol "https"
         tls {
             cert-file "/path/to/server.crt"
             key-file "/path/to/server.key"
@@ -181,10 +187,15 @@ upstreams {
 Set its weight to 0 or remove it from the configuration and reload:
 
 ```kdl
-// Before
-target "10.0.1.1:8080" weight=1
-// Draining
-target "10.0.1.1:8080" weight=0```
+upstreams {
+    upstream "backend" {
+        // Before: target "10.0.1.1:8080" weight=1
+        // Draining:
+        target "10.0.1.1:8080" weight=0
+        target "10.0.1.2:8080" weight=1
+    }
+}
+```
 
 Existing connections will complete; new requests go to other servers.
 

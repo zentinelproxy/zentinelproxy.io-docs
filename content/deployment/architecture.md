@@ -1,7 +1,7 @@
 +++
 title = "Deployment Architecture"
 weight = 1
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 This page explains Zentinel's deployment philosophy and why agents are managed externally.
@@ -87,19 +87,13 @@ When Zentinel starts:
 
 ### Health Checking
 
-Zentinel monitors agent health for circuit breaking (not supervision):
+Zentinel tracks agent failures for circuit breaking (not supervision). There
+is no separate agent health-check block; the circuit breaker opens on call
+failures:
 
 ```kdl
 agent "auth" type="auth" {
     unix-socket "/run/zentinel/auth.sock"
-
-    health-check {
-        enabled #true
-        interval-ms 5000
-        timeout-ms 100
-        healthy-threshold 2
-        unhealthy-threshold 3
-    }
 
     circuit-breaker {
         failure-threshold 5
@@ -213,16 +207,12 @@ agent "auth" type="auth" {
     // Per-request timeout
     timeout-ms 100
 
-    // Connection settings
-    connect-timeout-ms 1000
-
-    // Retry on transient failures
-    retry {
-        attempts 2
-        backoff-ms 10
-    }
+    // Per-chunk timeout for streamed bodies
+    chunk-timeout-ms 5000
 }
 ```
+
+Agent connect timeouts and retries are not configurable from KDL.
 
 ## Best Practices
 

@@ -1,7 +1,7 @@
 +++
 title = "Migration Guide (v1 to v2)"
 weight = 6
-updated = 2026-02-26
+updated = 2026-10-18
 +++
 
 {% callout(type="warning", title="V1 Protocol Removed") %}
@@ -230,8 +230,8 @@ agents {
 agents {
     agent "waf" type="waf" {
         unix-socket "/var/run/waf.sock"
-        protocol-version 2           // Enable v2
-        connections 4                // Connection pool size
+        // All agents use protocol v2; `protocol-version` is deprecated and
+        // ignored. The connection pool size is not configurable from KDL.
         timeout-ms 100
         failure-mode "open"
 

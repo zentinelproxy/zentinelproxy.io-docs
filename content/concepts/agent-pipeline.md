@@ -1,7 +1,7 @@
 +++
 title = "Agent Pipeline"
 weight = 6
-updated = 2026-03-02
+updated = 2026-10-18
 +++
 
 Zentinel composes agents into per-route **pipelines** that inspect and modify traffic as it flows through the proxy. This page explains the pipeline model, chaining semantics, execution strategies, and performance trade-offs.
@@ -356,30 +356,34 @@ These patterns illustrate common pipeline compositions for real-world use cases.
 A standard security gateway that authenticates, inspects, and rate-limits traffic:
 
 ```kdl
-route "api" {
-    matches { path-prefix "/api/" }
-    upstream "backend"
+routes {
+    route "api" {
+        matches { path-prefix "/api/" }
+        upstream "backend"
 
-    filters {
-        filter "rate-limit" {
-            type "rate-limit"
-            requests-per-second 100
-            burst 20
-        }
+        filters "rate-limit" "auth" "waf"
+    }
+}
 
-        filter "auth" {
-            type "agent"
-            agent "auth-agent"
-            failure-mode "closed"
-            timeout-ms 5000
-        }
+filters {
+    filter "rate-limit" {
+        type "rate-limit"
+        max-rps 100
+        burst 20
+    }
 
-        filter "waf" {
-            type "agent"
-            agent "waf-agent"
-            failure-mode "closed"
-            timeout-ms 3000
-        }
+    filter "auth" {
+        type "agent"
+        agent "auth-agent"
+        failure-mode "closed"
+        timeout-ms 5000
+    }
+
+    filter "waf" {
+        type "agent"
+        agent "waf-agent"
+        failure-mode "closed"
+        timeout-ms 3000
     }
 }
 ```
@@ -391,34 +395,38 @@ route "api" {
 An API gateway that authenticates, transforms requests, and logs for audit:
 
 ```kdl
-route "partner-api" {
-    matches {
-        path-prefix "/partner/v2/"
-        header "X-Partner-Key"
+routes {
+    route "partner-api" {
+        matches {
+            path-prefix "/partner/v2/"
+            header "X-Partner-Key"
+        }
+        upstream "partner-service"
+
+        filters "auth" "transform" "audit"
     }
-    upstream "partner-service"
+}
 
-    filters {
-        filter "auth" {
-            type "agent"
-            agent "auth-agent"
-            failure-mode "closed"
-            timeout-ms 5000
-        }
+filters {
+    filter "auth" {
+        type "agent"
+        agent "auth-agent"
+        failure-mode "closed"
+        timeout-ms 5000
+    }
 
-        filter "transform" {
-            type "agent"
-            agent "transform-agent"
-            failure-mode "closed"
-            timeout-ms 2000
-        }
+    filter "transform" {
+        type "agent"
+        agent "transform-agent"
+        failure-mode "closed"
+        timeout-ms 2000
+    }
 
-        filter "audit" {
-            type "agent"
-            agent "audit-logger-agent"
-            failure-mode "open"
-            timeout-ms 1000
-        }
+    filter "audit" {
+        type "agent"
+        agent "audit-logger-agent"
+        failure-mode "open"
+        timeout-ms 1000
     }
 }
 ```
@@ -430,24 +438,28 @@ route "partner-api" {
 A lightweight pipeline focused on traffic visibility:
 
 ```kdl
-route "all-traffic" {
-    matches { path-prefix "/" }
-    upstream "backend"
+routes {
+    route "all-traffic" {
+        matches { path-prefix "/" }
+        upstream "backend"
 
-    filters {
-        filter "access-log" {
-            type "agent"
-            agent "audit-logger-agent"
-            failure-mode "open"
-            timeout-ms 1000
-        }
+        filters "access-log" "analytics"
+    }
+}
 
-        filter "analytics" {
-            type "agent"
-            agent "analytics-agent"
-            failure-mode "open"
-            timeout-ms 500
-        }
+filters {
+    filter "access-log" {
+        type "agent"
+        agent "audit-logger-agent"
+        failure-mode "open"
+        timeout-ms 1000
+    }
+
+    filter "analytics" {
+        type "agent"
+        agent "analytics-agent"
+        failure-mode "open"
+        timeout-ms 500
     }
 }
 ```
@@ -459,47 +471,50 @@ route "all-traffic" {
 A multi-layered security pipeline for high-value endpoints:
 
 ```kdl
-route "admin" {
-    matches {
-        path-prefix "/admin/"
-        method "GET" "POST" "PUT" "DELETE"
+routes {
+    route "admin" {
+        matches {
+            path-prefix "/admin/"
+        }
+        upstream "admin-service"
+
+        filters "rate-limit" "ip-reputation" "auth" "waf" "content-scanner"
     }
-    upstream "admin-service"
+}
 
-    filters {
-        filter "rate-limit" {
-            type "rate-limit"
-            requests-per-second 10
-            burst 5
-        }
+filters {
+    filter "rate-limit" {
+        type "rate-limit"
+        max-rps 10
+        burst 5
+    }
 
-        filter "ip-reputation" {
-            type "agent"
-            agent "ip-reputation-agent"
-            failure-mode "closed"
-            timeout-ms 3000
-        }
+    filter "ip-reputation" {
+        type "agent"
+        agent "ip-reputation-agent"
+        failure-mode "closed"
+        timeout-ms 3000
+    }
 
-        filter "auth" {
-            type "agent"
-            agent "auth-agent"
-            failure-mode "closed"
-            timeout-ms 5000
-        }
+    filter "auth" {
+        type "agent"
+        agent "auth-agent"
+        failure-mode "closed"
+        timeout-ms 5000
+    }
 
-        filter "waf" {
-            type "agent"
-            agent "waf-agent"
-            failure-mode "closed"
-            timeout-ms 3000
-        }
+    filter "waf" {
+        type "agent"
+        agent "waf-agent"
+        failure-mode "closed"
+        timeout-ms 3000
+    }
 
-        filter "content-scanner" {
-            type "agent"
-            agent "content-scanner-agent"
-            failure-mode "closed"
-            timeout-ms 5000
-        }
+    filter "content-scanner" {
+        type "agent"
+        agent "content-scanner-agent"
+        failure-mode "closed"
+        timeout-ms 5000
     }
 }
 ```
@@ -528,20 +543,58 @@ listeners {
 agents {
     agent "auth-agent" {
         unix-socket "/var/run/zentinel/auth.sock"
-        pool-size 4
         events "request_headers"
+        max-concurrent-calls 100
     }
 
     agent "waf-agent" {
         unix-socket "/var/run/zentinel/waf.sock"
-        pool-size 8
         events "request_headers" "request_body" "response_body"
+        max-concurrent-calls 50
     }
 
     agent "audit-agent" {
         unix-socket "/var/run/zentinel/audit.sock"
-        pool-size 2
         events "request_headers" "response_headers"
+        max-concurrent-calls 200
+    }
+}
+
+filters {
+    filter "rate-limit" {
+        type "rate-limit"
+        max-rps 100
+        burst 20
+    }
+
+    filter "auth" {
+        type "agent"
+        agent "auth-agent"
+        failure-mode "closed"
+        timeout-ms 5000
+    }
+
+    filter "waf" {
+        type "agent"
+        agent "waf-agent"
+        failure-mode "closed"
+        timeout-ms 3000
+    }
+
+    filter "headers" {
+        type "headers"
+        phase "response"
+        set {
+            X-Content-Type-Options "nosniff"
+            X-Frame-Options "DENY"
+        }
+    }
+
+    filter "audit" {
+        type "agent"
+        agent "audit-agent"
+        failure-mode "open"
+        timeout-ms 1000
     }
 }
 
@@ -551,50 +604,11 @@ routes {
 
         matches {
             path-prefix "/api/"
-            method "GET" "POST" "PUT" "DELETE"
         }
 
         upstream "api-backend"
 
-        filters {
-            filter "rate-limit" {
-                type "rate-limit"
-                requests-per-second 100
-                burst 20
-            }
-
-            filter "auth" {
-                type "agent"
-                agent "auth-agent"
-                failure-mode "closed"
-                timeout-ms 5000
-                max-concurrent 100
-            }
-
-            filter "waf" {
-                type "agent"
-                agent "waf-agent"
-                failure-mode "closed"
-                timeout-ms 3000
-                max-concurrent 50
-            }
-
-            filter "headers" {
-                type "headers"
-                response {
-                    set "X-Content-Type-Options" "nosniff"
-                    set "X-Frame-Options" "DENY"
-                }
-            }
-
-            filter "audit" {
-                type "agent"
-                agent "audit-agent"
-                failure-mode "open"
-                timeout-ms 1000
-                max-concurrent 200
-            }
-        }
+        filters "rate-limit" "auth" "waf" "headers" "audit"
     }
 }
 
@@ -604,7 +618,9 @@ upstreams {
         target "10.0.1.2:8080" weight=5
         load-balancing "round_robin"
         health-check {
-            path "/health"
+            type "http" {
+                path "/health"
+            }
             interval-secs 10
         }
     }

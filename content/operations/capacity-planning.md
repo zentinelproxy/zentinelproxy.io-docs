@@ -1,7 +1,7 @@
 +++
 title = "Capacity Planning"
 weight = 8
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 Guide for sizing and scaling Zentinel deployments.
@@ -39,14 +39,20 @@ Guide for sizing and scaling Zentinel deployments.
 **Traffic**: < 1,000 requests/second
 
 ```kdl
-server {
+system {
     worker-threads 2
     max-connections 5000
 }
 
-connection-pool {
-    max-connections 100
-    max-idle 20
+// Upstream connection pool (per upstream)
+upstreams {
+    upstream "backend" {
+        target "10.0.1.10:8080"
+        connection-pool {
+            max-connections 100
+            max-idle 20
+        }
+    }
 }
 ```
 
@@ -57,14 +63,20 @@ connection-pool {
 **Traffic**: 1,000 - 10,000 requests/second
 
 ```kdl
-server {
+system {
     worker-threads 4
     max-connections 20000
 }
 
-connection-pool {
-    max-connections 200
-    max-idle 50
+// Upstream connection pool (per upstream)
+upstreams {
+    upstream "backend" {
+        target "10.0.1.10:8080"
+        connection-pool {
+            max-connections 200
+            max-idle 50
+        }
+    }
 }
 ```
 
@@ -211,14 +223,12 @@ groups:
 **When to use**: Quick fix, single-instance deployments
 
 ```kdl
-// Increase worker threads (if CPU-bound)
-server {
-    worker-threads 8  // Increase from 4
-}
+system {
+    // Increase worker threads (if CPU-bound)
+    worker-threads 8          // Increase from 4
 
-// Increase connection limits (if connection-bound)
-server {
-    max-connections 50000  // Increase from 20000
+    // Increase connection limits (if connection-bound)
+    max-connections 50000     // Increase from 20000
 }
 ```
 

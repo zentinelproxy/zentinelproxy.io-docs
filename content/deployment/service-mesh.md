@@ -1,7 +1,7 @@
 +++
 title = "Service Mesh Integration"
 weight = 7
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 Zentinel integrates with service mesh environments through dynamic service discovery and mTLS support. While not a service mesh itself, Zentinel can serve as an ingress gateway or edge proxy in mesh deployments.
@@ -461,7 +461,8 @@ Zentinel exposes metrics compatible with mesh observability:
 observability {
     metrics {
         enabled #true
-        endpoint "/metrics"
+        address "0.0.0.0:9090"
+        path "/metrics"
     }
 }
 ```
@@ -514,22 +515,31 @@ metadata:
   name: zentinel-config
 data:
   zentinel.kdl: |
-    listener "http" {
-        address "0.0.0.0:8080"
+    system {
+        worker-threads 0
     }
 
-    upstream "api" {
-        discovery "consul" {
-            address "http://consul.consul:8500"
-            service "api"
-            only-passing true
-            refresh-interval 10
+    listeners {
+        listener "http" {
+            address "0.0.0.0:8080"
+            protocol "http"
         }
-        health-check {
-            type "http" { path "/health" }
-            interval-secs 10
+    }
+
+    upstreams {
+        upstream "api" {
+            discovery "consul" {
+                address "http://consul.consul:8500"
+                service "api"
+                only-passing #true
+                refresh-interval 10
+            }
+            health-check {
+                type "http" { path "/health" }
+                interval-secs 10
+            }
+            load-balancing "least_connections"
         }
-        load-balancing "least_connections"
     }
 
     routes {

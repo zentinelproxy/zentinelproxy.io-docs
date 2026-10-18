@@ -75,7 +75,6 @@ routes {
         priority 200
         matches {
             path-prefix "/api/v2/"
-            method "GET" "POST" "PUT" "DELETE" "PATCH"
         }
         upstream "api-v2"
         filters "auth" "ratelimit"

@@ -353,6 +353,7 @@ backend http_back
 ```kdl
 upstreams {
     upstream "backend" {
+        target "10.0.1.1:8080"
         health-check {
             type "http" {
                 path "/health"

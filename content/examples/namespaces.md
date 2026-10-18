@@ -244,7 +244,6 @@ namespace "platform" {
                 matches {
                     host "users.example.com"
                     path-prefix "/api"
-                    method "GET" "POST" "PUT" "DELETE"
                 }
 
                 upstream "user-service"

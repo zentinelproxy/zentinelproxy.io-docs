@@ -548,7 +548,7 @@ routes {
     route "api-mutations" {
         matches {
             path-prefix "/api/v1/"
-            method "POST" "PUT" "DELETE" "PATCH"
+            method "POST"  // one method: the parser reads only the first argument (26.10_3)
         }
         upstream "api-backend"
         // No cache block = caching disabled

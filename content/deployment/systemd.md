@@ -1,7 +1,7 @@
 +++
 title = "systemd Deployment"
 weight = 3
-updated = 2026-05-03
+updated = 2026-10-18
 +++
 
 systemd is the recommended deployment method for production Zentinel installations on Linux. It provides robust process supervision, socket activation, resource limits, and integration with system logging.
@@ -281,17 +281,30 @@ WantedBy=zentinel-agents.target
 // /etc/zentinel/zentinel.kdl
 
 system {
-    listen "0.0.0.0:80"
-    listen "0.0.0.0:443" {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:80"
+        protocol "http"
+    }
+    listener "https" {
+        address "0.0.0.0:443"
+        protocol "https"
         tls {
-            cert "/etc/zentinel/tls/cert.pem"
-            key "/etc/zentinel/tls/key.pem"
+            cert-file "/etc/zentinel/tls/cert.pem"
+            key-file "/etc/zentinel/tls/key.pem"
         }
     }
 }
 
-admin {
-    listen "127.0.0.1:9090"
+// Prometheus metrics, local only
+observability {
+    metrics {
+        enabled #true
+        address "127.0.0.1:9090"
+    }
 }
 
 agents {
@@ -311,12 +324,26 @@ agents {
     }
 }
 
+filters {
+    filter "auth" {
+        type "agent"
+        agent "auth"
+    }
+    filter "waf" {
+        type "agent"
+        agent "waf"
+    }
+}
+
 upstreams {
     upstream "api" {
-        targets "10.0.1.10:8080" "10.0.1.11:8080"
+        target "10.0.1.10:8080"
+        target "10.0.1.11:8080"
         health-check {
-            path "/health"
-            interval-ms 5000
+            type "http" {
+                path "/health"
+            }
+            interval-secs 5
         }
     }
 }
@@ -325,7 +352,7 @@ routes {
     route "api" {
         matches { path-prefix "/api/" }
         upstream "api"
-        agents "auth" "waf"
+        filters "auth" "waf"
     }
 }
 ```

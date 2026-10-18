@@ -1,7 +1,7 @@
 +++
 title = "Security Hardening"
 weight = 7
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 Best practices for securing Zentinel deployments in production.
@@ -19,27 +19,40 @@ Zentinel follows a defense-in-depth approach:
 
 ### Secure Defaults
 
-Zentinel ships with secure defaults:
+Zentinel ships with secure defaults. Request limits and timeouts can be
+tightened explicitly; there is no single `security` block, the settings live
+in `limits`, on listeners and on routes:
 
 ```kdl
-security {
-    // Fail closed on errors by default
-    failure-mode "closed"
+// Request limits
+limits {
+    max-header-size 8192
+    max-header-count 100
+    max-body-size 10485760  // 10MB
+}
 
-    // Enforce request limits
-    limits {
-        max-header-size 8192
-        max-header-count 100
-        max-body-size 10485760  // 10MB
-        max-uri-length 8192
+listeners {
+    listener "https" {
+        address "0.0.0.0:443"
+        protocol "https"
+        tls {
+            cert-file "/etc/zentinel/certs/server.crt"
+            key-file "/etc/zentinel/certs/server.key"
+        }
+        // Connection timeouts
+        request-timeout-secs 30
+        keepalive-timeout-secs 60
     }
+}
 
-    // Enforce timeouts
-    timeouts {
-        request-header-secs 30
-        request-body-secs 60
-        response-header-secs 60
-        response-body-secs 120
+routes {
+    route "api" {
+        matches { path-prefix "/api/" }
+        upstream "backend"
+        policies {
+            timeout-secs 60
+            failure-mode "closed"  // fail closed on agent errors
+        }
     }
 }
 ```
@@ -254,7 +267,7 @@ listeners {
 routes {
     route "admin" {
         matches { path-prefix "/admin/" }
-        agents "auth"
+        filters "auth"
         upstream "admin-backend"
     }
 }
@@ -271,6 +284,13 @@ agents {
         events "request_headers"
         timeout-ms 50
         failure-mode "closed"
+    }
+}
+
+filters {
+    filter "auth" {
+        type "agent"
+        agent "auth"
     }
 }
 ```
@@ -294,13 +314,13 @@ listeners {
 routes {
     route "api" {
         matches { path-prefix "/api/" }
-        agents "ratelimit"
+        filters "ratelimit"
         upstream "api-backend"
     }
 
     route "login" {
         matches { path "/auth/login" }
-        agents "ratelimit-strict"
+        filters "ratelimit-strict"
         upstream "auth-backend"
     }
 }
@@ -329,6 +349,17 @@ agents {
         events "request_headers"
         timeout-ms 20
         failure-mode "closed"
+    }
+}
+
+filters {
+    filter "ratelimit" {
+        type "agent"
+        agent "ratelimit"
+    }
+    filter "ratelimit-strict" {
+        type "agent"
+        agent "ratelimit-strict"
     }
 }
 ```

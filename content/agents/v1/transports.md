@@ -1,7 +1,7 @@
 +++
 title = "Transport Protocols (v1 - Removed)"
 weight = 4
-updated = 2026-02-26
+updated = 2026-10-18
 +++
 
 {% callout(type="warning", title="V1 Protocol Removed") %}
@@ -425,31 +425,26 @@ let response = stream.finish().await?;
 
 ### Unix Socket Considerations
 
+Agent connection pool settings are not configurable from KDL; the proxy
+manages the pool. What an agent block does control is the bound on concurrent
+calls:
+
 ```kdl
 agent "local-auth" type="auth" {
     unix-socket "/var/run/zentinel/auth.sock"
-
-    // Connection pool settings
-    pool {
-        min-connections 2
-        max-connections 10
-        idle-timeout-ms 30000
-    }
+    max-concurrent-calls 100
 }
 ```
 
 ### gRPC Considerations
 
+HTTP/2 keep-alive and stream settings for gRPC agents are not configurable
+from KDL; the defaults of the gRPC client apply.
+
 ```kdl
 agent "remote-waf" type="waf" {
     grpc "http://waf-service:50051"
-
-    // HTTP/2 connection settings
-    http2 {
-        keep-alive-interval-ms 10000
-        keep-alive-timeout-ms 5000
-        max-concurrent-streams 100
-    }
+    timeout-ms 200
 }
 ```
 
@@ -471,11 +466,14 @@ chown zentinel:zentinel /var/run/zentinel/auth.sock
 
 For production gRPC agents, use TLS:
 
-```kdl
+<!-- fragment: the parser reads ca-cert/client-cert/client-key as direct
+     children of `grpc` (parse_agent_tls in crates/config/src/kdl/mod.rs), but
+     26.10_3's `zentinel lint` only expects them under a nested `tls` block and
+     warns about this (correct) form. -->
+```fragment,kdl
 agent "secure-agent" type="custom" {
-    grpc "https://agent.internal:50051"
-
-    tls {
+    // TLS settings are children of the grpc transport
+    grpc "https://agent.internal:50051" {
         ca-cert "/etc/zentinel/ca.crt"
         client-cert "/etc/zentinel/client.crt"
         client-key "/etc/zentinel/client.key"

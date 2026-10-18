@@ -1,7 +1,7 @@
 +++
 title = "Events & Hooks (v1 - Removed)"
 weight = 2
-updated = 2026-02-26
+updated = 2026-10-18
 +++
 
 {% callout(type="warning", title="V1 Protocol Removed") %}
@@ -239,6 +239,10 @@ When `decompress: true` is set in the WAF `body-inspection` config, Zentinel aut
 
 ```kdl
 waf {
+    // The built-in WAF engine is not wired into the runtime: any mode other
+    // than "off" is rejected at load time. body-inspection is still read and
+    // applies to the agents that inspect bodies.
+    mode "off"
     body-inspection {
         inspect-request-body #true
         decompress #true

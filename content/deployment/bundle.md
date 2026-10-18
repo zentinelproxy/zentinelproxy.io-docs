@@ -1,7 +1,7 @@
 +++
 title = "Bundle Installation"
 weight = 1
-updated = 2026-02-24
+updated = 2026-10-18
 +++
 
 The `zentinel bundle` command provides a streamlined way to install Zentinel with its bundled agents. This is the recommended approach for production deployments on Linux servers.
@@ -276,25 +276,25 @@ After installing agents, configure Zentinel to use them.
 ```kdl
 agents {
     agent "waf" {
-        endpoint "unix:///var/run/zentinel/waf.sock"
+        unix-socket "/var/run/zentinel/waf.sock"
         timeout-ms 100
         failure-mode "open"
     }
 
     agent "ratelimit" {
-        endpoint "unix:///var/run/zentinel/ratelimit.sock"
+        unix-socket "/var/run/zentinel/ratelimit.sock"
         timeout-ms 50
         failure-mode "open"
     }
 
     agent "denylist" {
-        endpoint "unix:///var/run/zentinel/denylist.sock"
+        unix-socket "/var/run/zentinel/denylist.sock"
         timeout-ms 20
         failure-mode "open"
     }
 
     agent "image-optimization" {
-        endpoint "unix:///var/run/zentinel/image-optimization.sock"
+        unix-socket "/var/run/zentinel/image-optimization.sock"
         timeout-ms 500
         failure-mode "open"
     }
@@ -303,35 +303,51 @@ agents {
 
 ### Apply Agents to Routes
 
+Routes attach agents through `filters`: define one agent filter per agent,
+then list the filters on each route in the order they should run.
+
 ```kdl
+filters {
+    filter "denylist" {
+        type "agent"
+        agent "denylist"
+    }
+    filter "ratelimit" {
+        type "agent"
+        agent "ratelimit"
+    }
+    filter "waf" {
+        type "agent"
+        agent "waf"
+    }
+    filter "image-optimization" {
+        type "agent"
+        agent "image-optimization"
+    }
+}
+
 routes {
     route "api" {
         priority "high"
         matches { path-prefix "/api" }
         upstream "backend"
-        policies {
-            // Order matters: check deny first, then rate limit, then WAF
-            agents "denylist" "ratelimit" "waf"
-        }
+        // Order matters: check deny first, then rate limit, then WAF
+        filters "denylist" "ratelimit" "waf"
     }
 
     route "images" {
         priority "normal"
         matches { path-prefix "/images" }
         upstream "cdn"
-        policies {
-            agents "denylist" "image-optimization"
-        }
+        filters "denylist" "image-optimization"
     }
 
     route "static" {
         priority "normal"
         matches { path-prefix "/static" }
         upstream "cdn"
-        policies {
-            // Static content only needs denylist
-            agents "denylist"
-        }
+        // Static content only needs denylist
+        filters "denylist"
     }
 }
 ```
@@ -509,19 +525,34 @@ listeners {
 
 agents {
     agent "denylist" {
-        endpoint "unix:///var/run/zentinel/denylist.sock"
+        unix-socket "/var/run/zentinel/denylist.sock"
         timeout-ms 20
         failure-mode "open"
     }
     agent "ratelimit" {
-        endpoint "unix:///var/run/zentinel/ratelimit.sock"
+        unix-socket "/var/run/zentinel/ratelimit.sock"
         timeout-ms 50
         failure-mode "open"
     }
     agent "waf" {
-        endpoint "unix:///var/run/zentinel/waf.sock"
+        unix-socket "/var/run/zentinel/waf.sock"
         timeout-ms 100
         failure-mode "open"
+    }
+}
+
+filters {
+    filter "denylist" {
+        type "agent"
+        agent "denylist"
+    }
+    filter "ratelimit" {
+        type "agent"
+        agent "ratelimit"
+    }
+    filter "waf" {
+        type "agent"
+        agent "waf"
     }
 }
 
@@ -529,9 +560,7 @@ routes {
     route "default" {
         matches { path-prefix "/" }
         upstream "backend"
-        policies {
-            agents "denylist" "ratelimit" "waf"
-        }
+        filters "denylist" "ratelimit" "waf"
     }
 }
 

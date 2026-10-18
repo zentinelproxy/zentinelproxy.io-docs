@@ -1,7 +1,7 @@
 +++
 title = "First Route"
 weight = 3
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 Routes are the core of Zentinel's traffic management. They match incoming requests and direct them to the appropriate backend.
@@ -42,7 +42,6 @@ routes {
     route "api-v1" {
         matches {
             path-prefix "/api/v1/"
-            method "GET" "POST" "PUT" "DELETE"
         }
         upstream "api-backend"
         service-type "api"
@@ -65,7 +64,7 @@ Routes support multiple match conditions. All conditions must match for the rout
 
 ### Path Matching
 
-```kdl
+```fragment,kdl
 matches {
     // Prefix match - matches /api/, /api/users, /api/v1/items
     path-prefix "/api/"
@@ -82,7 +81,7 @@ matches {
 
 Route based on the `Host` header:
 
-```kdl
+```fragment,kdl
 matches {
     host "api.example.com"
     path-prefix "/"
@@ -93,18 +92,25 @@ matches {
 
 Restrict to specific HTTP methods:
 
-```kdl
+```fragment,kdl
 matches {
     path-prefix "/api/"
-    method "GET" "POST"     // Only GET and POST requests
+    method "GET"
 }
 ```
+
+{% callout(type="warning") %}
+As of 26.10_3 the configuration parser keeps only the **first** method of a
+`method` node, so `method "GET" "POST"` matches `GET` only (the router itself
+supports several). Until that is fixed, give each method its own route, or
+leave the condition out.
+{% end %}
 
 ### Header Matching
 
 Match on request headers:
 
-```kdl
+```fragment,kdl
 matches {
     path-prefix "/api/"
     header "Authorization"              // Header must exist
@@ -116,7 +122,7 @@ matches {
 
 Match on query parameters:
 
-```kdl
+```fragment,kdl
 matches {
     path-prefix "/search"
     query-param "q"                     // Parameter must exist
@@ -314,7 +320,6 @@ routes {
         priority "normal"
         matches {
             path-prefix "/api/v1/"
-            method "GET" "POST" "PUT" "DELETE"
         }
         upstream "api-backend"
         service-type "api"

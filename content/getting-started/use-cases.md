@@ -1,7 +1,7 @@
 +++
 title = "Use Cases"
 weight = 5
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 Zentinel is a secure, high-performance reverse proxy with programmable security controls. Here are common scenarios where Zentinel excels, from enterprise deployments to personal projects.
@@ -38,7 +38,9 @@ upstreams {
         target "app-3:8080" weight=1
         load-balancing "round_robin"
         health-check {
-            path "/health"
+            type "http" {
+                path "/health"
+            }
             interval-secs 10
             timeout-secs 5
             healthy-threshold 2
@@ -69,16 +71,29 @@ routes {
     }
 }
 
+filters {
+    filter "auth-filter" {
+        type "agent"
+        agent "auth"
+    }
+    filter "rate-limit-filter" {
+        type "agent"
+        agent "ratelimit"
+    }
+}
+
 agents {
     agent "auth" type="auth" {
         unix-socket "/var/run/zentinel/auth.sock"
+        // `config` is passed to the agent as-is; Zentinel does not expand
+        // ${...} itself
         config {
             jwt-secret "${JWT_SECRET}"
             required-claims "sub" "exp"
         }
     }
 
-    agent "ratelimit" type="ratelimit" {
+    agent "ratelimit" type="rate-limit" {
         unix-socket "/var/run/zentinel/ratelimit.sock"
         config {
             requests-per-minute 100
@@ -127,11 +142,18 @@ upstreams {
         target "users-2:8080" weight=1
         load-balancing "round_robin"
         health-check {
-            path "/health"
+            type "http" {
+                path "/health"
+            }
             interval-secs 10
         }
     }
-    // ... other upstreams
+    upstream "orders-service" {
+        target "orders-1:8080"
+    }
+    upstream "products-service" {
+        target "products-1:8080"
+    }
 }
 ```
 
@@ -214,6 +236,13 @@ routes {
     }
 }
 
+filters {
+    filter "ai-gateway-filter" {
+        type "agent"
+        agent "ai-gateway"
+    }
+}
+
 agents {
     agent "ai-gateway" type="ai-gateway" {
         unix-socket "/var/run/zentinel/ai-gateway.sock"
@@ -229,8 +258,11 @@ agents {
 }
 
 upstreams {
-    upstream "backend" {
-        target "127.0.0.1:3000"
+    upstream "openai-api" {
+        target "api.openai.com:443"
+        tls {
+            sni "api.openai.com"
+        }
     }
 }
 
@@ -263,9 +295,10 @@ routes {
         matches {
             path-regex "\\.(html|css|js|png|jpg|svg|woff2?)$"
         }
-        service-type "static" {
+        service-type "static"
+        static-files {
             root "/var/www/html"
-            compression #true
+            compress #true
             cache-control "public, max-age=86400"
         }
     }
@@ -282,7 +315,8 @@ routes {
         matches {
             path-prefix "/"
         }
-        service-type "static" {
+        service-type "static"
+        static-files {
             root "/var/www/html"
             fallback "/index.html"
         }
@@ -290,7 +324,7 @@ routes {
 }
 
 upstreams {
-    upstream "backend" {
+    upstream "api-backend" {
         target "127.0.0.1:3000"
     }
 }
@@ -307,12 +341,22 @@ upstreams {
 Implement defense-in-depth with multiple security agents in sequence.
 
 ```kdl
+// One agent per filter; the route lists them in order
 filters {
-    filter "security-chain" {
+    filter "denylist" {
         type "agent"
         agent "denylist"
+        failure-mode "closed"
+    }
+    filter "waf" {
+        type "agent"
         agent "waf"
+        failure-mode "closed"
+    }
+    filter "auth" {
+        type "agent"
         agent "auth"
+        failure-mode "closed"
     }
 }
 
@@ -322,7 +366,7 @@ routes {
             path-prefix "/"
         }
         upstream "backend"
-        filters "security-chain"
+        filters "denylist" "waf" "auth"
     }
 }
 
@@ -404,7 +448,9 @@ Alternatively, use JavaScript for simpler logic or rapid prototyping:
 agents {
     agent "custom" type="js" {
         unix-socket "/var/run/zentinel/js.sock"
-        script "/etc/zentinel/scripts/custom.js"
+        config {
+            script "/etc/zentinel/scripts/custom.js"
+        }
     }
 }
 ```

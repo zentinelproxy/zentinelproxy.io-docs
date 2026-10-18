@@ -200,7 +200,7 @@ routes {
         priority 100
         matches {
             path-prefix "/api/profile"
-            method "GET" "PUT" "PATCH"
+            method "GET"  // one method: the parser reads only the first argument (26.10_3)
         }
         upstream "api-backend"
         service-type "api"

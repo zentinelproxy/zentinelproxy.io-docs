@@ -1,7 +1,7 @@
 +++
 title = "Building Agents (v1 - Removed)"
 weight = 3
-updated = 2026-02-26
+updated = 2026-10-18
 +++
 
 {% callout(type="warning", title="V1 Protocol Removed") %}
@@ -547,11 +547,18 @@ agents {
     }
 }
 
+filters {
+    filter "my-agent" {
+        type "agent"
+        agent "my-agent"
+    }
+}
+
 routes {
     route "api" {
         matches { path-prefix "/api/" }
         upstream "backend"
-        agents "my-agent"
+        filters "my-agent"
     }
 }
 ```

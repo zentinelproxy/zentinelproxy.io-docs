@@ -1,7 +1,7 @@
 +++
 title = "Request Lifecycle"
 weight = 5
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 This page details the complete lifecycle of an HTTP request through Zentinel, from client connection to response delivery.
@@ -525,6 +525,8 @@ Attempt 3: Server A (back to healthy server)
 ```kdl
 routes {
     route "api" {
+        matches { path-prefix "/api/" }
+        upstream "backend"
         retry-policy {
             max-attempts 3
             retryable-status-codes 502 503 504

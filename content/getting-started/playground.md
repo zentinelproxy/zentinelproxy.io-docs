@@ -1,7 +1,7 @@
 +++
 title = "Configuration Playground"
 weight = 6
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 Try Zentinel configurations in your browser without installing anything.
@@ -69,7 +69,7 @@ upstreams {
     upstream "backend" {
         target "api.internal:8080"
         target "api.internal:8081"
-        load-balancing "round-robin"
+        load-balancing "round_robin"
     }
 
     upstream "static-backend" {
@@ -202,9 +202,9 @@ upstreams {
 }
 ```
 
-For algorithms like `round-robin` and `weighted`, the simulation shows which target would be selected based on the request's cache key.
+For algorithms like `round_robin` and `weighted`, the simulation shows which target would be selected based on the request's cache key.
 
-For stateful algorithms (`least-connections`, `peak-ewma`), the simulation explains that actual selection depends on runtime state.
+For stateful algorithms (`least_connections`, `peak_ewma`), the simulation explains that actual selection depends on runtime state.
 
 ## Agent Hook Visualization
 
@@ -217,7 +217,7 @@ routes {
             path-prefix "/api/"
         }
         upstream "backend"
-        agents "rate-limit" "auth"
+        filters "rate-limit" "auth"
     }
 }
 

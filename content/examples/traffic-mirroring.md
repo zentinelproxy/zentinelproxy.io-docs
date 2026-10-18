@@ -356,7 +356,7 @@ Mirror requests with body inspection:
 route "api-with-body" {
     matches {
         path "/api/users"
-        method "POST" "PUT"
+        method "POST"  // one method: the parser reads only the first argument (26.10_3)
     }
     upstream "production"
 
@@ -720,7 +720,6 @@ routes {
         priority 200
         matches {
             path-prefix "/api/v2/"
-            method "GET" "POST" "PUT" "DELETE"
         }
         upstream "production"
 

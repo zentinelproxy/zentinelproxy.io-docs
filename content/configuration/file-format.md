@@ -249,7 +249,6 @@ routes {
         priority 100
         matches {
             path-prefix "/api/"
-            method "GET" "POST" "PUT" "DELETE"
         }
         upstream "backend"
         filters "auth" "ratelimit"  // agents attach through filters

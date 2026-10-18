@@ -1,7 +1,7 @@
 +++
 title = "Reverse Connections"
 weight = 5
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 This document provides detailed coverage of the reverse connection feature in Agent Protocol v2, which allows agents to connect to the proxy instead of the proxy connecting to agents.
@@ -456,9 +456,16 @@ loop {
 
 ## KDL Configuration
 
-Configure reverse connection listener in your Zentinel config:
+{% callout(type="warning") %}
+**Not yet configurable from KDL.** As of 26.10_3 the reverse-connection
+listener exists in `zentinel-agent-protocol` (the `ReverseConnectionListener`
+API above), but neither the configuration parser nor the proxy reads a
+`reverse-listener` block: a config containing one fails to load with
+"Unknown top-level configuration block". The block below shows the intended
+shape and is not accepted today.
+{% end %}
 
-```kdl
+```fragment,kdl
 reverse-listener {
     path "/var/run/zentinel/agents.sock"
     max-connections-per-agent 4

@@ -275,7 +275,7 @@ routes {
 
         matches {
             path-prefix "/api"
-            method "POST" "PUT" "DELETE" "PATCH"
+            method "POST"  // one method: the parser reads only the first argument (26.10_3)
         }
 
         upstream "api-backend"
@@ -292,7 +292,7 @@ routes {
 
         matches {
             path-prefix "/_cache/purge"
-            method "POST" "DELETE"
+            method "POST"  // one method: the parser reads only the first argument (26.10_3)
         }
 
         builtin-handler "cache-purge"

@@ -1,7 +1,7 @@
 +++
 title = "Kubernetes"
 weight = 5
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 Kubernetes provides the most flexible deployment model for Zentinel, supporting multiple patterns from simple sidecar deployments to sophisticated service mesh integrations.
@@ -64,14 +64,14 @@ spec:
               memory: "512Mi"
           livenessProbe:
             httpGet:
-              path: /health
-              port: admin
+              path: /health      # builtin health route, see the ConfigMap
+              port: http
             initialDelaySeconds: 5
             periodSeconds: 10
           readinessProbe:
             httpGet:
-              path: /ready
-              port: admin
+              path: /health
+              port: http
             initialDelaySeconds: 5
             periodSeconds: 5
 
@@ -161,12 +161,23 @@ metadata:
   name: zentinel-config
 data:
   zentinel.kdl: |
-    server {
-        listen "0.0.0.0:8080"
+    system {
+        worker-threads 0
     }
 
-    admin {
-        listen "0.0.0.0:9090"
+    listeners {
+        listener "http" {
+            address "0.0.0.0:8080"
+            protocol "http"
+        }
+    }
+
+    // Prometheus metrics on the "admin" port (9090)
+    observability {
+        metrics {
+            enabled #true
+            address "0.0.0.0:9090"
+        }
     }
 
     agents {
@@ -185,6 +196,17 @@ data:
         }
     }
 
+    filters {
+        filter "auth" {
+            type "agent"
+            agent "auth"
+        }
+        filter "waf" {
+            type "agent"
+            agent "waf"
+        }
+    }
+
     upstreams {
         upstream "api" {
             target "api-service.default.svc.cluster.local:80"
@@ -192,10 +214,17 @@ data:
     }
 
     routes {
+        route "health" {
+            priority 1000
+            matches { path "/health" }
+            service-type "builtin"
+            builtin-handler "health"
+        }
+
         route "api" {
             matches { path-prefix "/api/" }
             upstream "api"
-            agents "auth" "waf"
+            filters "auth" "waf"
         }
     }
 ```

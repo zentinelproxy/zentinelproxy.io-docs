@@ -136,7 +136,6 @@ routes {
 
         matches {
             path-prefix "/api/"
-            method "GET" "POST" "PUT" "DELETE"
         }
 
         upstream "api-backend"

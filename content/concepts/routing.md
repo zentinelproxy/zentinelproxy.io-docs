@@ -1,7 +1,7 @@
 +++
 title = "Routing System"
 weight = 7
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 Zentinel's routing system determines how incoming requests are matched to configured routes. This page covers match conditions, priority rules, and performance optimizations.
@@ -52,7 +52,6 @@ routes {
 
         matches {
             path-prefix "/api/users"
-            method "GET" "POST" "PUT" "DELETE"
         }
 
         upstream "user-service"
@@ -94,7 +93,7 @@ Routes can match on multiple criteria. All conditions must match (AND logic).
 
 Matches the exact path string:
 
-```kdl
+```fragment,kdl
 matches {
     path "/api/health"
 }
@@ -110,7 +109,7 @@ matches {
 
 Matches paths starting with the prefix:
 
-```kdl
+```fragment,kdl
 matches {
     path-prefix "/api/"
 }
@@ -127,7 +126,7 @@ matches {
 
 Matches paths against a regular expression:
 
-```kdl
+```fragment,kdl
 matches {
     path-regex "/users/[0-9]+/profile"
 }
@@ -154,7 +153,7 @@ Match based on the `Host` header:
 
 #### Exact Host
 
-```kdl
+```fragment,kdl
 matches {
     host "api.example.com"
 }
@@ -164,7 +163,7 @@ matches {
 
 Matches subdomains:
 
-```kdl
+```fragment,kdl
 matches {
     host "*.example.com"
 }
@@ -188,18 +187,25 @@ the path.
 
 Match specific HTTP methods:
 
-```kdl
+```fragment,kdl
 matches {
-    method "GET" "POST"
+    method "GET"
 }
 ```
 
 | Request Method | Match? |
 |----------------|--------|
 | `GET` | Yes |
-| `POST` | Yes |
+| `POST` | No |
 | `PUT` | No |
 | `DELETE` | No |
+
+{% callout(type="warning") %}
+As of 26.10_3 the configuration parser keeps only the **first** method of a
+`method` node (`crates/config/src/kdl/routes.rs`), so `method "GET" "POST"`
+matches `GET` only, although the router itself supports several. Until that is
+fixed, give each method its own route, or leave the condition out.
+{% end %}
 
 ### Header Matching
 
@@ -207,7 +213,7 @@ matches {
 
 Match if header exists (any value):
 
-```kdl
+```fragment,kdl
 matches {
     header "Authorization"
 }
@@ -217,7 +223,7 @@ matches {
 
 Match if header has specific value:
 
-```kdl
+```fragment,kdl
 matches {
     header "X-Api-Version" value="2"
 }
@@ -233,7 +239,7 @@ matches {
 
 #### Parameter Presence
 
-```kdl
+```fragment,kdl
 matches {
     query-param "debug"
 }
@@ -248,7 +254,7 @@ matches {
 
 #### Parameter Value
 
-```kdl
+```fragment,kdl
 matches {
     query-param "version" value="2"
 }
@@ -267,7 +273,7 @@ Multiple conditions are combined with AND logic:
 route "admin-api" {
     matches {
         path-prefix "/admin/"
-        method "GET" "POST"
+        method "GET"
         header "X-Admin-Token"
         host "admin.example.com"
     }
@@ -290,14 +296,20 @@ When multiple routes could match, priority determines the winner.
 ```kdl
 route "high-priority" {
     priority 100    // Evaluated first
+    matches { path-prefix "/api/admin/" }
+    upstream "backend"
 }
 
 route "normal-priority" {
     priority 50     // Evaluated second
+    matches { path-prefix "/api/" }
+    upstream "backend"
 }
 
 route "low-priority" {
     priority 10     // Evaluated last
+    matches { path-prefix "/" }
+    upstream "backend"
 }
 ```
 
@@ -484,6 +496,7 @@ listeners {
 
 routes {
     route "fallback" {
+        priority "low"   // a catch-all route needs no match conditions
         upstream "default-backend"
     }
 }
@@ -539,7 +552,7 @@ route "health-regex" {
 
 Simple regexes match faster:
 
-```kdl
+```fragment,kdl
 // Fast
 matches { path-regex "/users/[0-9]+" }
 

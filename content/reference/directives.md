@@ -910,15 +910,18 @@ matches {
 
 ### `method`
 
-Matches requests using specific HTTP methods.
+Matches requests using an HTTP method.
 
 **Context:** `matches`
 
 ```fragment,kdl
 matches {
-    method "GET" "POST"
+    method "GET"
 }
 ```
+
+As of 26.10_3 the parser reads only the first argument: `method "GET" "POST"`
+matches `GET` only. Use one route per method.
 
 ---
 

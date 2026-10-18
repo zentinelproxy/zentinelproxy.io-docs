@@ -302,7 +302,7 @@ metadata:
   name: zentinel-config
 data:
   zentinel.kdl: |
-    server {
+    system {
         worker-threads {{ .Values.workers }}
     }
     listeners {

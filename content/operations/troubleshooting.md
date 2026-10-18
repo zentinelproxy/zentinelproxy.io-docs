@@ -1,7 +1,7 @@
 +++
 title = "Troubleshooting"
 weight = 1
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 Guide to diagnosing and resolving common Zentinel issues.
@@ -166,9 +166,10 @@ limits {
     max-connections-per-client 200
 }
 
-// Adjust circuit breaker
-routes {
-    route "api" {
+// Adjust the upstream circuit breaker
+upstreams {
+    upstream "backend" {
+        target "10.0.1.10:8080"
         circuit-breaker {
             failure-threshold 10    // More tolerant
             timeout-seconds 60      // Longer recovery
@@ -195,6 +196,8 @@ grep timeout zentinel.kdl
 // Increase timeouts for slow endpoints
 routes {
     route "slow-api" {
+        matches { path-prefix "/reports/" }
+        upstream "backend"
         policies {
             timeout-secs 120
         }
@@ -203,6 +206,7 @@ routes {
 
 upstreams {
     upstream "backend" {
+        target "10.0.1.10:8080"
         timeouts {
             request-secs 120
             read-secs 60
@@ -376,15 +380,15 @@ cat /proc/$(pgrep zentinel)/status | grep Vm
 
 **Solutions:**
 ```kdl
-// Reduce buffer sizes
+// Cap request bodies (bodies may be buffered for agent inspection)
 limits {
-    max-body-buffer-bytes 524288      // 512KB
-    max-body-inspection-bytes 524288
+    max-body-size 1048576   // 1MB
 }
 
 // Reduce connection pool
 upstreams {
     upstream "backend" {
+        target "10.0.1.10:8080"
         connection-pool {
             max-connections 50
             max-idle 10
@@ -392,10 +396,10 @@ upstreams {
     }
 }
 
-// Set memory limit
-limits {
-    max-memory-percent 70.0
-}
+// There is no memory cap setting: max-memory-percent is not implemented,
+// and max-memory-bytes is parsed (multi-file configs only) but not enforced
+// as of 26.10_3. Cap memory with the service manager instead
+// (systemd MemoryMax=, a container memory limit).
 ```
 
 #### High CPU Usage
@@ -425,16 +429,6 @@ system {
 
 // Reduce logging
 // Set RUST_LOG=warn in environment
-
-// Disable unnecessary features
-routes {
-    route "api" {
-        policies {
-            buffer-requests #false
-            buffer-responses #false
-        }
-    }
-}
 
 upstreams {
     upstream "backend" {
@@ -533,6 +527,7 @@ curl -v http://upstream:8080/health
 ```kdl
 upstreams {
     upstream "backend" {
+        target "10.0.1.10:8080"
         health-check {
             type "http" {
                 path "/health"           // Verify path
@@ -590,6 +585,7 @@ curl -s http://localhost:9090/metrics | grep agent_timeout
 ```kdl
 agents {
     agent "auth" {
+        unix-socket "/var/run/zentinel/auth.sock"
         timeout-ms 200               // Increase timeout
         circuit-breaker {
             failure-threshold 10     // More tolerant
