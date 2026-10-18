@@ -18,6 +18,8 @@ Guides for operating, monitoring, and maintaining Zentinel in production.
 | [Troubleshooting](troubleshooting/) | Diagnosing and resolving common issues |
 | [Health Monitoring](health-monitoring/) | Health checks, probes, and alerting |
 | [Migration Guide](migration/) | Migrating from nginx, HAProxy, Traefik |
+| [Migrating from Envoy](migrate-from-envoy/) | Envoy listeners, routes, clusters and HTTP filters in Zentinel terms |
+| [Migrating from Caddy](migrate-from-caddy/) | Caddyfile sites, automatic HTTPS and directives in Zentinel terms |
 | [Incident Response](incident-response/) | Procedures for handling production incidents |
 | [Security Hardening](security-hardening/) | Best practices for securing deployments |
 | [Capacity Planning](capacity-planning/) | Sizing and scaling guidelines |
