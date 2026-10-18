@@ -10,15 +10,21 @@ How Zentinel compares to other popular reverse proxies and load balancers.
 
 Zentinel occupies a unique position in the reverse proxy landscape. Rather than competing directly with established proxies on feature breadth, it focuses on security-first design, operational predictability, and an extensible agent architecture.
 
-| Feature | Zentinel | Envoy | HAProxy | Nginx | Traefik | Caddy |
-|---------|----------|-------|---------|-------|---------|-------|
-| **Language** | Rust | C++ | C | C | Go | Go |
-| **Memory Safety** | Yes | No | No | No | Yes | Yes |
-| **Configuration** | KDL | YAML/xDS | Config file | Config file | YAML/Labels | Caddyfile/JSON |
-| **Hot Reload** | Yes | Yes (xDS) | Yes | Yes (SIGHUP) | Yes (auto) | Yes (API) |
-| **Extension Model** | External agents | Filters (C++/Wasm) | Lua/SPOE | Modules/Lua | Plugins (Go) | Modules (Go) |
-| **Auto HTTPS** | Planned | No | No | No | Yes | Yes |
-| **Primary Use Case** | Security gateway | Service mesh | Load balancing | Web server/proxy | Cloud-native edge | Simple web server |
+### At a glance
+
+| | Zentinel | nginx | HAProxy | Envoy | Caddy | Traefik |
+|---|---|---|---|---|---|---|
+| **Written in** | Rust, on Pingora | C | C | C++ | Go | Go |
+| **License** | Apache-2.0 | BSD-2-Clause | GPL-2.0 | Apache-2.0 | Apache-2.0 | MIT |
+| **Configuration** | KDL file | `nginx.conf` | `haproxy.cfg` | YAML/JSON, or xDS from a control plane | Caddyfile or JSON, admin API | YAML/TOML plus providers (Docker labels, Kubernetes) |
+| **Applying changes** | Reload on `SIGHUP` or file change | Reload (`SIGHUP`) | Reload; Runtime API for servers and maps | xDS updates, hot restart | Admin API, `caddy reload` | Watches providers continuously |
+| **Built-in ACME certificates** | Yes (HTTP-01, DNS-01) | Via the `ngx_http_acme_module` module | Yes, since 3.2 | No | Yes, on by default | Yes |
+| **Extension model** | External agent processes in any language; WASM and Lua agents | C modules, njs | Lua, SPOE | C++ filters, Wasm, Lua, `ext_proc` | Go modules compiled in | Go and Wasm plugins |
+| **HTTP/3** | No | Yes | Yes | Yes | Yes | Yes |
+| **TCP/UDP proxying** | No, HTTP only | Yes (`stream`) | TCP | Yes | With the `layer4` plugin | Yes |
+| **Typical role** | Security-focused edge and API gateway, LLM/MCP gateway | Web server and reverse proxy | Load balancer | Service mesh and edge data plane | Web server with automatic HTTPS | Container-native edge router |
+
+Migration guides: [nginx, HAProxy and Traefik](/operations/migration/), [Envoy](/operations/migrate-from-envoy/), [Caddy](/operations/migrate-from-caddy/).
 
 ## Zentinel vs Envoy
 
@@ -347,7 +353,7 @@ upstreams {
 | Aspect | Traefik | Zentinel |
 |--------|---------|----------|
 | Configuration | Dynamic (labels, API) | Explicit (KDL files) |
-| Let's Encrypt | Built-in | Planned |
+| Let's Encrypt | Built-in | Built-in (ACME on the listener) |
 | Forward Auth | Middleware | Agent-based |
 | Extension model | Plugins (Go) | Agents (any language) |
 | Isolation | In-process | Process-level |
@@ -428,7 +434,7 @@ upstreams {
 
 | Aspect | Caddy | Zentinel |
 |--------|-------|----------|
-| Automatic HTTPS | Built-in | Planned |
+| Automatic HTTPS | Built-in, on by default | ACME, configured per listener |
 | Configuration | Caddyfile/JSON | KDL |
 | Extension model | Modules (Go) | Agents (any language) |
 | Isolation | In-process | Process-level |
@@ -636,10 +642,10 @@ Built-in discovery for dynamic environments:
 |---------|:--------:|:-----:|:-------:|:-----:|:-------:|:-----:|
 | HTTP/1.1 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | HTTP/2 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| HTTP/3 (QUIC) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| HTTP/3 (QUIC) | - | ✓ | ✓ | ✓ | ✓ | ✓ |
 | WebSocket | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | gRPC | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| TCP proxy | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| TCP proxy | - | ✓ | ✓ | ✓ | ✓ | ✓ |
 | TLS termination | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | mTLS | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Static files | ✓ | - | - | ✓ | ✓ | ✓ |
@@ -690,7 +696,7 @@ Built-in discovery for dynamic environments:
 |---------|:--------:|:-----:|:-------:|:-----:|:-------:|:-----:|
 | Hot reload config | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Zero-downtime restart | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Auto HTTPS (ACME) | Planned | - | - | - | ✓ | ✓ |
+| Auto HTTPS (ACME) | ✓ | - | ✓ (3.2+) | Module | ✓ | ✓ |
 | Dynamic config (API) | ✓ | ✓ (xDS) | ✓ | Plus | ✓ | ✓ |
 | Graceful shutdown | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Service discovery | ✓ | ✓ | ✓ | Plus | ✓ | - |
@@ -766,13 +772,13 @@ See the [Migration Guide](/operations/migration/) for detailed examples.
 2. Map services to `upstreams`
 3. Replace middlewares with agents
 4. Move from Docker labels to KDL files
-5. Replace automatic HTTPS with manual certs (ACME support planned)
+5. Configure ACME on the HTTPS listener in place of Traefik's certificate resolvers
 
 ### From Caddy to Zentinel
 
 1. Convert Caddyfile blocks to KDL
 2. Map `reverse_proxy` to routes + upstreams
-3. Move from automatic HTTPS to manual certs (ACME support planned)
+3. Configure ACME and an HTTP-to-HTTPS redirect explicitly (see [Migrating from Caddy](/operations/migrate-from-caddy/))
 4. Replace modules with agents for security policies
 
 ## Summary
