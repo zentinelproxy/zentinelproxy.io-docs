@@ -1,6 +1,6 @@
 +++
 title = "Security Hardening"
-weight = 5
+weight = 7
 updated = 2026-02-19
 +++
 

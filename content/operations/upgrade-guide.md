@@ -1,409 +1,115 @@
 +++
 title = "Upgrade Guide"
-weight = 7
-updated = 2026-02-19
+weight = 10
+updated = 2026-10-18
 +++
 
-Procedures for upgrading and migrating Zentinel deployments.
+How to move a Zentinel deployment to a newer release, and which releases change behaviour you may depend on.
 
-## Version Management
+## How versions work
 
-### Version Numbering
+Zentinel releases use calendar versioning: `YY.MM_N`, for example `26.10_3` is the third release of October 2026. The release number is what you install, pin and report. Each release also has a crate version (SemVer, for example `0.6.46`), which matters only if you depend on the Rust crates. See [Versioning](/appendix/versioning/) for the full scheme and release history.
 
-Zentinel follows semantic versioning: `MAJOR.MINOR.PATCH`
+A CalVer number says when a release was cut, not how risky it is. A `_N` release can contain a breaking change: 26.08_2 changed the listener TLS schema. Read the [changes table](#breaking-and-behaviour-changing-releases) below for every release between your version and the target, not only the newest one.
 
-| Version Change | Meaning | Upgrade Approach |
-|----------------|---------|------------------|
-| Patch (x.y.Z) | Bug fixes, no breaking changes | Rolling upgrade, minimal risk |
-| Minor (x.Y.z) | New features, backward compatible | Rolling upgrade, test new features |
-| Major (X.y.z) | Breaking changes possible | Staged rollout, careful testing |
-
-### Compatibility Matrix
-
-| Component | Compatible Versions | Notes |
-|-----------|---------------------|-------|
-| Config format | Same major version | Config migration may be needed |
-| Agent protocol | Same major version | Agents must be upgraded together |
-| Metrics format | All versions | Metric names stable |
-
-### Version Checking
+To see what is running:
 
 ```bash
-# Check current version
 zentinel --version
-
-# Check version in running instance
-curl -s localhost:9090/admin/version
-
-# Compare with latest release
-curl -s https://api.github.com/repos/zentinelproxy/zentinel/releases/latest | \
-    jq -r '.tag_name'
+# zentinel 0.6.45 (release 26.10_3, commit 07c2f6d)
 ```
 
-## Pre-Upgrade Checklist
+Use the `release` field. The crate version printed by the binary can be one lower than the version published to crates.io for the same release (see the note at the top of the [changelog](https://github.com/zentinelproxy/zentinel/blob/main/CHANGELOG.md)).
 
-### Before Any Upgrade
+## Upgrade procedure
 
-- [ ] Read release notes for all versions between current and target
-- [ ] Identify breaking changes
-- [ ] Backup current binary, configuration, and certificates
-- [ ] Test new version in staging environment
-- [ ] Verify configuration compatibility
-- [ ] Test rollback procedure
-- [ ] Ensure on-call coverage during upgrade
+### 1. Read the changes
 
-### Backup Procedure
+Check the [table below](#breaking-and-behaviour-changing-releases) and the [Changelog](/appendix/changelog/) for every release after the one you run. Entries marked as fixes can still change behaviour: several 26.08 and 26.09 releases made settings take effect that had been parsed and ignored.
+
+### 2. Validate your configuration with the new binary
+
+Download the new release next to the current one and check your existing configuration with it before you replace anything:
 
 ```bash
-#!/bin/bash
-BACKUP_DIR="/var/backups/zentinel/$(date +%Y%m%d-%H%M%S)"
-mkdir -p "$BACKUP_DIR"
+VERSION=26.10_3
+curl -fsSLO "https://github.com/zentinelproxy/zentinel/releases/download/${VERSION}/zentinel-${VERSION}-linux-amd64.tar.gz"
+curl -fsSLO "https://github.com/zentinelproxy/zentinel/releases/download/${VERSION}/zentinel-${VERSION}-linux-amd64.tar.gz.sha256"
+sha256sum -c "zentinel-${VERSION}-linux-amd64.tar.gz.sha256"
+mkdir "zentinel-${VERSION}" && tar -xzf "zentinel-${VERSION}-linux-amd64.tar.gz" -C "zentinel-${VERSION}"
 
-# Backup binary
-cp /usr/local/bin/zentinel "$BACKUP_DIR/"
+# Parse and validate offline
+"./zentinel-${VERSION}/zentinel" test -c /etc/zentinel/zentinel.kdl
 
-# Backup configuration
-cp -r /etc/zentinel "$BACKUP_DIR/config"
+# Also check that upstreams, agents and certificates are reachable from this host
+"./zentinel-${VERSION}/zentinel" validate -c /etc/zentinel/zentinel.kdl
 
-# Save current version
-zentinel --version > "$BACKUP_DIR/version.txt"
-
-# Save metrics snapshot
-curl -s localhost:9090/metrics > "$BACKUP_DIR/metrics.txt"
-
-echo "Backup complete: $BACKUP_DIR"
+# Report settings that parse but have no effect
+"./zentinel-${VERSION}/zentinel" lint -c /etc/zentinel/zentinel.kdl
 ```
 
-## Upgrade Procedures
-
-### Patch Upgrade (x.y.Z)
-
-**Risk Level**: Low
-**Downtime**: Zero (with rolling upgrade)
+Release archives are also signed; see [Supply Chain Security](../supply-chain/) to verify signatures and provenance. Container users run the same checks inside the new image:
 
 ```bash
-#!/bin/bash
-NEW_VERSION="$1"
-
-# Download new version
-curl -L -o /tmp/zentinel-new \
-    "https://github.com/zentinelproxy/zentinel/releases/download/v${NEW_VERSION}/zentinel-linux-amd64"
-chmod +x /tmp/zentinel-new
-
-# Verify download and validate config
-/tmp/zentinel-new --version
-/tmp/zentinel-new --validate --config /etc/zentinel/config.kdl
-
-# Create backup
-./backup-zentinel.sh
-
-# Replace binary
-mv /tmp/zentinel-new /usr/local/bin/zentinel
-
-# Graceful restart
-systemctl restart zentinel
-
-# Verify
-sleep 5
-curl -sf localhost:8080/health && echo "Upgrade successful!"
+docker run --rm -v /etc/zentinel:/etc/zentinel:ro \
+  ghcr.io/zentinelproxy/zentinel:26.10_3 test -c /etc/zentinel/zentinel.kdl
 ```
 
-### Minor Upgrade (x.Y.z)
-
-**Risk Level**: Medium
-**Downtime**: Zero (with rolling upgrade)
-
-```bash
-#!/bin/bash
-NEW_VERSION="$1"
-
-# Pre-flight checks
-AVAILABLE_SPACE=$(df -P /usr/local/bin | tail -1 | awk '{print $4}')
-if [ "$AVAILABLE_SPACE" -lt 100000 ]; then
-    echo "ERROR: Insufficient disk space"
-    exit 1
-fi
-
-# Download and verify checksum
-curl -L -o /tmp/zentinel-new \
-    "https://github.com/zentinelproxy/zentinel/releases/download/v${NEW_VERSION}/zentinel-linux-amd64"
-curl -L -o /tmp/zentinel-new.sha256 \
-    "https://github.com/zentinelproxy/zentinel/releases/download/v${NEW_VERSION}/zentinel-linux-amd64.sha256"
-
-cd /tmp && sha256sum -c zentinel-new.sha256
-chmod +x /tmp/zentinel-new
-
-# Test new binary
-/tmp/zentinel-new --version
-/tmp/zentinel-new --validate --config /etc/zentinel/config.kdl
-
-# Create backup
-./backup-zentinel.sh
-
-# Graceful shutdown and replace
-kill -TERM $(cat /var/run/zentinel.pid)
-sleep 5
-mv /tmp/zentinel-new /usr/local/bin/zentinel
-systemctl start zentinel
-
-# Verify
-sleep 5
-curl -sf localhost:8080/health || { ./rollback-zentinel.sh; exit 1; }
-echo "Upgrade successful!"
-```
-
-### Major Upgrade (X.y.z)
-
-**Risk Level**: High
-**Approach**: Blue-Green or Canary
-
-#### Blue-Green Upgrade
-
-```
-Phase 1: Deploy new version alongside old
-┌─────────────────────────────────────────────────┐
-│              Load Balancer                       │
-│        ┌────────────┴────────────┐              │
-│        ▼ (100%)                  ▼ (0%)          │
-│  ┌───────────┐            ┌───────────┐         │
-│  │Blue (v1.x)│            │Green(v2.x)│         │
-│  │  Active   │            │  Standby  │         │
-│  └───────────┘            └───────────┘         │
-└─────────────────────────────────────────────────┘
-
-Phase 2: Shift traffic to new version
-┌─────────────────────────────────────────────────┐
-│              Load Balancer                       │
-│        ┌────────────┴────────────┐              │
-│        ▼ (0%)                    ▼ (100%)        │
-│  ┌───────────┐            ┌───────────┐         │
-│  │Blue (v1.x)│            │Green(v2.x)│         │
-│  │  Standby  │            │  Active   │         │
-│  └───────────┘            └───────────┘         │
-└─────────────────────────────────────────────────┘
-```
-
-**Steps**:
-1. Deploy new version to green environment
-2. Test with synthetic traffic
-3. Shift 10% traffic to green, monitor for 5 minutes
-4. If error rate acceptable, shift 50%, monitor 10 minutes
-5. Complete shift to 100%
-6. Retain blue for rollback
-
-#### Canary Upgrade
-
-**Steps**:
-1. Deploy to single canary instance
-2. Enable canary routing at 5%
-3. Monitor for 30 minutes
-4. Gradual rollout: 10% → 25% → 50% → 75% → 100%
-5. Validate at each stage before proceeding
-
-## Rollback Procedures
-
-### Quick Rollback
-
-```bash
-#!/bin/bash
-BACKUP_DIR=$(ls -td /var/backups/zentinel/*/ | head -1)
-
-if [ -z "$BACKUP_DIR" ]; then
-    echo "ERROR: No backup found!"
-    exit 1
-fi
-
-echo "Rolling back from $BACKUP_DIR"
-
-# Stop current version
-systemctl stop zentinel
-
-# Restore binary
-cp "$BACKUP_DIR/zentinel" /usr/local/bin/zentinel
-chmod +x /usr/local/bin/zentinel
-
-# Restore configuration
-cp -r "$BACKUP_DIR/config/"* /etc/zentinel/
-
-# Start
-systemctl start zentinel
-
-# Verify
-sleep 5
-curl -sf localhost:8080/health && echo "Rollback successful!"
-```
-
-### Blue-Green Rollback
-
-```bash
-# Shift all traffic back to blue
-curl -X POST "$LB_API/backends/blue/weight" -d '{"weight": 100}'
-curl -X POST "$LB_API/backends/green/weight" -d '{"weight": 0}'
-```
-
-## Configuration Migration
-
-### Common Migration Patterns
-
-**Deprecated Directive Replacement**:
-```kdl
-// Old (v1.x)
-upstream "backend" {
-    timeout-secs 30  // DEPRECATED
-}
-
-// New (v2.x)
-upstream "backend" {
-    timeouts {
-        connect-secs 5
-        request-secs 30
-    }
-}
-```
-
-**Restructured Configuration**:
-```kdl
-// Old (v1.x) - flat structure
-route "api" {
-    path-prefix "/api/"
-    upstream "backend"
-    timeout-secs 30
-}
-
-// New (v2.x) - nested structure
-routes {
-    route "api" {
-        matches {
-            path-prefix "/api/"
-        }
-        upstream "backend"
-        policies {
-            timeouts {
-                request-secs 30
-            }
-        }
-    }
-}
-```
-
-### Migration Tool
-
-```bash
-# Check for configuration issues
-zentinel config check /etc/zentinel/config.kdl
-
-# Migrate configuration to new format
-zentinel config migrate /etc/zentinel/config.kdl -o config.kdl.new
-
-# Show migration diff
-diff /etc/zentinel/config.kdl config.kdl.new
-
-# Validate migrated configuration
-zentinel --validate --config config.kdl.new
-```
-
-## Post-Upgrade Validation
-
-### Immediate Validation (First 5 Minutes)
-
-```bash
-#!/bin/bash
-ERRORS=0
-
-# Process running
-echo -n "Process running: "
-pgrep -f zentinel > /dev/null && echo "OK" || { echo "FAIL"; ((ERRORS++)); }
-
-# Health endpoint
-echo -n "Health endpoint: "
-curl -sf localhost:8080/health > /dev/null && echo "OK" || { echo "FAIL"; ((ERRORS++)); }
-
-# Metrics endpoint
-echo -n "Metrics endpoint: "
-curl -sf localhost:9090/metrics > /dev/null && echo "OK" || { echo "FAIL"; ((ERRORS++)); }
-
-# Version correct
-echo -n "Version: "
-zentinel --version
-
-# Configuration loaded
-echo -n "Config loaded: "
-ROUTES=$(curl -s localhost:9090/admin/routes | jq length)
-[ "$ROUTES" -gt 0 ] && echo "OK ($ROUTES routes)" || { echo "FAIL"; ((ERRORS++)); }
-
-if [ $ERRORS -eq 0 ]; then
-    echo "Validation PASSED"
-else
-    echo "Validation FAILED ($ERRORS errors)"
-    exit 1
-fi
-```
-
-### Extended Validation (First Hour)
-
-```bash
-#!/bin/bash
-DURATION=3600
-INTERVAL=60
-
-echo "Monitoring for $((DURATION/60)) minutes..."
-
-START=$(date +%s)
-while [ $(($(date +%s) - START)) -lt $DURATION ]; do
-    ERROR_RATE=$(curl -s localhost:9090/metrics | \
-        grep 'requests_total.*status="5' | \
-        awk '{sum+=$2} END {print sum}')
-
-    P99_LATENCY=$(curl -s localhost:9090/metrics | \
-        grep 'request_duration.*quantile="0.99"' | \
-        awk '{print $2}')
-
-    echo "$(date): errors=$ERROR_RATE p99=${P99_LATENCY}s"
-
-    sleep $INTERVAL
-done
-```
-
-## Quick Reference
-
-### Upgrade Commands
-
-```bash
-# Validate config before upgrade
-zentinel --validate --config /etc/zentinel/config.kdl
-
-# Create backup
-./backup-zentinel.sh
-
-# Perform upgrade
-./patch-upgrade.sh 2.1.5      # Patch
-./minor-upgrade.sh 2.2.0      # Minor
-./blue-green-upgrade.sh 3.0.0 # Major
-
-# Rollback if needed
-./rollback-zentinel.sh
-```
-
-### Health Check Endpoints
-
-| Endpoint | Purpose | Expected |
-|----------|---------|----------|
-| `/health` | Liveness | 200 OK |
-| `/ready` | Readiness | 200 OK |
-| `/admin/version` | Version | JSON |
-| `/metrics` | Prometheus | Text |
-
-### Upgrade Timing
-
-| Type | Downtime | Window |
-|------|----------|--------|
-| Patch | Zero | Anytime |
-| Minor | Zero | Business hours |
-| Major | Minutes | Maintenance window |
-
-## See Also
-
-- [Migration Guide](../migration/) - Migrating from other proxies
-- [Troubleshooting](../troubleshooting/) - Diagnosing upgrade issues
-- [Configuration Reference](../../reference/config-schema/) - Config options
-- [Changelog](../../appendix/changelog/) - Version history
+Fix anything `test` rejects before going further. New `lint` warnings after an upgrade usually mean a setting was already being ignored, not that it broke.
+
+### 3. Roll out instance by instance
+
+Configuration changes alone do not need a new process: `SIGHUP` (or `systemctl reload zentinel`) reloads the configuration file and certificates, and a configuration that fails to load is rejected while the running one stays in place. Listeners are the exception: they are bound at startup, so changes to listeners need a restart.
+
+A new binary needs a restart. On `SIGTERM`, Zentinel stops accepting connections and drains in-flight requests for up to `graceful-shutdown-timeout-secs` (default 30) before exiting. To upgrade without dropping traffic, run more than one instance behind a load balancer and replace them one at a time:
+
+1. Take one instance out of the load balancer, or let its readiness check fail.
+2. Stop it, replace the binary or image, and start it.
+3. Check its logs and [metrics](/reference/metrics/) (error rate, upstream health, agent errors) under real traffic.
+4. Continue with the next instance.
+
+For Kubernetes, change the image tag and let the Deployment's rolling update do this; see [Rolling Updates](/deployment/rolling-updates/). For a single host with systemd, see [systemd Deployment](/deployment/systemd/).
+
+Upgrade agents separately from the proxy. The proxy and agents talk the [v2 agent protocol](/agents/v2/), and a proxy upgrade does not require new agent versions unless the release notes say so.
+
+### 4. Roll back if needed
+
+Keep the previous binary or image tag and a copy of the configuration you ran with it. Rolling back is the same procedure in reverse: replace the binary, restart instance by instance.
+
+If you changed the configuration for the new release (for example the 26.08_2 TLS schema), the old binary will not load the new configuration. Roll back the configuration together with the binary.
+
+### Building from source
+
+Source builds need the Rust version pinned in the repository's `rust-toolchain.toml`: **Rust 1.96** since 26.10_3 (1.95 before). Prebuilt binaries and container images are not affected. See [Building from Source](/development/building/).
+
+## Breaking and behaviour-changing releases
+
+Releases not listed here are dependency, security or documentation updates with no configuration or behaviour change you need to act on. Newest first.
+
+| Release | Type | What changes | What to do |
+|---------|------|--------------|------------|
+| **26.10_3** | Build | Building from source needs Rust 1.96 | Update the toolchain for source builds |
+| **26.10_2** | Behaviour | ACME renewal follows the CA's ARI renewal window when the CA offers one, so certificates can renew earlier than `renew-before-days` (never later) | Nothing, unless you monitor renewal timing |
+| **26.09_6** | Behaviour | Pingora 0.9.0: hop-by-hop request headers (`Connection`, `Keep-Alive`, `TE`, `Upgrade`, `Proxy-Authorization`, …) are no longer forwarded; only WebSocket upgrades pass, other `Upgrade` requests such as `h2c` do not; requests that nominate `Host` or forwarding headers in `Connection`, or carry ambiguous authorities, are rejected | Check upstreams that relied on `Proxy-Authorization` or non-WebSocket upgrades |
+| **26.09_4** | Behaviour | An agent that was unreachable at startup, or restarted later, is reconnected. Before, traffic for it was passed through uninspected (with `failure-mode "open"`) until the proxy restarted. Multiplexed MCP tool calls now use the route's retry policy, connection pool and upstream TLS | Expect agents to start acting on traffic they were silently skipping |
+| **26.09_2** | Behaviour | `health-check` blocks probe upstreams. They never sent a probe before, so every target counted as healthy | Check that health-check paths and expected statuses are right; wrong ones now take targets out of rotation |
+| **26.08_13** | Behaviour | `discovery "dns-srv"` resolves SRV records with their ports and weights (before: the bare domain on port 80) | Check which backends are selected after the upgrade |
+| **26.08_11** | Behaviour | Upstream `discovery` blocks resolve and route. Before, such upstreams routed nowhere | Remove static `target` workarounds next to `discovery`, or both are used |
+| **26.08_10** | Behaviour | `tracing { enabled #false }` disables tracing. Before, tracing ran whenever the block was present | Check configurations that set it, and anything that consumes their spans |
+| **26.08_7 – 26.08_9** | Tooling | `zentinel lint` reports keys that parse and are ignored, across all configuration blocks | Nothing at runtime; clean up reported keys |
+| **26.08_6** | Behaviour | Listener `namespace` and per-listener timeouts are applied on wildcard binds (`0.0.0.0`, `[::]`). Before, such listeners served the global route set | Check wildcard listeners that set `namespace` |
+| **26.08_5** | **Breaking** | Route `buffer-requests` and `buffer-responses` are removed; they never had an effect and are now reported as unknown keys. MCP and A2A route policy is enforced (it was ignored in 26.08_4) | Remove the two keys; review MCP/A2A allow and deny lists |
+| **26.08_4** | **Breaking** | Settings that were parsed and discarded take effect: `upstream.timeouts`, `connection-pool { idle-timeout-secs }`, route `policies` (`failure-mode`, `timeout-secs`, `rate-limit`), distributed rate-limit fallback and TTL, WAF rule exclusions. `retry-policy.max-attempts` now bounds request retries. Host matching is case-insensitive. `client-auth` without `ca-file`, and listeners with `protocol "h3"`, refuse to start | Review timeouts and route policies; remove `h3` listeners; add `ca-file` to mTLS listeners |
+| **26.08_3** | Behaviour | Listener TLS settings are applied: per-SNI certificates, `client-auth`, `min-version` / `max-version`, `cipher-suite`, `session-resumption`. Before, they only produced startup warnings | Check that listeners with `client-auth` should require client certificates |
+| **26.08_2** | **Breaking** | Listener TLS schema: repeated `sni { }` blocks replace `additional-certs`, repeated `cipher-suite "NAME"` replaces `cipher-suites { }`; unknown keys inside `tls` and `sni` are rejected. `retry-policy` accepts only `max-attempts`. Route match conditions without a valid value, and invalid `shadow` percentages, are errors | Rewrite `tls` blocks ([migration example](/appendix/changelog/#26-08-2)); remove other `retry-policy` keys |
+| **26.06_1** | Behaviour | With `observability { metrics { enabled } }`, metrics are served by a dedicated listener on the metrics `address` (default `0.0.0.0:9090`) | Make sure the port is free and reachable only where intended |
+| **26.05_4** | Config | Shipped and embedded configurations use `system { }`. The old `server { }` block is still accepted with a deprecation warning | Rename `server` to `system` |
+| **26.02_18** | **Breaking** | Agent protocol v1 is removed; `protocol-version` is a no-op | Use v2 agents ([migration](/agents/v2/migration/)) |
+
+## See also
+
+- [Changelog](/appendix/changelog/)
+- [Versioning](/appendix/versioning/)
+- [Rolling Updates](/deployment/rolling-updates/)
+- [Supply Chain Security](../supply-chain/)
+- [Troubleshooting](../troubleshooting/)

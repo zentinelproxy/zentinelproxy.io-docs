@@ -1,6 +1,6 @@
 +++
 title = "Incident Response"
-weight = 4
+weight = 6
 updated = 2026-02-19
 +++
 
