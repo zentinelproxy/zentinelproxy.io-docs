@@ -1,10 +1,22 @@
 +++
 title = "Limits"
 weight = 6
-updated = 2026-08-23
+updated = 2026-10-18
 +++
 
 The `limits` block configures request/response limits, connection limits, and rate limiting. These settings are critical for predictable behavior, resource protection, and "sleepable operations."
+
+{% callout(type="warning", title="Single-file configs read only six limits keys (26.10_3)") %}
+Zentinel has two `limits` parsers. A configuration **directory** (multi-file
+layout) reads every key on this page. A **single configuration file**
+(`zentinel -c zentinel.kdl`, the usual case) reads only
+`max-header-size`, `max-header-count`, `max-body-size`,
+`max-connections-per-client`, `max-total-connections` and
+`max-in-flight-requests` — note: no `-bytes` suffix — and silently ignores the
+rest, including `max-body-size-bytes` and `max-header-size-bytes`
+(`parse_limits_config` in `crates/config/src/kdl/mod.rs`). `zentinel lint` does
+not check the `limits` block, so it will not warn about this.
+{% end %}
 
 ## Basic Configuration
 
@@ -272,19 +284,18 @@ Rate limit keys:
 ```kdl
 limits {
     max-memory-bytes 2147483648     // 2GB hard limit
-    max-memory-percent 80.0         // 80% of system memory
 }
 ```
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `max-memory-bytes` | None | Absolute memory limit |
-| `max-memory-percent` | None | Percentage of system memory |
+| `max-memory-bytes` | None | Absolute memory limit (multi-file configs only, see above) |
+| `max-memory-percent` | — | **Not implemented**: parsed by nothing as of 26.10_3 (both parsers leave it unset) |
 
-When memory limits are reached:
-1. New connections are rejected
-2. Request queues are flushed
-3. Alert is raised via metrics/logs
+`max-memory-bytes` is parsed (in multi-file configs) and range-checked, but as
+of 26.10_3 nothing in the proxy enforces it: reaching it does not reject
+connections or shed load. Bound memory with the process supervisor instead
+(for example systemd `MemoryMax=` or a container memory limit).
 
 ## Profile Presets
 
@@ -350,9 +361,6 @@ limits {
     // Rate limiting
     max-requests-per-second-global 10000
     max-requests-per-second-per-client 100
-
-    // Memory protection
-    max-memory-percent 80.0
 }
 ```
 
@@ -419,9 +427,6 @@ limits {
     max-requests-per-second-global 10000
     max-requests-per-second-per-client 100
     max-requests-per-second-per-route 1000
-
-    // Memory
-    max-memory-percent 80.0
 }
 ```
 
@@ -451,6 +456,7 @@ upstreams {
 
 agents {
     agent "waf" {
+        unix-socket "/var/run/zentinel/waf.sock"
         max-concurrent-calls 100
     }
 }

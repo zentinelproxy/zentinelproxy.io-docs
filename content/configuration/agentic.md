@@ -1,7 +1,7 @@
 +++
 title = "Agentic Protocols"
 weight = 12
-updated = 2026-09-03
+updated = 2026-10-18
 +++
 
 Zentinel understands the Model Context Protocol (MCP) and Agent2Agent (A2A)
@@ -95,20 +95,24 @@ downstream makes decisions from them.
 ### Settings
 
 ```kdl
-mcp {
-    require-validated-version #true       // default
-    validate-param-headers #true          // default
-    filter-tool-list #true                // default
-    on-uninspectable-body "deny"          // default
+route "mcp" {
+    matches { path-prefix "/mcp" }
+    upstream "mcp-server"
+    mcp {
+        require-validated-version #true       // default
+        validate-param-headers #true          // default
+        filter-tool-list #true                // default
+        on-uninspectable-body "deny"          // default
 
-    methods {
-        allow "tools/call" "tools/list"
-        deny "resources/read"
-    }
+        methods {
+            allow "tools/call" "tools/list"
+            deny "resources/read"
+        }
 
-    tools {
-        allow "get_weather" "search_docs"
-        deny "execute_sql"
+        tools {
+            allow "get_weather" "search_docs"
+            deny "execute_sql"
+        }
     }
 }
 ```
@@ -144,9 +148,13 @@ responses exactly the entries it would refuse a call to. What is advertised and
 what is permitted become the same set.
 
 ```kdl
-mcp {
-    tools {
-        allow "search_docs" "get_weather"
+route "mcp" {
+    matches { path-prefix "/mcp" }
+    upstream "mcp-server"
+    mcp {
+        tools {
+            allow "search_docs" "get_weather"
+        }
     }
 }
 ```
@@ -412,9 +420,13 @@ A common shape is a read-only route — task state may be queried, but nothing m
 ask the agent to begin work:
 
 ```kdl
-a2a {
-    methods {
-        deny "SendMessage" "SendStreamingMessage"
+route "a2a" {
+    matches { path-prefix "/a2a" }
+    upstream "agent"
+    a2a {
+        methods {
+            deny "SendMessage" "SendStreamingMessage"
+        }
     }
 }
 ```

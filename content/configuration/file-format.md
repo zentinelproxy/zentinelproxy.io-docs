@@ -1,7 +1,7 @@
 +++
 title = "File Format"
 weight = 1
-updated = 2026-02-27
+updated = 2026-10-18
 +++
 
 Zentinel uses [KDL](https://kdl.dev/) as its primary configuration format. KDL is a human-friendly document language that's easy to read, write, and diff.
@@ -42,15 +42,15 @@ my-config {
 ### Values and Properties
 
 **Values** are positional arguments:
-```kdl
+```fragment,kdl
 node-name "api"           // "api" is a value
 multi-value "10.0.0.1" "10.0.0.2"  // Multiple values
 ```
 
 **Properties** are named with `=`:
-```kdl
-target address="10.0.0.1" weight=5
-health-check type="http" interval-secs=10
+```fragment,kdl
+target "10.0.0.1:8080" weight=5
+agent "waf" type="waf" { /* ... */ }
 ```
 
 ### Data Types
@@ -76,7 +76,7 @@ listeners {
 routes {
     route "default" {
         // Booleans (#true, #false)
-        enabled #true
+        websocket #false
 
         matches { path-prefix "/" }
         upstream "backend"
@@ -239,7 +239,7 @@ listeners {
     }
 
     listener "admin" {
-        address "127.0.0.1:9090"
+        address "127.0.0.1:9901"  // 9090 is the metrics server's default port
         protocol "http"
     }
 }
@@ -252,7 +252,7 @@ routes {
             method "GET" "POST" "PUT" "DELETE"
         }
         upstream "backend"
-        agents "auth" "ratelimit"
+        filters "auth" "ratelimit"  // agents attach through filters
     }
 
     route "health" {
@@ -272,11 +272,23 @@ upstreams {
         target "10.0.1.3:8080" weight=1
         load-balancing "weighted_round_robin"
         health-check {
-            type "http"
-            path "/health"
+            type "http" {
+                path "/health"
+            }
             interval-secs 10
             timeout-secs 5
         }
+    }
+}
+
+filters {
+    filter "auth" {
+        type "agent"
+        agent "auth"
+    }
+    filter "ratelimit" {
+        type "agent"
+        agent "ratelimit"
     }
 }
 
@@ -394,7 +406,7 @@ The `include` directive is processed as a pre-processing step when loading confi
 // routes/api.kdl — included file contains a top-level block
 routes {
     route "api" {
-        match {
+        matches {
             path-prefix "/api"
         }
         upstream "backend"

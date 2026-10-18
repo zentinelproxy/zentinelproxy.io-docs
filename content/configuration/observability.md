@@ -1,7 +1,7 @@
 +++
 title = "Observability"
 weight = 8
-updated = 2026-02-25
+updated = 2026-10-18
 +++
 
 Zentinel provides comprehensive observability through metrics, logging, and distributed tracing. All observability features are configured in the `observability` block.
@@ -63,10 +63,15 @@ observability {
         level "info"           // Log level
         format "json"          // Log format
         timestamps #true       // Include timestamps
-        file "/var/log/zentinel/app.log"  // Optional file path
     }
 }
 ```
+
+Application logs go to stdout/stderr; there is no setting for an application
+log file (redirect it, or let systemd/Docker collect it). As of 26.10_3 the log
+level and format are taken from `RUST_LOG` and `--verbose`: a `level` or
+`format` other than `"info"`/`"json"` is accepted but only produces a
+validation warning saying so. `timestamps` is honoured.
 
 #### Log Levels
 
@@ -352,21 +357,25 @@ observability {
 The OpenTelemetry Protocol (OTLP) is the standard for sending telemetry data. Use this with Jaeger, Tempo, or any OTLP-compatible backend:
 
 ```kdl
-tracing {
-    backend "otlp" {
-        endpoint "http://otel-collector:4317"  // gRPC endpoint
+observability {
+    tracing {
+        backend "otlp" {
+            endpoint "http://otel-collector:4317"  // gRPC endpoint
+        }
+        sampling-rate 0.1
+        service-name "zentinel-prod"
     }
-    sampling-rate 0.1
-    service-name "zentinel-prod"
 }
 ```
 
 #### Jaeger (Direct)
 
 ```kdl
-tracing {
-    backend "jaeger" {
-        endpoint "http://jaeger:14268/api/traces"
+observability {
+    tracing {
+        backend "jaeger" {
+            endpoint "http://jaeger:14268/api/traces"
+        }
     }
 }
 ```
@@ -374,9 +383,11 @@ tracing {
 #### Zipkin
 
 ```kdl
-tracing {
-    backend "zipkin" {
-        endpoint "http://zipkin:9411/api/v2/spans"
+observability {
+    tracing {
+        backend "zipkin" {
+            endpoint "http://zipkin:9411/api/v2/spans"
+        }
     }
 }
 ```
@@ -508,12 +519,14 @@ services:
 
 Configure Zentinel:
 ```kdl
-tracing {
-    backend "otlp" {
-        endpoint "http://tempo:4317"
+observability {
+    tracing {
+        backend "otlp" {
+            endpoint "http://tempo:4317"
+        }
+        sampling-rate 0.1
+        service-name "zentinel"
     }
-    sampling-rate 0.1
-    service-name "zentinel"
 }
 ```
 

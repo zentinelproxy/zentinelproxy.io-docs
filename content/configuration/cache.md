@@ -1,7 +1,7 @@
 +++
 title = "Caching"
 weight = 7
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 Zentinel provides HTTP response caching to reduce upstream load and improve response times. Caching is configured at two levels: global storage settings and per-route caching policies.
@@ -156,9 +156,13 @@ route "api" {
 Specify which HTTP methods are cacheable:
 
 ```kdl
-cache {
-    enabled #true
-    cacheable-methods "GET" "HEAD"
+route "cached" {
+    matches { path-prefix "/" }
+    upstream "backend"
+    cache {
+        enabled #true
+        cacheable-methods "GET" "HEAD"
+    }
 }
 ```
 
@@ -169,9 +173,13 @@ Default: `GET`, `HEAD`
 Specify which response status codes are cacheable:
 
 ```kdl
-cache {
-    enabled #true
-    cacheable-status-codes 200 203 204 206 300 301 308 404 405 410 414 501
+route "cached" {
+    matches { path-prefix "/" }
+    upstream "backend"
+    cache {
+        enabled #true
+        cacheable-status-codes 200 203 204 206 300 301 308 404 405 410 414 501
+    }
 }
 ```
 
@@ -182,9 +190,13 @@ Default: `200`, `203`, `204`, `206`, `300`, `301`, `308`, `404`, `405`, `410`, `
 Headers that affect cache key:
 
 ```kdl
-cache {
-    enabled #true
-    vary-headers "Accept-Encoding" "Accept-Language"
+route "cached" {
+    matches { path-prefix "/" }
+    upstream "backend"
+    cache {
+        enabled #true
+        vary-headers "Accept-Encoding" "Accept-Language"
+    }
 }
 ```
 
@@ -195,9 +207,13 @@ When specified, these headers become part of the cache key, allowing different c
 Parameters to exclude from cache key:
 
 ```kdl
-cache {
-    enabled #true
-    ignore-query-params "utm_source" "utm_medium" "utm_campaign" "_"
+route "cached" {
+    matches { path-prefix "/" }
+    upstream "backend"
+    cache {
+        enabled #true
+        ignore-query-params "utm_source" "utm_medium" "utm_campaign" "_"
+    }
 }
 ```
 
@@ -208,10 +224,14 @@ Useful for ignoring tracking parameters or cache-busting tokens.
 Exclude specific file extensions from caching. This is useful for broad routes (e.g., `path-prefix "/"`) where most content should be cached but dynamic file types should not:
 
 ```kdl
-cache {
-    enabled #true
-    default-ttl-secs 3600
-    exclude-extensions "php" "html" "asp"
+route "cached" {
+    matches { path-prefix "/" }
+    upstream "backend"
+    cache {
+        enabled #true
+        default-ttl-secs 3600
+        exclude-extensions "php" "html" "asp"
+    }
 }
 ```
 
@@ -222,10 +242,14 @@ Extensions are specified without the leading dot. The check is case-insensitive.
 Exclude specific paths from caching using glob patterns (`*`, `**`, `?`):
 
 ```kdl
-cache {
-    enabled #true
-    default-ttl-secs 3600
-    exclude-paths "/wp-admin/**" "/login" "/api/auth/**"
+route "cached" {
+    matches { path-prefix "/" }
+    upstream "backend"
+    cache {
+        enabled #true
+        default-ttl-secs 3600
+        exclude-paths "/wp-admin/**" "/login" "/api/auth/**"
+    }
 }
 ```
 
@@ -245,10 +269,14 @@ Requests matching an excluded extension or path are bypassed from caching and fo
 Serve stale content while fetching fresh content in the background:
 
 ```kdl
-cache {
-    enabled #true
-    default-ttl-secs 3600
-    stale-while-revalidate-secs 60
+route "cached" {
+    matches { path-prefix "/" }
+    upstream "backend"
+    cache {
+        enabled #true
+        default-ttl-secs 3600
+        stale-while-revalidate-secs 60
+    }
 }
 ```
 
@@ -262,9 +290,13 @@ When a cached response expires:
 Serve stale content when upstream returns an error:
 
 ```kdl
-cache {
-    enabled #true
-    stale-if-error-secs 300
+route "cached" {
+    matches { path-prefix "/" }
+    upstream "backend"
+    cache {
+        enabled #true
+        stale-if-error-secs 300
+    }
 }
 ```
 

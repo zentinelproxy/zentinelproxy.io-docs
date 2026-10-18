@@ -1,7 +1,7 @@
 +++
 title = "Agents"
 weight = 9
-updated = 2026-02-27
+updated = 2026-10-18
 +++
 
 Agents are external processes that extend Zentinel's functionality. They handle security policies, authentication, rate limiting, and custom business logic. The `agents` block configures how Zentinel connects to and communicates with these agents.
@@ -67,7 +67,8 @@ agent "remote-agent" type="waf" {
 
 With TLS:
 
-```kdl
+<!-- fragment,kdl: zentinel lint (26.10_3) wrongly reports ca-cert/client-cert/client-key/tls-insecure directly under grpc/http as ignored; parse_agent_tls in crates/config/src/kdl/mod.rs reads exactly this form. -->
+```fragment,kdl
 agent "secure-agent" type="auth" {
     grpc "https://auth-service:50051" {
         ca-cert "/etc/zentinel/ca.crt"
@@ -94,7 +95,8 @@ agent "http-agent" type="custom" {
 
 #### HTTPS with TLS
 
-```kdl
+<!-- fragment,kdl: zentinel lint (26.10_3) wrongly reports ca-cert/client-cert/client-key/tls-insecure directly under grpc/http as ignored; parse_agent_tls in crates/config/src/kdl/mod.rs reads exactly this form. -->
+```fragment,kdl
 agent "secure-http-agent" type="auth" {
     http "https://auth-service:8443/agent" {
         ca-cert "/etc/zentinel/certs/ca.crt"
@@ -106,7 +108,8 @@ agent "secure-http-agent" type="auth" {
 
 #### HTTPS with mTLS
 
-```kdl
+<!-- fragment,kdl: zentinel lint (26.10_3) wrongly reports ca-cert/client-cert/client-key/tls-insecure directly under grpc/http as ignored; parse_agent_tls in crates/config/src/kdl/mod.rs reads exactly this form. -->
+```fragment,kdl
 agent "mtls-agent" type="waf" {
     http "https://waf-service:8443/agent" {
         ca-cert "/etc/zentinel/certs/ca.crt"
@@ -272,10 +275,12 @@ Configure behavior when the agent is unavailable:
 
 ```kdl
 agent "auth-agent" type="auth" {
+    unix-socket "/var/run/zentinel/auth.sock"
     failure-mode "closed"   // Block requests if agent fails
 }
 
 agent "analytics-agent" type="custom" {
+    unix-socket "/var/run/zentinel/analytics.sock"
     failure-mode "open"     // Allow requests if agent fails
 }
 ```
@@ -291,6 +296,7 @@ Prevent cascading failures with circuit breakers:
 
 ```kdl
 agent "waf-agent" type="waf" {
+    unix-socket "/var/run/zentinel/waf.sock"
     circuit-breaker {
         failure-threshold 5         // Open after 5 failures
         success-threshold 2         // Close after 2 successes
@@ -316,6 +322,7 @@ Circuit breaker states:
 
 ```kdl
 agent "waf-agent" type="waf" {
+    unix-socket "/var/run/zentinel/waf.sock"
     timeout-ms 200         // Total call timeout
     chunk-timeout-ms 5000  // Per-chunk timeout (streaming)
 }
@@ -327,6 +334,7 @@ agent "waf-agent" type="waf" {
 
 ```kdl
 agent "waf-agent" type="waf" {
+    unix-socket "/var/run/zentinel/waf.sock"
     max-request-body-bytes 10485760   // 10MB
     max-response-body-bytes 5242880   // 5MB
 }
@@ -339,18 +347,21 @@ Control how bodies are sent to agents:
 ```kdl
 // Buffer entire body (default)
 agent "waf-agent" type="waf" {
+    unix-socket "/var/run/zentinel/waf.sock"
     request-body-mode "buffer"
     response-body-mode "buffer"
 }
 
 // Stream chunks as they arrive
 agent "streaming-agent" type="custom" {
+    unix-socket "/var/run/zentinel/streaming.sock"
     request-body-mode "stream"
     chunk-timeout-ms 5000
 }
 
 // Hybrid: buffer small, stream large
 agent "hybrid-agent" type="custom" {
+    unix-socket "/var/run/zentinel/hybrid.sock"
     request-body-mode "hybrid:65536"   // Buffer up to 64KB
 }
 ```
@@ -367,17 +378,21 @@ For WAF agents that need to inspect request bodies, Zentinel provides a dedicate
 
 ### WAF Configuration Block
 
-Configure body inspection globally via the `waf` block:
+Configure body inspection globally via the `waf` block. Only `body-inspection`
+is used from that block, and the block must set `mode "off"`: any other mode
+fails validation because no WAF engine runs in the proxy itself (see
+[WAF](../waf/)).
 
 ```kdl
 waf {
+    mode "off"   // required; inspection is done by the agents
     body-inspection {
         inspect-request-body #true
         inspect-response-body #false
-        max-body-inspection-bytes 1048576   // 1MB
+        max-inspection-bytes 1048576   // 1MB
         content-types "application/json" "application/x-www-form-urlencoded" "text/xml"
         decompress #true
-        max-decompression-ratio 100.0
+        max-decompression-ratio 100
     }
 }
 ```
@@ -386,19 +401,19 @@ waf {
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `inspect-request-body` | `false` | Enable request body inspection |
+| `inspect-request-body` | `true` | Enable request body inspection (without a `waf` block, bodies are not inspected) |
 | `inspect-response-body` | `false` | Enable response body inspection |
-| `max-body-inspection-bytes` | `1048576` | Max bytes to buffer for inspection |
+| `max-inspection-bytes` | `1048576` | Max bytes to buffer for inspection |
 | `content-types` | See below | Content types eligible for inspection |
 | `decompress` | `false` | Decompress bodies before inspection |
-| `max-decompression-ratio` | `100.0` | Max compression ratio (zip bomb protection) |
+| `max-decompression-ratio` | `100` | Max compression ratio (zip bomb protection; an integer) |
 
 Default content types for inspection:
-- `application/json`
 - `application/x-www-form-urlencoded`
-- `text/xml`
+- `multipart/form-data`
+- `application/json`
 - `application/xml`
-- `text/plain`
+- `text/xml`
 
 ### Body Decompression
 
@@ -419,9 +434,10 @@ When `decompress` is enabled, Zentinel automatically decompresses request bodies
 
 ```kdl
 waf {
+    mode "off"
     body-inspection {
         decompress #true
-        max-decompression-ratio 50.0    // Stricter limit for sensitive routes
+        max-decompression-ratio 50    // Stricter limit
     }
 }
 ```
@@ -450,12 +466,13 @@ Result labels: `success`, `ratio_exceeded`, `size_exceeded`, `invalid_data`, `io
 
 ```kdl
 waf {
+    mode "off"   // body inspection only; the agent does the WAF work
     body-inspection {
         inspect-request-body #true
-        max-body-inspection-bytes 1048576
+        max-inspection-bytes 1048576
         content-types "application/json" "application/xml" "text/plain"
         decompress #true
-        max-decompression-ratio 100.0
+        max-decompression-ratio 100
     }
 }
 
@@ -523,6 +540,8 @@ Reference agents in route configuration:
 routes {
     // Via filters
     route "api" {
+        matches { path-prefix "/api/" }
+        upstream "backend"
         filters "waf-filter"   // Filter referencing agent
     }
 }
@@ -659,13 +678,14 @@ Secure gRPC connections to agents with TLS and mutual TLS (mTLS).
 | `ca-cert` | Path to CA certificate for verifying the agent's server certificate |
 | `client-cert` | Path to client certificate for mTLS authentication |
 | `client-key` | Path to client private key for mTLS authentication |
-| `insecure-skip-verify` | Skip certificate verification (development only) |
+| `tls-insecure` | Skip certificate verification (development only) |
 
 ### Server TLS (One-Way)
 
 Verify the agent's identity using TLS:
 
-```kdl
+<!-- fragment,kdl: zentinel lint (26.10_3) wrongly reports ca-cert/client-cert/client-key/tls-insecure directly under grpc/http as ignored; parse_agent_tls in crates/config/src/kdl/mod.rs reads exactly this form. -->
+```fragment,kdl
 agent "secure-agent" type="auth" {
     grpc "https://auth-service.internal:50051" {
         ca-cert "/etc/zentinel/certs/ca.crt"
@@ -684,7 +704,8 @@ This configuration:
 
 For bidirectional authentication where both Zentinel and the agent verify each other:
 
-```kdl
+<!-- fragment,kdl: zentinel lint (26.10_3) wrongly reports ca-cert/client-cert/client-key/tls-insecure directly under grpc/http as ignored; parse_agent_tls in crates/config/src/kdl/mod.rs reads exactly this form. -->
+```fragment,kdl
 agent "secure-waf" type="waf" {
     grpc "https://waf-service.internal:50051" {
         ca-cert "/etc/zentinel/certs/ca.crt"
@@ -720,10 +741,11 @@ This works well for agents using certificates from public CAs (Let's Encrypt, Di
 
 **Warning:** Only use this for local development. Never use in production.
 
-```kdl
+<!-- fragment,kdl: zentinel lint (26.10_3) wrongly reports ca-cert/client-cert/client-key/tls-insecure directly under grpc/http as ignored; parse_agent_tls in crates/config/src/kdl/mod.rs reads exactly this form. -->
+```fragment,kdl
 agent "dev-agent" type="custom" {
     grpc "https://localhost:50051" {
-        insecure-skip-verify
+        tls-insecure
     }
     events "request_headers"
 }
@@ -769,7 +791,8 @@ chown zentinel:zentinel /etc/zentinel/certs/*
 
 ### Complete Secure Agent Example
 
-```kdl
+<!-- fragment,kdl: zentinel lint (26.10_3) wrongly reports ca-cert/client-cert/client-key/tls-insecure directly under grpc/http as ignored; parse_agent_tls in crates/config/src/kdl/mod.rs reads exactly this form. -->
+```fragment,kdl
 agents {
     // WAF with mTLS - highest security
     agent "modsecurity" type="waf" {

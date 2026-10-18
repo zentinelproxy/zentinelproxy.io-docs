@@ -1,14 +1,34 @@
 +++
 title = "WAF"
 weight = 10
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 The `waf` block configures Zentinel's Web Application Firewall (WAF) settings. WAF protection is implemented via external agents, but this block provides global WAF configuration including engine selection, rule sets, and body inspection policies.
 
+{% callout(type="warning", title="The top-level waf block is not wired into the proxy (26.10_3)") %}
+The proxy runs no WAF engine from the `waf` block: no request is inspected or
+blocked because of it. To keep that from passing silently, configuration validation
+**rejects a `waf` block whose `mode` is anything other than `"off"`** — and
+`mode` defaults to `"prevention"`, so every example on this page except an
+explicit `mode "off"` fails to load with *"WAF mode is set to 'prevention' but
+the WAF engine is not yet wired into the proxy runtime"*.
+
+WAF protection today comes from a **WAF agent** attached to routes through a
+filter — see [Integration with Agents](#integration-with-agents) below and
+[WAF Engines](/agents/waf-engines/). `engine`, `audit-log` and `ruleset` are
+parsed but used by nothing; the examples for them are shown as fragments and
+cannot be used as they stand.
+
+The one part the proxy does use is [`body-inspection`](#body-inspection): it
+decides whether request bodies are buffered (and optionally decompressed) for
+the agents on a route. It only takes effect inside a `waf` block, so write it
+with `mode "off"`.
+{% end %}
+
 ## Basic Configuration
 
-```kdl
+```fragment,kdl
 waf {
     engine "coraza"
     mode "prevention"
@@ -30,7 +50,7 @@ waf {
 
 Zentinel supports multiple WAF engines via external agents:
 
-```kdl
+```fragment,kdl
 waf {
     engine "coraza"  // Default, recommended
 }
@@ -46,7 +66,7 @@ waf {
 
 For custom WAF implementations:
 
-```kdl
+```fragment,kdl
 waf {
     engine "my-custom-waf"
 }
@@ -58,7 +78,7 @@ The engine name is passed to your WAF agent, which can use it to select the appr
 
 Control how the WAF handles detected threats:
 
-```kdl
+```fragment,kdl
 waf {
     mode "prevention"  // Block malicious requests
 }
@@ -74,7 +94,7 @@ waf {
 
 Use detection mode when first deploying WAF to assess impact:
 
-```kdl
+```fragment,kdl
 waf {
     mode "detection"
     audit-log #true  // Log all detections
@@ -87,7 +107,7 @@ Review audit logs to tune rules before switching to prevention mode.
 
 Enable detailed logging of WAF decisions:
 
-```kdl
+```fragment,kdl
 waf {
     audit-log #true
 }
@@ -105,7 +125,7 @@ Logs are written in JSON format to the configured log output.
 
 ### Basic Ruleset
 
-```kdl
+```fragment,kdl
 waf {
     ruleset {
         custom-rules-dir "/etc/zentinel/waf/crs"
@@ -118,7 +138,7 @@ waf {
 
 The ZentinelSec engine loads and evaluates the stock OWASP Core Rule Set v4. Configure the Core Rule Set version and custom rules directory:
 
-```kdl
+```fragment,kdl
 waf {
     ruleset {
         crs-version "4.0"
@@ -132,7 +152,7 @@ waf {
 
 The paranoia level controls rule sensitivity:
 
-```kdl
+```fragment,kdl
 waf {
     ruleset {
         paranoia-level 2
@@ -153,7 +173,7 @@ waf {
 
 Exclude specific rules to reduce false positives:
 
-```kdl
+```fragment,kdl
 waf {
     ruleset {
         custom-rules-dir "/etc/zentinel/waf/crs"
@@ -185,15 +205,12 @@ Configure how request and response bodies are inspected:
 
 ```kdl
 waf {
+    mode "off"  // required: any other mode fails validation (see above)
     body-inspection {
         inspect-request-body #true
         inspect-response-body #false
         max-inspection-bytes 1048576
-        content-types {
-            "application/json"
-            "application/x-www-form-urlencoded"
-            "text/xml"
-        }
+        content-types "application/json" "application/x-www-form-urlencoded" "text/xml"
         decompress #true
         max-decompression-ratio 100
     }
@@ -207,7 +224,7 @@ waf {
 | `inspect-request-body` | `true` | Inspect request bodies |
 | `inspect-response-body` | `false` | Inspect response bodies |
 | `max-inspection-bytes` | `1048576` | Maximum bytes to buffer for inspection |
-| `content-types` | See below | Content types eligible for inspection |
+| `content-types` | See below | Content types eligible for inspection, as arguments (`content-types "application/json" "text/xml"`) |
 | `decompress` | `false` | Decompress bodies before inspection |
 | `max-decompression-ratio` | `100` | Max compression ratio (zip bomb protection) |
 
@@ -226,6 +243,7 @@ When `decompress` is enabled:
 
 ```kdl
 waf {
+    mode "off"
     body-inspection {
         decompress #true
         max-decompression-ratio 50  // Reject if compressed/decompressed ratio > 50x
@@ -237,7 +255,7 @@ This protects against zip bomb attacks by limiting the decompression ratio.
 
 ## Complete Example
 
-```kdl
+```fragment,kdl
 waf {
     engine "coraza"
     mode "prevention"
@@ -260,11 +278,7 @@ waf {
         inspect-request-body #true
         inspect-response-body #false
         max-inspection-bytes 5242880
-        content-types {
-            "application/json"
-            "application/xml"
-            "multipart/form-data"
-        }
+        content-types "application/json" "application/xml" "multipart/form-data"
         decompress #true
         max-decompression-ratio 100
     }
@@ -273,15 +287,18 @@ waf {
 
 ## Integration with Agents
 
-The `waf` block configures global settings. To actually process requests through WAF, configure a WAF agent:
+Requests are inspected by a WAF agent. Define the agent, wrap it in an `agent`
+filter, and list the filter on each route that should be inspected:
 
 ```kdl
-waf {
-    engine "coraza"
-    mode "prevention"
-    ruleset {
-        crs-version "4.0"
-        paranoia-level 2
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
     }
 }
 
@@ -294,27 +311,38 @@ agents {
     }
 }
 
+filters {
+    filter "waf" {
+        type "agent"
+        agent "waf-agent"
+    }
+}
+
 routes {
     route "api" {
         matches { path-prefix "/api/" }
         upstream "backend"
-        agents "waf-agent"
+        filters "waf"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        target "127.0.0.1:3000"
     }
 }
 ```
 
-The WAF configuration is passed to the agent on startup. The agent uses these settings to configure its rule engine.
+Rule sets, paranoia level and exclusions are configured in the agent itself
+(its own configuration or the agent's `config` block); see
+[WAF Engines](/agents/waf-engines/) and [Agents](../agents/).
 
 ## Metrics
 
-WAF operations are tracked via Prometheus metrics:
-
-| Metric | Labels | Description |
-|--------|--------|-------------|
-| `zentinel_waf_requests_total` | `mode`, `decision` | Total WAF evaluations |
-| `zentinel_waf_blocked_total` | `rule_id` | Blocked requests by rule |
-| `zentinel_waf_detection_total` | `rule_id` | Detections (all modes) |
-| `zentinel_waf_latency_seconds` | | WAF evaluation latency |
+The proxy exports no WAF-specific metrics. Calls to a WAF agent are covered by
+the agent metrics (`zentinel_agent_requests_total`,
+`zentinel_agent_latency_seconds`, `zentinel_agent_timeouts_total`); see
+[Metrics](/reference/metrics/). Detection details are reported by the agent.
 
 ## Default Values
 
@@ -323,7 +351,7 @@ WAF operations are tracked via Prometheus metrics:
 | `engine` | `coraza` |
 | `mode` | `prevention` |
 | `audit-log` | `true` |
-| `ruleset.crs-version` | `4.0` |
+| `ruleset.crs-version` | `3.3.4` |
 | `ruleset.paranoia-level` | `1` |
 | `ruleset.anomaly-threshold` | `5` |
 | `body-inspection.inspect-request-body` | `true` |

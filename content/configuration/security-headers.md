@@ -1,7 +1,7 @@
 +++
 title = "Security Headers"
 weight = 8
-updated = 2026-02-22
+updated = 2026-10-18
 +++
 
 Zentinel does not inject any response headers by default. Security headers are configured explicitly via `response-headers` policies on your routes or via a reusable `headers` filter. This gives you full control over which headers are set and what values they use.
@@ -70,20 +70,27 @@ routes {
 Strip headers that leak server information:
 
 ```kdl
-policies {
-    response-headers {
-        remove "Server" "X-Powered-By" "X-AspNet-Version" "X-AspNetMvc-Version"
+route "app" {
+    matches { path-prefix "/" }
+    upstream "backend"
+    policies {
+        response-headers {
+            remove "Server" "X-Powered-By" "X-AspNet-Version" "X-AspNetMvc-Version"
+        }
     }
 }
 ```
 
 ## Recommended Headers
 
+The snippets below are entries for the `set { }` block of a `response-headers`
+policy or a `headers` filter, as shown above.
+
 ### Content-Type Options
 
 Prevents browsers from MIME-sniffing a response away from the declared `Content-Type`. Always safe to set.
 
-```kdl
+```fragment,kdl
 "X-Content-Type-Options" "nosniff"
 ```
 
@@ -97,7 +104,7 @@ Prevents browsers from MIME-sniffing a response away from the declared `Content-
 
 Controls whether the page can be embedded in an `<iframe>`, `<frame>`, or `<object>`. Protects against clickjacking attacks.
 
-```kdl
+```fragment,kdl
 "X-Frame-Options" "SAMEORIGIN"
 ```
 
@@ -114,7 +121,7 @@ Controls whether the page can be embedded in an `<iframe>`, `<frame>`, or `<obje
 
 Controls how much referrer information is sent with requests originating from your pages.
 
-```kdl
+```fragment,kdl
 "Referrer-Policy" "strict-origin-when-cross-origin"
 ```
 
@@ -131,7 +138,7 @@ Controls how much referrer information is sent with requests originating from yo
 
 Tells browsers to only connect via HTTPS. Only effective when served over HTTPS.
 
-```kdl
+```fragment,kdl
 "Strict-Transport-Security" "max-age=31536000; includeSubDomains"
 ```
 
@@ -149,7 +156,7 @@ Tells browsers to only connect via HTTPS. Only effective when served over HTTPS.
 
 Controls which resources the browser is allowed to load. This is the most powerful — and most complex — security header.
 
-```kdl
+```fragment,kdl
 "Content-Security-Policy" "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'self'"
 ```
 
@@ -169,7 +176,7 @@ Common directives:
 
 **Recommendation:** Start with a report-only policy to identify violations before enforcing:
 
-```kdl
+```fragment,kdl
 "Content-Security-Policy-Report-Only" "default-src 'self'; report-uri /csp-report"
 ```
 
@@ -179,7 +186,7 @@ Once tuned, switch to `Content-Security-Policy` to enforce.
 
 Controls which browser features (camera, microphone, geolocation, etc.) can be used on the page.
 
-```kdl
+```fragment,kdl
 "Permissions-Policy" "geolocation=(), microphone=(), camera=(), payment=(), usb=()"
 ```
 
@@ -196,7 +203,7 @@ Controls which browser features (camera, microphone, geolocation, etc.) can be u
 
 These headers control cross-origin resource sharing and isolation:
 
-```kdl
+```fragment,kdl
 // Prevent your resources from being embedded cross-origin
 "Cross-Origin-Resource-Policy" "same-origin"
 

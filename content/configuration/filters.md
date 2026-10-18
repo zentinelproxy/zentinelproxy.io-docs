@@ -1,7 +1,7 @@
 +++
 title = "Filters"
 weight = 6
-updated = 2026-09-02
+updated = 2026-10-18
 +++
 
 Filters provide a flexible pipeline for request and response processing. They can be built-in (rate-limit, headers, CORS, compression) or external agents. Filters are defined centrally in the `filters` block with unique IDs, then referenced by name in route configurations.
@@ -52,7 +52,7 @@ filter "rate-limiter" {
     key "client-ip"          // Rate limit key
     on-limit "reject"        // Action when exceeded
     status-code 429          // Response status
-    limit-message "Too many requests"
+    message "Too many requests"  // Response body when limited
 }
 ```
 
@@ -364,6 +364,8 @@ Filters execute in the order specified in the route:
 
 ```kdl
 route "api" {
+    matches { path-prefix "/api/" }
+    upstream "backend"
     filters "rate-limit" "auth" "cors" "logging"
     //       ^^^^^^^^^    ^^^^   ^^^^   ^^^^^^^
     //       1st          2nd    3rd    4th
