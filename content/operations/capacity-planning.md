@@ -1,6 +1,6 @@
 +++
 title = "Capacity Planning"
-weight = 6
+weight = 8
 updated = 2026-02-19
 +++
 

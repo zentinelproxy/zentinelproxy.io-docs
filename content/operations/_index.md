@@ -21,7 +21,8 @@ Guides for operating, monitoring, and maintaining Zentinel in production.
 | [Incident Response](incident-response/) | Procedures for handling production incidents |
 | [Security Hardening](security-hardening/) | Best practices for securing deployments |
 | [Capacity Planning](capacity-planning/) | Sizing and scaling guidelines |
-| [Upgrade Guide](upgrade-guide/) | Upgrade and migration procedures |
+| [Performance Tuning](performance-tuning/) | Worker threads, connection reuse, timeouts, HTTP/2, request limits |
+| [Upgrade Guide](upgrade-guide/) | Upgrading between releases and what each release changes |
 | [Supply Chain Security](supply-chain/) | Verifying release authenticity and integrity |
 
 ## Quick Diagnostics
