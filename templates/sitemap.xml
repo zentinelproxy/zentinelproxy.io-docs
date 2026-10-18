@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+{#- Site override of Zola's built-in sitemap. Archived documentation under
+    /v/<version>/ is a full copy of the docs for each past month; listing it
+    would put ten near-duplicates of every page in front of crawlers. Archived
+    pages stay published and reachable from the version picker. -#}
+{%- set archive_prefix = get_url(path="v/") %}
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    {%- for sitemap_entry in entries %}
+    {%- if sitemap_entry.permalink is not starting_with(archive_prefix) %}
+    <url>
+        <loc>{{ sitemap_entry.permalink | escape_xml | safe }}</loc>
+        {%- if sitemap_entry.updated %}
+        <lastmod>{{ sitemap_entry.updated }}</lastmod>
+        {%- endif %}
+    </url>
+    {%- endif %}
+    {%- endfor %}
+</urlset>
