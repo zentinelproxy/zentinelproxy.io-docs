@@ -3,6 +3,10 @@ title = "Core Concepts"
 weight = 2
 sort_by = "weight"
 template = "section.html"
+
+[extra]
+# The body already links every child page; skip the theme's auto-generated list.
+hide_children = true
 +++
 
 Understanding Zentinel's architecture and design principles.

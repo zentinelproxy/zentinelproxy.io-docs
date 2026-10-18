@@ -3,6 +3,10 @@ title = "Control Plane"
 weight = 7
 sort_by = "weight"
 template = "section.html"
+
+[extra]
+# The body already links every child page; skip the theme's auto-generated list.
+hide_children = true
 +++
 
 The Zentinel Control Plane is a fleet management system for Zentinel reverse proxies. It provides centralized configuration compilation, safe rollout orchestration, node lifecycle tracking, and comprehensive observability.

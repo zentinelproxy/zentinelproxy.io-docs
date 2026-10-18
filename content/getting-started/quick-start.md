@@ -1,6 +1,6 @@
 +++
 title = "Quick Start"
-weight = 0
+weight = 2
 updated = 2026-02-19
 +++
 

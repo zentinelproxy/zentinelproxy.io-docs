@@ -3,6 +3,10 @@ title = "Getting Started"
 weight = 1
 sort_by = "weight"
 template = "section.html"
+
+[extra]
+# The body already links every child page; skip the theme's auto-generated list.
+hide_children = true
 +++
 
 Get up and running with Zentinel in minutes.

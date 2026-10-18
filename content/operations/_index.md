@@ -3,6 +3,10 @@ title = "Operations"
 weight = 7
 sort_by = "weight"
 template = "section.html"
+
+[extra]
+# The body already links every child page; skip the theme's auto-generated list.
+hide_children = true
 +++
 
 Guides for operating, monitoring, and maintaining Zentinel in production.

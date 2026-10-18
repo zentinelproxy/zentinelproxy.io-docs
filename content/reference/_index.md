@@ -3,6 +3,10 @@ title = "Reference"
 weight = 9
 sort_by = "weight"
 template = "section.html"
+
+[extra]
+# The body already links every child page; skip the theme's auto-generated list.
+hide_children = true
 +++
 
 Quick reference documentation for Zentinel operations and troubleshooting.

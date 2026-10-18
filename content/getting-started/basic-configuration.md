@@ -1,6 +1,6 @@
 +++
 title = "Basic Configuration"
-weight = 2
+weight = 4
 updated = 2026-02-19
 +++
 

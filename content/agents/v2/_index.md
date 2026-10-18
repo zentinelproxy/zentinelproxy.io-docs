@@ -2,6 +2,10 @@
 title = "Protocol v2 (Current)"
 weight = 10
 sort_by = "weight"
+
+[extra]
+# The body already links every child page; skip the theme's auto-generated list.
+hide_children = true
 +++
 
 Agent Protocol v2 is the recommended protocol for new agent deployments. It provides enhanced features for production environments.
