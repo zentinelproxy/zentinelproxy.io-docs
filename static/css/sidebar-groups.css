@@ -1,0 +1,51 @@
+/* Collapsible sidebar groups (site override of the tanuki sidebar).
+   Layout for the group header row; the theme already styles .toc__toggle,
+   .toc__collapsible and its .open state. */
+.toc__group {
+  margin-bottom: 0.25rem;
+}
+
+.toc__group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.toc__group-header .toc__section-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.toc__group .toc__toggle {
+  flex-shrink: 0;
+  margin-left: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.toc__group .toc__toggle:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+/* Collapsed lists are also hidden from keyboard focus and screen readers. */
+.toc__group .toc__collapsible {
+  visibility: hidden;
+  transition: max-height 0.3s ease, visibility 0s linear 0.3s;
+}
+
+.toc__group .toc__collapsible.open {
+  visibility: visible;
+  max-height: 2000px;
+  padding-bottom: 1rem;
+  transition: max-height 0.3s ease, visibility 0s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toc__group .toc__collapsible,
+  .toc__group .toc__collapsible.open {
+    transition: none;
+  }
+}
