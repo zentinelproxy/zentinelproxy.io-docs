@@ -62,6 +62,10 @@ python3 scripts/check_links.py content
 description = "Check internal markdown links (zola check misses absolute paths)"
 run = "python3 scripts/check_links.py content"
 
+[tasks.check-kdl]
+description = "Validate every ```kdl snippet against zentinel (set ZENTINEL_BIN or put zentinel on PATH)"
+run = "python3 scripts/check_kdl.py"
+
 [tasks.update-theme]
 description = "Update Tanuki theme to latest version"
 run = """

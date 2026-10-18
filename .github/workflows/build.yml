@@ -17,6 +17,35 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  validate-kdl:
+    name: Validate KDL snippets
+    runs-on: ubuntu-latest
+    env:
+      # Pinned Zentinel release the snippets are checked against. Bump both
+      # together when documenting a newer release.
+      ZENTINEL_RELEASE: "26.10_3"
+      ZENTINEL_SHA256: "92d82acf70d1ce373dabd661bef70010bae5bd0bfc4ced5137572ce1583a7ad8"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Zentinel ${{ env.ZENTINEL_RELEASE }}
+        run: |
+          set -euo pipefail
+          archive="zentinel-${ZENTINEL_RELEASE}-linux-amd64.tar.gz"
+          curl -fsSL -o "$RUNNER_TEMP/$archive" \
+            "https://github.com/zentinelproxy/zentinel/releases/download/${ZENTINEL_RELEASE}/${archive}"
+          echo "${ZENTINEL_SHA256}  $RUNNER_TEMP/$archive" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/zentinel"
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP/zentinel"
+          "$RUNNER_TEMP/zentinel/zentinel" --version
+          echo "ZENTINEL_BIN=$RUNNER_TEMP/zentinel/zentinel" >> "$GITHUB_ENV"
+
+      # Every ```kdl block must load, validate and lint without an
+      # "is being ignored" warning; ```fragment,kdl blocks are skipped.
+      # See scripts/check_kdl.py for the convention.
+      - name: Validate KDL snippets
+        run: python3 scripts/check_kdl.py
+
   build:
     runs-on: ubuntu-latest
     steps:
@@ -57,7 +86,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    needs: build
+    needs: [build, validate-kdl]
     steps:
       - name: Deploy to GitHub Pages
         id: deployment

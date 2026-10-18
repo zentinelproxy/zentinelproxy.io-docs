@@ -23,6 +23,7 @@ Visit http://127.0.0.1:1111
 | `mise run serve` | Dev server with live reload |
 | `mise run build` | Build for production |
 | `mise run check` | Check for broken links |
+| `mise run check-kdl` | Validate KDL snippets (needs `zentinel`, or `ZENTINEL_BIN`) |
 | `mise run clean` | Clean build artifacts |
 
 ## Structure
@@ -63,11 +64,35 @@ Code blocks with syntax highlighting:
 
 ````markdown
 ```kdl
-server {
-    listener "0.0.0.0:8080"
+routes {
+    route "api" {
+        matches { path-prefix "/api/" }
+        upstream "backend"
+    }
 }
 ```
 ````
+
+### KDL snippets are validated
+
+CI runs every ` ```kdl ` block through a pinned Zentinel release
+(`zentinel validate --skip-network --skip-agents --skip-certs` and
+`zentinel lint`) and fails on errors and on "is being ignored" lint warnings
+(unknown or misplaced keys). The checker adds the boilerplate a snippet leaves
+out — `system`, a listener, stubs for upstreams/filters/agents it references
+when the snippet has no such block, and the plural wrapper around a bare
+`route "x" { }` — but never rewrites what the snippet says.
+
+A piece that cannot stand alone (the inside of a block shown out of context,
+an intentionally wrong "before" example, `...` elisions) is fenced as
+` ```fragment,kdl `. It renders and highlights exactly like ` ```kdl `
+(Zola uses the last fence token as the language) and is skipped by the check.
+
+```bash
+# Run locally against a Zentinel binary (release archive or cargo build)
+ZENTINEL_BIN=/path/to/zentinel mise run check-kdl
+python3 scripts/check_kdl.py --zentinel /path/to/zentinel content/examples/websocket.md
+```
 
 ## Tech Stack
 
