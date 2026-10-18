@@ -1,7 +1,7 @@
 +++
 title = "Environment Variables"
 weight = 2
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 Environment variables for configuring Zentinel and its agents.
@@ -49,20 +49,16 @@ RUST_LOG=zentinel::proxy=trace,zentinel::agents=debug
 
 ## Configuration Overrides
 
-Some configuration settings can be overridden via environment variables. Environment variables take precedence over config file values.
+There are none: settings such as `worker-threads` and `max-connections` are
+read only from the configuration file. (Earlier versions of this page listed
+`ZENTINEL_WORKERS` and `ZENTINEL_MAX_CONNECTIONS`; nothing reads them.)
 
-| Variable | Config Setting | Description |
-|----------|----------------|-------------|
-| `ZENTINEL_WORKERS` | `server.worker-threads` | Number of worker threads |
-| `ZENTINEL_MAX_CONNECTIONS` | `server.max-connections` | Maximum connections |
+### Other variables the proxy reads
 
-**Example:**
-
-```bash
-# Override worker threads regardless of config file
-export ZENTINEL_WORKERS=8
-zentinel --config zentinel.kdl
-```
+| Variable | Description |
+|----------|-------------|
+| `ZENTINEL_ZONE` (then `ZONE`, then `REGION`) | This proxy's zone for `locality_aware` load balancing |
+| `ZENTINEL_API_URL` | Override the API endpoint `zentinel bundle` fetches the agent bundle from |
 
 ## Agent Environment Variables
 

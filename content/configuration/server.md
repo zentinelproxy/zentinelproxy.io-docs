@@ -1,7 +1,7 @@
 +++
 title = "Server"
 weight = 2
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 The `server` block configures global proxy settings including worker threads, connection limits, and process management.
@@ -242,14 +242,10 @@ upstreams {
 
 ## Environment Variables
 
-Server settings can be overridden via environment variables:
-
-| Variable | Setting |
-|----------|---------|
-| `ZENTINEL_WORKERS` | `worker-threads` |
-| `ZENTINEL_MAX_CONNECTIONS` | `max-connections` |
-
-Environment variables take precedence over config file values.
+There are no environment-variable overrides for `system` settings; set them
+in the configuration file. The variables Zentinel reads are listed in
+[Environment Variables](@/reference/env-vars.md) (for example
+`ZENTINEL_CONFIG` for the configuration path).
 
 ## Default Values
 
@@ -291,7 +287,6 @@ system {
 | `SIGTERM` | Graceful shutdown |
 | `SIGINT` | Graceful shutdown |
 | `SIGHUP` | Reload configuration |
-| `SIGUSR1` | Reopen log files |
 
 ## Next Steps
 

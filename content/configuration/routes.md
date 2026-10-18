@@ -579,8 +579,6 @@ route "user-api" {
     policies {
         timeout-secs 30
         max-body-size "10MB"
-        // buffer-requests is not implemented and has no effect (#366).
-        // Request validation does not require it.
     }
 
     // Resilience
@@ -715,11 +713,11 @@ route "metrics" {
 ### Request/Response Buffering
 
 
-> **`buffer-requests` and `buffer-responses` are not implemented.** They have
-> no KDL parser and are read by nothing in the proxy, so writing them in
-> `policies` has no effect; `zentinel lint` reports them as ignored keys.
-> Tracked in [zentinelproxy/zentinel#366](https://github.com/zentinelproxy/zentinel/issues/366),
-> where the decision is whether to implement them or remove them.
+> **`buffer-requests` and `buffer-responses` were removed in 26.08_5**
+> ([zentinelproxy/zentinel#366](https://github.com/zentinelproxy/zentinel/issues/366)).
+> They never had a KDL parser and were read by nothing in the proxy; writing
+> them in `policies` has no effect and `zentinel lint` reports them as ignored
+> keys. Delete them from existing configurations.
 >
 > Body inspection by agents does not depend on these settings and works without
 > them.

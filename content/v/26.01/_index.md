@@ -5,7 +5,7 @@ weight = 0
 sort_by = "weight"
 template = "section.html"
 +++
-Welcome to **Zentinel** documentation version **25.12**.
+Welcome to **Zentinel** documentation version **26.01**.
 
 > **Note**: You are viewing an archived version of the documentation. For the latest documentation, visit the [current version](/).
 
