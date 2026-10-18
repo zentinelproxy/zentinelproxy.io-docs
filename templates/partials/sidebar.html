@@ -1,5 +1,7 @@
-{# Sidebar with Table of Contents for Docs Mode #}
-<link rel="stylesheet" href="{{ get_url(path='css/sidebar-groups.css') | safe }}">
+{# Sidebar with Table of Contents for Docs Mode. Site override: also loads
+   static/css/site.css (sidebar groups, callouts), since this partial is on
+   every docs page; this avoids overriding the theme's page templates. #}
+<link rel="stylesheet" href="{{ get_url(path='css/site.css') | safe }}">
 <aside id="sidebar" class="sidebar" role="complementary" aria-labelledby="sidebar-title">
     {# Resize handle (desktop only) #}
     <div class="sidebar__resize-handle" aria-hidden="true" title="Drag to resize sidebar width"></div>
