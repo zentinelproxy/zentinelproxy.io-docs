@@ -335,9 +335,7 @@ async fn test_websocket_proxy() {
             route "ws" {{
                 matches {{ path "/ws" }}
                 upstream "backend"
-                websocket {{
-                    enabled #true
-                }}
+                websocket #true
             }}
         }}
         // ... upstreams

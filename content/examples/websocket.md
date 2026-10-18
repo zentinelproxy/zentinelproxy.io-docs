@@ -1,7 +1,7 @@
 +++
 title = "WebSocket"
 weight = 10
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 WebSocket proxying with frame inspection, security controls, and real-time monitoring.
@@ -57,13 +57,11 @@ routes {
             path "/ws"
         }
         upstream "ws-backend"
-        agents "ws-inspector"
-        websocket {
-            enabled #true
-            ping-interval-secs 30
-            ping-timeout-secs 10
-            max-message-size "1MB"
-        }
+        filters "ws-inspector"
+        websocket #true
+        websocket-inspection #true
+        // Not yet configurable (#369): ping interval/timeout and
+        // maximum message size use built-in defaults.
     }
 
     // Socket.io endpoint
@@ -73,10 +71,9 @@ routes {
             path-prefix "/socket.io/"
         }
         upstream "ws-backend"
-        agents "ws-inspector"
-        websocket {
-            enabled #true
-        }
+        filters "ws-inspector"
+        websocket #true
+        websocket-inspection #true
     }
 
     // REST API (same backend)
@@ -86,7 +83,7 @@ routes {
             path-prefix "/api/"
         }
         upstream "ws-backend"
-        agents "auth"
+        filters "auth"
     }
 }
 
@@ -113,6 +110,18 @@ agents {
         events "request_headers"
         timeout-ms 50
         failure-mode "closed"
+    }
+}
+
+// Routes attach agents through filters
+filters {
+    filter "ws-inspector" {
+        type "agent"
+        agent "ws-inspector"
+    }
+    filter "auth" {
+        type "agent"
+        agent "auth"
     }
 }
 
@@ -343,15 +352,19 @@ Create `/etc/zentinel/ws-schema.json`:
 
 ## Connection Limits
 
+Per-route WebSocket limits (maximum connections, connections per IP, ping
+interval, maximum message size) are not yet configurable (#369). What a route
+does control is whether the upgrade is allowed (`websocket #true`), frame
+inspection (`websocket-inspection #true`) and its timeout:
+
 ```kdl
 routes {
     route "websocket" {
+        matches { path "/ws" }
         upstream "ws-backend"
-        websocket {
-            enabled #true
-            max-connections 1000
-            max-connections-per-ip 10
-            idle-timeout-secs 300
+        websocket #true
+        policies {
+            timeout-secs 300  // idle connections are closed after this
         }
     }
 }
@@ -399,12 +412,9 @@ routes {
             path "/chat"
         }
         upstream "chat-service"
-        agents "auth" "ws-inspector"
-        websocket {
-            enabled #true
-            ping-interval-secs 30
-            max-message-size "64KB"
-        }
+        filters "auth" "ws-inspector"
+        websocket #true
+        websocket-inspection #true
     }
 
     // REST API for history, rooms, etc.
@@ -414,7 +424,7 @@ routes {
             path-prefix "/api/chat/"
         }
         upstream "chat-service"
-        agents "auth" "ratelimit"
+        filters "auth"
     }
 }
 
@@ -425,10 +435,27 @@ agents {
         timeout-ms 20
         failure-mode "open"
     }
+    agent "auth" {
+        unix-socket path="/var/run/zentinel/auth.sock"
+        events "request_headers"
+        timeout-ms 50
+        failure-mode "closed"
+    }
+}
+
+filters {
+    filter "ws-inspector" {
+        type "agent"
+        agent "ws-inspector"
+    }
+    filter "auth" {
+        type "agent"
+        agent "auth"
+    }
 }
 
 upstreams {
-    upstream "backend" {
+    upstream "chat-service" {
         target "127.0.0.1:3000"
     }
 }
