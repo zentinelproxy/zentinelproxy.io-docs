@@ -178,8 +178,10 @@ agents {
     agent "auth" type="custom" {
         unix-socket "/tmp/auth.sock"
         config {
-            jwt-secret "placeholder"
-            api-key "placeholder"
+            // Placeholder values: never commit real secrets. Inject them at
+            // deploy time (templating or a secrets manager, below).
+            jwt-secret "REPLACE_ME_jwt_secret"
+            api-key "REPLACE_ME_api_key"
         }
     }
 }

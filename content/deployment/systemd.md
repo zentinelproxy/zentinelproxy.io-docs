@@ -103,7 +103,7 @@ sudo cp target/release/zentinel-auth-agent /usr/local/bin/
 # /etc/systemd/system/zentinel.service
 [Unit]
 Description=Zentinel Reverse Proxy
-Documentation=https://zentinelproxy.io/docs/
+Documentation=https://docs.zentinelproxy.io/
 After=network-online.target zentinel-agents.target
 Wants=network-online.target zentinel-agents.target
 
@@ -164,7 +164,7 @@ WantedBy=sockets.target
 # /etc/systemd/system/zentinel-agent@.service
 [Unit]
 Description=Zentinel Agent (%i)
-Documentation=https://zentinelproxy.io/docs/agents/
+Documentation=https://docs.zentinelproxy.io/agents/
 Requires=zentinel-agent@%i.socket
 After=zentinel-agent@%i.socket
 PartOf=zentinel-agents.target
@@ -196,7 +196,7 @@ WantedBy=multi-user.target
 # /etc/systemd/system/zentinel-agents.target
 [Unit]
 Description=Zentinel Agents
-Documentation=https://zentinelproxy.io/docs/agents/
+Documentation=https://docs.zentinelproxy.io/agents/
 
 [Install]
 WantedBy=multi-user.target

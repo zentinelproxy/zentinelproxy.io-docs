@@ -2,7 +2,7 @@
 
 Documentation site for [Zentinel](https://github.com/zentinelproxy/zentinel).
 
-**Live:** https://zentinelproxy.io/docs
+**Live:** https://docs.zentinelproxy.io
 
 ## Quick Start
 

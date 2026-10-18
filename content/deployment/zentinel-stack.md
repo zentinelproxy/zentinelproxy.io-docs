@@ -19,15 +19,24 @@ zentinel-stack
 
 ## Installation
 
-`zentinel-stack` is included with Zentinel:
+`zentinel-stack` lives in the Zentinel repository (`crates/stack`) but is not
+published to crates.io and is not part of the release archives, which ship
+`zentinel`, `zentinel-gateway` and `zentinel-echo-agent`. Build it from source
+(Rust 1.96 or later):
 
 ```bash
-# Install via cargo
-cargo install zentinel-stack
+# Install straight from the repository
+cargo install --locked --git https://github.com/zentinelproxy/zentinel zentinel-stack
 
-# Or download from releases
-curl -sSL https://zentinelproxy.io/install.sh | sh
+# Or from a clone
+git clone https://github.com/zentinelproxy/zentinel.git
+cd zentinel
+cargo build --release -p zentinel-stack
+# binary: target/release/zentinel-stack
 ```
+
+The proxy itself installs with `curl -fsSL https://get.zentinelproxy.io | sh`
+(see [Installation](@/getting-started/installation.md)).
 
 ## Quick Start
 
