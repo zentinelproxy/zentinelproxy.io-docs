@@ -65,5 +65,6 @@ See [Agent Transports](/agents/v2/transports/) for protocol details.
 | [systemd](systemd/) | Production deployment with systemd |
 | [Docker Compose](docker-compose/) | Container-based local/small deployments |
 | [Kubernetes](kubernetes/) | Cloud-native deployment patterns |
+| [Gateway API Controller](gateway-api/) | Configure Zentinel from Gateway API and Ingress resources |
 | [Service Mesh](service-mesh/) | Istio, Linkerd, and Consul Connect integration |
 | [Monitoring](monitoring/) | Observability and health checks |

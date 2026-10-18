@@ -6,6 +6,8 @@ updated = 2026-02-19
 
 Kubernetes provides the most flexible deployment model for Zentinel, supporting multiple patterns from simple sidecar deployments to sophisticated service mesh integrations.
 
+This page covers running the proxy with a configuration you write. To drive Zentinel from Gateway API resources (`Gateway`, `HTTPRoute`, `GRPCRoute`) or `Ingress` objects instead, see the [Gateway API Controller](../gateway-api/).
+
 ## Deployment Patterns
 
 | Pattern | Description | Best For |
