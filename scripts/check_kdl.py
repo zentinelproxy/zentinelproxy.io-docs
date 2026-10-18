@@ -231,15 +231,65 @@ def assemble(snippet):
 # Mistakes the loader accepts without a word, so neither validate nor lint can
 # report them. Checked against the snippet text.
 TRAPS = [
+    # (also: multi-argument `method`, a `filters { }` block inside a route and
+    # unknown load-balancing names, checked in traps() below)
     (re.compile(r"(?m)^\s*websocket\s*\{"),
      "`websocket` on a route is a boolean (`websocket #true`); written as a block "
      "it parses as false and WebSocket stays disabled (zentinel#369)"),
 ]
 
 
+# Names parse_load_balancing (crates/config/src/kdl/upstreams.rs) accepts;
+# anything else silently becomes round robin.
+LOAD_BALANCING = {
+    "round_robin", "roundrobin", "least_connections", "leastconnections",
+    "weighted", "weighted_round_robin", "weighted-round-robin", "ip_hash",
+    "iphash", "random", "consistent_hash", "consistenthash",
+    "power_of_two_choices", "p2c", "adaptive", "least_tokens_queued",
+    "leasttokensqueued", "least_tokens", "maglev", "locality_aware",
+    "localityaware", "locality", "peak_ewma", "peakewma", "ewma",
+    "deterministic_subset", "subset", "subsetting",
+    "weighted_least_connections", "weighted_least_conn", "wlc", "sticky",
+    "sticky_session", "stickysession",
+}
+LB_RE = re.compile(r'(?m)^\s*load-balancing\s+"([^"]+)"')
+
+
+METHOD_RE = re.compile(r'(?m)^\s*method((?:\s+"[^"]*")+)')
+
+
+def block_inside(code, child, parent):
+    """True if a `child {` block opens anywhere inside a `parent ... {` block."""
+    stack = []
+    for raw in code.splitlines():
+        line = re.sub(r'"(?:\\.|[^"\\])*"', '""', raw)
+        for tok in re.finditer(r"[{}]", line):
+            if tok.group() == "{":
+                head = line[:tok.start()].split(";")[-1].split("}")[-1].strip()
+                name = head.split()[0] if head.split() else ""
+                if name == child and parent in stack:
+                    return True
+                stack.append(name)
+            elif stack:
+                stack.pop()
+    return False
+
+
 def traps(snippet):
     code = strip_comments(snippet)
-    return [msg for rx, msg in TRAPS if rx.search(code)]
+    found = [msg for rx, msg in TRAPS if rx.search(code)]
+    for args in METHOD_RE.findall(code):
+        if len(re.findall(r'"[^"]*"', args)) > 1:
+            found.append("method %s: the parser reads only the first method "
+                         "(kdl/routes.rs), so the others never match" % args.strip())
+    if block_inside(code, "filters", "route"):
+        found.append("a filters { } block inside a route is ignored: routes reference "
+                     "filters by name (filters \"a\" \"b\"), defined in the top-level filters block")
+    for name in LB_RE.findall(code):
+        if name.lower() not in LOAD_BALANCING:
+            found.append("load-balancing \"%s\" is not a known algorithm and silently "
+                         "falls back to round robin (use underscores, e.g. least_connections)" % name)
+    return found
 
 
 # --------------------------------------------------------------------------
