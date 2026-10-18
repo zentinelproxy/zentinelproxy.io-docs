@@ -1,25 +1,40 @@
 +++
 title = "Metrics Reference"
 weight = 4
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 Prometheus metrics exposed by Zentinel for monitoring and alerting.
 
 ## Metrics Endpoint
 
-Metrics are available at the `/metrics` endpoint on the admin listener:
+Metrics are served by a dedicated metrics server, enabled by default on
+`0.0.0.0:9090` at `/metrics`:
 
 ```bash
 curl http://localhost:9090/metrics
 ```
 
-Configure the admin listener:
+Configure it in the `observability` block:
+
+```kdl
+observability {
+    metrics {
+        enabled #true
+        address "127.0.0.1:9090"
+        path "/metrics"
+    }
+}
+```
+
+Alternatively, serve metrics from a route with the built-in handler, on a
+listener whose port differs from the metrics server's (the two cannot share a
+port):
 
 ```kdl
 listeners {
     listener "admin" {
-        address "127.0.0.1:9090"
+        address "127.0.0.1:9091"
         protocol "http"
     }
 }

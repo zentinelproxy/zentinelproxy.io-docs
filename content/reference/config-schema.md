@@ -1,21 +1,28 @@
 +++
 title = "Configuration Schema"
 weight = 5
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 Quick reference for all Zentinel configuration options.
 
 ## Top-Level Blocks
 
-```kdl
-system { }
-listeners { }
+```fragment,kdl
+schema-version "1.0"
+system { }          // required
+listeners { }       // required
 routes { }
 upstreams { }
+filters { }
 agents { }
 limits { }
-
+cache { }
+observability { }
+rate-limits { }
+namespace "id" { }  // one per namespace
+include "other.kdl"
+waf { }             // parsed, not wired: any mode but "off" is rejected
 ```
 
 ## Server Block
@@ -84,18 +91,18 @@ listeners {
         request-timeout-secs 60
         keepalive-timeout-secs 75
         max-concurrent-streams 100
-        default-route "fallback"
+        default-route "default"            // id of a route below
 
         tls {
             cert-file "/path/to/cert.pem"
             key-file "/path/to/key.pem"
             ca-file "/path/to/ca.pem"
-            min-version "1.2"
-            max-version "1.3"
+            min-version "TLS1.2"
+            max-version "TLS1.3"
             client-auth #false
             ocsp-stapling #true
             session-resumption #true
-            cipher-suite "..."
+            cipher-suite "TLS_AES_256_GCM_SHA384"
         }
     }
 }
@@ -180,7 +187,11 @@ upstreams {
 
 ## Routes Block
 
-```kdl
+Every route setting in one place. This is a reference listing, not a loadable
+route: a route serves from `upstream`, `static-files` **or** a
+`builtin-handler`, never several at once.
+
+```fragment,kdl
 system {
     worker-threads 0
 }
@@ -200,9 +211,9 @@ routes {
             path-prefix "/api/"
             path-regex "^/user/[0-9]+$"
             host "api.example.com"
-            method "GET" "POST"
-            header name="X-Key" value="..."
-            query-param name="format" value="json"
+            method "GET"                   // one method per node
+            header "X-Key" "value"         // name, optional value
+            query-param "format" "json"    // name, optional value
         }
         upstream "backend"
         service-type "web"                 // web, api, static, builtin
@@ -214,8 +225,6 @@ routes {
             timeout-secs 30
             max-body-size "10MB"
             failure-mode "closed"          // closed, open
-            buffer-requests #false
-            buffer-responses #false
 
             request-headers {
                 set { "X-Header" "value" }
@@ -229,7 +238,7 @@ routes {
             rate-limit {
                 requests-per-second 100
                 burst 500
-                key "client_ip"
+                key "client-ip"            // client-ip, path, route, client-ip-and-path, header:<name>
             }
         }
 
@@ -237,12 +246,12 @@ routes {
             max-attempts 3
         }
 
-        circuit-breaker {
-            failure-threshold 5
-            success-threshold 2
-            timeout-seconds 30
-            half-open-max-requests 1
+        cache {
+            enabled #true
+            default-ttl-secs 3600
         }
+
+        // circuit-breaker belongs to an upstream or an agent, not a route
 
         static-files {
             root "/var/www"
@@ -253,13 +262,10 @@ routes {
             fallback "index.html"
         }
 
-        error-pages {
-            default-format "json"
-            pages {
-                "404" { format "json" message "Not found" }
-                "500" { format "html" template "/path/to/500.html" }
-            }
-        }
+        // error-pages is not configurable (no parser reads it as of 26.10_3)
+
+        websocket #true
+        websocket-inspection #false
     }
 }
 
@@ -295,12 +301,9 @@ listeners {
 }
 
 upstreams {
-    upstream "id" {
-        target "10.0.1.1:8080" {
-            weight 1
-            max-requests 1000
-            metadata { "zone" "us-east-1" }
-        }
+    upstream "backend" {
+        target "10.0.1.1:8080" weight=1   // address and weight only
+        // Or: target { address "10.0.1.1:8080"; weight 1 }
         load-balancing "round_robin"
 
         health-check {
@@ -364,6 +367,13 @@ routes {
 
 ## Limits Block
 
+As of 26.10_3 these names are read only by the multi-file (directory) loader.
+A single-file configuration is parsed by `parse_limits_config`
+(`crates/config/src/kdl/mod.rs`), which reads just `max-header-size`,
+`max-header-count`, `max-body-size`, `max-connections-per-client`,
+`max-total-connections` and `max-in-flight-requests`; the other keys below are
+ignored there. See [Directive Index — Limits](../directives/#limits-directives).
+
 ```kdl
 limits {
     // Headers
@@ -404,7 +414,7 @@ limits {
 
     // Memory
     max-memory-bytes 2147483648
-    max-memory-percent 80.0
+    // max-memory-percent is not read by any parser
 }
 ```
 
@@ -420,7 +430,7 @@ agents {
 
         timeout-ms 100
         failure-mode "closed"              // closed, open
-        max-body-bytes 1048576
+        max-request-body-bytes 1048576
         events "request_headers" "response_headers"
 
         circuit-breaker {
@@ -478,18 +488,18 @@ system {
 
 listeners {
     listener "https" {
-                tls {
-                    cert-file "/etc/zentinel/certs/server.crt"
-                    key-file "/etc/zentinel/certs/server.key"
-                    min-version "1.2"
-                }
         address "0.0.0.0:443"
         protocol "https"
-
+        tls {
+            cert-file "/etc/zentinel/certs/server.crt"
+            key-file "/etc/zentinel/certs/server.key"
+            min-version "1.2"
+        }
     }
 
+    // 9090 is taken by the metrics server (observability.metrics.address)
     listener "admin" {
-        address "127.0.0.1:9090"
+        address "127.0.0.1:9091"
         protocol "http"
     }
 }
@@ -518,15 +528,14 @@ upstreams {
         target "10.0.1.2:8080"
         load-balancing "least_connections"
         health-check {
-            type "http" { path "/health" expected-status 200 }
+            type "http" { path "/health"; expected-status 200; }
             interval-secs 10
         }
     }
 }
 
 limits {
-    max-body-size-bytes 10485760
-    max-requests-per-second-per-client 100
+    max-body-size 10485760   // single-file key (see Limits Block above)
 }
 
 ```
