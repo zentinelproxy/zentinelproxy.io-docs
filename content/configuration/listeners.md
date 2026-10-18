@@ -1,7 +1,7 @@
 +++
 title = "Listeners"
 weight = 3
-updated = 2026-10-11
+updated = 2026-10-18
 +++
 
 The `listeners` block defines network endpoints where Zentinel accepts incoming connections. Each listener binds to an address, specifies a protocol, and optionally configures TLS.
@@ -50,7 +50,12 @@ Socket address in `host:port` format:
 
 ```kdl
 listener "secure" {
+    address "0.0.0.0:443"
     protocol "https"
+    tls {
+        cert-file "/etc/zentinel/certs/server.crt"
+        key-file "/etc/zentinel/certs/server.key"
+    }
 }
 ```
 
@@ -115,10 +120,19 @@ listener "h2" {
 ### Default Route
 
 ```kdl
-listener "api" {
-    address "0.0.0.0:8080"
-    protocol "http"
-    default-route "fallback"
+listeners {
+    listener "api" {
+        address "0.0.0.0:8080"
+        protocol "http"
+        default-route "fallback"
+    }
+}
+
+routes {
+    route "fallback" {
+        priority "low"   // catch-all: no match conditions needed
+        upstream "backend"
+    }
 }
 ```
 
@@ -201,7 +215,7 @@ upstreams {
 
 **Production recommendation:**
 
-```kdl
+```fragment,kdl
 tls {
     min-version "1.2"
     max-version "1.3"
@@ -306,7 +320,7 @@ Benefits:
 
 ### Custom Cipher Suites
 
-```kdl
+```fragment,kdl
 tls {
     cipher-suite "TLS_AES_256_GCM_SHA384"
     cipher-suite "TLS_CHACHA20_POLY1305_SHA256"
@@ -426,7 +440,7 @@ configuration whenever one is added or removed. An `sni-certs` block instead
 points at a folder, and every certificate/key pair found there is registered
 with the hostnames from its own CN and SANs.
 
-```kdl
+```fragment,kdl
 tls {
     cert-file "/etc/zentinel/certs/default.crt"
     key-file "/etc/zentinel/certs/default.key"
@@ -547,7 +561,7 @@ configuration is written.
 
 Two ways out:
 
-```kdl
+```fragment,kdl
 tls {
     // Accept overlaps: the first certificate in sorted path order wins.
     // Deterministic across machines and reloads, unlike directory order.
@@ -656,7 +670,7 @@ A `sni` block must specify exactly one cert source. The parser rejects both stat
 
 When an SNI block has an `acme` block but no explicit `hostnames`, the routing hostnames are derived from `acme.domains`. This avoids having to repeat the same domain list in two places:
 
-```kdl
+```fragment,kdl
 sni {
     // No hostnames — taken from acme.domains below.
     acme {
@@ -851,7 +865,7 @@ listener "https" {
 
 #### Cloudflare DNS Provider
 
-```kdl
+```fragment,kdl
 dns-provider {
     type "cloudflare"
     credentials-file "/etc/zentinel/secrets/cloudflare-token.txt"
@@ -872,7 +886,7 @@ Zone IDs are resolved and cached automatically from the domain name.
 
 #### Hetzner DNS Provider
 
-```kdl
+```fragment,kdl
 dns-provider {
     type "hetzner"
     credentials-file "/etc/zentinel/secrets/hetzner.json"
@@ -890,7 +904,7 @@ Credential file format:
 
 For custom DNS integrations, use the webhook provider:
 
-```kdl
+```fragment,kdl
 dns-provider {
     type "webhook"
     url "https://dns-api.internal/v1"
@@ -947,7 +961,7 @@ Security: Credential files should have mode `0600` or `0400`.
 
 By default, Zentinel uses Let's Encrypt. To use a different ACME-compatible CA (ZeroSSL, BuyPass, Step-ca), set `server-url` to the CA's directory URL. Some CAs also require External Account Binding (EAB) credentials.
 
-```kdl
+```fragment,kdl
 tls {
     acme {
         email "admin@example.com"
@@ -976,7 +990,7 @@ When `server-url` is set, the `staging` option is ignored.
 
 Zentinel allows configuring the key algorithm for ACME certificates:
 
-```kdl
+```fragment,kdl
 tls {
     acme {
         email "admin@example.com"
@@ -997,7 +1011,7 @@ Invalid values produce a config parse error.
 
 Use Let's Encrypt's staging environment for testing to avoid rate limits:
 
-```kdl
+```fragment,kdl
 tls {
     acme {
         email "admin@example.com"
@@ -1089,7 +1103,7 @@ When both ACME and manual certificates are configured, manual certificates are u
 
 Request a single certificate covering multiple domains:
 
-```kdl
+```fragment,kdl
 tls {
     acme {
         email "admin@example.com"
@@ -1163,7 +1177,7 @@ listeners {
         }
     }
 
-    // HTTP redirect to HTTPS
+    // HTTP redirect to HTTPS (route and filter below)
     listener "http-redirect" {
         address "0.0.0.0:80"
         protocol "http"
@@ -1172,7 +1186,7 @@ listeners {
 
     // Admin interface (localhost only)
     listener "admin" {
-        address "127.0.0.1:9090"
+        address "127.0.0.1:9901"  // 9090 is taken by the metrics server
         protocol "http"
     }
 
@@ -1186,6 +1200,21 @@ listeners {
             ca-file "/etc/zentinel/certs/internal-ca.crt"
             client-auth #true
         }
+    }
+}
+routes {
+    // Every request on the port-80 listener is redirected to HTTPS
+    route "https-redirect" {
+        priority "low"
+        filters "to-https"
+    }
+}
+
+filters {
+    filter "to-https" {
+        type "redirect"
+        scheme "https"
+        status-code 301
     }
 }
 ```
@@ -1214,7 +1243,7 @@ cat server.crt intermediate.crt > fullchain.crt
 
 Then reference the full chain:
 
-```kdl
+```fragment,kdl
 tls {
     cert-file "/etc/zentinel/certs/fullchain.crt"
     key-file "/etc/zentinel/certs/server.key"
@@ -1242,21 +1271,19 @@ system {
 listeners {
     // Production HTTPS with modern TLS
     listener "https" {
-
-                tls {
-                    cert-file "/etc/zentinel/certs/fullchain.crt"
-                    key-file "/etc/zentinel/certs/server.key"
-                    min-version "1.2"
-                    max-version "1.3"
-                    ocsp-stapling #true
-                    session-resumption #true
-                }
         address "0.0.0.0:443"
         protocol "https"
         request-timeout-secs 60
         keepalive-timeout-secs 120
         max-concurrent-streams 200
-
+        tls {
+            cert-file "/etc/zentinel/certs/fullchain.crt"
+            key-file "/etc/zentinel/certs/server.key"
+            min-version "1.2"
+            max-version "1.3"
+            ocsp-stapling #true
+            session-resumption #true
+        }
     }
 
     // HTTP to HTTPS redirect
@@ -1269,7 +1296,7 @@ listeners {
 
     // Admin and metrics (internal only)
     listener "admin" {
-        address "127.0.0.1:9090"
+        address "127.0.0.1:9901"  // 9090 is taken by the metrics server
         protocol "http"
         request-timeout-secs 10
     }
@@ -1279,6 +1306,19 @@ routes {
     route "default" {
         matches { path-prefix "/" }
         upstream "backend"
+    }
+
+    route "redirect-https" {
+        priority "low"
+        filters "to-https"
+    }
+}
+
+filters {
+    filter "to-https" {
+        type "redirect"
+        scheme "https"
+        status-code 301
     }
 }
 

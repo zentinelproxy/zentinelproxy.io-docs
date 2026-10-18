@@ -19,7 +19,7 @@ Before validating, the checker adds only what is missing, never rewriting what
 the snippet says:
 
   * a snippet made only of `route "x" {..}` nodes (or only `upstream`,
-    `listener`, `agent`, `filter`, `namespace` nodes) is wrapped in the plural
+    `listener`, `agent`, `filter` nodes) is wrapped in the plural
     block (`routes { .. }`);
   * `system { }` and a single HTTP `listeners` entry are added when absent;
   * when the snippet has no `upstreams` block, the upstreams its routes
@@ -61,7 +61,6 @@ PLURALS = {
     "listener": "listeners",
     "agent": "agents",
     "filter": "filters",
-    "namespace": "namespaces",
 }
 
 SYSTEM_STUB = "system {\n    worker-threads 0\n}\n"
@@ -343,7 +342,7 @@ def main():
     ap.add_argument("files", nargs="*")
     args = ap.parse_args()
 
-    zentinel = shutil.which(args.zentinel) or args.zentinel
+    zentinel = os.path.abspath(shutil.which(args.zentinel) or args.zentinel)
     if not os.access(zentinel, os.X_OK):
         sys.exit("zentinel binary not found: %s (use --zentinel or ZENTINEL_BIN)" % args.zentinel)
     version = subprocess.run([zentinel, "--version"], capture_output=True, text=True).stdout.strip()

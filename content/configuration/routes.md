@@ -1,7 +1,7 @@
 +++
 title = "Routes"
 weight = 4
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 The `routes` block defines how incoming requests are matched and forwarded to upstreams or handlers. Routes are evaluated by priority, with higher priority routes checked first.
@@ -38,6 +38,8 @@ routes {
 ```kdl
 route "api" {
     priority 100
+    matches { path-prefix "/api/" }
+    upstream "backend"
 }
 ```
 
@@ -54,9 +56,11 @@ Higher priority routes are evaluated first. When multiple routes could match, th
 
 Routes support multiple match conditions. All conditions within a route must match (AND logic).
 
+Every `matches` example below goes inside a `route` block.
+
 #### Path Matching
 
-```kdl
+```fragment,kdl
 matches {
     // Exact path match
     path "/api/v1/users"
@@ -77,7 +81,7 @@ matches {
 
 #### Host Matching
 
-```kdl
+```fragment,kdl
 matches {
     host "api.example.com"
 }
@@ -87,35 +91,38 @@ Match by the `Host` header. Useful for virtual hosting.
 
 #### Method Matching
 
-```kdl
+```fragment,kdl
 matches {
-    method "GET" "POST" "PUT" "DELETE"
+    method "GET"
 }
 ```
 
-Match specific HTTP methods. Multiple methods are OR'd together.
+Match a specific HTTP method. `method` takes **one** value: as of 26.10_3 the
+parser reads only the first argument, so `method "GET" "POST"` matches `GET`
+only, and two `method` lines are AND'ed (nothing matches both). To accept
+several methods, use one route per method or leave the method condition out.
 
 #### Header Matching
 
-```kdl
+```fragment,kdl
 matches {
     // Match if header exists
-    header name="X-Api-Key"
+    header "X-Api-Key"
 
     // Match header with specific value
-    header name="X-Api-Version" value="2"
+    header "X-Api-Version" "2"
 }
 ```
 
 #### Query Parameter Matching
 
-```kdl
+```fragment,kdl
 matches {
     // Match if parameter exists
-    query-param name="debug"
+    query-param "debug"
 
     // Match parameter with value
-    query-param name="format" value="json"
+    query-param "format" "json"
 }
 ```
 
@@ -123,6 +130,8 @@ matches {
 
 ```kdl
 route "api" {
+    matches { path-prefix "/" }
+    upstream "backend"
     service-type "web"  // Default
 }
 ```
@@ -548,7 +557,6 @@ route "user-api" {
     priority 200
     matches {
         path-prefix "/api/v2/users"
-        method "GET" "POST" "PUT" "DELETE"
     }
     upstream "user-service"
     service-type "api"
@@ -564,20 +572,8 @@ route "user-api" {
     // Authentication and rate limiting
     filters "jwt-auth" "rate-limit"
 
-    // Error handling
-    error-pages {
-        default-format "json"
-        pages {
-            "400" {
-                format "json"
-                message "Invalid request"
-            }
-            "401" {
-                format "json"
-                message "Authentication required"
-            }
-        }
-    }
+    // Error responses: service-type "api" already answers in JSON
+    // (error-pages is not configurable from KDL, see Error Pages below)
 
     // Performance tuning
     policies {
@@ -598,6 +594,7 @@ route "user-api" {
 
 ```kdl
 route "api" {
+    matches { path-prefix "/api/" }
     upstream "backend"
 }
 ```
@@ -624,6 +621,8 @@ Enable WAF shorthand:
 
 ```kdl
 route "api" {
+    matches { path-prefix "/api/" }
+    upstream "backend"
     waf-enabled #true
 }
 ```
@@ -634,6 +633,7 @@ route "api" {
 
 ```kdl
 route "api" {
+    matches { path-prefix "/api/" }
     upstream "backend"
     policies {
         request-headers {
@@ -677,6 +677,8 @@ route "upload" {
 
 ```kdl
 route "upload" {
+    matches { path-prefix "/upload/" }
+    upstream "backend"
     policies {
         max-body-size "100MB"
     }
@@ -689,12 +691,16 @@ Supports units: `B`, `KB`, `MB`, `GB`
 
 ```kdl
 route "api" {
+    matches { path-prefix "/api/" }
+    upstream "backend"
     policies {
         failure-mode "closed"  // Block on failure (default)
     }
 }
 
 route "metrics" {
+    matches { path-prefix "/telemetry/" }
+    upstream "backend"
     policies {
         failure-mode "open"    // Allow through on failure
     }
@@ -708,45 +714,10 @@ route "metrics" {
 
 ### Request/Response Buffering
 
-```kdl
-system {
-    worker-threads 0
-}
 
-listeners {
-    listener "http" {
-        address "0.0.0.0:8080"
-        protocol "http"
-    }
-}
-
-routes {
-    route "api" {
-        matches { path-prefix "/api/" }
-        upstream "backend"
-        policies {
-            buffer-requests #true   // Buffer full request before forwarding
-            buffer-responses #true  // Buffer full response before sending
-        }
-    }
-
-    route "default" {
-        matches { path-prefix "/" }
-        upstream "backend"
-    }
-}
-
-upstreams {
-    upstream "backend" {
-        target "127.0.0.1:3000"
-    }
-}
-
-```
-
-> **`buffer-requests` and `buffer-responses` are not implemented.** They appear
-> in the configuration schema but have no KDL parser and are read by nothing in
-> the proxy, so writing them has no effect — the keys are discarded silently.
+> **`buffer-requests` and `buffer-responses` are not implemented.** They have
+> no KDL parser and are read by nothing in the proxy, so writing them in
+> `policies` has no effect; `zentinel lint` reports them as ignored keys.
 > Tracked in [zentinelproxy/zentinel#366](https://github.com/zentinelproxy/zentinel/issues/366),
 > where the decision is whether to implement them or remove them.
 >
@@ -765,6 +736,7 @@ Re-sends a request when the upstream fails to answer usefully.
 
 ```kdl
 route "api" {
+    matches { path-prefix "/api/" }
     upstream "backend"
     retry-policy {
         max-attempts 3
@@ -793,7 +765,7 @@ route "api" {
 
 Idempotent methods — `GET`, `HEAD`, `PUT`, `DELETE`, `OPTIONS`, `TRACE` — are safe to replay by definition. Anything else is not retried unless you set `retry-non-idempotent`, because replaying it can duplicate a side effect the origin already performed and the proxy cannot tell whether it did.
 
-```kdl
+```fragment,kdl
 retry-policy {
     max-attempts 3
     retryable-status-codes 503
@@ -833,11 +805,11 @@ Before this was implemented, `max-attempts` bounded upstream *peer-selection* at
 
 ## Circuit Breaker
 
-> **Not supported at route scope.** The route-level `circuit-breaker` block is dropped by the KDL parser (the proxy logs `Unrecognized directive in route block (will be ignored)` for it). Configure circuit breaking at the **upstream** level instead — the `circuit-breaker` block inside `upstream { ... }` is parsed and configurable as of [zentinelproxy/zentinel#267](https://github.com/zentinelproxy/zentinel/pull/267). The block below describes the intended route-scope configuration only. (Note: recovery from the open state has a known bug — see [zentinelproxy/zentinel#261](https://github.com/zentinelproxy/zentinel/issues/261).)
+> **Not supported at route scope.** The route-level `circuit-breaker` block is dropped by the KDL parser (the proxy logs `Unrecognized directive in route block (will be ignored)` for it). Configure circuit breaking at the **upstream** level instead — the `circuit-breaker` block inside `upstream { ... }` is parsed and configurable as of [zentinelproxy/zentinel#267](https://github.com/zentinelproxy/zentinel/pull/267). The block below shows the parsed keys inside an upstream. (Note: recovery from the open state has a known bug — see [zentinelproxy/zentinel#261](https://github.com/zentinelproxy/zentinel/issues/261).)
 
 ```kdl
-route "api" {
-    upstream "backend"
+upstream "backend" {
+    target "10.0.1.1:8080"
     circuit-breaker {
         failure-threshold 5
         success-threshold 2
@@ -865,6 +837,7 @@ Traffic mirroring (also called shadow traffic or dark traffic) duplicates live r
 
 ```kdl
 route "api" {
+    matches { path-prefix "/api/" }
     upstream "production"
 
     shadow {
@@ -964,7 +937,7 @@ route "api-debug-shadow" {
 
 By default, shadow requests **do not** include request bodies to avoid buffering overhead. For POST/PUT/PATCH requests that need body inspection in the shadow:
 
-```kdl
+```fragment,kdl
 shadow {
     upstream "canary"
     buffer-body #true        // Enable body buffering
@@ -1031,7 +1004,6 @@ routes {
         priority 200
         matches {
             path-prefix "/api/v2/"
-            method "GET" "POST" "PUT" "DELETE"
         }
         upstream "production"
 
@@ -1055,7 +1027,7 @@ routes {
         priority 250
         matches {
             path-prefix "/api/v2/"
-            header name="X-User-Tier" value="beta"
+            header "X-User-Tier" "beta"
         }
         upstream "production"
 
@@ -1073,34 +1045,11 @@ For a complete traffic mirroring example with Docker Compose and test scripts, s
 
 ## Error Pages
 
-```kdl
-route "api" {
-    error-pages {
-        default-format "json"
-        pages {
-            "404" {
-                format "json"
-                message "Resource not found"
-            }
-            "500" {
-                format "json"
-                message "Internal server error"
-            }
-            "503" {
-                format "html"
-                template "/etc/zentinel/errors/503.html"
-            }
-        }
-    }
-}
-```
-
-| Format | Content-Type |
-|--------|--------------|
-| `json` | `application/json` |
-| `html` | `text/html` |
-| `text` | `text/plain` |
-| `xml` | `application/xml` |
+> **Not configurable from KDL as of 26.10_3.** The configuration schema has an
+> `error-pages` field, but neither KDL parser reads it (both set it to nothing),
+> and `zentinel lint` reports an `error-pages` block in a route as an ignored
+> key. Error responses use the default format of the route's `service-type`:
+> JSON for `api`, `builtin` and `inference`, HTML for `web` and `static`.
 
 ## Complete Examples
 
@@ -1123,7 +1072,7 @@ routes {
         priority 999
         matches {
             path "/metrics"
-            header name="X-Admin-Token"
+            header "X-Admin-Token"
         }
         service-type "builtin"
         builtin-handler "metrics"
@@ -1134,7 +1083,6 @@ routes {
         priority 200
         matches {
             path-prefix "/api/v2/"
-            method "GET" "POST" "PUT" "DELETE" "PATCH"
         }
         upstream "api-v2"
         filters "auth" "rate-limit"

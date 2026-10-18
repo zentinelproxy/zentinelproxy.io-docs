@@ -270,7 +270,9 @@ namespace "api" {
 
 ### Export Configuration
 
-```kdl
+Inside a `namespace` block:
+
+```fragment,kdl
 exports {
     upstreams "upstream-1" "upstream-2"
     agents "auth-agent"
@@ -316,6 +318,7 @@ Circuit breakers are isolated per scope. An upstream failure in one namespace do
 namespace "critical" {
     upstreams {
         upstream "backend" {
+            target "10.0.5.1:8080"
             health-check {
                 type "http" { path "/health" }
             }
@@ -331,6 +334,7 @@ namespace "critical" {
 namespace "best-effort" {
     upstreams {
         upstream "backend" {
+            target "10.0.6.1:8080"
             circuit-breaker {
                 failure-threshold 10  // More tolerant
                 timeout-seconds 10
@@ -387,9 +391,11 @@ upstreams {
 
 routes {
     route "api" {
+        matches { path-prefix "/api/" }
         upstream "api-backend"
     }
     route "web" {
+        matches { path-prefix "/" }
         upstream "web-backend"
     }
 }
@@ -414,6 +420,7 @@ namespace "api" {
 
     routes {
         route "main" {
+            matches { path-prefix "/api/" }
             upstream "backend"
             // Can still access global: upstream "shared-auth"
         }
@@ -429,6 +436,7 @@ namespace "web" {
 
     routes {
         route "main" {
+            matches { path-prefix "/" }
             upstream "backend"
         }
     }

@@ -1,7 +1,7 @@
 +++
 title = "Upstreams"
 weight = 5
-updated = 2026-09-02
+updated = 2026-10-18
 +++
 
 The `upstreams` block defines backend server pools. Each upstream contains one or more targets with load balancing, health checks, and connection pooling.
@@ -24,34 +24,35 @@ upstreams {
 ### Target Definition
 
 ```kdl
-target "10.0.1.1:8080" weight=3 max-requests=1000
-target "10.0.1.2:8080" weight=2
-target "10.0.1.3:8080" weight=1
+upstream "backend" {
+    target "10.0.1.1:8080" weight=3
+    target "10.0.1.2:8080" weight=2
+    target "10.0.1.3:8080" weight=1
+}
 ```
 
 | Option | Default | Description |
 |--------|---------|-------------|
 | `address` | Required | Target address (`host:port`) |
 | `weight` | `1` | Weight for weighted load balancing |
-| `max-requests` | None | Maximum concurrent requests to this target |
+
+The target parser reads only the address and `weight` (as a property,
+`weight=2`, or in the block form `target { address "10.0.1.1:8080"; weight 2 }`).
+A per-target `max-requests` limit is not configurable from KDL as of 26.10_3.
 
 ### Target Metadata
 
-```kdl
-target "10.0.1.1:8080" {
-    metadata {
-        "zone" "us-east-1a"
-        "version" "v2.1.0"
-    }
-}
-```
-
-Metadata is available for custom load balancing decisions and observability.
+Per-target `metadata` is not configurable from KDL as of 26.10_3: the target
+parser reads only the address and weight, so a `metadata { }` block inside a
+`target` is ignored. (Zones for locality-aware balancing are written into the
+address instead; see [Locality-Aware](#locality-aware).)
 
 ## Load Balancing
 
 ```kdl
 upstream "backend" {
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
     load-balancing "round_robin"
 }
 ```
@@ -79,6 +80,8 @@ upstream "backend" {
 
 ```kdl
 upstream "backend" {
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
     load-balancing "round_robin"
 }
 ```
@@ -126,6 +129,8 @@ Traffic distributed proportionally to weights. Use for:
 
 ```kdl
 upstream "backend" {
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
     load-balancing "least_connections"
 }
 ```
@@ -139,6 +144,8 @@ Routes to the target with the fewest active connections. Best for:
 
 ```kdl
 upstream "backend" {
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
     load-balancing "ip_hash"
 }
 ```
@@ -151,6 +158,8 @@ Consistent routing based on client IP. Provides session affinity without cookies
 
 ```kdl
 upstream "backend" {
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
     load-balancing "consistent_hash"
 }
 ```
@@ -164,6 +173,8 @@ Consistent hashing minimizes redistribution when targets are added/removed. Idea
 
 ```kdl
 upstream "backend" {
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
     load-balancing "power_of_two_choices"
 }
 ```
@@ -177,6 +188,8 @@ Randomly selects two targets, routes to the one with fewer connections. Provides
 
 ```kdl
 upstream "backend" {
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
     load-balancing "adaptive"
 }
 ```
@@ -252,6 +265,8 @@ If `api-2` starts responding slowly, traffic automatically shifts to `api-1` and
 
 ```kdl
 upstream "cache-cluster" {
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
     load-balancing "maglev"
 }
 ```
@@ -281,6 +296,8 @@ Google's Maglev consistent hashing algorithm provides O(1) lookup with minimal d
 
 ```kdl
 upstream "api" {
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
     load-balancing "peak_ewma"
 }
 ```
@@ -317,6 +334,8 @@ For each request, Peak EWMA:
 
 ```kdl
 upstream "global-api" {
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
     load-balancing "locality_aware"
 }
 ```
@@ -325,29 +344,25 @@ Prefers targets in the same zone or region as the proxy, falling back to other z
 
 #### Zone Configuration
 
-Zones can be specified in target metadata or parsed from addresses:
+A target's zone is taken from a prefix on its address, `zone/host:port` (or
+`zone=zone,host:port`); targets without a prefix are in zone `unknown`. The
+proxy's own zone comes from the `ZENTINEL_ZONE` environment variable (then
+`ZONE`, then `REGION`; `default` if none is set).
 
 ```kdl
-target "10.0.1.1:8080" {
-    metadata { "zone" "us-east-1a" }
-}
-target "10.0.1.2:8080" {
-    metadata { "zone" "us-east-1b" }
-}
-target "10.0.2.1:8080" {
-    metadata { "zone" "us-west-2a" }
+upstream "global-api" {
+    load-balancing "locality_aware"
+    target "us-east-1a/10.0.1.1:8080"
+    target "us-east-1b/10.0.1.2:8080"
+    target "us-west-2a/10.0.2.1:8080"
 }
 ```
 
-#### Fallback Strategies
+#### Fallback
 
-When no local targets are healthy:
-
-| Strategy | Behavior |
-|----------|----------|
-| `round_robin` | Round-robin across all healthy targets (default) |
-| `random` | Random selection from all healthy targets |
-| `fail_local` | Return error if no local targets available |
+When no local targets are healthy, requests are spread round-robin across the
+healthy targets in other zones. The fallback strategy is not configurable from
+KDL as of 26.10_3.
 
 #### When to Use Locality-Aware
 
@@ -361,6 +376,8 @@ When no local targets are healthy:
 
 ```kdl
 upstream "large-cluster" {
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
     load-balancing "deterministic_subset"
 }
 ```
@@ -391,6 +408,8 @@ For very large clusters (1000+ backends), limits each proxy instance to a determ
 
 ```kdl
 upstream "mixed-capacity" {
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
     load-balancing "weighted_least_conn"
 }
 ```
@@ -453,6 +472,8 @@ upstreams {
 
 ```kdl
 upstream "llm-backend" {
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
     load-balancing "least_tokens_queued"
 }
 ```
@@ -480,6 +501,8 @@ Specialized algorithm for LLM/inference workloads. Selects the backend with the 
 
 ```kdl
 upstream "backend" {
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
     health-check {
         type "http" {
             path "/health"
@@ -506,6 +529,8 @@ upstream "backend" {
 
 ```kdl
 upstream "database" {
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
     health-check {
         type "tcp"
         interval-secs 5
@@ -520,6 +545,8 @@ Simple TCP connection check. Use for non-HTTP services.
 
 ```kdl
 upstream "grpc-service" {
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
     health-check {
         type "grpc" {
             service "my.service.Name"
@@ -649,7 +676,7 @@ selection until it satisfies it again, subject to `healthy-threshold` and
 Written on one line, `expected-tools` is swallowed as an argument to `path` and
 the check silently degrades to liveness only:
 
-```kdl
+```fragment,kdl
 // Wrong — expected-tools is read as an argument to path
 type "mcp" { path "/mcp" expected-tools "search_docs" }
 
