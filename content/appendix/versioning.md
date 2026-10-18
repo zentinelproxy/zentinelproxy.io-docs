@@ -97,10 +97,13 @@ This table maps CalVer release versions to the crate version actually **publishe
 
 ```bash
 zentinel --version
-# zentinel 26.10_3 (0.6.46)
+# zentinel 0.6.45 (release 26.10_3, commit 07c2f6d)
 ```
 
-The CalVer release version is shown first, with the crate SemVer in parentheses.
+The binary prints the workspace SemVer from `Cargo.toml` at the release tag,
+then the CalVer release and the commit. That SemVer is one patch below the
+crate published for the release (see the table above), because the release
+pipeline publishes the tagged version plus one.
 
 **From Docker:**
 
