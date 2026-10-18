@@ -1,7 +1,7 @@
 +++
 title = "Changelog"
 weight = 1
-updated = 2026-10-11
+updated = 2026-10-18
 +++
 
 All notable changes to Zentinel are documented here.
@@ -15,6 +15,7 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 
 | CalVer | Crate Version | Date | Highlights |
 |--------|---------------|------|------------|
+| [26.10_3](#26-10-3) | 0.6.46 | 2026-10-18 | Security and dependency maintenance: `wasmtime` 49 for the WASM agent runtime (23 advisories, one critical), `rustls` 0.23.46 (4 advisories), OpenTelemetry 0.33; Cloudflare DNS-01 finds zones registered at a parent domain; building from source needs **Rust 1.96** |
 | [26.10_2](#26-10-2) | 0.6.45 | 2026-10-11 | ACME certificates renew in the window the CA suggests (ACME Renewal Information, RFC 9773), with `renew-before-days` kept as a hard floor |
 | [26.10_1](#26-10-1) | 0.6.44 | 2026-10-10 | Dependency maintenance: `rustls` 0.23.45 (stricter HelloRetryRequest handling), `maxminddb` 0.32 (bounded decoding of crafted GeoIP databases), `jsonschema` 0.56, rust-minor batch |
 | [26.09_6](#26-09-6) | 0.6.43 | 2026-09-15 | **Pingora 0.9.0**: request-target and authority hardening, hop-by-hop request headers stripped before the upstream, no HTTP/1 upstream reuse after an incomplete response; gRPC-Go advisory in the conformance suite; dependency maintenance |
@@ -44,6 +45,7 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 | [26.06_3](#26-06-3) | 0.6.18 | 2026-06-23 | Multi-file KDL block merging, circuit-breaker recovery fix, counter underflow guard |
 | [26.06_2](#26-06-2) | 0.6.17 | 2026-06-16 | Agent body limits and bounded limiter state, route-level retry-policy parsing, Pingora 0.8.1 |
 | [26.06_1](#26-06-1) | 0.6.16 | 2026-06-07 | Standalone Prometheus metrics server, per-listener route sets, non-root Docker fix |
+| [26.05_5](#26-05-5) | — (no crate published) | 2026-05-25 | Tagged release; the crates.io publish collided with an already-published version. Changes are documented under 26.06_1 |
 | [26.05_4](#26-05-4) | 0.6.15 | 2026-05-12 | OpenTelemetry 0.32 stack, sysinfo 0.39, Rust toolchain 1.95 |
 | [26.05_3](#26-05-3) | — (not released) | 2026-05-05 | Embedded config uses `system` block, ACME hickory-resolver 0.26 fix |
 | [26.05_2](#26-05-2) | 0.6.13 | 2026-05-03 | Install script provisions systemd unit, system user, and starter config |
@@ -71,6 +73,60 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 | [26.01_3](#26-01-3) | 0.2.3 | 2026-01-05 | Bug fixes |
 | [26.01_0](#26-01-0) | 0.2.0 | 2026-01-01 | First CalVer release |
 | [25.12](#25-12) | 0.1.x | 2025-12 | Initial public releases |
+
+---
+
+## 26.10_3
+
+**Date:** 2026-10-18
+**Crate version:** 0.6.46
+
+Security fixes in dependencies and one bug fix. Nothing in this release changes
+how Zentinel routes, inspects or blocks traffic, and no configuration change is
+needed. Building from source now needs Rust 1.96.
+
+### Security
+- **`wasmtime` 48.0.0 → 49.0.3** in `zentinel-wasm-runtime`, the runtime for WASM
+  agents. Fixes 23 advisories (RUSTSEC-2026-0314 to -0364), among them a critical
+  native stack buffer overflow from an unvalidated async-lifted callback result
+  count (RUSTSEC-2026-0327), a WASI filesystem sandbox escape when renaming
+  symlinks with trailing slashes (RUSTSEC-2026-0352), fuel accounting that guests
+  could bypass, and several ways for a guest to panic the host. Only relevant if
+  you run WASM agents.
+- **`rustls` 0.23.45 → 0.23.46.** Fixes RUSTSEC-2026-0346 to -0349, which mostly
+  concern rustls as a TLS client, the role Zentinel has toward upstreams, agents
+  and the ACME server: an unauthenticated ServerHello could downgrade later
+  connections, `Debug` output of client session values exposed TLS secrets,
+  buffered data could reach the outer server after an ECH rejection, and Brotli
+  certificate decompression could allocate up to 1 GiB before authentication.
+- **`h2` 0.3.27 is gone** from the dependency tree (RUSTSEC-2026-0258, unbounded
+  empty DATA frames): `async-memcached` 0.8 no longer pulls in `toxiproxy_rust`,
+  and with it reqwest 0.11 and hyper 0.14.
+- **`crossbeam-epoch` 0.9.18 → 0.9.21** (RUSTSEC-2026-0204).
+- `quinn-proto` 0.11.19 is updated in the lockfile as well; it is not built into
+  Zentinel. `cargo audit` is clean.
+
+### Fixed
+- **Cloudflare DNS-01 challenges for subdomains.** The Cloudflare provider looked
+  up only a zone named exactly like the certificate's domain, so a certificate
+  for `app.example.com` could not be issued when the zone is `example.com`. It
+  now tries the domain and then each parent domain and uses the most specific
+  zone that exists; API and authentication errors are still reported as errors
+  rather than as a missing zone.
+
+### Changed
+- **Minimum Rust version 1.96** (was 1.95), required by `wasmtime` 49. Prebuilt
+  binaries and container images are not affected. See
+  [Installation](../../getting-started/installation/).
+- **OpenTelemetry 0.33** (`opentelemetry`, `opentelemetry_sdk`,
+  `opentelemetry-otlp`, `opentelemetry-semantic-conventions`); no code changes.
+- **Dependency updates:** `jsonschema` 0.58, `async-memcached` 0.8, rust-minor
+  batch (`tokio` 1.53.3, `hyper` 1.12.0, `uuid` 1.28.0, `toml` 1.1.8, `time`
+  0.3.55, `libc` 0.2.191, `signal-hook` 0.4.5, `insta` 1.49.0).
+
+`kube` 4 is not included: the matching `gateway-api` crate uses TLSRoute and
+ReferenceGrant `v1`, which Gateway API only serves from v1.5, while the Zentinel
+gateway controller targets v1.4.1.
 
 ---
 
@@ -654,6 +710,19 @@ Dependency-only release. No proxy behavior, configuration schema, or agent proto
 
 ### Changed
 - **Dependency updates:** `tikv-jemallocator` 0.7, `openssl` 0.10.80, `quick-xml` 0.40.1, wasmtime group, `busybox` Docker base 1.38, rust-minor batches
+
+---
+
+## 26.05_5
+
+**Date:** 2026-05-25
+**Crate version:** — no crate was published for this release
+
+Tagged and released on GitHub (binaries and signatures were produced), but the
+crates.io publish produced nothing: the tag sat at workspace version `0.6.14`,
+the same version 26.05_4 was tagged at, so the release pipeline's "tag + 1"
+computation resolved to `0.6.15`, already published by 26.05_4. The dependency
+and CI changes it carried are documented under [26.06_1](#26-06-1).
 
 ---
 
