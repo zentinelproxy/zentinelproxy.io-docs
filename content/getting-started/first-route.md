@@ -143,6 +143,7 @@ routes {
             path "/api/health"
         }
         service-type "builtin"
+        builtin-handler "health"
     }
 
     // Normal priority (default)
@@ -218,19 +219,23 @@ route "static" {
 
 ### Built-in Handlers
 
-For health checks and metrics:
+For health checks and metrics, Zentinel answers the request itself. `builtin-handler` picks the handler; `service-type "builtin"` on its own does nothing, and is optional once a handler is set:
 
 ```kdl
 route "health" {
     matches { path "/health" }
     service-type "builtin"
+    builtin-handler "health"
 }
 
 route "metrics" {
     matches { path "/metrics" }
     service-type "builtin"
+    builtin-handler "metrics"
 }
 ```
+
+See [Built-in Handlers](/configuration/routes/#built-in-handlers) for the full list.
 
 ## Route Policies
 
@@ -313,6 +318,7 @@ routes {
         priority "high"
         matches { path "/health" }
         service-type "builtin"
+        builtin-handler "health"
     }
 
     // API routes

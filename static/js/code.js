@@ -215,6 +215,53 @@
     return names;
   }
 
+  // A route shown on its own names filters, and a filter names an agent, that
+  // the snippet has no reason to define. The proxy refuses a reference to
+  // something that does not exist, so stand in for them -- the same rule
+  // scripts/check_kdl.py applies in CI: only when the snippet has no `filters`
+  // (or `agents`) block at all. A snippet that defines one must define
+  // everything it uses from it.
+  function stubReferencedFiltersAndAgents(config) {
+    var code = config.replace(/\/\/[^\n]*/g, '');
+    var result = config;
+
+    if (!hasTopLevelBlock(code, 'filters')) {
+      var filterNames = {};
+      var lists = code.match(/^\s*filters((?:\s+"[^"]+")+)/gm) || [];
+      for (var i = 0; i < lists.length; i++) {
+        (lists[i].match(/"([^"]+)"/g) || []).forEach(function(q) {
+          filterNames[q.slice(1, -1)] = true;
+        });
+      }
+      var filterStubs = Object.keys(filterNames).sort().map(function(f) {
+        return '    filter "' + f + '" {\n        type "agent"\n        agent "' + f + '"\n    }\n';
+      }).join('');
+      if (filterStubs) {
+        result += '\nfilters {\n' + filterStubs + '}\n';
+        code += '\nfilters {\n' + filterStubs + '}\n';
+      }
+    }
+
+    if (!hasTopLevelBlock(code, 'agents')) {
+      var defined = {};
+      var referenced = {};
+      var m;
+      var defRe = /^\s*agent\s+"([^"]+)"[^\n{]*\{/gm;
+      while ((m = defRe.exec(code)) !== null) defined[m[1]] = true;
+      var refRe = /^\s*agent\s+"([^"]+)"\s*(?:$|;|\})/gm;
+      while ((m = refRe.exec(code)) !== null) referenced[m[1]] = true;
+      var agentStubs = Object.keys(referenced).filter(function(a) {
+        return !defined[a];
+      }).sort().map(function(a) {
+        return '    agent "' + a + '" type="custom" {\n        unix-socket "/tmp/zentinel-docs-'
+          + a.replace(/[^A-Za-z0-9_-]/g, '_') + '.sock"\n    }\n';
+      }).join('');
+      if (agentStubs) result += '\nagents {\n' + agentStubs + '}\n';
+    }
+
+    return result;
+  }
+
   // Wrap partial KDL snippets with minimal boilerplate so the validator accepts them
   function wrapPartialConfig(config) {
     // `include` is a real directive, but it resolves paths relative to the file
@@ -501,6 +548,7 @@
     var routeHasMatchesBlock = false;
     var routeMatchesLine = -1;
     var routeHasUpstream = false;
+    var routeServesItself = false;
     var routeHasPriority = false;
 
     for (var ri = 0; ri < routeLines.length; ri++) {
@@ -514,6 +562,7 @@
         routeHasMatchesBlock = false;
         routeMatchesLine = -1;
         routeHasUpstream = false;
+        routeServesItself = false;
         routeHasPriority = false;
       }
 
@@ -526,6 +575,9 @@
           routeMatchesLine = routeFixed.length; // Will be inserted after this line
         }
         if (/upstream\s+"/.test(rtrimmed)) routeHasUpstream = true;
+        // Static and built-in routes answer requests themselves; giving one an
+        // upstream as well makes a configuration the proxy rejects.
+        if (/^(static-files|builtin-handler)\b/.test(rtrimmed)) routeServesItself = true;
         if (/priority\s+"?low"?/.test(rtrimmed)) routeHasPriority = true;
         for (var rc = 0; rc < rtrimmed.length; rc++) {
           if (rtrimmed[rc] === '{') routeDepth++;
@@ -541,7 +593,7 @@
               routeFixed.push('        matches { path-prefix "/" }');
             }
           }
-          if (!routeHasUpstream) {
+          if (!routeHasUpstream && !routeServesItself) {
             routeFixed.push('        upstream "backend"');
           }
           inRoute = false;
@@ -603,6 +655,12 @@
     if (defKeys.length > 0) {
       defaultUpstream = defKeys[0];
     }
+    // Without a top-level upstreams block, the names found above may belong
+    // to a namespace and be invisible to a top-level route. Point the route at
+    // one the stub block below is about to create instead.
+    if (!hasUpstreams) {
+      defaultUpstream = Object.keys(referencedUpstreams)[0] || 'backend';
+    }
 
     if (!hasRoutes) {
       extra += '\nroutes {\n    route "default" {\n        matches { path-prefix "/" }\n        upstream "' + defaultUpstream + '"\n    }\n}\n';
@@ -650,6 +708,8 @@
         }
       }
     }
+
+    result = stubReferencedFiltersAndAgents(result);
 
     var prefix = '';
     if (!hasTopLevelBlock(result, 'system')) {

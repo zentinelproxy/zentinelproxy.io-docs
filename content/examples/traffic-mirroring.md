@@ -731,8 +731,6 @@ routes {
             buffer-body #false
         }
 
-        filters "auth" "rate-limit"
-
         retry-policy {
             max-attempts 3
         }
