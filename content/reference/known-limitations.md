@@ -100,7 +100,7 @@ error is listed under [Error Pages](/configuration/routes/#error-pages).
 
 **The "no route matched" response is mislabelled.** It is `404` with the body
 `{"error":"404 Internal Server Error","trace_id":""}`: the reason text is wrong
-and the trace ID is empty. Not yet filed.
+and the trace ID is empty. [#525](https://github.com/zentinelproxy/zentinel/issues/525).
 *Workaround:* end the route list with a catch-all route (`path-prefix "/"`) or
 set the listener's `default-route`.
 
@@ -108,7 +108,7 @@ set the listener's `default-route`.
 `Failed to initialize schema validator for route <id>` at startup and forwards
 requests unchecked. A `required` with a single name (`required "email"`) is one
 way to get there: it becomes a string, not a list, and the schema is rejected.
-Not yet filed. See [API Schema Validation](/configuration/routes/#api-schema-validation).
+[#524](https://github.com/zentinelproxy/zentinel/issues/524). See [API Schema Validation](/configuration/routes/#api-schema-validation).
 *Workaround:* check the startup log after changing a schema.
 
 ## Rate limiting
@@ -141,7 +141,8 @@ validation. An `https` listener serves HTTP/1.1 and HTTP/2 (through ALPN).
 **The "Unwired feature" warnings for `cipher-suite` and TLS `max-version` are
 wrong.** Both settings are applied: with `max-version "TLS1.2"` a TLS 1.3-only
 client is refused, and with one `cipher-suite` a client offering only another
-suite fails the handshake. The warnings can be ignored. Not yet filed. (Write
+suite fails the handshake. The warnings can be ignored.
+[#526](https://github.com/zentinelproxy/zentinel/issues/526). (Write
 `cipher-suite` once per suite; the plural `cipher-suites` is rejected.)
 
 ## Process, logging and resource limits
@@ -157,6 +158,7 @@ other than `"info"`/`"json"` produces an "Unwired feature" warning. The
 `limits { max-connections-per-client max-total-connections
 max-in-flight-requests }` are accepted and do nothing. `system { daemon }` is
 not read either; use the `-d` / `--daemon` flag.
+[#527](https://github.com/zentinelproxy/zentinel/issues/527).
 *Workaround:* use a rate-limit filter to bound per-client load, and the
 operating system's limits for connections. More settings of this kind are in
 [Performance Tuning: Settings with no effect](/operations/performance-tuning/#settings-with-no-effect).
