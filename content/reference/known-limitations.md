@@ -5,7 +5,7 @@ description = "Settings Zentinel accepts but does not apply, and behaviour that 
 updated = 2026-10-19
 +++
 
-This page lists what release **26.10_3** accepts in a configuration but does not
+This page lists what release **26.10_4** accepts in a configuration but does not
 apply, and where its behaviour differs from what you would reasonably expect.
 Each entry links the tracking issue where there is one, and gives a workaround
 where one exists. Entries are removed when a release fixes them; the
@@ -61,12 +61,6 @@ startup. [#520](https://github.com/zentinelproxy/zentinel/issues/520).
 *Workaround:* render the file before starting the proxy, for example with
 `envsubst`.
 
-**`service-type` is not read.** A route's type comes from its blocks
-(`static-files`, `builtin-handler`, `api-schema`, `inference`; otherwise `web`),
-so `service-type "api"` alone leaves a route `web`. From the next release an
-explicit `service-type` is applied where the route's blocks allow it. See
-[Service Types](/configuration/routes/#service-types).
-
 **`./zentinel.kdl` is not picked up automatically.** Without `-c` or
 `ZENTINEL_CONFIG`, the proxy starts with its embedded default configuration
 (listening on `0.0.0.0`), whatever files are in the working directory.
@@ -104,22 +98,14 @@ and the trace ID is empty. [#525](https://github.com/zentinelproxy/zentinel/issu
 *Workaround:* end the route list with a catch-all route (`path-prefix "/"`) or
 set the listener's `default-route`.
 
-**A request schema that does not compile turns validation off.** The proxy logs
-`Failed to initialize schema validator for route <id>` at startup and forwards
-requests unchecked. A `required` with a single name (`required "email"`) is one
-way to get there: it becomes a string, not a list, and the schema is rejected.
-[#524](https://github.com/zentinelproxy/zentinel/issues/524). See [API Schema Validation](/configuration/routes/#api-schema-validation).
-*Workaround:* check the startup log after changing a schema.
+**Request bodies over 64 KiB are refused on routes with `api-schema`.** The
+body is read whole to validate it, and can be forwarded afterwards only while it
+fits pingora's 64 KiB retry buffer, so a larger body gets `413`.
+[#531](https://github.com/zentinelproxy/zentinel/issues/531).
+*Workaround:* none on the validated route; validate larger payloads in the
+backend or in an agent.
 
 ## Agents
-
-**A restarted agent is not reconnected.** If an agent stops and starts again
-while Zentinel keeps running, Zentinel keeps failing calls to it ("Send failed:
-channel closed"): `503` with `failure-mode "closed"`, and no inspection at all
-with `"open"`. A `SIGHUP` reload does not help. An agent that was down when
-Zentinel *started* is connected later on its own.
-[#528](https://github.com/zentinelproxy/zentinel/issues/528).
-*Workaround:* restart Zentinel after restarting or redeploying an agent.
 
 **The agent block's `failure-mode` does not decide requests.** The filter's
 `failure-mode` does, then the route's `policies { failure-mode }`, then
@@ -178,14 +164,6 @@ not read either; use the `-d` / `--daemon` flag.
 *Workaround:* use a rate-limit filter to bound per-client load, and the
 operating system's limits for connections. More settings of this kind are in
 [Performance Tuning: Settings with no effect](/operations/performance-tuning/#settings-with-no-effect).
-
-## Installation
-
-**Release tarball binaries are not executable.** `zentinel`,
-`zentinel-gateway` and `zentinel-echo-agent` in the release archives have mode
-`0644`, so a manual install fails with "permission denied". The install script
-is not affected. [#519](https://github.com/zentinelproxy/zentinel/issues/519).
-*Workaround:* `chmod +x zentinel` before moving it into place.
 
 ## Documented elsewhere
 

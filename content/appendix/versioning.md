@@ -1,7 +1,7 @@
 +++
 title = "Versioning"
 weight = 2
-updated = 2026-10-18
+updated = 2026-10-19
 +++
 
 How Zentinel versions work, mapping between release and crate versions, and changelogs.
@@ -70,7 +70,8 @@ This table maps CalVer release versions to the crate version actually **publishe
 
 | Release (CalVer) | Crate Version (SemVer) | Protocol | Release Date | Status |
 |---------|---------------|----------|--------------|--------|
-| **26.10_3** | `0.6.46` | `2` | 2026-10-18 | Current — security and dependency maintenance; minimum Rust 1.96 |
+| **26.10_4** | `0.6.47` | `2` | 2026-10-19 | Current — agents reconnect after a restart; API schema validation fixed |
+| **26.10_3** | `0.6.46` | `2` | 2026-10-18 | Previous — security and dependency maintenance; minimum Rust 1.96 |
 | **26.10_2** | `0.6.45` | `2` | 2026-10-11 | Previous — ACME Renewal Information (RFC 9773) |
 | **26.10_1** | `0.6.44` | `2` | 2026-10-10 | Previous |
 | **26.09_6** | `0.6.43` | `2` | 2026-09-15 | Previous — Pingora 0.9.0; last of the 26.09 series |
@@ -97,16 +98,17 @@ This table maps CalVer release versions to the crate version actually **publishe
 
 ```bash
 zentinel --version
-# zentinel 0.6.45 (release 26.10_3, commit 07c2f6d)
+# zentinel 0.6.47 (release 26.10_4, commit 5649f8d-dirty)
 ```
 
 The binary prints the crate SemVer, then the CalVer release and the commit.
 Up to and including 26.10_3, release binaries were built from the tagged tree
 and printed the SemVer one patch below the crate published for that release
-(26.10_3 prints `0.6.45`; crates.io has `0.6.46`). From the next release on,
+(26.10_3 prints `0.6.45`; crates.io has `0.6.46`). Since 26.10_4,
 the build applies the published version first
 ([zentinel#513](https://github.com/zentinelproxy/zentinel/pull/513)), so the
-binary and crates.io agree.
+binary and crates.io agree. Applying it changes the tree, which is why release
+binaries show `-dirty` after the commit.
 
 **From Docker:**
 

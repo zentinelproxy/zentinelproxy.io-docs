@@ -337,14 +337,14 @@ To bring the agent back, start it again in the second terminal:
 ./zentinel-echo-agent --grpc 127.0.0.1:50051
 ```
 
-Then restart Zentinel in the first terminal (Ctrl-C, then `zentinel -c zentinel.kdl`), and the `X-Echo-*` headers are back:
+Zentinel reconnects on its own within a few seconds (one maintenance interval, 5 s by default), and the `X-Echo-*` headers are back:
 
 ```bash
 curl -s http://localhost:8080/api/ | grep X-Echo-Agent
 # X-Echo-Agent: echo-agent/1.0
 ```
 
-> In release 26.10_3, Zentinel does not reconnect to an agent that was stopped and started again while Zentinel kept running. Requests keep failing (503 with `closed`, no agent headers with `open`) until Zentinel is restarted; a `SIGHUP` reload is not enough. An agent that was not running when Zentinel *started* is connected later on its own, the first retry after about 10 seconds, then backing off to one attempt every two minutes. Restarting Zentinel after the agent is up is the quick way in both cases. Tracked in [#528](https://github.com/zentinelproxy/zentinel/issues/528).
+> Releases before 26.10_4 did not reconnect to an agent that was restarted while Zentinel kept running: requests kept failing until Zentinel itself was restarted ([#528](https://github.com/zentinelproxy/zentinel/issues/528)). If you are on an older release, restart Zentinel after the agent is back.
 
 ### Which failure mode to choose
 

@@ -144,13 +144,14 @@ route "api" {
 | `builtin` | Built-in handlers |
 | `inference` | LLM inference routing |
 
-> **As of 26.10_3, `service-type` is accepted but not read.** The type comes
-> from the route's blocks: `static-files` makes it `static`, a recognised
-> `builtin-handler` makes it `builtin`, `api-schema` makes it `api`, `inference`
-> makes it `inference`, and anything else is `web`. `service-type "api"` on a
-> route without `api-schema` therefore stays `web`. From the next release an
-> explicit `service-type` is applied where the route's blocks allow it, and a
-> value the blocks contradict is reported by `zentinel lint`.
+> **How the type is decided.** It is implied by the route's blocks:
+> `static-files` makes it `static`, a recognised `builtin-handler` makes it
+> `builtin`, `api-schema` makes it `api`, `inference` makes it `inference`, and
+> anything else is `web`. An explicit `service-type` is applied where the
+> blocks allow it (`api` needs no block). A value that is not a type, or that
+> the blocks contradict, keeps the implied type and is reported by
+> `zentinel lint` as being ignored. Before 26.10_4, `service-type` was accepted
+> but never read.
 
 #### Static File Serving
 

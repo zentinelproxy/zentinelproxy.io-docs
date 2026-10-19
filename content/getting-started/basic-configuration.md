@@ -215,7 +215,7 @@ All conditions in a `matches` block must hold for the route to match. The except
 | `builtin` | Route with a `builtin-handler` (`health`, `status`, `metrics`, `config`, `upstreams`, `not-found`, `cache-stats`, `cache-purge`) |
 | `inference` | Route with an `inference` block |
 
-In 26.10_3 the type comes from the route's blocks, as listed above. A `service-type` line is accepted but not read, so `service-type "api"` on a route without an `api-schema` block leaves it a `web` route. From the next release, an explicit `service-type` is applied where the route's blocks allow it.
+The type is implied by the route's blocks, as listed above. An explicit `service-type` is applied where the blocks allow it: `service-type "api"` works on any route, while `static`, `builtin` and `inference` need their block. A value the blocks contradict keeps the implied type, and `zentinel lint` reports it. (Before 26.10_4, `service-type` was not read at all.)
 
 A builtin route needs `builtin-handler`. `service-type "builtin"` on its own gives a route with no handler and no upstream, which answers every request with `500 Internal Server Error`.
 

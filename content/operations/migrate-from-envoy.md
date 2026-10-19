@@ -366,7 +366,7 @@ A misspelled `load-balancing` value falls back to round robin without an error, 
 | `header_to_metadata`, `grpc_json_transcoder`, and other specialised filters | No built-in equivalent; implement as an agent if needed |
 
 {% callout(type="warning", title="CORS filter options") %}
-In 26.10_3 the KDL parser does not read the `cors` filter's options: every `cors` filter behaves as its defaults, allowing any origin with credentials disabled. Do not rely on it to restrict origins; set the `Access-Control-*` headers from the application or with a `headers` filter until this is fixed.
+As of 26.10_4 the KDL parser does not read the `cors` filter's options: every `cors` filter behaves as its defaults, allowing any origin with credentials disabled. Do not rely on it to restrict origins; set the `Access-Control-*` headers from the application or with a `headers` filter until this is fixed.
 {% end %}
 
 ## Converting automatically

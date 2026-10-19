@@ -1,7 +1,7 @@
 +++
 title = "Installation"
 weight = 1
-updated = 2026-05-03
+updated = 2026-10-19
 +++
 
 Zentinel can be installed via the install script, from pre-built binaries, built from source, or run as an OCI container.
@@ -112,7 +112,7 @@ chmod +x zentinel
 sudo mv zentinel /usr/local/bin/
 ```
 
-The archive stores the binaries without the executable bit ([#519](https://github.com/zentinelproxy/zentinel/issues/519)), hence the `chmod`. It also contains `zentinel-gateway`, the Kubernetes Gateway API controller, and `zentinel-echo-agent`, a minimal agent that adds `X-Echo-*` headers, useful for trying agents out. Neither is needed to run the proxy.
+Archives before 26.10_4 stored the binaries without the executable bit ([#519](https://github.com/zentinelproxy/zentinel/issues/519)); the `chmod` is harmless on newer ones. It also contains `zentinel-gateway`, the Kubernetes Gateway API controller, and `zentinel-echo-agent`, a minimal agent that adds `X-Echo-*` headers, useful for trying agents out. Neither is needed to run the proxy.
 
 {% callout(type="note") %}
 Releases before the project was renamed ship archives named `sentinel-*` rather

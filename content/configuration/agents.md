@@ -291,7 +291,7 @@ agent "analytics-agent" type="custom" {
 | `open` | Allow requests through when agent unavailable (availability-first) |
 
 {% callout(type="warning") %}
-In 26.10_3, what decides a request when an agent is unavailable is the
+As of 26.10_4, what decides a request when an agent is unavailable is the
 `failure-mode` on the **filter** that calls the agent, then the route's
 `policies { failure-mode }`, and otherwise `closed`. The value on the `agent`
 block itself is not used for that decision, and an unrecognised value such as
