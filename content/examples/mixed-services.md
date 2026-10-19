@@ -1,7 +1,7 @@
 +++
 title = "Microservices"
 weight = 5
-updated = 2026-10-18
+updated = 2026-10-19
 +++
 
 Route traffic to multiple backend services based on path, headers, and other criteria. This example demonstrates a microservices architecture with Zentinel as the API gateway.

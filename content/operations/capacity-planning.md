@@ -1,7 +1,7 @@
 +++
 title = "Capacity Planning"
 weight = 8
-updated = 2026-10-18
+updated = 2026-10-19
 +++
 
 Guide for sizing and scaling Zentinel deployments.

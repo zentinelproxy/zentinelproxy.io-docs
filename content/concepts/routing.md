@@ -1,7 +1,7 @@
 +++
 title = "Routing System"
 weight = 7
-updated = 2026-10-18
+updated = 2026-10-19
 +++
 
 Zentinel's routing system determines how incoming requests are matched to configured routes. This page covers match conditions, priority rules, and performance optimizations.

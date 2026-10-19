@@ -1,7 +1,7 @@
 +++
 title = "CLI Reference"
 weight = 1
-updated = 2026-10-18
+updated = 2026-10-19
 +++
 
 Complete command-line interface reference for Zentinel.

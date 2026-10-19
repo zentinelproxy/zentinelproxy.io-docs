@@ -1,7 +1,7 @@
 +++
 title = "Agents"
 weight = 9
-updated = 2026-10-18
+updated = 2026-10-19
 +++
 
 Agents are external processes that extend Zentinel's functionality. They handle security policies, authentication, rate limiting, and custom business logic. The `agents` block configures how Zentinel connects to and communicates with these agents.

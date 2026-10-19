@@ -1,7 +1,7 @@
 +++
 title = "Agentic Protocols"
 weight = 12
-updated = 2026-10-18
+updated = 2026-10-19
 +++
 
 Zentinel understands the Model Context Protocol (MCP) and Agent2Agent (A2A)

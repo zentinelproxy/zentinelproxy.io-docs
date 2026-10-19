@@ -1,7 +1,7 @@
 +++
 title = "Upstreams"
 weight = 5
-updated = 2026-10-18
+updated = 2026-10-19
 +++
 
 The `upstreams` block defines backend server pools. Each upstream contains one or more targets with load balancing, health checks, and connection pooling.

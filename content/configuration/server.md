@@ -1,7 +1,7 @@
 +++
 title = "Server"
 weight = 2
-updated = 2026-10-18
+updated = 2026-10-19
 +++
 
 The `system` block (formerly `server`) configures global proxy settings including worker threads, shutdown and process management.

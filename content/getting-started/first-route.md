@@ -1,7 +1,7 @@
 +++
 title = "First Route"
 weight = 3
-updated = 2026-10-18
+updated = 2026-10-19
 +++
 
 Routes are the core of Zentinel's traffic management. They match incoming requests and direct them to the appropriate backend.
