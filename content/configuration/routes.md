@@ -555,6 +555,11 @@ The schema file is monitored for changes and automatically reloaded (if hot-relo
 
 - Schemas are compiled once at startup for maximum performance
 - Request validation adds minimal latency (typically <1ms)
+- Request validation reads the whole request body before forwarding it; bodies
+  up to the route's effective `max-body-size` are validated and then forwarded,
+  and larger ones get `413`. Before 26.10_5 a body over 64 KiB could not be
+  forwarded after validation: 26.10_4 answered `413`, earlier releases let the
+  upstream time out
 - Response validation requires buffering the full response body
 - Use `validate-responses` only in development/testing environments
 - For high-throughput APIs, consider validating only critical endpoints

@@ -313,6 +313,11 @@ A **tool call** is proxied. It goes to exactly one upstream, so it takes the
 normal path and gets the connection pool, the route's retry policy and the
 upstream's TLS settings.
 
+The call's body is read to resolve the tool, then forwarded; from 26.10_5 that
+works for any body up to the 1 MiB inspection limit. Before 26.10_5 a call
+body over 64 KiB was read but could not be forwarded, so the request could
+stall until the upstream timed out.
+
 A **listing** is not, and cannot be: merging means asking several servers and
 composing one answer, which is not proxying. Zentinel makes those requests
 itself. The same is true of the one `initialize` handshake per upstream, which
