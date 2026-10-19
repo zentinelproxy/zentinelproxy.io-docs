@@ -107,6 +107,7 @@ filters {
     filter "image-opt" {
         type "agent"
         agent "image-opt"
+        failure-mode "open"
     }
 }
 

@@ -184,18 +184,22 @@ filters {
     filter "waf" {
         type "agent"
         agent "waf"
+        failure-mode "closed"
     }
     filter "ratelimit" {
         type "agent"
         agent "ratelimit"
+        failure-mode "open"
     }
     filter "auth" {
         type "agent"
         agent "auth"
+        failure-mode "closed"
     }
     filter "ratelimit-strict" {
         type "agent"
         agent "ratelimit-strict"
+        failure-mode "closed"
     }
 }
 

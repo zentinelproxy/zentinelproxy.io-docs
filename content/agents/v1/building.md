@@ -551,6 +551,7 @@ filters {
     filter "my-agent" {
         type "agent"
         agent "my-agent"
+        failure-mode "open"
     }
 }
 

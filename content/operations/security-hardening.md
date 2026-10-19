@@ -291,6 +291,7 @@ filters {
     filter "auth" {
         type "agent"
         agent "auth"
+        failure-mode "closed"
     }
 }
 ```
@@ -356,10 +357,12 @@ filters {
     filter "ratelimit" {
         type "agent"
         agent "ratelimit"
+        failure-mode "open"
     }
     filter "ratelimit-strict" {
         type "agent"
         agent "ratelimit-strict"
+        failure-mode "closed"
     }
 }
 ```

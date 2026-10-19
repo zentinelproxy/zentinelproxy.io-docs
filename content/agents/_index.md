@@ -111,10 +111,12 @@ filters {
     filter "auth" {
         type "agent"
         agent "auth-agent"
+        failure-mode "closed"
     }
     filter "waf" {
         type "agent"
         agent "waf-agent"
+        failure-mode "open"
     }
 }
 

@@ -303,10 +303,12 @@ filters {
     filter "auth" {
         type "agent"
         agent "auth"
+        failure-mode "closed"
     }
     filter "echo" {
         type "agent"
         agent "echo"
+        failure-mode "open"
     }
 }
 

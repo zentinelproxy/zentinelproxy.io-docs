@@ -116,6 +116,7 @@ filters {
     filter "waf" {
         type "agent"
         agent "waf-agent"
+        failure-mode "closed"
     }
 }
 

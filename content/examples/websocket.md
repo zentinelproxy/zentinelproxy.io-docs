@@ -118,10 +118,12 @@ filters {
     filter "ws-inspector" {
         type "agent"
         agent "ws-inspector"
+        failure-mode "open"
     }
     filter "auth" {
         type "agent"
         agent "auth"
+        failure-mode "closed"
     }
 }
 
@@ -447,10 +449,12 @@ filters {
     filter "ws-inspector" {
         type "agent"
         agent "ws-inspector"
+        failure-mode "open"
     }
     filter "auth" {
         type "agent"
         agent "auth"
+        failure-mode "closed"
     }
 }
 

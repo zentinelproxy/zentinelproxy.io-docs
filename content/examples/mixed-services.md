@@ -281,10 +281,12 @@ filters {
     filter "auth" {
         type "agent"
         agent "auth"
+        failure-mode "closed"
     }
     filter "ratelimit" {
         type "agent"
         agent "ratelimit"
+        failure-mode "open"
     }
 }
 
