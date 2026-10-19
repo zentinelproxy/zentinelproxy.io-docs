@@ -72,8 +72,8 @@ Zentinel is a next-generation reverse proxy built on [Cloudflare's Pingora](http
 ### Environment Variables
 
 - `ZENTINEL_CONFIG` for configuration path
-- Variable substitution in config files
 - Embedded default configuration fallback
+- No variable substitution in config files: `${VAR}` is taken literally, and in a listener `address` it passes `zentinel test` and then crashes the proxy at startup ([#520](https://github.com/zentinelproxy/zentinel/issues/520)). Generate the file from a template before starting the proxy instead
 
 ---
 
@@ -521,15 +521,14 @@ Zentinel is a next-generation reverse proxy built on [Cloudflare's Pingora](http
 
 ## Error Handling
 
-### Custom Error Pages
+### Error Responses
+<small class="docs-ref">[Error Pages](/configuration/routes/#error-pages)</small>
 <small class="source-ref">[`crates/proxy/src/errors/mod.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/proxy/src/errors/mod.rs)</small>
 
-- Per-service-type error formats
-- Multiple formats: HTML, JSON, Text, XML
-- Per-status-code custom pages
-- Template-based with variable substitution
-- Request ID injection
-- Custom headers in error responses
+- Errors the proxy generates (unreachable upstream, timeout, no route) are JSON: `{"error":"503 Service Unavailable","trace_id":"..."}`, with the trace ID also in `X-Correlation-Id`
+- Request schema validation failures return a JSON body with `status`, `title`, `message`, `request_id`, `timestamp` and `details`
+- Upstream `4xx`/`5xx` bodies are passed through, but their `Content-Type` is replaced by the route's default (`text/html` on web routes) ([#522](https://github.com/zentinelproxy/zentinel/issues/522))
+- Error pages and templates are not configurable from KDL as of 26.10_3
 
 ---
 

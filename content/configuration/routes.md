@@ -1,7 +1,7 @@
 +++
 title = "Routes"
 weight = 4
-updated = 2026-10-18
+updated = 2026-10-19
 +++
 
 The `routes` block defines how incoming requests are matched and forwarded to upstreams or handlers. Routes are evaluated by priority, with higher priority routes checked first.
@@ -139,9 +139,18 @@ route "api" {
 | Type | Description |
 |------|-------------|
 | `web` | Standard HTTP proxy (default) |
-| `api` | API service with JSON error responses |
+| `api` | API service with request schema validation (`api-schema`) |
 | `static` | Static file serving |
 | `builtin` | Built-in handlers |
+| `inference` | LLM inference routing |
+
+> **As of 26.10_3, `service-type` is accepted but not read.** The type comes
+> from the route's blocks: `static-files` makes it `static`, a recognised
+> `builtin-handler` makes it `builtin`, `api-schema` makes it `api`, `inference`
+> makes it `inference`, and anything else is `web`. `service-type "api"` on a
+> route without `api-schema` therefore stays `web`. From the next release an
+> explicit `service-type` is applied where the route's blocks allow it, and a
+> value the blocks contradict is reported by `zentinel lint`.
 
 #### Static File Serving
 
@@ -486,27 +495,34 @@ route "create-order" {
 
 ##### Validation Error Responses
 
-When validation fails, Zentinel returns a structured JSON error response:
+When request validation fails, Zentinel answers `400 Bad Request` with
+`Content-Type: application/json; charset=utf-8` and an `x-request-id` header.
+This is the body 26.10_3 returns for a POST of `{"x":1}` to a route whose schema
+requires `email` and `name`:
 
 ```json
 {
-  "error": "Validation failed",
   "status": 400,
-  "request_id": "req-123",
-  "validation_errors": [
-    {
-      "field": "$.email",
-      "message": "'not-an-email' is not a valid email",
-      "value": "not-an-email"
-    },
-    {
-      "field": "$.password",
-      "message": "String is too short (expected minimum 8 characters)",
-      "value": "short"
-    }
-  ]
+  "title": "Bad Request",
+  "message": "Request validation failed",
+  "request_id": "VBr4jwTp1GS",
+  "timestamp": 1792393653,
+  "details": {
+    "validation_error": "{\"error\":\"Validation failed\",\"status\":400,\"validation_errors\":[{\"field\":\"$\",\"message\":\"\\\"email\\\" is a required property\",\"value\":{\"x\":1}},{\"field\":\"$\",\"message\":\"\\\"name\\\" is a required property\",\"value\":{\"x\":1}}],\"request_id\":\"VBr4jwTp1GS\"}"
+  }
 }
 ```
+
+The list of validation errors is inside `details.validation_error` as a JSON
+**string**, not as an object: parse it a second time to read the individual
+errors. Only `POST`, `PUT` and `PATCH` bodies are validated.
+
+> **A schema that does not compile disables validation for the route.** The
+> proxy logs `Failed to initialize schema validator for route <id>` at startup
+> and forwards every request unchecked. One known cause: `required` with a
+> single name (`required "email"`) is converted to a string instead of a list,
+> and the schema is rejected with `"email" is not of type "array"`. Check the
+> startup log for that line after changing a schema.
 
 ##### JSON Schema Support
 
@@ -572,8 +588,7 @@ route "user-api" {
     // Authentication and rate limiting
     filters "jwt-auth" "rate-limit"
 
-    // Error responses: service-type "api" already answers in JSON
-    // (error-pages is not configurable from KDL, see Error Pages below)
+    // error-pages is not configurable from KDL, see Error Pages below
 
     // Performance tuning
     policies {
@@ -1046,8 +1061,32 @@ For a complete traffic mirroring example with Docker Compose and test scripts, s
 > **Not configurable from KDL as of 26.10_3.** The configuration schema has an
 > `error-pages` field, but neither KDL parser reads it (both set it to nothing),
 > and `zentinel lint` reports an `error-pages` block in a route as an ignored
-> key. Error responses use the default format of the route's `service-type`:
-> JSON for `api`, `builtin` and `inference`, HTML for `web` and `static`.
+> key. There are no error templates.
+
+What a client receives on an error depends on where the error came from. Observed
+on 26.10_3:
+
+| Situation | Status | Body | `Content-Type` |
+|-----------|--------|------|----------------|
+| Upstream unreachable, timed out, no healthy target | `502`/`503`/`504` | `{"error":"503 Service Unavailable","trace_id":"V9ZSZT2h6Ug"}` | `application/json` |
+| Request body over `limits { max-body-size }` | `500` | `{"error":"500 Internal Server Error","trace_id":"..."}` | `application/json` |
+| No route matches | `404` | `{"error":"404 Internal Server Error","trace_id":""}` | `application/json` |
+| Upstream answers with `4xx`/`5xx` | upstream's | the upstream's body, unchanged | replaced, see below |
+| Static file not found | `404` | `404 Not Found` | `text/plain` |
+| Rate-limit filter | `429` | `Rate limit exceeded` | `text/plain; charset=utf-8` |
+| Request schema validation | `400` | see [Validation Error Responses](#validation-error-responses) | `application/json; charset=utf-8` |
+
+Errors the proxy generates itself have the same JSON shape on every route type:
+`error` (status code and reason) and `trace_id`, which is also sent as the
+`X-Correlation-Id` response header. There is no `status` or `request_id` field.
+
+When the **upstream** returns `4xx`/`5xx`, its body is passed through, but the
+proxy replaces `Content-Type` with its own: `text/html; charset=utf-8` on `web`
+and `static` routes, `application/json; charset=utf-8` on `api`, `builtin` and
+`inference` routes. It also adds `x-request-id`. A JSON error from a backend
+behind a `web` route therefore reaches the client labelled `text/html`
+([#522](https://github.com/zentinelproxy/zentinel/issues/522)). Clients that
+parse error bodies should not rely on `Content-Type` until that is fixed.
 
 ## Complete Examples
 

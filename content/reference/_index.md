@@ -21,6 +21,7 @@ Quick reference documentation for Zentinel operations and troubleshooting.
 | [Environment Variables](env-vars/) | Environment variable configuration |
 | [Error Codes](error-codes/) | HTTP status codes and error responses |
 | [Metrics Reference](metrics/) | Prometheus metrics for monitoring |
+| [Known Limitations](known-limitations/) | Settings that are accepted but not applied in the current release |
 
 ## Quick Links
 
@@ -37,7 +38,6 @@ zentinel --test --config zentinel.kdl  # Validate config
 **Key Environment Variables:**
 - `ZENTINEL_CONFIG` - Configuration file path
 - `RUST_LOG` - Log level (debug, info, warn, error)
-- `ZENTINEL_LOG_FORMAT` - Log format (json, pretty)
 
 **Metrics Endpoint:**
 ```bash

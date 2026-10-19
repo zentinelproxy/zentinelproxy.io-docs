@@ -209,7 +209,7 @@ upstreams {
 }
 ```
 
-See [mTLS to Upstreams](/configuration/upstreams/#mtls) for detailed configuration.
+See [mTLS to Upstreams](/configuration/upstreams/#mtls-to-upstream) for detailed configuration.
 
 ## Header Security
 
@@ -571,6 +571,6 @@ curl -s -D- https://your-domain.com -o /dev/null | \
 
 - [Supply Chain Security](../supply-chain/) - Verifying release authenticity and integrity
 - [TLS Configuration](../../configuration/listeners/#tls) - Listener TLS settings
-- [mTLS to Upstreams](../../configuration/upstreams/#mtls) - Client certificate authentication
+- [mTLS to Upstreams](../../configuration/upstreams/#mtls-to-upstream) - Client certificate authentication
 - [Rate Limiting](../../configuration/limits/) - Rate limiting configuration
 - [Troubleshooting](../troubleshooting/) - Diagnosing security issues

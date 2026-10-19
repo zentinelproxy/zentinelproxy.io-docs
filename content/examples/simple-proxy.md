@@ -1,7 +1,7 @@
 +++
 title = "Simple Proxy"
 weight = 1
-updated = 2026-02-19
+updated = 2026-10-19
 +++
 
 A minimal reverse proxy configuration that forwards all traffic to a single backend server. This is the simplest Zentinel setup and a good starting point.
@@ -110,16 +110,29 @@ curl -i http://localhost:8080/
 
 ### Check Headers
 
-Zentinel adds standard proxy headers:
+The response carries the request's trace ID:
 
 ```bash
-curl -i http://localhost:8080/ | grep -i x-
+curl -i http://localhost:8080/ | grep -i x-correlation-id
 ```
 
-Expected headers on the backend:
-- `X-Forwarded-For` - Client IP
-- `X-Forwarded-Proto` - Original protocol
-- `X-Request-Id` - Unique request identifier
+On the way to the backend, Zentinel keeps the client's `Host` header and adds:
+- `X-Correlation-Id` and `X-Trace-Id` - the request's trace ID (taken from an incoming `X-Request-Id` or `X-Correlation-Id` if the client sent one, generated otherwise)
+- `X-Forwarded-By: Zentinel`
+
+As of 26.10_3 it sends **no** `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host` or `Forwarded` header, so the backend sees the proxy's address as the client address ([#515](https://github.com/zentinelproxy/zentinel/issues/515)). If the backend needs to know the request arrived over HTTPS, set `X-Forwarded-Proto` on the route of an HTTPS listener yourself:
+
+```fragment,kdl
+policies {
+    request-headers {
+        set {
+            "X-Forwarded-Proto" "https"
+        }
+    }
+}
+```
+
+There is no configuration workaround for the client IP.
 
 ### Metrics
 

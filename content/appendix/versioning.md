@@ -403,8 +403,8 @@ No breaking changes. Direct upgrade supported.
 
 **New features to consider:**
 
-- [Traffic Mirroring](/configuration/routes/#shadow) for canary deployments
-- [Schema Validation](/configuration/routes/#schema-validation) for API routes
+- [Traffic Mirroring](/configuration/routes/#traffic-mirroring-shadow-traffic) for canary deployments
+- [Schema Validation](/configuration/routes/#api-schema-validation) for API routes
 
 ---
 

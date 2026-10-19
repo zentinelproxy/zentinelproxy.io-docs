@@ -1,7 +1,7 @@
 +++
 title = "Troubleshooting"
 weight = 1
-updated = 2026-10-18
+updated = 2026-10-19
 +++
 
 Guide to diagnosing and resolving common Zentinel issues.
@@ -38,6 +38,8 @@ zentinel --test --verbose --config zentinel.kdl
 ```
 
 If a setting seems to have no effect, run `lint` first. KDL accepts any name, so a typo in an optional setting is not an error: the proxy runs on the default, `--test` passes, and only `lint` says "is being ignored".
+
+If `lint` is silent and the setting still does nothing, check [Known Limitations](/reference/known-limitations/). It lists settings the current release accepts but does not apply, and behaviour that differs from what the configuration suggests, with workarounds.
 
 ### Check Connectivity
 
@@ -272,7 +274,7 @@ routes {
 
 **Solution for cause 3:**
 
-Forward the original protocol:
+Zentinel does not send `X-Forwarded-Proto` on its own as of 26.10_3 ([#515](https://github.com/zentinelproxy/zentinel/issues/515)). Set it on routes served by an HTTPS listener:
 
 ```kdl
 routes {

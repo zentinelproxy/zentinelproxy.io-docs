@@ -8,7 +8,7 @@ Welcome to **Zentinel**, a high-performance **reverse proxy** platform built on 
 
 ## What is Zentinel?
 
-Zentinel is a next-generation reverse proxy that combines the performance and reliability of Pingora with advanced routing capabilities, service-type awareness, and comprehensive error handling. Whether you're serving static files, proxying REST APIs, or managing complex web applications, Zentinel provides the tools and flexibility you need for production deployments.
+Zentinel is a reverse proxy that combines the performance and reliability of Pingora with routing, static file serving, request validation and an external agent system. Whether you're serving static files, proxying REST APIs, or managing complex web applications, Zentinel provides the tools and flexibility you need for production deployments.
 
 ## Key Features
 
@@ -21,8 +21,8 @@ Zentinel is a next-generation reverse proxy that combines the performance and re
 ### Service-Type Awareness
 Zentinel understands different service types and optimizes behavior accordingly:
 
-- **Web Applications**: HTML error pages, session handling, SPA support
-- **REST APIs**: JSON schema validation, structured error responses, OpenAPI integration
+- **Web Applications**: session affinity, SPA fallback for static sites
+- **REST APIs**: JSON schema validation, OpenAPI integration
 - **Static Files**: Direct file serving, automatic MIME types, caching headers
 
 ### Advanced Routing
@@ -31,14 +31,13 @@ Zentinel understands different service types and optimizes behavior accordingly:
 - Path variables and pattern matching
 - Per-route configuration overrides
 
-### Comprehensive Error Handling
-- Service-type-specific error formats (HTML, JSON, XML, Text)
-- Custom error page templates with variable substitution
-- Graceful fallbacks for connection failures
-- Detailed error tracking with request IDs
+### Error Handling
+- Errors the proxy generates (unreachable upstream, timeouts, no route) are JSON with a trace ID, also sent as `X-Correlation-Id`
+- Retries and circuit breakers for failing upstreams
+- Error pages are not configurable as of 26.10_3; see [Error Pages](@/configuration/routes.md#error-pages) for exactly what clients receive
 
 ### Observability
-- Structured logging with configurable levels
+- Access, error and audit logs
 - Prometheus-compatible metrics
 - Distributed tracing support
 - Health check endpoints
@@ -53,8 +52,8 @@ Zentinel understands different service types and optimizes behavior accordingly:
 ### Configuration
 - Human-friendly KDL configuration format
 - Hot reload without downtime
-- Environment variable substitution
-- Comprehensive validation on startup
+- Validation on startup (`zentinel test`), plus `zentinel lint` for settings that are being ignored
+- No environment variable substitution: `${VAR}` in the file is taken literally ([#520](https://github.com/zentinelproxy/zentinel/issues/520))
 
 ## Why Zentinel?
 
@@ -84,7 +83,7 @@ Zentinel excels in various deployment scenarios:
 - **API Gateway**: Validate requests, transform responses, implement rate limiting
 - **Static Content Delivery**: Serve files directly with optimal caching headers
 - **Load Balancer**: Distribute traffic across multiple upstream servers
-- **Web Application Proxy**: Handle sessions, provide custom error pages, support SPAs
+- **Web Application Proxy**: Sticky sessions, SPA fallback, security headers
 - **Microservices Router**: Route requests to different services based on paths
 - **Edge Proxy**: Terminate SSL, implement security policies, cache responses
 
@@ -105,7 +104,7 @@ Client Request
      └─→ Web App Processing → Upstream
      ↓
 [Response Processing]
-     ├─→ Error Page Generation
+     ├─→ Error Responses
      ├─→ Header Manipulation
      └─→ Caching Headers
      ↓
@@ -147,7 +146,7 @@ Contributions are welcome! See our [Contributing Guide](@/development/contributi
 
 ## Version Information
 
-This documentation covers the latest Zentinel release; documentation for earlier release series is in the [Version Archive](@/v/_index.md). For the latest updates and changes, see the [Changelog](@/appendix/changelog.md). For details on the versioning scheme, see [Versioning](@/appendix/versioning.md).
+This documentation covers the latest Zentinel release; settings that are accepted but not applied in it are listed in [Known Limitations](@/reference/known-limitations.md). Documentation for earlier release series is in the [Version Archive](@/v/_index.md). For the latest updates and changes, see the [Changelog](@/appendix/changelog.md). For details on the versioning scheme, see [Versioning](@/appendix/versioning.md).
 
 ## License
 

@@ -1,7 +1,7 @@
 +++
 title = "Error Codes"
 weight = 3
-updated = 2026-02-19
+updated = 2026-10-19
 +++
 
 HTTP status codes and error responses returned by Zentinel.
@@ -38,32 +38,27 @@ HTTP status codes and error responses returned by Zentinel.
 
 ## Error Response Format
 
-### JSON Format (API routes)
+There are no configurable error pages or templates as of 26.10_3. The body depends
+on where the error came from; see [Error Pages](/configuration/routes/#error-pages)
+for the full table. Errors the proxy generates itself (unreachable upstream,
+timeout, no healthy target, no matching route, request body too large) look the
+same on every route type:
 
-```json
-{
-  "error": {
-    "code": "RATE_LIMIT_EXCEEDED",
-    "message": "Rate limit exceeded",
-    "correlation_id": "2kF8xQw4BnM",
-    "retry_after": 60
-  }
-}
+```http
+HTTP/1.1 503 Service Unavailable
+Content-Type: application/json
+X-Correlation-Id: V9ZSZT2h6Ug
+
+{"error":"503 Service Unavailable","trace_id":"V9ZSZT2h6Ug"}
 ```
 
-### HTML Format (Web routes)
+A rate-limit filter answers `429` with `Content-Type: text/plain; charset=utf-8`,
+the body `Rate limit exceeded`, and `X-RateLimit-Limit`, `X-RateLimit-Remaining`,
+`X-RateLimit-Reset` and `Retry-After` headers.
 
-```html
-<!DOCTYPE html>
-<html>
-<head><title>429 Too Many Requests</title></head>
-<body>
-<h1>Too Many Requests</h1>
-<p>Rate limit exceeded. Please retry after 60 seconds.</p>
-<p>Request ID: 2kF8xQw4BnM</p>
-</body>
-</html>
-```
+When the upstream itself answers `4xx`/`5xx`, the client gets the upstream's
+body with the `Content-Type` replaced (`text/html; charset=utf-8` on web routes)
+([#522](https://github.com/zentinelproxy/zentinel/issues/522)).
 
 ## Error Types
 

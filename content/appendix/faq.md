@@ -1,7 +1,7 @@
 +++
 title = "FAQ"
 weight = 2
-updated = 2026-10-18
+updated = 2026-10-19
 +++
 
 Frequently asked questions about Zentinel.
@@ -37,13 +37,13 @@ Zentinel is under active development. Check the [changelog](../changelog/) for t
 
 ### Where should I put the configuration file?
 
-The default location is `/etc/zentinel/zentinel.kdl`. You can specify a different path with `--config`:
+Anywhere, as long as you tell Zentinel where it is. `/etc/zentinel/zentinel.kdl` is the conventional location. Pass the path with `--config`:
 
 ```bash
 zentinel --config /path/to/zentinel.kdl
 ```
 
-Or set the `ZENTINEL_CONFIG` environment variable.
+Or set the `ZENTINEL_CONFIG` environment variable. With neither, Zentinel does not look for a file: it starts with its embedded default configuration, even if `./zentinel.kdl` or `/etc/zentinel/zentinel.kdl` exists.
 
 ### How do I validate my configuration?
 
@@ -68,9 +68,15 @@ systemctl reload zentinel
 
 Zentinel validates the new configuration before applying it. If validation fails, the old configuration remains active.
 
+As of 26.10_3 a reload does not start health checks for upstreams it added or changed ([#516](https://github.com/zentinelproxy/zentinel/issues/516)). Restart after adding or changing a `health-check`.
+
 ### Can I use environment variables in configuration?
 
-Currently, environment variables are not interpolated in KDL configuration files. Use separate configuration files for different environments or generate configuration programmatically.
+No. Environment variables are not interpolated in KDL configuration files: `${VAR}` is kept as literal text. In a listener `address` it passes `zentinel test` and then crashes the proxy at startup ([#520](https://github.com/zentinelproxy/zentinel/issues/520)). Use separate configuration files for different environments or generate configuration programmatically (for example with `envsubst`) before starting the proxy.
+
+### Why does a setting have no effect?
+
+Run `zentinel lint` first: a misspelled or misplaced setting is ignored without an error. If `lint` is silent, check [Known Limitations](@/reference/known-limitations.md), which lists settings that are accepted but not applied in the current release.
 
 ## Networking
 
@@ -232,20 +238,7 @@ Set `worker-threads 0` (the default) to auto-detect based on CPU cores. For most
 
 ### How do I increase connection limits?
 
-Adjust limits in the configuration:
-
-```kdl
-system {
-    max-connections 50000
-}
-
-limits {
-    max-connections-per-client 200
-    max-total-connections 50000
-}
-```
-
-Also increase OS limits:
+As of 26.10_3 Zentinel has no working connection cap to raise: `system { max-connections }` and `limits { max-connections-per-client max-total-connections }` are accepted but not enforced (see [Known Limitations](@/reference/known-limitations.md)). The limit you are likely to hit is the operating system's open-file limit. Raise it for the proxy process:
 ```bash
 ulimit -n 65535
 ```

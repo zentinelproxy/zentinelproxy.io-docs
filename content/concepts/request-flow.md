@@ -1,7 +1,7 @@
 +++
 title = "Request Lifecycle"
 weight = 5
-updated = 2026-10-18
+updated = 2026-10-19
 +++
 
 This page details the complete lifecycle of an HTTP request through Zentinel, from client connection to response delivery.
@@ -470,10 +470,10 @@ The request is sent to the selected upstream:
 Original Request          Modified Request (to upstream)
 ┌──────────────────┐      ┌──────────────────────────────┐
 │ POST /api/users  │      │ POST /api/users HTTP/1.1     │
-│ Host: api.ex.com │  ──▶ │ Host: api.example.com        │
-│ Auth: Bearer ... │      │ X-Correlation-Id: abc-123    │
-└──────────────────┘      │ X-Forwarded-For: 192.168.1.1 │
-                          │ X-Forwarded-Proto: https     │
+│ Host: api.ex.com │  ──▶ │ Host: api.ex.com             │
+│ Auth: Bearer ... │      │ Auth: Bearer ...             │
+└──────────────────┘      │ X-Correlation-Id: abc-123    │
+                          │ X-Trace-Id: abc-123          │
                           │ X-Forwarded-By: Zentinel     │
                           │ X-User-Id: user-789          │ ◀── From agent
                           │ Content-Type: application/json│
@@ -487,10 +487,17 @@ Original Request          Modified Request (to upstream)
 | Header | Value | Purpose |
 |--------|-------|---------|
 | `X-Correlation-Id` | Trace ID | Distributed tracing |
-| `X-Forwarded-For` | Client IP | Original client address |
-| `X-Forwarded-Proto` | `http`/`https` | Original protocol |
-| `X-Forwarded-Host` | Original host | Original Host header |
+| `X-Trace-Id` | Trace ID | Same value as `X-Correlation-Id` |
 | `X-Forwarded-By` | `Zentinel` | Proxy identification |
+
+By default the client's `Host` header is passed through unchanged.
+
+As of 26.10_3 Zentinel does **not** add `X-Forwarded-For`, `X-Forwarded-Proto`,
+`X-Forwarded-Host` or `Forwarded`, so backends see the proxy as the client
+([#515](https://github.com/zentinelproxy/zentinel/issues/515)). A route on an
+HTTPS listener can set a fixed `X-Forwarded-Proto "https"` through
+`policies { request-headers { set { ... } } }`; there is no way to pass the
+client IP.
 
 ### Retry Logic
 
