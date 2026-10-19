@@ -1,7 +1,7 @@
 +++
 title = "Filters"
 weight = 6
-updated = 2026-10-18
+updated = 2026-10-19
 +++
 
 Filters provide a flexible pipeline for request and response processing. They can be built-in (rate-limit, headers, CORS, compression) or external agents. Filters are defined centrally in the `filters` block with unique IDs, then referenced by name in route configurations.
@@ -56,6 +56,17 @@ filter "rate-limiter" {
 }
 ```
 
+The bucket holds up to `burst` tokens (default `10`) and refills at `max-rps`
+tokens per second; each request takes one. A client that has been idle can
+send `burst` requests at once, then `max-rps` per second. A filter with
+`max-rps 100` and no `burst` therefore admits 10 requests at once, then 100 per
+second; set `burst` at least as high as `max-rps` if clients send in bursts.
+When a request is limited, `Retry-After` and `X-RateLimit-Reset` point at the
+next token, and `delay` waits exactly that long.
+
+Before 26.10_5, `burst` was not applied: the local limiter counted up to
+`max-rps` requests per one-second window.
+
 #### Rate Limit Keys
 
 | Key | Description |
@@ -67,6 +78,14 @@ filter "rate-limiter" {
 | `header:X-API-Key` | Rate limit by specific header value |
 | `mcp-tool` | Rate limit per MCP tool or resource named in the request body |
 | `client-ip-and-mcp-tool` | Combined client IP and MCP tool |
+
+`client-ip` is the address of the TCP peer, or, when the peer is in the
+listener's [`trusted-proxies`](/configuration/listeners/#trusted-proxies), the
+client address taken from `X-Forwarded-For`. Behind a load balancer that is not
+listed there, every request counts against the load balancer's address. Before
+26.10_5, all clients shared one bucket for the `client-ip` keys, and
+`header:<name>` keys did not see the request headers, so they too shared one
+bucket.
 
 ##### Rate limiting MCP calls per tool
 
@@ -142,9 +161,14 @@ filter "distributed-limiter" {
 }
 ```
 
+The Redis and memcached backends count requests per fixed one-second window
+and do not apply `burst`
+([#543](https://github.com/zentinelproxy/zentinel/issues/543)).
+
 ### Global Rate Limits
 
-Apply rate limits at the server level before route-specific limits:
+Set a default limit for routes that have none, and a server-wide limit checked
+before route-specific limits:
 
 ```kdl
 rate-limits {
@@ -159,6 +183,26 @@ rate-limits {
     }
 }
 ```
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `default-rps` | none | Limit for every route without a limit of its own (no `rate-limit` filter, no route policy limit). Each route gets its own buckets |
+| `default-burst` | `default-rps` | Bucket size for the default limit |
+| `key` | `client-ip` | Key for the default limit |
+| `global { max-rps }` | required | Server-wide limit |
+| `global { burst }` | `10` | Bucket size for the server-wide limit |
+| `global { key }` | `client-ip` | Key for the server-wide limit: `client-ip`, `path`, `route`, `client-ip-and-path` or `header:<name>` |
+
+A route's own limit replaces the default; the two do not stack. Limited
+requests get the same `429`, `X-RateLimit-*` and `Retry-After` headers as a
+route filter.
+
+Before 26.10_5, `default-rps` and `default-burst` were not applied, and
+`global` always keyed on the client IP whatever `key` said.
+
+Rate limiters are built at startup. A reload does not rebuild them, so restart
+the proxy after changing a rate limit
+([#543](https://github.com/zentinelproxy/zentinel/issues/543)).
 
 ### Headers Filter
 
