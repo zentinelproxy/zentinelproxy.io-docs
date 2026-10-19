@@ -30,9 +30,14 @@ tail -f /var/log/zentinel/error.log
 # Validate configuration
 zentinel --test --config zentinel.kdl
 
+# Find settings that are being ignored (misspelled or misplaced keys)
+zentinel lint --config zentinel.kdl
+
 # Test with verbose output
 zentinel --test --verbose --config zentinel.kdl
 ```
+
+If a setting seems to have no effect, run `lint` first. KDL accepts any name, so a typo in an optional setting is not an error: the proxy runs on the default, `--test` passes, and only `lint` says "is being ignored".
 
 ### Check Connectivity
 

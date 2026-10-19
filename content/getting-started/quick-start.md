@@ -1,34 +1,48 @@
 +++
 title = "Quick Start"
 weight = 2
-updated = 2026-02-19
+updated = 2026-10-19
 +++
 
-Get Zentinel up and running in under 5 minutes.
+Get Zentinel routing traffic to two local backends, check its configuration, add a health check and serve HTTPS. Every command on this page can be run as written, in order, on Linux or macOS. You need `curl`, `python3` and `openssl`.
 
 ## 1. Install Zentinel
-
-Run the install script:
 
 ```bash
 curl -fsSL https://get.zentinelproxy.io | sh
 ```
 
-Add to your PATH if needed:
+The script installs to `/usr/local/bin`. If that directory is not writable it runs `sudo`, which may ask for your password; if `sudo` fails, it installs to `~/.local/bin` instead. In that case, add that directory to your `PATH`:
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-Verify it works:
+Check it works:
 
 ```bash
 zentinel --version
 ```
 
-## 2. Create a Configuration File
+To install from a release archive instead, see [Installation](../installation/).
 
-Create `zentinel.kdl` in your current directory:
+## 2. Start two test backends
+
+Make a working directory with one page for each backend, so you can see which one answered:
+
+```bash
+mkdir -p zentinel-quickstart && cd zentinel-quickstart
+mkdir -p demo/api-backend/api demo/web-backend
+echo "hello from the API backend" > demo/api-backend/api/index.html
+echo "hello from the web backend" > demo/web-backend/index.html
+
+python3 -m http.server 3000 --bind 127.0.0.1 --directory demo/api-backend &
+python3 -m http.server 3001 --bind 127.0.0.1 --directory demo/web-backend &
+```
+
+## 3. Write the configuration
+
+Create `zentinel.kdl`:
 
 ```kdl
 system {
@@ -37,7 +51,7 @@ system {
 
 listeners {
     listener "http" {
-        address "0.0.0.0:8080"
+        address "127.0.0.1:8080"
         protocol "http"
     }
 }
@@ -72,65 +86,81 @@ upstreams {
 observability {
     metrics {
         enabled #true
-        address "0.0.0.0:9090"
-    }
-    logging {
-        level "info"
-        format "json"
+        address "127.0.0.1:9090"
     }
 }
 ```
 
-## 3. Start a Test Backend
+`worker-threads 0` means one worker per CPU core. The addresses bind to `127.0.0.1` so nothing is exposed beyond your machine; use `0.0.0.0` to accept connections from elsewhere.
 
-For testing, start a simple backend server:
+## 4. Check the configuration
+
+Zentinel has two checks, and you want both:
 
 ```bash
-# Using Python (port 3000)
-python3 -m http.server 3000 &
-
-# Or using Node.js
-npx http-server -p 3000 &
+zentinel test -c zentinel.kdl
+zentinel lint -c zentinel.kdl
 ```
 
-## 4. Run Zentinel
+`test` loads the configuration exactly as the proxy would and fails on anything that stops it starting: syntax errors, a missing required setting, a route pointing at an upstream that doesn't exist.
+
+`lint` also reports **settings that are being ignored**. KDL accepts any name, so a misspelled optional setting is not an error: the proxy runs on the default and `test` says the file is fine. Only `lint` tells you. For example, `interval-sec 5` where `interval-secs` was meant:
+
+```fragment,kdl
+health-check {
+    interval-sec 5    // typo: ignored, the default interval applies
+}
+```
+
+```
+$ zentinel test -c zentinel.kdl
+zentinel: configuration file zentinel.kdl test is successful
+$ zentinel lint -c zentinel.kdl
+  ⚠  'interval-sec' is not a setting in the 'health-check' block and is being ignored. Did you mean 'interval-secs'?
+```
+
+For the configuration above, `lint` prints only best-practice advice: no timeouts or retry policy on the routes, no health checks. That's expected for a first config, and the next steps fix some of it. Run `lint` whenever you change the file.
+
+## 5. Run Zentinel
 
 ```bash
 zentinel -c zentinel.kdl
 ```
 
-You should see:
+Among the startup lines you should see:
 
 ```
-INFO zentinel starting up
-INFO listener http listening on 0.0.0.0:8080
-INFO metrics server listening on 0.0.0.0:9090
+INFO zentinel_proxy::metrics_server: Metrics server listening address=127.0.0.1:9090 path=/metrics
+INFO zentinel: HTTP listening on: 127.0.0.1:8080
 ```
 
-## 5. Test It
+A warning that the log manager could not create `/var/log/zentinel` is harmless here: file logging is disabled and logs go to the terminal. Always pass `-c`. Without it, Zentinel ignores any `zentinel.kdl` in the current directory and starts with a built-in default configuration.
 
-In a new terminal:
+## 6. Send requests
+
+In a second terminal:
 
 ```bash
-# Test the proxy
-curl http://localhost:8080/
+curl http://localhost:8080/api/
+# hello from the API backend
 
-# Check metrics
-curl http://localhost:9090/metrics
+curl http://localhost:8080/
+# hello from the web backend
+
+curl -s http://localhost:9090/metrics | head
 ```
 
-## What's Happening
+What happened:
 
-1. **Listener** accepts HTTP connections on port 8080
-2. **Router** matches requests against route rules:
-   - `/api/*` requests go to `api-backend` (port 3000)
-   - All other requests go to `web-backend` (port 3001)
-3. **Upstream** forwards requests to your backend servers
-4. **Metrics** are exposed on port 9090 for monitoring
+1. The **listener** accepted the connection on port 8080.
+2. The **router** compared the path with each route. `/api/` matched `path-prefix "/api/"` on the `api` route. Everything else fell through to `default`, which is `priority "low"` so it is tried last.
+3. The route's **upstream** forwarded the request to that backend.
 
-## Add Health Checks
+Note that `path-prefix "/api/"` does not match `/api` without the trailing slash.
 
-Update your config to add health checks:
+## 7. Add a health check
+
+Replace the `api-backend` upstream with:
 
 ```kdl
 upstreams {
@@ -138,36 +168,43 @@ upstreams {
         target "127.0.0.1:3000"
         health-check {
             type "http" {
-                path "/health"
+                path "/api/"
             }
-            interval-secs 10
+            interval-secs 5
             unhealthy-threshold 3
         }
+    }
+
+    upstream "web-backend" {
+        target "127.0.0.1:3001"
     }
 }
 ```
 
-Reload the configuration:
+Every 5 seconds Zentinel requests `/api/` from the backend, and after 3 failures in a row it stops sending traffic there. Run `zentinel lint -c zentinel.kdl` again, then **restart** Zentinel (Ctrl-C, then `zentinel -c zentinel.kdl`). The log shows `Started active health checking`.
+
+> Zentinel reloads its configuration on `SIGHUP`, but a reload does not yet start health checks for upstreams it changed ([#516](https://github.com/zentinelproxy/zentinel/issues/516)), so restart after adding or changing one.
+
+## 8. Serve HTTPS
+
+Create a self-signed certificate for testing:
 
 ```bash
-# Send SIGHUP to reload
-kill -HUP $(pgrep zentinel)
-```
-
-## Add TLS
-
-For HTTPS, generate certificates and update the config:
-
-```bash
-# Generate self-signed cert for testing
-openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes \
+openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes \
   -subj "/CN=localhost"
 ```
 
+Add a second listener next to the first one:
+
 ```kdl
 listeners {
+    listener "http" {
+        address "127.0.0.1:8080"
+        protocol "http"
+    }
+
     listener "https" {
-        address "0.0.0.0:8443"
+        address "127.0.0.1:8443"
         protocol "https"
         tls {
             cert-file "cert.pem"
@@ -177,13 +214,16 @@ listeners {
 }
 ```
 
-Test with:
+Restart Zentinel, then:
 
 ```bash
-curl -k https://localhost:8443/
+curl -k https://localhost:8443/api/
+# hello from the API backend
 ```
 
-## Proxy to an HTTPS Backend
+`-k` tells curl to accept the self-signed certificate. For real certificates, see [TLS](/configuration/listeners/) and automatic certificates with ACME.
+
+## Proxy to an HTTPS backend
 
 If your backend serves HTTPS (e.g., an external API on port 443), add a `tls` block to the upstream:
 
@@ -194,7 +234,7 @@ system {
 
 listeners {
     listener "http" {
-        address "0.0.0.0:8080"
+        address "127.0.0.1:8080"
         protocol "http"
     }
 }
@@ -218,78 +258,57 @@ upstreams {
 
 > **Important:** Without the `tls` block, Zentinel connects with plaintext HTTP regardless of the port number. This causes 502 errors or redirect loops when the backend expects HTTPS. See [Upstream TLS](/configuration/upstreams/#upstream-tls) for full details.
 
+## Cleaning up
+
+Stop Zentinel with Ctrl-C, then stop the two backends:
+
+```bash
+kill %1 %2
+```
+
 ## Troubleshooting
 
 ### "command not found: zentinel"
 
-The install directory isn't in your PATH. Add it:
+The install directory isn't in your `PATH`:
 
 ```bash
-# Check where it was installed
-ls ~/.local/bin/zentinel || ls /usr/local/bin/zentinel
+ls /usr/local/bin/zentinel ~/.local/bin/zentinel 2>/dev/null
 
-# Add to PATH (add this to your ~/.bashrc or ~/.zshrc)
+# If it is in ~/.local/bin, add this to ~/.bashrc or ~/.zshrc:
 export PATH="$HOME/.local/bin:$PATH"
-
-# Reload your shell
-source ~/.bashrc  # or source ~/.zshrc
 ```
 
-### "Permission denied" when installing
+### A setting seems to have no effect
 
-The installer needs write access to `/usr/local/bin`:
-
-```bash
-# Option 1: Use sudo (will prompt for password)
-curl -fsSL https://get.zentinelproxy.io | sudo sh
-
-# Option 2: Install to user directory (no sudo needed)
-# The script will automatically fall back to ~/.local/bin
-```
+Run `zentinel lint -c zentinel.kdl` and look for "is being ignored". A misspelled or misplaced setting is dropped without an error, and only `lint` reports it.
 
 ### "Address already in use" when starting
 
-Another process is using port 8080:
+Another process is using one of the ports (8080, 8443 or 9090):
 
 ```bash
-# Find what's using the port
 lsof -i :8080
-
-# Either stop that process, or change Zentinel's port
-# In zentinel.kdl, change:
-#   address "0.0.0.0:8080"
-# to:
-#   address "0.0.0.0:9000"
 ```
 
-### "Connection refused" when testing
+Stop that process, or change the port in `zentinel.kdl`.
 
-Your backend server isn't running or is on a different port:
+### 503 Service Unavailable
+
+Zentinel is running but cannot reach the backend for that route. Check that the backend is up:
 
 ```bash
-# Check if backend is running
-curl http://localhost:3000/
-
-# If not, start one for testing
-python3 -m http.server 3000
+curl http://127.0.0.1:3000/api/
+curl http://127.0.0.1:3001/
 ```
 
-### Configuration errors
+### "test is successful" but the proxy behaves differently
 
-Validate your config file:
-
-```bash
-zentinel --config zentinel.kdl --check
-```
-
-Common issues:
-- Missing closing braces `}`
-- Typos in property names (e.g., `adress` instead of `address`)
-- Invalid port numbers (must be 1-65535)
+Check that you passed the same file to both: `zentinel test -c zentinel.kdl` and `zentinel -c zentinel.kdl`. Without `-c`, both use the built-in default configuration.
 
 ## Next Steps
 
-- [Basic Configuration](../basic-configuration/) - Detailed configuration reference
-- [First Route](../first-route/) - Deep dive into routing
-- [Service Types](/configuration/routes/) - Learn about API, web, and static modes
-- [Health Checks](/configuration/upstreams/) - Configure upstream monitoring
+- [First Route](../first-route/): matching, priorities and route policies in depth
+- [Basic Configuration](../basic-configuration/): the blocks every configuration has
+- [Upstreams](/configuration/upstreams/): load balancing, health checks and connection pools
+- [Agents](/agents/): add WAF, authentication and rate limiting

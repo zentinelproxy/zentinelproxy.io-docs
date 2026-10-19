@@ -47,13 +47,14 @@ Or set the `ZENTINEL_CONFIG` environment variable.
 
 ### How do I validate my configuration?
 
-Use the `--test` flag to validate without starting the server:
+Run both checks:
 
 ```bash
-zentinel --test --config zentinel.kdl
+zentinel test --config zentinel.kdl   # anything that would stop the proxy starting
+zentinel lint --config zentinel.kdl   # also: settings that are being ignored
 ```
 
-Add `--verbose` for detailed validation output.
+A misspelled or misplaced optional setting is not an error: `test` passes and the proxy uses the default. Only `lint` reports it ("… is not a setting in the '…' block and is being ignored"). Add `--verbose` for detailed output.
 
 ### How do I reload configuration without downtime?
 
