@@ -1076,7 +1076,8 @@ What a client receives on an error depends on where the error came from. From
 
 | Situation | Status | Body | `Content-Type` |
 |-----------|--------|------|----------------|
-| Upstream unreachable or timed out | `502`/`504` | `{"error":"502 Bad Gateway","trace_id":"V9ZSZT2h6Ug"}` | `application/json` |
+| Upstream unreachable (`503` for a refused connection) or timed out (`504`) | `502`/`503`/`504` | `{"error":"502 Bad Gateway","trace_id":"V9ZSZT2h6Ug"}` | `application/json` |
+| Request over a header limit | `500` | `{"error":"500 Internal Server Error","trace_id":"..."}` | `application/json` |
 | Every target failing its health check | `503` | `{"error":"503 Service Unavailable","trace_id":"..."}` | `application/json` |
 | Request body over the effective `max-body-size` | `413` | `{"error":"413 Payload Too Large","trace_id":"..."}` | `application/json` |
 | No route matches | `404` | `{"error":"404 Not Found","trace_id":"..."}` | `application/json` |
