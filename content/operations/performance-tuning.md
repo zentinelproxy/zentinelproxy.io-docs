@@ -233,7 +233,7 @@ HTTP/2 to upstreams only works over TLS: an upstream without a `tls` block is al
 
 ## Request limits
 
-The `limits` block bounds request headers and bodies. Header limits are checked before a request is routed; the body limit is checked as the body streams through, so part of an oversized body may already have been forwarded when the request is cut off. Rejections are counted in `zentinel_blocked_requests_total` with the reason `header_count_exceeded`, `header_size_exceeded`, or `body_size_exceeded`.
+The `limits` block bounds request headers and bodies. Header limits are checked before the request is sent upstream. From 26.10_5, a body whose `Content-Length` is over the limit is refused before any of it is read or an upstream is contacted; a chunked body is counted as it streams through, so part of an oversized chunked body may already have been forwarded when the request is cut off. A route's `policies { max-body-size }` can lower the limit for that route. Rejections are counted in `zentinel_blocked_requests_total` with the reason `header_count_exceeded`, `header_size_exceeded`, or `body_size_exceeded`.
 
 ```kdl
 system {
@@ -261,7 +261,7 @@ limits {
 | `max-body-size` | `10485760` (10 MiB) | Request body bytes, counted as the body streams through |
 
 {% callout(type="warning", title="Key names and status codes") %}
-Use the key names shown above. The spellings `max-header-size-bytes` and `max-body-size-bytes`, which appear in some examples, are not read and leave the defaults in place. Rejected requests currently receive a `500` response rather than `431` or `413`.
+Use the key names shown above. The spellings `max-header-size-bytes` and `max-body-size-bytes` are not read and leave the defaults in place; from 26.10_5 `zentinel test` and `zentinel lint` report them. From 26.10_5 a body over the limit gets `413 Payload Too Large` (before: `500`); a request over a header limit still gets `500` rather than `431`.
 {% end %}
 
 **When to change them:**

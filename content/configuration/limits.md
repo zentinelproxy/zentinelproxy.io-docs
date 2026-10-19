@@ -1,93 +1,85 @@
 +++
 title = "Limits"
 weight = 6
-updated = 2026-10-18
+updated = 2026-10-19
 +++
 
-The `limits` block configures request/response limits, connection limits, and rate limiting. These settings are critical for predictable behavior, resource protection, and "sleepable operations."
+The `limits` block bounds the size of requests. This page describes what a
+single configuration file (`zentinel -c zentinel.kdl`) reads, which is the only
+form the `zentinel` command can load
+([#541](https://github.com/zentinelproxy/zentinel/issues/541)).
 
-{% callout(type="warning", title="Single-file configs read only six limits keys (26.10_3)") %}
-Zentinel has two `limits` parsers. A configuration **directory** (multi-file
-layout) reads every key on this page. A **single configuration file**
-(`zentinel -c zentinel.kdl`, the usual case) reads only
+{% callout(type="warning", title="Six keys, no -bytes suffix") %}
+A `limits` block in a configuration file reads exactly these keys:
 `max-header-size`, `max-header-count`, `max-body-size`,
 `max-connections-per-client`, `max-total-connections` and
-`max-in-flight-requests` — note: no `-bytes` suffix — and silently ignores the
-rest, including `max-body-size-bytes` and `max-header-size-bytes`
-(`parse_limits_config` in `crates/config/src/kdl/mod.rs`). `zentinel lint` does
-not check the `limits` block, so it will not warn about this.
+`max-in-flight-requests`. The `-bytes` spellings (`max-body-size-bytes`,
+`max-header-size-bytes`) and every other key once listed here
+(`max-header-value-bytes`, `max-decompression-ratio`,
+`max-requests-per-second-*`, `max-agent-*`, `max-memory-bytes`, ...) belong to
+the directory-configuration parser and are ignored. From 26.10_5,
+`zentinel test` and `zentinel lint` report them as "is being ignored", with
+"Did you mean 'max-body-size'?" for the `-bytes` names. Before 26.10_5 nothing
+reported them, so a limit written with `-bytes` silently ran at the default.
 {% end %}
 
 ## Basic Configuration
 
 ```kdl
 limits {
-    max-header-size-bytes 8192
-    max-header-count 100
-    max-body-size-bytes 10485760  // 10MB
+    max-header-size 8192         // total size of all request headers, bytes
+    max-header-count 100         // number of request headers
+    max-body-size 10485760       // request body, bytes (10 MiB)
 }
 ```
+
+| Setting | Default | Applied |
+|---------|---------|---------|
+| `max-header-size` | `8192` | Yes |
+| `max-header-count` | `100` | Yes |
+| `max-body-size` | `10485760` (10 MiB) | Yes; see [Body Limits](#body-limits) |
+| `max-connections-per-client` | `100` | **No**, see [Connection Limits](#connection-limits) |
+| `max-total-connections` | `10000` | **No** |
+| `max-in-flight-requests` | `10000` | **No** |
+
+The same six keys are accepted in a namespace's or service's `limits` block,
+but the proxy does not apply namespace and service limits
+([#542](https://github.com/zentinelproxy/zentinel/issues/542)).
 
 ## Header Limits
 
 ```kdl
 limits {
-    max-header-size-bytes 8192     // Total headers size
-    max-header-count 100           // Maximum header count
-    max-header-name-bytes 256      // Per-header name size
-    max-header-value-bytes 4096    // Per-header value size
+    max-header-size 8192    // sum of header name and value lengths
+    max-header-count 100
 }
 ```
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `max-header-size-bytes` | `8192` (8KB) | Total size of all headers |
-| `max-header-count` | `100` | Maximum number of headers |
-| `max-header-name-bytes` | `256` | Maximum header name length |
-| `max-header-value-bytes` | `4096` (4KB) | Maximum header value length |
+Both are checked after the request is matched to a route, before agents run and
+before an upstream is contacted. A value of 1 MiB (`1048576`) or more turns the
+check off. A request over either limit is refused and counted in
+`zentinel_blocked_requests_total` with `reason="header_size_exceeded"` or
+`reason="header_count_exceeded"`.
 
-**Security note:** Large header limits can be exploited for denial-of-service. Keep defaults unless you have specific requirements.
+**Security note:** Large header limits can be exploited for denial-of-service.
+Keep the defaults unless you have specific requirements.
 
-### Recommended Header Limits
-
-| Environment | header-size | header-count | header-value |
-|-------------|-------------|--------------|--------------|
-| Production | 4096-8192 | 50-100 | 2048-4096 |
-| Development | 16384 | 200 | 8192 |
-| API Gateway | 8192 | 100 | 4096 |
+| Environment | `max-header-size` | `max-header-count` |
+|-------------|-------------------|--------------------|
+| Production | 4096-8192 | 50-100 |
+| Development | 16384 | 200 |
+| API Gateway | 8192 | 100 |
 
 ## Body Limits
 
+The global `max-body-size` and a route's `policies { max-body-size }` both
+apply. The effective limit for a request is the **smaller** of the two.
+
 ```kdl
 limits {
-    max-body-size-bytes 10485760       // 10MB - maximum request body
-    max-body-buffer-bytes 1048576      // 1MB - buffer for inspection
-    max-body-inspection-bytes 1048576  // 1MB - bytes sent to agents
+    max-body-size 104857600     // 100 MiB: the largest body any route accepts
 }
-```
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `max-body-size-bytes` | `10485760` (10MB) | Maximum request body size |
-| `max-body-buffer-bytes` | `1048576` (1MB) | Maximum buffered body size |
-| `max-body-inspection-bytes` | `1048576` (1MB) | Maximum body sent to agents |
-
-### Body Size Guidelines
-
-| Use Case | Recommended Size |
-|----------|------------------|
-| API endpoints | 1-10 MB |
-| File uploads | 100 MB - 1 GB |
-| JSON APIs | 1-5 MB |
-| Form submissions | 1-10 MB |
-
-**Memory impact:** `max-body-buffer-bytes × max-in-flight-requests` = potential memory usage for body buffering.
-
-### Per-Route Body Limits
-
-Override body limits on specific routes:
-
-```kdl
 routes {
     route "upload" {
         matches {
@@ -95,7 +87,7 @@ routes {
         }
         upstream "storage"
         policies {
-            max-body-size "500MB"
+            max-body-size "100MB"
         }
     }
 
@@ -111,191 +103,74 @@ routes {
 }
 ```
 
-## Decompression Limits
+A route cannot raise the limit above the global one: with the default global
+limit of 10 MiB, `max-body-size "100MB"` on a route still refuses bodies over
+10 MiB. Set the global limit to the largest body any route needs, and lower it
+per route. The route value accepts a plain byte count or a size such as
+`"512KB"` or `"1MB"`.
 
-Protect against decompression bombs:
+A request over the limit gets **`413 Payload Too Large`**:
 
-```kdl
-limits {
-    max-decompression-ratio 100.0       // Max 100:1 compression ratio
-    max-decompressed-size-bytes 104857600  // 100MB decompressed
-}
-```
+- a declared `Content-Length` over the limit is refused before the body is read
+  and before any upstream is contacted;
+- a chunked body is counted as it streams and refused when it crosses the limit;
+- on routes that read the whole body first (API schema validation), the same
+  limit applies to that read.
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `max-decompression-ratio` | `100.0` | Maximum compression ratio allowed |
-| `max-decompressed-size-bytes` | `104857600` (100MB) | Maximum decompressed size |
+Refused bodies count in `zentinel_blocked_requests_total` with
+`reason="body_size_exceeded"`. They are client errors: they do not count
+against the upstream's circuit breaker.
 
-**Security note:** Compression bombs (zip bombs) can use 1KB of compressed data to expand to gigabytes. These limits prevent resource exhaustion.
+**Before 26.10_5:** a route's `max-body-size` was not enforced; a body over the
+global limit got `500 Internal Server Error`, and three such requests could open
+the circuit breaker of a healthy upstream; and in a single file a
+`max-body-size` below 1 MiB failed validation (`max_body_buffer_bytes cannot
+exceed max_body_size_bytes`). From 26.10_5 any value loads.
+
+| Use Case | Recommended Size |
+|----------|------------------|
+| API endpoints | 1-10 MB |
+| File uploads | 100 MB - 1 GB |
+| JSON APIs | 1-5 MB |
+| Form submissions | 1-10 MB |
+
+The size of request bodies sent to an agent is set on the agent, with
+`max-request-body-bytes`; see [Agents](../agents/).
 
 ## Connection Limits
 
-```kdl
-limits {
-    max-connections-per-client 100
-    max-connections-per-route 1000
-    max-total-connections 10000
-    max-idle-connections-per-upstream 100
-}
-```
+`max-connections-per-client`, `max-total-connections` and
+`max-in-flight-requests` are read and range-checked, but nothing in the proxy
+applies them: Zentinel does not limit client connections or concurrent requests
+([#542](https://github.com/zentinelproxy/zentinel/issues/542)). Bound load
+with [rate limits](../filters/#rate-limiting), and cap connections in front of
+the proxy (a load balancer) or with the operating system's file descriptor
+limit:
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `max-connections-per-client` | `100` | Per-client connection limit |
-| `max-connections-per-route` | `1000` | Per-route connection limit |
-| `max-total-connections` | `10000` | Global connection limit |
-| `max-idle-connections-per-upstream` | `100` | Idle connections per upstream |
-
-### Connection Limit Sizing
-
-| Deployment | per-client | per-route | total |
-|------------|------------|-----------|-------|
-| Small | 50 | 500 | 5000 |
-| Medium | 100 | 1000 | 10000 |
-| Large | 200 | 2000 | 50000 |
-| API Gateway | 100 | 5000 | 100000 |
-
-**Formula:** `max-total-connections` should be less than or equal to OS file descriptor limit minus a safety margin.
-
-Check your limits:
 ```bash
-ulimit -n  # Current soft limit
+ulimit -n                  # Current soft limit
 cat /proc/sys/fs/file-max  # System limit
 ```
 
-## Request Limits
-
-```kdl
-limits {
-    max-in-flight-requests 10000
-    max-in-flight-requests-per-worker 1000
-    max-queued-requests 1000
-}
-```
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `max-in-flight-requests` | `10000` | Total concurrent requests |
-| `max-in-flight-requests-per-worker` | `1000` | Per-worker concurrent requests |
-| `max-queued-requests` | `1000` | Pending requests in queue |
-
-When limits are reached:
-- New requests receive `503 Service Unavailable`
-- `Retry-After` header indicates when to retry
-
-## Agent Limits
-
-```kdl
-limits {
-    max-agent-queue-depth 100
-    max-agent-body-bytes 1048576     // 1MB to agents
-    max-agent-response-bytes 10240   // 10KB from agents
-}
-```
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `max-agent-queue-depth` | `100` | Pending requests per agent |
-| `max-agent-body-bytes` | `1048576` (1MB) | Request body sent to agents |
-| `max-agent-response-bytes` | `10240` (10KB) | Response size from agents |
-
-These limits protect the proxy from misbehaving agents and ensure bounded memory usage.
-
 ## Rate Limiting
 
-### Global Rate Limits
+Rate limits are not set in `limits`. Use a `rate-limit` filter on a route, or
+the top-level `rate-limits` block for a default and a server-wide limit; see
+[Filters: Rate Limiting](../filters/#rate-limiting). Both are token buckets:
+`burst` is the bucket size and `max-rps` the refill rate.
 
-```kdl
-limits {
-    max-requests-per-second-global 10000
-}
-```
-
-Global limit applies across all clients and routes.
-
-### Per-Client Rate Limits
-
-```kdl
-limits {
-    max-requests-per-second-per-client 100
-}
-```
-
-Limits requests per unique client IP address.
-
-### Per-Route Rate Limits
-
-```kdl
-limits {
-    max-requests-per-second-per-route 1000
-}
-```
-
-Limits total requests to each route.
-
-### Rate Limit Behavior
-
-Rate limiting uses token bucket algorithm:
-- **Burst capacity:** 10× the per-second limit
-- **Refill rate:** Continuous refill at configured rate
-- **Response:** `429 Too Many Requests` with `Retry-After` header
-
-Example:
-```kdl
-limits {
-    max-requests-per-second-per-client 100
-}
-```
-- Burst: 1000 requests
-- Sustained: 100 requests/second
-- Over limit: 429 response, retry in ~1 second
-
-### Route-Level Rate Limits
-
-For fine-grained control, configure rate limits per route:
-
-```kdl
-routes {
-    route "api" {
-        matches {
-            path-prefix "/api/"
-        }
-        upstream "backend"
-        policies {
-            rate-limit {
-                requests-per-second 100
-                burst 500
-                key "client_ip"  // or "header:X-API-Key"
-            }
-        }
-    }
-}
-```
-
-Rate limit keys:
-- `client_ip` - Client IP address
-- `header:X-API-Key` - Header value
-- `path` - Request path
-- `route` - Route ID
+The `max-requests-per-second-global`, `-per-client` and `-per-route` keys are
+read only from directory configurations. Earlier versions of this page said
+their bucket held ten times the per-second limit; it holds one second's worth
+(1×), and namespace and service limits are not applied at all
+([#542](https://github.com/zentinelproxy/zentinel/issues/542)).
 
 ## Memory Limits
 
-```kdl
-limits {
-    max-memory-bytes 2147483648     // 2GB hard limit
-}
-```
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `max-memory-bytes` | None | Absolute memory limit (multi-file configs only, see above) |
-| `max-memory-percent` | — | **Not implemented**: parsed by nothing as of 26.10_3 (both parsers leave it unset) |
-
-`max-memory-bytes` is parsed (in multi-file configs) and range-checked, but as
-of 26.10_3 nothing in the proxy enforces it: reaching it does not reject
-connections or shed load. Bound memory with the process supervisor instead
-(for example systemd `MemoryMax=` or a container memory limit).
+There is no memory limit. `max-memory-bytes` and `max-memory-percent` are not
+read from a configuration file, and nothing in the proxy would enforce them.
+Bound memory with the process supervisor (for example systemd `MemoryMax=` or a
+container memory limit).
 
 ## Profile Presets
 
@@ -315,14 +190,9 @@ listeners {
 
 limits {
     // Permissive for testing
-    max-header-size-bytes 16384
+    max-header-size 16384
     max-header-count 200
-    max-body-size-bytes 104857600  // 100MB
-    max-in-flight-requests 100000
-
-    // No rate limits
-    max-requests-per-second-global #null
-    max-requests-per-second-per-client #null
+    max-body-size 104857600  // 100 MiB
 }
 
 routes {
@@ -343,24 +213,18 @@ upstreams {
 
 ```kdl
 limits {
-    // Restrictive headers
-    max-header-size-bytes 4096
+    max-header-size 4096
     max-header-count 50
-    max-header-name-bytes 128
-    max-header-value-bytes 2048
+    max-body-size 1048576  // 1 MiB
+}
 
-    // Limited body
-    max-body-size-bytes 1048576  // 1MB
-    max-body-buffer-bytes 524288 // 512KB
-
-    // Connection protection
-    max-connections-per-client 50
-    max-total-connections 5000
-    max-in-flight-requests 5000
-
-    // Rate limiting
-    max-requests-per-second-global 10000
-    max-requests-per-second-per-client 100
+filters {
+    filter "per-client" {
+        type "rate-limit"
+        max-rps 100
+        burst 100
+        key "client-ip"
+    }
 }
 ```
 
@@ -368,65 +232,17 @@ limits {
 
 ```kdl
 limits {
-    // Standard headers
-    max-header-size-bytes 8192
+    max-header-size 8192
     max-header-count 100
-
-    // JSON payloads
-    max-body-size-bytes 10485760  // 10MB
-
-    // High throughput
-    max-connections-per-client 200
-    max-connections-per-route 5000
-    max-total-connections 50000
-    max-in-flight-requests 50000
-    max-in-flight-requests-per-worker 5000
-
-    // Rate limiting
-    max-requests-per-second-global 100000
-    max-requests-per-second-per-client 1000
+    max-body-size 10485760  // 10 MiB
 }
-```
 
-## Complete Example
-
-```kdl
-limits {
-    // Headers
-    max-header-size-bytes 8192
-    max-header-count 100
-    max-header-name-bytes 256
-    max-header-value-bytes 4096
-
-    // Bodies
-    max-body-size-bytes 10485760
-    max-body-buffer-bytes 1048576
-    max-body-inspection-bytes 1048576
-
-    // Decompression protection
-    max-decompression-ratio 100.0
-    max-decompressed-size-bytes 104857600
-
-    // Connections
-    max-connections-per-client 100
-    max-connections-per-route 1000
-    max-total-connections 10000
-    max-idle-connections-per-upstream 100
-
-    // Requests
-    max-in-flight-requests 10000
-    max-in-flight-requests-per-worker 1000
-    max-queued-requests 1000
-
-    // Agents
-    max-agent-queue-depth 100
-    max-agent-body-bytes 1048576
-    max-agent-response-bytes 10240
-
-    // Rate limiting
-    max-requests-per-second-global 10000
-    max-requests-per-second-per-client 100
-    max-requests-per-second-per-route 1000
+rate-limits {
+    global {
+        max-rps 1000      // per client
+        burst 1000
+        key "client-ip"
+    }
 }
 ```
 
@@ -440,7 +256,6 @@ how the proxy behaves when it runs out of something.
 
 ```kdl
 system {
-    max-connections 10000
     route-cache-size 1000
 }
 
@@ -464,15 +279,17 @@ agents {
 
 | Setting | Block | Default | Bounds |
 |---------|-------|---------|--------|
-| `max-connections` | `system` | `10000` | Concurrent client connections |
 | `route-cache-size` | `system` | `1000` | Cached route-match entries |
 | `max-connections` | `connection-pool` | `100` | Connections per upstream target |
 | `max-idle` | `connection-pool` | `20` | Idle connections kept per target |
 | `max-concurrent-calls` | `agent` | `100` | In-flight calls to one agent |
 
-**A `0` here means unbounded, not disabled.** `system.max-connections 0` accepts
-connections without limit, and a `connection-pool` with `max-connections 0`
-accumulates connections against a slow upstream until the process runs out of
+`system { max-connections }` is not in this list: Zentinel does not limit
+client connections, and from 26.10_5 `zentinel test` and `lint` report the key
+as not applied.
+
+**A `0` here means unbounded, not disabled.** A `connection-pool` with
+`max-connections 0` accumulates connections against a slow upstream until the process runs out of
 them. If you want a component effectively off, give it a small number rather
 than zero.
 
@@ -492,8 +309,6 @@ It reports, among other things:
 
 | Condition | Why it is flagged |
 |-----------|-------------------|
-| `system.max-connections` is `0` | Accepts connections without limit; the process grows until it is killed |
-| `system.max-connections` above `100000` | The file descriptor limit will be reached first — check `ulimit -n` |
 | `route-cache-size` above `1000000` | Entries are keyed by method, host, path and any matched headers or query parameters, so a large cache on varied traffic holds a lot of memory for little hit rate |
 | pool `max-connections` is `0` | The pool is unbounded against a slow upstream |
 | pool `max-connections` above `10000` | More than most origins accept; the real limit becomes the origin's, and it surfaces as errors rather than backpressure |
@@ -522,8 +337,8 @@ the setting is simply discarded, and the proxy runs on the default while your
 config file says otherwise. That is how `ratelimit` (missing a hyphen) can
 silently disable rate limiting on a route.
 
-Checked blocks are those with a fixed set of valid keys: `connection-pool`,
-`timeouts`, `policies` and the WAF `ruleset`. Blocks that legitimately hold
+Checked blocks are those with a fixed set of valid keys, `limits` among them.
+Blocks that legitimately hold
 arbitrary keys — a JSON schema's properties, header maps — are not inspected,
 so this check stays quiet on valid configuration.
 
@@ -532,103 +347,56 @@ rather than warned about, since a discarded key in a security policy is not
 something to discover later. See [Agentic Protocols](../agentic/).
 
 **Run it in CI.** The failure these catch shows up under load, which is the
-worst time to find out. `zentinel test` validates that a config parses;
-`zentinel lint` is what tells you whether its limits are meaningful.
+worst time to find out. From 26.10_5, `zentinel test` also prints the "is
+being ignored" warnings, and `zentinel test --strict` fails on them; the bounds
+checks in the table above are reported only by `zentinel lint`.
 
 ## Default Values Summary
 
-| Category | Setting | Default |
-|----------|---------|---------|
-| **Headers** | `max-header-size-bytes` | 8192 |
-| | `max-header-count` | 100 |
-| | `max-header-name-bytes` | 256 |
-| | `max-header-value-bytes` | 4096 |
-| **Bodies** | `max-body-size-bytes` | 10485760 (10MB) |
-| | `max-body-buffer-bytes` | 1048576 (1MB) |
-| | `max-body-inspection-bytes` | 1048576 (1MB) |
-| **Decompression** | `max-decompression-ratio` | 100.0 |
-| | `max-decompressed-size-bytes` | 104857600 (100MB) |
-| **Connections** | `max-connections-per-client` | 100 |
-| | `max-connections-per-route` | 1000 |
-| | `max-total-connections` | 10000 |
-| | `max-idle-connections-per-upstream` | 100 |
-| **Requests** | `max-in-flight-requests` | 10000 |
-| | `max-in-flight-requests-per-worker` | 1000 |
-| | `max-queued-requests` | 1000 |
-| **Agents** | `max-agent-queue-depth` | 100 |
-| | `max-agent-body-bytes` | 1048576 (1MB) |
-| | `max-agent-response-bytes` | 10240 (10KB) |
-| **Rate Limits** | All rate limits | None (disabled) |
-| **Memory** | Memory limits | None (disabled) |
+| Setting | Default | Applied |
+|---------|---------|---------|
+| `max-header-size` | 8192 | Yes |
+| `max-header-count` | 100 | Yes |
+| `max-body-size` | 10485760 (10 MiB) | Yes |
+| `max-connections-per-client` | 100 | No |
+| `max-total-connections` | 10000 | No |
+| `max-in-flight-requests` | 10000 | No |
+| Rate limits | None | See [Filters](../filters/#rate-limiting) |
+| Memory limit | None | No such setting |
 
 ## Monitoring Limits
 
-### Metrics
-
-Zentinel exposes limit-related metrics:
-
-```
-zentinel_header_size_exceeded_total
-zentinel_body_size_exceeded_total
-zentinel_connection_limit_reached_total
-zentinel_rate_limit_exceeded_total
-zentinel_memory_usage_bytes
-zentinel_connections_active
-zentinel_requests_in_flight
-```
-
-### Logging
-
-Limit violations are logged at WARN level:
-
-```json
-{
-  "level": "WARN",
-  "message": "Request body size exceeded limit",
-  "limit": 10485760,
-  "actual": 15728640,
-  "client_ip": "10.0.0.5",
-  "trace_id": "2kF8xQw4BnM"
-}
-```
+Requests refused by a limit are counted in `zentinel_blocked_requests_total`,
+labelled by `reason`: `header_size_exceeded`, `header_count_exceeded`,
+`body_size_exceeded` and, for rate limits, `rate_limited`. Each refusal is
+also logged at `WARN` with the trace ID, the limit and the actual value, for
+example `Request body size limit exceeded`.
 
 ## Troubleshooting
 
 ### 413 Payload Too Large
 
-Request body exceeds `max-body-size-bytes`:
+The request body exceeds the effective limit, the smaller of the global
+`limits { max-body-size }` and the route's `policies { max-body-size }`:
 
 ```bash
-# Check current limit
-grep max-body-size zentinel.kdl
-
-# Increase for specific route
-route "upload" {
-    policies {
-        max-body-size "100MB"
-    }
-}
+grep -n max-body-size zentinel.kdl
 ```
+
+Raise the global limit to the largest body you accept, then set lower limits
+per route. Before 26.10_5, an over-limit body got `500` instead of `413`.
 
 ### 429 Too Many Requests
 
-Rate limit exceeded:
+A rate limit refused the request. `Retry-After` says when the next token is
+available:
 
 ```bash
-# Check Retry-After header
 curl -I https://api.example.com/endpoint
 # Retry-After: 1
-
-# Increase limits or implement client-side throttling
 ```
 
-### 503 Service Unavailable (Connection Limit)
-
-Connection or request limits reached:
-
-1. Check current connections: `curl localhost:9090/admin/stats`
-2. Review `max-total-connections` and `max-in-flight-requests`
-3. Check for connection leaks in clients
+Raise `max-rps` or `burst` on the filter, or throttle the client.
 
 ## Next Steps
 

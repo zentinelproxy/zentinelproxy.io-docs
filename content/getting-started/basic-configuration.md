@@ -272,9 +272,9 @@ limits {
 }
 ```
 
-In a single configuration file these names have no `-bytes` suffix. `max-header-size-bytes` and `max-body-size-bytes` are read only when the configuration is a directory of files; in a single file they are ignored, and `zentinel lint` does not report them. See [Limits](/configuration/limits/).
+These names have no `-bytes` suffix. `max-header-size-bytes` and `max-body-size-bytes` are ignored in a configuration file; from 26.10_5 `zentinel test` and `zentinel lint` report them ("Did you mean 'max-body-size'?"). See [Limits](/configuration/limits/).
 
-`max-body-size` cannot be lower than 1048576 (1 MiB), the default body buffer size; a smaller value fails validation. A request body over the limit is rejected with a `500` JSON error, not `413` ([#517](https://github.com/zentinelproxy/zentinel/issues/517)).
+A request body over `max-body-size`, or over a route's `policies { max-body-size }`, is rejected with `413 Payload Too Large`. Before 26.10_5 it got a `500`, a route's own limit was not enforced, and `max-body-size` could not be set below 1048576 (1 MiB).
 
 ## Observability
 

@@ -11,7 +11,7 @@ Organize resources using namespaces for multi-tenant or microservice architectur
 - Multi-tenant deployments with isolated configurations
 - Microservice architectures with service-specific settings
 - Shared platform services across namespaces
-- Hierarchical limit and policy inheritance
+- Hierarchical policy inheritance
 - Cross-namespace resource sharing via exports
 
 ## Architecture
@@ -137,9 +137,9 @@ agents {
 // Namespace: Platform (shared platform services)
 // =============================================================================
 namespace "platform" {
-    // Namespace-level limits
+    // Namespace-level limits (not yet applied, see Limit Inheritance)
     limits {
-        max-body-size-bytes 10485760  // 10MB
+        max-body-size 10485760  // 10MB
         max-connections-per-client 50
     }
 
@@ -232,9 +232,9 @@ namespace "platform" {
 
     // Service within the platform namespace
     service "user-management" {
-        // Service-specific limits override namespace limits
+        // Service-specific limits (not yet applied, see Limit Inheritance)
         limits {
-            max-body-size-bytes 5242880  // 5MB
+            max-body-size 5242880  // 5MB
         }
 
         routes {
@@ -277,7 +277,7 @@ namespace "platform" {
 // =============================================================================
 namespace "storefront" {
     limits {
-        max-body-size-bytes 52428800  // 50MB for product images
+        max-body-size 52428800  // 50MB for product images
         max-connections-per-client 100
     }
 
@@ -386,7 +386,7 @@ namespace "storefront" {
 // =============================================================================
 namespace "analytics" {
     limits {
-        max-body-size-bytes 104857600  // 100MB for data ingestion
+        max-body-size 104857600  // 100MB for data ingestion
     }
 
     upstreams {
@@ -549,10 +549,13 @@ exports {
 
 ### Limit Inheritance
 
-Limits cascade down with overrides:
-- Global limits apply to all
-- Namespace limits override global for that namespace
-- Service limits override namespace for that service
+The configuration model lets a service's `limits` override its namespace's, and
+a namespace's override the global block. The proxy does not apply namespace or
+service `limits` yet: every request is held to the global `limits` block and to
+its route's `policies { max-body-size }`
+([#542](https://github.com/zentinelproxy/zentinel/issues/542)). To give a
+namespace a smaller body limit today, set `max-body-size` in the policies of its
+routes.
 
 ## Setup
 

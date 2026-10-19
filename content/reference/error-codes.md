@@ -17,6 +17,8 @@ HTTP status codes and error responses returned by Zentinel.
 | 401 | `AuthenticationFailed` | Authentication required or invalid credentials |
 | 403 | `AuthorizationFailed` | Insufficient permissions |
 | 403 | `WafBlocked` | Request blocked by WAF rules |
+| 404 | — | No route matches the request |
+| 413 | — | Request body over the effective `max-body-size` (from 26.10_5; `500` before) |
 | 429 | `LimitExceeded` | Rate limit or resource limit exceeded |
 | 429 | `RateLimit` | Rate limit exceeded |
 | 495 | `Tls` | TLS/SSL certificate error |
@@ -38,7 +40,7 @@ HTTP status codes and error responses returned by Zentinel.
 
 ## Error Response Format
 
-There are no configurable error pages or templates as of 26.10_3. The body depends
+There are no configurable error pages or templates. The body depends
 on where the error came from; see [Error Pages](/configuration/routes/#error-pages)
 for the full table. Errors the proxy generates itself (unreachable upstream,
 timeout, no healthy target, no matching route, request body too large) look the
@@ -52,13 +54,20 @@ X-Correlation-Id: V9ZSZT2h6Ug
 {"error":"503 Service Unavailable","trace_id":"V9ZSZT2h6Ug"}
 ```
 
+The `error` field is the status code followed by its standard reason phrase,
+for example `"404 Not Found"` or `"413 Payload Too Large"`. The no-route `404`
+carries a trace ID like every other error. Before 26.10_5, statuses other than
+400, 502, 503 and 504 were labelled "Internal Server Error" (`"404 Internal
+Server Error"`), and the no-route `404` had an empty `trace_id`.
+
 A rate-limit filter answers `429` with `Content-Type: text/plain; charset=utf-8`,
 the body `Rate limit exceeded`, and `X-RateLimit-Limit`, `X-RateLimit-Remaining`,
 `X-RateLimit-Reset` and `Retry-After` headers.
 
 When the upstream itself answers `4xx`/`5xx`, the client gets the upstream's
-body with the `Content-Type` replaced (`text/html; charset=utf-8` on web routes)
-([#522](https://github.com/zentinelproxy/zentinel/issues/522)).
+response unchanged: status, headers including `Content-Type`, and body. Before
+26.10_5 the body was kept but `Content-Type` was replaced
+(`text/html; charset=utf-8` on web routes).
 
 ## Error Types
 
@@ -82,7 +91,8 @@ HTTP 502. Failed to connect to or receive response from upstream.
 ```
 No healthy upstream available
 ```
-HTTP 503. All upstream servers failed health checks.
+HTTP 503. Every target of the upstream is failing its health check, so none is
+in rotation. From 26.10_5; before, failing targets kept receiving traffic.
 
 ### Agent Errors
 
@@ -124,6 +134,10 @@ Limit types:
 - `decompression_size` - Decompressed body too large
 - `buffer_size` - Buffer limit exceeded
 - `queue_depth` - Request queue full
+
+These are the error type's categories. A request body over `max-body-size` is
+answered `413 Payload Too Large`, and connection and in-flight limits are not
+applied (see [Limits](/configuration/limits/#connection-limits)).
 
 **RateLimit**
 ```

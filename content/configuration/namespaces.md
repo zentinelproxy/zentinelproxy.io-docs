@@ -1,7 +1,7 @@
 +++
 title = "Namespaces & Services"
 weight = 11
-updated = 2026-02-19
+updated = 2026-10-19
 +++
 
 Namespaces and services provide hierarchical organization for Zentinel configuration, enabling multi-tenant deployments with runtime isolation.
@@ -39,14 +39,24 @@ namespace "api" {
 
 ## Namespace with Limits
 
-Each namespace can have its own limits for isolation:
+{% callout(type="warning", title="Namespace and service limits are not applied") %}
+A `limits` block inside a namespace or service is parsed but not enforced
+([#542](https://github.com/zentinelproxy/zentinel/issues/542)); the global
+`limits` block applies to every request. It accepts the same six keys as the
+global block; `max-requests-per-second-global` and
+`max-requests-per-second-per-client` are not read from a configuration file, and
+from 26.10_5 `zentinel test` and `zentinel lint` report them as ignored. To
+limit request rates per namespace or service, attach
+[`rate-limit` filters](../filters/#rate-limiting) to its routes, as in
+[Rate Limiting](#rate-limiting) below.
+{% end %}
+
+A namespace can declare its own `limits` block:
 
 ```kdl
 namespace "public-api" {
     limits {
-        max-body-size-bytes 1048576  // 1MB
-        max-requests-per-second-global 1000
-        max-requests-per-second-per-client 50
+        max-body-size 1048576  // 1MB
     }
 
     upstreams {
@@ -67,9 +77,7 @@ namespace "public-api" {
 
 namespace "internal-api" {
     limits {
-        max-body-size-bytes 104857600  // 100MB
-        max-requests-per-second-global 10000
-        // No per-client limit for internal services
+        max-body-size 104857600  // 100MB
     }
 
     upstreams {
@@ -96,7 +104,7 @@ Services provide finer-grained isolation within a namespace:
 ```kdl
 namespace "payments" {
     limits {
-        max-body-size-bytes 10485760  // 10MB default
+        max-body-size 10485760  // 10MB default
     }
 
     // Shared upstream for the namespace
@@ -107,9 +115,6 @@ namespace "payments" {
     }
 
     service "checkout" {
-        limits {
-            max-requests-per-second-global 500
-        }
 
         listener {
             address "0.0.0.0:8443"
@@ -138,9 +143,6 @@ namespace "payments" {
     }
 
     service "refunds" {
-        limits {
-            max-requests-per-second-global 100  // Lower limit for refunds
-        }
 
         upstreams {
             upstream "refunds-backend" {
@@ -286,29 +288,58 @@ Each namespace/service has isolated:
 
 ### Rate Limiting
 
+Give each service its own `rate-limit` filter and attach it to the service's
+routes. Each route keeps its own buckets, so a limit hit in `api:public` does
+not affect `api:partner`:
+
 ```kdl
 namespace "api" {
-    limits {
-        max-requests-per-second-global 5000
+    filters {
+        filter "public-limit" {
+            type "rate-limit"
+            max-rps 50
+            burst 50
+            key "client-ip"
+        }
+        filter "partner-limit" {
+            type "rate-limit"
+            max-rps 200
+            burst 200
+            key "header:X-Partner-Id"
+        }
+    }
+
+    upstreams {
+        upstream "backend" {
+            target "127.0.0.1:3000"
+        }
     }
 
     service "public" {
-        limits {
-            max-requests-per-second-global 1000
-            max-requests-per-second-per-client 50
+        routes {
+            route "public" {
+                matches {
+                    path-prefix "/public/"
+                }
+                upstream "backend"
+                filters "public-limit"
+            }
         }
     }
 
     service "partner" {
-        limits {
-            max-requests-per-second-global 2000
-            max-requests-per-second-per-client 200
+        routes {
+            route "partner" {
+                matches {
+                    path-prefix "/partner/"
+                }
+                upstream "backend"
+                filters "partner-limit"
+            }
         }
     }
 }
 ```
-
-Rate limits are enforced independently per scope. A rate limit hit in `api:public` does not affect `api:partner`.
 
 ### Circuit Breakers
 
@@ -471,8 +502,7 @@ upstreams {
 // API namespace
 namespace "api" {
     limits {
-        max-body-size-bytes 10485760
-        max-requests-per-second-global 10000
+        max-body-size 10485760
     }
 
     upstreams {
@@ -499,9 +529,6 @@ namespace "api" {
     }
 
     service "users" {
-        limits {
-            max-requests-per-second-per-client 100
-        }
 
         upstreams {
             upstream "users-backend" {
@@ -616,7 +643,7 @@ namespace "users" {
 
 Use services when you need:
 - Dedicated listeners with separate TLS certificates
-- Independent rate limits for subcomponents
+- Separate rate-limit filters for subcomponents
 - Fine-grained circuit breaker isolation
 - Separate metrics dashboards
 
@@ -646,6 +673,6 @@ namespace "infrastructure" {
 
 ## Next Steps
 
-- [Limits](../limits/) - Configure per-scope limits
+- [Limits](../limits/) - Request size limits
 - [Upstreams](../upstreams/) - Backend pool configuration
 - [Routes](../routes/) - Request matching and routing

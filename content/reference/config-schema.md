@@ -367,54 +367,19 @@ routes {
 
 ## Limits Block
 
-As of 26.10_3 these names are read only by the multi-file (directory) loader.
-A single-file configuration is parsed by `parse_limits_config`
-(`crates/config/src/kdl/mod.rs`), which reads just `max-header-size`,
-`max-header-count`, `max-body-size`, `max-connections-per-client`,
-`max-total-connections` and `max-in-flight-requests`; the other keys below are
-ignored there. See [Directive Index — Limits](../directives/#limits-directives).
+A configuration file's `limits` block reads these six keys. Other keys, including
+the `-bytes` spellings, are ignored, and from 26.10_5 `zentinel test` and
+`zentinel lint` report them. See [Limits](/configuration/limits/) and the
+[Directive Index](../directives/#limits-directives).
 
 ```kdl
 limits {
-    // Headers
-    max-header-size-bytes 8192
+    max-header-size 8192              // bytes, all request headers
     max-header-count 100
-    max-header-name-bytes 256
-    max-header-value-bytes 4096
-
-    // Body
-    max-body-size-bytes 10485760
-    max-body-buffer-bytes 1048576
-    max-body-inspection-bytes 1048576
-
-    // Decompression
-    max-decompression-ratio 100.0
-    max-decompressed-size-bytes 104857600
-
-    // Connections
-    max-connections-per-client 100
-    max-connections-per-route 1000
-    max-total-connections 10000
-    max-idle-connections-per-upstream 100
-
-    // Requests
-    max-in-flight-requests 10000
-    max-in-flight-requests-per-worker 1000
-    max-queued-requests 1000
-
-    // Agents
-    max-agent-queue-depth 100
-    max-agent-body-bytes 1048576
-    max-agent-response-bytes 10240
-
-    // Rate limits
-    max-requests-per-second-global 10000
-    max-requests-per-second-per-client 100
-    max-requests-per-second-per-route 1000
-
-    // Memory
-    max-memory-bytes 2147483648
-    // max-memory-percent is not read by any parser
+    max-body-size 10485760            // bytes; routes can lower it
+    max-connections-per-client 100    // not applied (#542)
+    max-total-connections 10000       // not applied (#542)
+    max-in-flight-requests 10000      // not applied (#542)
 }
 ```
 
