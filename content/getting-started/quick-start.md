@@ -181,9 +181,15 @@ upstreams {
 }
 ```
 
-Every 5 seconds Zentinel requests `/api/` from the backend, and after 3 failures in a row it stops sending traffic there. Run `zentinel lint -c zentinel.kdl` again, then **restart** Zentinel (Ctrl-C, then `zentinel -c zentinel.kdl`). The log shows `Started active health checking`.
+Every 5 seconds Zentinel requests `/api/` from the backend, and after 3 failures in a row it stops sending traffic there. If every target of an upstream is failing, requests to it get `503 Service Unavailable`. Run `zentinel lint -c zentinel.kdl` again, then reload the configuration without stopping the proxy:
 
-> Zentinel reloads its configuration on `SIGHUP`, but a reload does not yet start health checks for upstreams it changed ([#516](https://github.com/zentinelproxy/zentinel/issues/516)), so restart after adding or changing one.
+```bash
+kill -HUP $(pgrep -x zentinel)
+```
+
+The backend's log shows a `GET /api/` from Zentinel every 5 seconds. (`pgrep -x` matches only the proxy process, not agent processes such as `zentinel-echo-agent`.)
+
+> Before 26.10_5, a reload did not start health checks for upstreams it added or changed, and probe results did not take targets out of rotation. On those releases, **restart** Zentinel after adding or changing a health check (Ctrl-C, then `zentinel -c zentinel.kdl`).
 
 ## 8. Serve HTTPS
 

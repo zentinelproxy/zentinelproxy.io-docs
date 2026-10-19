@@ -152,34 +152,35 @@ dig upstream.internal
 
 **Diagnosis:**
 ```bash
-# Check circuit breaker status
+# Check circuit breaker and target health
 curl http://localhost:9090/admin/upstreams
 
-# Check connection limits
-curl http://localhost:9090/metrics | grep connections
+# Look for health-check failures in the log
+journalctl -u zentinel | grep -i health
 ```
 
 **Common causes:**
 1. Circuit breaker open
-2. All upstreams unhealthy
-3. Connection limit reached
-4. Rate limit exceeded
+2. Every target of the upstream is failing its health check. From 26.10_5, failing targets are taken out of rotation, and when none is left Zentinel answers 503 instead of trying them. Check the health-check `path`, `expected-status` and `host` against what the backend returns.
+
+Rate limits answer with their `status-code` (default `429`). Zentinel does not limit client connections, so a connection limit is not a cause.
 
 **Solutions:**
 ```kdl
-// Increase connection limits
-limits {
-    max-total-connections 20000
-    max-connections-per-client 200
-}
-
-// Adjust the upstream circuit breaker
+// Adjust the upstream circuit breaker and health check
 upstreams {
     upstream "backend" {
         target "10.0.1.10:8080"
         circuit-breaker {
             failure-threshold 10    // More tolerant
             timeout-seconds 60      // Longer recovery
+        }
+        health-check {
+            type "http" {
+                path "/health"
+                expected-status 200
+            }
+            unhealthy-threshold 5   // More tolerant
         }
     }
 }
