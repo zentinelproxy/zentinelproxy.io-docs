@@ -66,7 +66,7 @@ Zentinel's architecture keeps the dataplane minimal and predictable:
 | Benefit | Description |
 |---------|-------------|
 | **Isolation** | A buggy or crashing agent cannot take down the proxy |
-| **Independent Deployment** | Update agents without restarting Zentinel |
+| **Independent Deployment** | Agents are separate processes with their own release cycle (in 26.10_3 the proxy must be restarted after an agent restarts: [#528](https://github.com/zentinelproxy/zentinel/issues/528)) |
 | **Language Flexibility** | Write agents in any language with gRPC or Unix socket support |
 | **Circuit Breakers** | Zentinel protects itself from slow or failing agents |
 | **Horizontal Scaling** | Run agents as separate services for high availability |

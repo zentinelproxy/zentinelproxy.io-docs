@@ -290,6 +290,16 @@ agent "analytics-agent" type="custom" {
 | `closed` | Block requests when agent unavailable (security-first) |
 | `open` | Allow requests through when agent unavailable (availability-first) |
 
+{% callout(type="warning") %}
+In 26.10_3, what decides a request when an agent is unavailable is the
+`failure-mode` on the **filter** that calls the agent, then the route's
+`policies { failure-mode }`, and otherwise `closed`. The value on the `agent`
+block itself is not used for that decision, and an unrecognised value such as
+`"fail-open"` silently means `closed`
+([#529](https://github.com/zentinelproxy/zentinel/issues/529)). Set
+`failure-mode` on the filter, as in [Your First Agent](/getting-started/first-agent/#6-stop-the-agent).
+{% end %}
+
 ### Circuit Breaker
 
 Prevent cascading failures with circuit breakers:
@@ -874,24 +884,26 @@ Zentinel validates agent configuration at startup:
 
 | Transport | Validation |
 |-----------|------------|
-| Unix Socket | Path exists and is a socket file |
+| Unix Socket | The socket's parent directory exists (the socket itself is not checked) |
 | gRPC | Valid URL format (http/https with host) |
 | HTTP | Valid URL format |
 
 Example validation errors:
 
 ```
-Error: Agent 'auth' socket path '/var/run/zentinel/auth.sock' does not exist
-Error: Agent 'waf' path '/tmp/not-a-socket' exists but is not a socket
-Error: Agent 'remote' gRPC address 'invalid-url' is not a valid URL
+Agent 'auth' unix socket path parent directory doesn't exist: "/var/run/zentinel/auth.sock"
 ```
+
+A socket that does not exist yet, or a gRPC agent that is not running, passes
+`zentinel test`; use `zentinel validate` (below) to check that agents are
+reachable.
 
 ### Pre-flight Checks
 
 Run validation before deployment:
 
 ```bash
-zentinel --config zentinel.kdl --validate
+zentinel validate --config zentinel.kdl
 ```
 
 This checks:

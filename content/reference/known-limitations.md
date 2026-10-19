@@ -111,6 +111,22 @@ way to get there: it becomes a string, not a list, and the schema is rejected.
 [#524](https://github.com/zentinelproxy/zentinel/issues/524). See [API Schema Validation](/configuration/routes/#api-schema-validation).
 *Workaround:* check the startup log after changing a schema.
 
+## Agents
+
+**A restarted agent is not reconnected.** If an agent stops and starts again
+while Zentinel keeps running, Zentinel keeps failing calls to it ("Send failed:
+channel closed"): `503` with `failure-mode "closed"`, and no inspection at all
+with `"open"`. A `SIGHUP` reload does not help. An agent that was down when
+Zentinel *started* is connected later on its own.
+[#528](https://github.com/zentinelproxy/zentinel/issues/528).
+*Workaround:* restart Zentinel after restarting or redeploying an agent.
+
+**The agent block's `failure-mode` does not decide requests.** The filter's
+`failure-mode` does, then the route's `policies { failure-mode }`, then
+`closed`. An unrecognised value (`"fail-open"`) means `closed` without a
+warning. [#529](https://github.com/zentinelproxy/zentinel/issues/529).
+*Workaround:* set `failure-mode` on the filter that calls the agent.
+
 ## Rate limiting
 
 **`rate-limits { default-rps default-burst }` is not applied.** Routes without
