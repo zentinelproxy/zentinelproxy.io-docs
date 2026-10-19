@@ -73,7 +73,7 @@ Zentinel is a next-generation reverse proxy built on [Cloudflare's Pingora](http
 
 - `ZENTINEL_CONFIG` for configuration path
 - Embedded default configuration fallback
-- No variable substitution in config files: `${VAR}` is taken literally, and in a listener `address` it passes `zentinel test` and then crashes the proxy at startup ([#520](https://github.com/zentinelproxy/zentinel/issues/520)). Generate the file from a template before starting the proxy instead
+- No variable substitution in config files: `${VAR}` is taken literally. From 26.10_5, `zentinel test` and startup reject a `${` in a listener address, an upstream target or the metrics address (before, a listener address passed `test` and then crashed the proxy at startup, [#520](https://github.com/zentinelproxy/zentinel/issues/520)). Generate the file from a template before starting the proxy instead
 
 ---
 

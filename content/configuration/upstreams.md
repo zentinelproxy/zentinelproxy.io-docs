@@ -152,7 +152,13 @@ upstream "backend" {
 
 Consistent routing based on client IP. Provides session affinity without cookies.
 
-**Note:** Clients behind shared NAT will route to the same target.
+**Note:** Clients behind shared NAT will route to the same target. Behind a load
+balancer, list it in the listener's
+[`trusted-proxies`](/configuration/listeners/#trusted-proxies) so the hash uses
+the client's address from `X-Forwarded-For` rather than the load balancer's.
+
+Before 26.10_5 no client address reached peer selection: `ip_hash` sent every
+client to the same target, and `consistent_hash` did not hash on the client.
 
 ### Consistent Hash
 

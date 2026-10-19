@@ -53,7 +53,7 @@ Zentinel understands different service types and optimizes behavior accordingly:
 - Human-friendly KDL configuration format
 - Hot reload without downtime
 - Validation on startup (`zentinel test`), plus `zentinel lint` for settings that are being ignored
-- No environment variable substitution: `${VAR}` in the file is taken literally ([#520](https://github.com/zentinelproxy/zentinel/issues/520))
+- No environment variable substitution: `${VAR}` in the file is taken literally; render the file with a tool such as `envsubst` first
 
 ## Why Zentinel?
 

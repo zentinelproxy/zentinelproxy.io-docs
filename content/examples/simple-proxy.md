@@ -118,21 +118,17 @@ curl -i http://localhost:8080/ | grep -i x-correlation-id
 
 On the way to the backend, Zentinel keeps the client's `Host` header and adds:
 - `X-Correlation-Id` and `X-Trace-Id` - the request's trace ID (taken from an incoming `X-Request-Id` or `X-Correlation-Id` if the client sent one, generated otherwise)
+- `X-Forwarded-For` - the client's address
+- `X-Forwarded-Proto` - `http` here (`https` on a TLS listener)
+- `X-Forwarded-Host` - the host the client requested
 - `X-Forwarded-By: Zentinel`
 
-As of 26.10_3 it sends **no** `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host` or `Forwarded` header, so the backend sees the proxy's address as the client address ([#515](https://github.com/zentinelproxy/zentinel/issues/515)). If the backend needs to know the request arrived over HTTPS, set `X-Forwarded-Proto` on the route of an HTTPS listener yourself:
-
-```fragment,kdl
-policies {
-    request-headers {
-        set {
-            "X-Forwarded-Proto" "https"
-        }
-    }
-}
-```
-
-There is no configuration workaround for the client IP.
+From 26.10_5 the `X-Forwarded-*` headers are set by Zentinel, and any the
+client sent are replaced; client-sent `Forwarded` and `X-Real-IP` headers are
+removed. If Zentinel runs behind a load balancer and the backend should see the
+original client, list the load balancer in the listener's
+[`trusted-proxies`](/configuration/listeners/#trusted-proxies). Releases before
+26.10_5 send no `X-Forwarded-*` headers.
 
 ### Metrics
 

@@ -1,7 +1,7 @@
 +++
 title = "Listeners"
 weight = 3
-updated = 2026-10-18
+updated = 2026-10-19
 +++
 
 The `listeners` block defines network endpoints where Zentinel accepts incoming connections. Each listener binds to an address, specifies a protocol, and optionally configures TLS.
@@ -45,6 +45,13 @@ Socket address in `host:port` format:
 | IPv6 all | `[::]:8080` | IPv6 networks |
 | IPv6 localhost | `[::1]:8080` | IPv6 local only |
 | Specific interface | `10.0.1.5:8080` | Multi-homed servers |
+
+The address must be a literal `IP:PORT`; host names are not resolved and
+environment variables are not substituted. From 26.10_5, `zentinel test` and
+startup reject any other value, naming the listener, and point out a `${VAR}`
+in it. (Before 26.10_5, `address "${ZT_ADDR}"` passed `zentinel test` and the
+proxy then panicked at startup.) To template addresses, render the file before
+starting the proxy, for example with `envsubst`.
 
 ### Protocol
 
@@ -137,6 +144,70 @@ routes {
 ```
 
 Route to use when no other route matches. If not set and no route matches, Zentinel returns 404.
+
+### Trusted Proxies and Forwarded Headers {#trusted-proxies}
+
+From 26.10_5, Zentinel sets `X-Forwarded-For`, `X-Forwarded-Proto` and
+`X-Forwarded-Host` on every request it proxies. Which incoming values it keeps
+depends on whether the TCP peer is listed in the listener's `trusted-proxies`:
+
+```kdl
+listeners {
+    listener "public" {
+        address "0.0.0.0:8080"
+        protocol "http"
+        // The load balancer's subnet and one fixed address
+        trusted-proxies "10.0.0.0/8" "192.0.2.7"
+    }
+}
+```
+
+`trusted-proxies` takes CIDR ranges or single IP addresses, IPv4 or IPv6
+(`"2001:db8::/32"`). Repeat the line to spread a long list over several lines;
+every entry counts. It is empty by default, so no peer is trusted.
+
+| Header | Peer not trusted (default) | Peer in `trusted-proxies` |
+|--------|----------------------------|---------------------------|
+| `X-Forwarded-For` | Replaced by the peer's address | Peer's address appended to the incoming list |
+| `X-Forwarded-Proto` | Replaced by `https` (TLS connection) or `http` | Incoming value kept; set as on the left if absent |
+| `X-Forwarded-Host` | Replaced by the request's host | Incoming value kept; set as on the left if absent |
+| `Forwarded`, `X-Real-IP` | Removed | Passed on unchanged |
+
+Zentinel never writes `Forwarded` or `X-Real-IP` itself. A backend that reads
+them falls back to `X-Forwarded-For` or the connection address, both set by
+Zentinel.
+
+**Client IP.** The address Zentinel uses for the client, in the `client-ip`
+rate-limit key, geo filters, `ip-hash` load balancing, the `client_ip` sent to
+agents and access logs, follows the same rule. For an untrusted peer it is the
+peer's address. For a trusted peer it is the right-most address in
+`X-Forwarded-For` that is not itself in `trusted-proxies`. With the listener
+above, a request from the load balancer `10.0.0.5` carrying
+`X-Forwarded-For: 198.51.100.7` is treated as coming from `198.51.100.7`, and
+the backend receives `X-Forwarded-For: 198.51.100.7, 10.0.0.5`.
+
+**Why the default trusts nobody.** A client can send any `X-Forwarded-For` it
+likes. If Zentinel passed it on, or used it as the client IP, a client could
+pick the address that backends log, that rate limits count against and that
+IP-reputation agents check. List only the addresses of proxies you operate,
+or of a CDN whose ranges you control, and make sure clients cannot reach
+Zentinel around them. Walking the chain from the right and stopping at the
+first untrusted address means entries a client wrote to the left of it are
+never used.
+
+**Behind a load balancer.** If Zentinel runs behind a load balancer or CDN and
+your backends need the original client address, list the load balancer in
+`trusted-proxies`. Without it, backends see the load balancer's address in
+`X-Forwarded-For`, lose any `Forwarded` and `X-Real-IP` header it set, and
+rate limits keyed on `client-ip` count all traffic through the load balancer as
+one client.
+
+Route `policies { request-headers { ... } }` run after these headers are
+written, so a route can still `set` or `remove` any of them.
+
+Before 26.10_5, Zentinel sent none of these headers and passed whatever the
+client sent through unchanged. Older releases ignore `trusted-proxies`
+(`zentinel lint` reports it as an unknown key).
 
 ## TLS Configuration
 
@@ -1337,6 +1408,7 @@ upstreams {
 | `request-timeout-secs` | `60` |
 | `keepalive-timeout-secs` | `75` |
 | `max-concurrent-streams` | `100` |
+| `trusted-proxies` | none (no peer trusted) |
 | `tls.min-version` | `1.2` |
 | `tls.ocsp-stapling` | `true` |
 | `tls.session-resumption` | `true` |

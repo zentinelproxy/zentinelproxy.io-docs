@@ -474,6 +474,9 @@ Original Request          Modified Request (to upstream)
 │ Auth: Bearer ... │      │ Auth: Bearer ...             │
 └──────────────────┘      │ X-Correlation-Id: abc-123    │
                           │ X-Trace-Id: abc-123          │
+                          │ X-Forwarded-For: 203.0.113.9 │
+                          │ X-Forwarded-Proto: https     │
+                          │ X-Forwarded-Host: api.ex.com │
                           │ X-Forwarded-By: Zentinel     │
                           │ X-User-Id: user-789          │ ◀── From agent
                           │ Content-Type: application/json│
@@ -488,16 +491,24 @@ Original Request          Modified Request (to upstream)
 |--------|-------|---------|
 | `X-Correlation-Id` | Trace ID | Distributed tracing |
 | `X-Trace-Id` | Trace ID | Same value as `X-Correlation-Id` |
+| `X-Forwarded-For` | Client address | Client IP for the backend (from 26.10_5) |
+| `X-Forwarded-Proto` | `http` or `https` | Scheme the client used (from 26.10_5) |
+| `X-Forwarded-Host` | Request host | Host the client asked for (from 26.10_5) |
 | `X-Forwarded-By` | `Zentinel` | Proxy identification |
 
 By default the client's `Host` header is passed through unchanged.
 
-As of 26.10_3 Zentinel does **not** add `X-Forwarded-For`, `X-Forwarded-Proto`,
-`X-Forwarded-Host` or `Forwarded`, so backends see the proxy as the client
-([#515](https://github.com/zentinelproxy/zentinel/issues/515)). A route on an
-HTTPS listener can set a fixed `X-Forwarded-Proto "https"` through
-`policies { request-headers { set { ... } } }`; there is no way to pass the
-client IP.
+The `X-Forwarded-*` values come from the connection unless the peer is listed in
+the listener's [`trusted-proxies`](/configuration/listeners/#trusted-proxies):
+from an untrusted peer, client-sent `X-Forwarded-*` headers are replaced and
+client-sent `Forwarded` and `X-Real-IP` headers are removed; from a trusted
+peer, the peer is appended to `X-Forwarded-For` and the other headers are kept.
+The client IP that rate limiting, geo filters, agents and access logs use
+follows the same rule. Route `request-headers` policies run afterwards and can
+override any of these headers.
+
+Before 26.10_5, Zentinel sent no `X-Forwarded-*` headers and passed client-sent
+ones through unchanged.
 
 ### Retry Logic
 

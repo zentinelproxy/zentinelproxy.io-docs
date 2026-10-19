@@ -209,7 +209,11 @@ upstreams {
 }
 ```
 
-Same client IP always routes to the same backend (when available).
+Same client IP always routes to the same backend (when available). Behind a
+load balancer, list it in the listener's
+[`trusted-proxies`](/configuration/listeners/#trusted-proxies), or every request
+hashes on the load balancer's address. Before 26.10_5 the client IP did not
+reach peer selection and all clients went to the same backend.
 
 ### Random
 

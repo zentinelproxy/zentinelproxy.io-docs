@@ -232,7 +232,7 @@ upstreams {
 
 2. **Host header mismatch** - Your backend checks the `Host` header and redirects to a canonical domain (e.g., `www.example.com`), but Zentinel forwards a different `Host` value.
 
-3. **`X-Forwarded-Proto` not set** - The backend checks the protocol and issues an HTTPS redirect because it doesn't know the client already connected over HTTPS.
+3. **`X-Forwarded-Proto` says `http`** - The backend checks the protocol and issues an HTTPS redirect because it doesn't know the client already connected over HTTPS. This happens when TLS ends at a load balancer in front of Zentinel, or on releases before 26.10_5.
 
 **Solution for cause 1 (most common):**
 
@@ -274,7 +274,17 @@ routes {
 
 **Solution for cause 3:**
 
-Zentinel does not send `X-Forwarded-Proto` on its own as of 26.10_3 ([#515](https://github.com/zentinelproxy/zentinel/issues/515)). Set it on routes served by an HTTPS listener:
+From 26.10_5, Zentinel sets `X-Forwarded-Proto` to `https` for requests that arrived on a TLS listener and to `http` otherwise. If TLS ends at a load balancer that forwards plain HTTP to Zentinel, list the load balancer in the listener's [`trusted-proxies`](/configuration/listeners/#trusted-proxies) so its `X-Forwarded-Proto: https` is kept instead of replaced:
+
+```fragment,kdl
+listener "public" {
+    address "0.0.0.0:8080"
+    protocol "http"
+    trusted-proxies "10.0.0.0/8"
+}
+```
+
+Before 26.10_5, Zentinel did not send `X-Forwarded-Proto` at all. On those releases, or to force a value, set it on the route:
 
 ```kdl
 routes {
