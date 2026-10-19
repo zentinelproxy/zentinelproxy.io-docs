@@ -24,7 +24,7 @@ jobs:
       # Pinned Zentinel release the snippets are checked against. Bump both
       # together when documenting a newer release.
       ZENTINEL_RELEASE: "26.10_5"
-      ZENTINEL_SHA256: "92d82acf70d1ce373dabd661bef70010bae5bd0bfc4ced5137572ce1583a7ad8"
+      ZENTINEL_SHA256: "7d6e508107832ea3e82e688011a163a0430ff102a0182fa4f36763bc8dfeea31"
     steps:
       - uses: actions/checkout@v4
 
@@ -37,7 +37,7 @@ jobs:
           echo "${ZENTINEL_SHA256}  $RUNNER_TEMP/$archive" | sha256sum -c -
           mkdir -p "$RUNNER_TEMP/zentinel"
           tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP/zentinel"
-          # The release archive does not carry the executable bit.
+          # Archives before 26.10_5 did not carry the executable bit (zentinel#519).
           chmod +x "$RUNNER_TEMP/zentinel/zentinel"
           "$RUNNER_TEMP/zentinel/zentinel" --version
           echo "ZENTINEL_BIN=$RUNNER_TEMP/zentinel/zentinel" >> "$GITHUB_ENV"
