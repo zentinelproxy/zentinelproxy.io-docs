@@ -5,7 +5,7 @@ description = "Settings Zentinel accepts but does not apply, and behaviour that 
 updated = 2026-10-19
 +++
 
-This page lists what release **26.10_4** accepts in a configuration but does not
+This page lists what release **26.10_5** accepts in a configuration but does not
 apply, and where its behaviour differs from what you would reasonably expect.
 Each entry links the tracking issue where there is one, and gives a workaround
 where one exists. Entries are removed when a release fixes them; the
@@ -13,51 +13,26 @@ where one exists. Entries are removed when a release fixes them; the
 
 Two habits catch most of these early:
 
-- Run `zentinel lint -c FILE` as well as `zentinel test`. Only `lint` reports
-  settings that are misspelled or in the wrong block.
+- Run `zentinel test --strict -c FILE` before every deploy or reload. It fails
+  on settings that are misspelled, in the wrong block, or not applied; plain
+  `zentinel test` prints them as warnings, and `zentinel lint` adds
+  best-practice advice.
 - After starting the proxy, read the `WARN` lines it logs at startup. Several of
   the cases below are logged there and nowhere else.
 
 ## Checking a configuration
 
-**`zentinel test` does not report ignored settings.** A misspelled or misplaced
-key (`adress`, `timeout-sec`) passes `test` and `--test`; the proxy runs with the
-default. Only `zentinel lint` reports it.
-[#523](https://github.com/zentinelproxy/zentinel/issues/523).
-*Workaround:* run `zentinel lint` before every deploy or reload.
+**Directory configurations cannot be loaded.** `zentinel -c <dir>` and
+`zentinel test -c <dir>` fail with "Is a directory": the multi-file loader is
+not reachable from the command line, and neither are the settings only it reads
+(the `-bytes` `limits` names, `max-requests-per-second-*`, `max-memory-bytes`,
+...). [#541](https://github.com/zentinelproxy/zentinel/issues/541).
+*Workaround:* use a single configuration file. See
+[Limits](/configuration/limits/) for the keys it reads.
 
-**Unknown values fall back to a default without a warning.** Neither `test` nor
-`lint` reports these ([#521](https://github.com/zentinelproxy/zentinel/issues/521)):
-
-| You write | The proxy uses |
-|-----------|----------------|
-| `load-balancing "least-connections"` (hyphen) or any unknown name | `round_robin` |
-| `health-check { type "htttp" { ... } }` | a TCP check |
-| `priority "urgent"` | `50` (`"normal"`) |
-| `builtin-handler "helth"` | no handler: the route answers `500` |
-| `method "GET" "POST"` in `matches` | `GET` only |
-| `path-prefix "/api" host "a.com"` on one line in `matches` | `path-prefix` only |
-
-*Workaround:* use the exact names from the reference pages (underscores for
-load-balancing algorithms; `low`, `normal`, `high`, `critical` for priority, which
-are 10, 50, 100 and 1000), one `method` per route, one condition per line.
-
-**`limits` key names differ between a single file and a directory.** In a single
-configuration file only `max-header-size`, `max-header-count`, `max-body-size`,
-`max-connections-per-client`, `max-total-connections` and
-`max-in-flight-requests` are read. The `-bytes` names (`max-body-size-bytes`,
-`max-header-size-bytes`, ...) are read only when the configuration is a
-directory, and in a single file they are ignored without a lint warning. See
-[Limits](/configuration/limits/).
-*Workaround:* in a single file, use the names without `-bytes`.
-
-**`max-body-size` below 1 MiB fails validation** in a single file, with
-`max_body_buffer_bytes cannot exceed max_body_size_bytes`: the body buffer
-defaults to 1 MiB and cannot be set from a single file.
-
-**No environment variable substitution.** `${VAR}` is kept as literal text. In
-a listener `address` it passes `zentinel test`, then the proxy panics at
-startup. [#520](https://github.com/zentinelproxy/zentinel/issues/520).
+**No environment variable substitution.** `${VAR}` is kept as literal text.
+`zentinel test` rejects it in a listener address, an upstream target and the
+metrics address; elsewhere it is used as written.
 *Workaround:* render the file before starting the proxy, for example with
 `envsubst`.
 
@@ -68,68 +43,45 @@ startup. [#520](https://github.com/zentinelproxy/zentinel/issues/520).
 
 ## Requests and responses
 
-**No `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host` or
-`Forwarded` header is sent to upstreams.** Backends see the proxy as the client.
-The proxy adds only `X-Correlation-Id`, `X-Trace-Id` and `X-Forwarded-By:
-Zentinel`. [#515](https://github.com/zentinelproxy/zentinel/issues/515).
-*Workaround:* for the protocol, set `"X-Forwarded-Proto" "https"` in
-`policies { request-headers { set { ... } } }` on routes of an HTTPS listener.
-There is none for the client IP.
-
-**Request body limits.** A route's `policies { max-body-size }` is not enforced.
-The global `limits { max-body-size }` is, but a request over it gets
-`500 Internal Server Error` instead of `413`. [#517](https://github.com/zentinelproxy/zentinel/issues/517).
-*Workaround:* use the global limit.
-
 **Error pages cannot be configured.** No parser reads `error-pages`, so there
 are no templates and no per-status pages. What clients receive for each kind of
 error is listed under [Error Pages](/configuration/routes/#error-pages).
+[#542](https://github.com/zentinelproxy/zentinel/issues/542).
 
-**Upstream error responses get the proxy's `Content-Type`.** For an upstream
-`4xx`/`5xx` the body is passed through, but `Content-Type` is replaced:
-`text/html; charset=utf-8` on `web` and `static` routes, `application/json` on
-`api`, `builtin` and `inference` routes. A JSON error from a backend behind a
-`web` route reaches the client labelled `text/html`.
-[#522](https://github.com/zentinelproxy/zentinel/issues/522).
-
-**The "no route matched" response is mislabelled.** It is `404` with the body
-`{"error":"404 Internal Server Error","trace_id":""}`: the reason text is wrong
-and the trace ID is empty. [#525](https://github.com/zentinelproxy/zentinel/issues/525).
-*Workaround:* end the route list with a catch-all route (`path-prefix "/"`) or
-set the listener's `default-route`.
-
-**Request bodies over 64 KiB are refused on routes with `api-schema`.** The
-body is read whole to validate it, and can be forwarded afterwards only while it
-fits pingora's 64 KiB retry buffer, so a larger body gets `413`.
-[#531](https://github.com/zentinelproxy/zentinel/issues/531).
-*Workaround:* none on the validated route; validate larger payloads in the
-backend or in an agent.
+**A request over a header limit gets `500`**, not `431`. See
+[Limits](/configuration/limits/#header-limits).
 
 ## Agents
 
-**The agent block's `failure-mode` does not decide requests.** The filter's
-`failure-mode` does, then the route's `policies { failure-mode }`, then
-`closed`. An unrecognised value (`"fail-open"`) means `closed` without a
-warning. [#529](https://github.com/zentinelproxy/zentinel/issues/529).
-*Workaround:* set `failure-mode` on the filter that calls the agent.
+**The agent filter's `timeout-ms` and `phase` are not applied.** They are
+parsed and not read at request time; the agent block's `timeout-ms` applies.
+[#542](https://github.com/zentinelproxy/zentinel/issues/542).
+*Workaround:* set `timeout-ms` on the agent block.
 
 ## Rate limiting
 
-**`rate-limits { default-rps default-burst }` is not applied.** Routes without
-their own limit are not limited. `lint` is silent.
-[#518](https://github.com/zentinelproxy/zentinel/issues/518).
-*Workaround:* attach a `type "rate-limit"` filter to each route, or use
-`rate-limits { global { ... } }`. See [Filters](/configuration/filters/).
+**Redis and memcached rate limiting ignore `burst`.** The distributed backends
+count requests per fixed one-second window; only the local limiter is a token
+bucket. [#543](https://github.com/zentinelproxy/zentinel/issues/543).
 
-## Health checks and reload
-
-**A reload does not start health checks.** After `SIGHUP`, upstreams that
-gained or changed a `health-check` are not probed. A fresh start also probes
-every target twice per interval.
-[#516](https://github.com/zentinelproxy/zentinel/issues/516).
-*Workaround:* restart the proxy after adding or changing a health check.
-`pgrep zentinel` also matches agent processes such as `zentinel-echo-agent`; use
+**Rate limiters are not rebuilt on reload.** After `SIGHUP`, a changed
+`rate-limit` filter, `rate-limits { default-rps }` or `global` limit keeps its
+old values. [#543](https://github.com/zentinelproxy/zentinel/issues/543).
+*Workaround:* restart the proxy after changing a rate limit. `pgrep zentinel`
+also matches agent processes such as `zentinel-echo-agent`; use
 `pgrep -x zentinel` when sending signals.
+
+## Upstreams and health checks
+
+**Targets given as a host name are not health-checked.**
+`target "backend.internal:80"` is never probed, so it stays in rotation whatever
+its state. [#544](https://github.com/zentinelproxy/zentinel/issues/544).
+*Workaround:* use IP addresses for targets that need health checks, or
+`discovery "dns"`, whose resolved addresses are probed.
+
+**An unknown sticky-session `fallback` becomes round robin** without a warning
+from `test` or `lint`.
+[#542](https://github.com/zentinelproxy/zentinel/issues/542).
 
 ## Listeners and TLS
 
@@ -140,12 +92,6 @@ validation. An `https` listener serves HTTP/1.1 and HTTP/2 (through ALPN).
 "Unwired feature" warning at startup. See
 [Listeners](/configuration/listeners/).
 
-**The "Unwired feature" warnings for `cipher-suite` and TLS `max-version` are
-wrong.** Both settings are applied: with `max-version "TLS1.2"` a TLS 1.3-only
-client is refused, and with one `cipher-suite` a client offering only another
-suite fails the handshake. The warnings can be ignored.
-[#526](https://github.com/zentinelproxy/zentinel/issues/526). (Write
-`cipher-suite` once per suite; the plural `cipher-suites` is rejected.)
 
 ## Process, logging and resource limits
 
@@ -156,14 +102,21 @@ other than `"info"`/`"json"` produces an "Unwired feature" warning. The
 *Workaround:* set `RUST_LOG` (for example `RUST_LOG=warn`). See
 [Observability](/configuration/observability/).
 
-**Connection limits are not enforced.** `system { max-connections }` and
-`limits { max-connections-per-client max-total-connections
-max-in-flight-requests }` are accepted and do nothing. `system { daemon }` is
-not read either; use the `-d` / `--daemon` flag.
-[#527](https://github.com/zentinelproxy/zentinel/issues/527).
+**Connection limits are not enforced.** Zentinel does not limit client
+connections or concurrent requests. `limits { max-connections-per-client
+max-total-connections max-in-flight-requests }` are accepted and do nothing,
+without a warning; `system { max-connections }` is reported by `zentinel test`
+and `lint` as not applied.
+[#542](https://github.com/zentinelproxy/zentinel/issues/542).
 *Workaround:* use a rate-limit filter to bound per-client load, and the
 operating system's limits for connections. More settings of this kind are in
 [Performance Tuning: Settings with no effect](/operations/performance-tuning/#settings-with-no-effect).
+
+**Namespace and service `limits` are not applied.** Every request is held to the
+global `limits` block and its route's `policies { max-body-size }`.
+[#542](https://github.com/zentinelproxy/zentinel/issues/542).
+*Workaround:* set `max-body-size` in the routes' `policies`, and rate-limit
+filters on the routes.
 
 ## Documented elsewhere
 

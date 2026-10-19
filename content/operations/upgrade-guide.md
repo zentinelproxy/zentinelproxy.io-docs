@@ -1,7 +1,7 @@
 +++
 title = "Upgrade Guide"
 weight = 10
-updated = 2026-10-18
+updated = 2026-10-19
 +++
 
 How to move a Zentinel deployment to a newer release, and which releases change behaviour you may depend on.
@@ -88,11 +88,16 @@ Releases not listed here are dependency, security or documentation updates with 
 
 | Release | Type | What changes | What to do |
 |---------|------|--------------|------------|
+| **26.10_5** | Behaviour | Zentinel sends `X-Forwarded-For`, `-Proto` and `-Host`, replacing client-sent ones, and drops client-sent `Forwarded` and `X-Real-IP`, unless the peer is in the listener's new `trusted-proxies`. The client IP for rate limits, geo filters, `ip_hash`, agents and logs follows the same rule | **Behind a load balancer:** list it in [`trusted-proxies`](/configuration/listeners/#trusted-proxies), or backends see its address and `client-ip` rate limits count it as one client |
+| **26.10_5** | Behaviour | Failing health checks take targets out of rotation; with all failing, requests get `503`. Health checks follow reloads, and discovery-backed upstreams are probed. The HTTP check honours `expected-status` and `timeout-secs` and sends `Host` | Check health-check `path`, `expected-status` and `host` against what each backend answers before upgrading |
+| **26.10_5** | Behaviour | Rate limiting: `burst` is the token-bucket size (default `10`, so `max-rps 100` without `burst` admits 10 at once); `rate-limits { default-rps }` applies to routes without a limit; `global { key }` and `header:<name>` keys work; `client-ip` buckets are per client (they were shared) | Set `burst` where clients send in bursts; expect `429`s from `default-rps` |
+| **26.10_5** | Behaviour | Upstream error responses pass through unchanged; route `policies { max-body-size }` is enforced (the smaller of route and global applies); an over-limit body gets `413` (was `500`) | Raise the global `max-body-size` if a route needs a larger limit than it |
+| **26.10_5** | Tooling | `zentinel test` prints "is being ignored" warnings, and `test --strict` fails on them. `method "GET" "POST"` matches both; `system { daemon #true }` daemonizes; `system { max-connections }` is reported as not applied; a `${` in a listener address is rejected. In directory configurations an unknown agent `failure-mode` is a load error | Run `zentinel test --strict` with the new binary; under systemd or in containers, make sure `daemon` is not set |
 | **26.10_3** | Build | Building from source needs Rust 1.96 | Update the toolchain for source builds |
 | **26.10_2** | Behaviour | ACME renewal follows the CA's ARI renewal window when the CA offers one, so certificates can renew earlier than `renew-before-days` (never later) | Nothing, unless you monitor renewal timing |
 | **26.09_6** | Behaviour | Pingora 0.9.0: hop-by-hop request headers (`Connection`, `Keep-Alive`, `TE`, `Upgrade`, `Proxy-Authorization`, …) are no longer forwarded; only WebSocket upgrades pass, other `Upgrade` requests such as `h2c` do not; requests that nominate `Host` or forwarding headers in `Connection`, or carry ambiguous authorities, are rejected | Check upstreams that relied on `Proxy-Authorization` or non-WebSocket upgrades |
 | **26.09_4** | Behaviour | An agent that was unreachable at startup, or restarted later, is reconnected. Before, traffic for it was passed through uninspected (with `failure-mode "open"`) until the proxy restarted. Multiplexed MCP tool calls now use the route's retry policy, connection pool and upstream TLS | Expect agents to start acting on traffic they were silently skipping |
-| **26.09_2** | Behaviour | `health-check` blocks probe upstreams. They never sent a probe before, so every target counted as healthy | Check that health-check paths and expected statuses are right; wrong ones now take targets out of rotation |
+| **26.09_2** | Behaviour | `health-check` blocks probe upstreams. They never sent a probe before. Probe results took targets out of rotation only from 26.10_5 | Check that health-check paths and expected statuses are right |
 | **26.08_13** | Behaviour | `discovery "dns-srv"` resolves SRV records with their ports and weights (before: the bare domain on port 80) | Check which backends are selected after the upgrade |
 | **26.08_11** | Behaviour | Upstream `discovery` blocks resolve and route. Before, such upstreams routed nowhere | Remove static `target` workarounds next to `discovery`, or both are used |
 | **26.08_10** | Behaviour | `tracing { enabled #false }` disables tracing. Before, tracing ran whenever the block was present | Check configurations that set it, and anything that consumes their spans |

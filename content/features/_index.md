@@ -132,7 +132,8 @@ Zentinel is a next-generation reverse proxy built on [Cloudflare's Pingora](http
 - Configurable check intervals
 - Consecutive success/failure thresholds
 - Response time averaging
-- Automatic target ejection
+- Automatic target ejection: failing targets leave rotation, and an upstream with none left answers `503` (from 26.10_5)
+- Health checks follow configuration reloads (from 26.10_5)
 
 ### Connection Management
 
@@ -320,12 +321,12 @@ Zentinel is a next-generation reverse proxy built on [Cloudflare's Pingora](http
 - **Local rate limiting** — Per-instance, lock-free
 - **Distributed rate limiting** — Redis-based (optional feature)
 - **Memcached rate limiting** — Alternative distributed backend
-- Token bucket algorithm
-- Configurable burst size
-- Multiple key types: client IP, API key, user, custom
-- Actions: Reject, Delay, Challenge
-- Per-route policies
-- Scope-aware limits (per namespace/service)
+- Token bucket algorithm (local limiter; Redis and memcached count per window)
+- Configurable burst size (from 26.10_5)
+- Multiple key types: client IP, path, route, header value, MCP tool
+- Actions: Reject, Delay, Log only
+- Per-route filters, a default for routes without one, and a server-wide limit
+- Client IP from `X-Forwarded-For` behind listed `trusted-proxies` (from 26.10_5)
 
 ### GeoIP Filtering
 <small class="source-ref">[`crates/proxy/src/geo_filter.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/proxy/src/geo_filter.rs)</small>
@@ -512,7 +513,7 @@ Zentinel is a next-generation reverse proxy built on [Cloudflare's Pingora](http
 
 - Hierarchical organization (global → namespace → service)
 - Resource scoping and visibility
-- Per-namespace rate limits
+- Per-namespace rate-limit filters
 - Per-namespace circuit breakers
 - Per-namespace policies
 - Resource export for inter-namespace access
@@ -525,10 +526,10 @@ Zentinel is a next-generation reverse proxy built on [Cloudflare's Pingora](http
 <small class="docs-ref">[Error Pages](/configuration/routes/#error-pages)</small>
 <small class="source-ref">[`crates/proxy/src/errors/mod.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/proxy/src/errors/mod.rs)</small>
 
-- Errors the proxy generates (unreachable upstream, timeout, no route) are JSON: `{"error":"503 Service Unavailable","trace_id":"..."}`, with the trace ID also in `X-Correlation-Id`
+- Errors the proxy generates (unreachable upstream, timeout, no route, body too large) are JSON: `{"error":"503 Service Unavailable","trace_id":"..."}`, with the trace ID also in `X-Correlation-Id`
 - Request schema validation failures return a JSON body with `status`, `title`, `message`, `request_id`, `timestamp` and `details`
-- Upstream `4xx`/`5xx` bodies are passed through, but their `Content-Type` is replaced by the route's default (`text/html` on web routes) ([#522](https://github.com/zentinelproxy/zentinel/issues/522))
-- Error pages and templates are not configurable from KDL as of 26.10_3
+- Upstream `4xx`/`5xx` responses are passed through unchanged (from 26.10_5; before, `Content-Type` was replaced)
+- Error pages and templates are not configurable from KDL
 
 ---
 
@@ -540,11 +541,8 @@ Zentinel is a next-generation reverse proxy built on [Cloudflare's Pingora](http
 
 - Max header size
 - Max header count
-- Max request body size
-- Max decompression ratio
-- Max connections per upstream
-- Max in-flight requests per worker
-- Connection limits per client
+- Max request body size (`413` when exceeded, from 26.10_5)
+- No client connection limit
 
 ### Per-Route Limits
 
