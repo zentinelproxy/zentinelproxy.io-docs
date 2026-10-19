@@ -291,14 +291,15 @@ The parser accepts these keys, but the proxy does not act on them in the current
 | Key | Note |
 |-----|------|
 | `system { max-connections }` | The number of client connections is not capped |
-| `system { daemon }` | Use the `--daemon` / `-d` command-line flag |
 | listener `max-concurrent-streams` | HTTP/2 stream limits are not configurable |
 | `connection-pool { max-connections max-idle max-lifetime-secs }` | Pool size is fixed and connections have no maximum lifetime |
 | `timeouts { request-secs }` | There is no total-request deadline; use read timeouts |
 | `http-version { max-h2-streams }` | Not applied to upstream connections |
 | `limits { max-connections-per-client max-total-connections max-in-flight-requests }` | Not enforced. Use a [rate-limit filter](/configuration/filters/#rate-limiting) to bound per-client load |
-| route `policies { max-body-size }` | Not enforced. Use the global `limits { max-body-size }` |
 | `compress` filter `level` and `algorithms` | The level is fixed at 6 and the encoding follows the client's `Accept-Encoding` |
+
+`system { daemon }` and route `policies { max-body-size }` had no effect before
+26.10_5; from 26.10_5 both are applied.
 
 ## See also
 

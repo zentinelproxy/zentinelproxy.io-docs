@@ -66,7 +66,6 @@ schema-version "1.0"
 
 system {
     worker-threads 2
-    max-connections 1000
 }
 
 listeners {
@@ -356,7 +355,7 @@ Mirror requests with body inspection:
 route "api-with-body" {
     matches {
         path "/api/users"
-        method "POST"  // one method: the parser reads only the first argument (26.10_3)
+        method "POST"
     }
     upstream "production"
 
@@ -669,7 +668,6 @@ schema-version "1.0"
 
 system {
     worker-threads 4
-    max-connections 10000
 }
 
 listeners {

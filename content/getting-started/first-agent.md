@@ -359,9 +359,9 @@ Where Zentinel reads the setting for a request:
 2. Otherwise `failure-mode` in the route's `policies` block.
 3. Otherwise `closed`.
 
-The `failure-mode` setting inside an `agent` block does not decide this. An agent block with `failure-mode "open"` and a filter without one still answers 503 when the agent is down.
+The `failure-mode` setting inside an `agent` block does not decide this; it applies to request bodies, responses and WebSocket frames. An agent block with `failure-mode "open"` and a filter without one still answers 503 when the agent is down. From 26.10_5, `zentinel test` and `lint` warn about that combination.
 
-The filter accepts exactly `"open"` or `"closed"`. Any other value, such as `"fail-open"`, is dropped without an error or a `lint` warning, and the route's mode applies, which is `closed` unless you set it.
+The filter accepts exactly `"open"` or `"closed"`. Any other value, such as `"fail-open"`, is ignored and the route's mode applies, which is `closed` unless you set it. From 26.10_5 `zentinel test` and `lint` report it; before, nothing did.
 
 ## Unix sockets on macOS
 

@@ -200,12 +200,9 @@ matches {
 | `PUT` | No |
 | `DELETE` | No |
 
-{% callout(type="warning") %}
-As of 26.10_3 the configuration parser keeps only the **first** method of a
-`method` node (`crates/config/src/kdl/routes.rs`), so `method "GET" "POST"`
-matches `GET` only, although the router itself supports several. Until that is
-fixed, give each method its own route, or leave the condition out.
-{% end %}
+`method "GET" "POST"` matches either method. Before 26.10_5 the configuration
+parser kept only the first method of a `method` node, so it matched `GET`
+only; on those releases give each method its own route.
 
 ### Header Matching
 

@@ -37,9 +37,9 @@ zentinel lint --config zentinel.kdl
 zentinel --test --verbose --config zentinel.kdl
 ```
 
-If a setting seems to have no effect, run `lint` first. KDL accepts any name, so a typo in an optional setting is not an error: the proxy runs on the default, `--test` passes, and only `lint` says "is being ignored".
+If a setting seems to have no effect, run `zentinel test` or `lint` first. KDL accepts any name, so a typo in an optional setting is not an error: the proxy runs on the default and the check passes, but from 26.10_5 both `zentinel test` and `lint` print "is being ignored" for it (`zentinel test --strict` fails). Before 26.10_5 only `lint` reported it. `-t` / `--test` prints the warnings too but has no `--strict`.
 
-If `lint` is silent and the setting still does nothing, check [Known Limitations](/reference/known-limitations/). It lists settings the current release accepts but does not apply, and behaviour that differs from what the configuration suggests, with workarounds.
+If neither reports anything and the setting still does nothing, check [Known Limitations](/reference/known-limitations/). It lists settings the current release accepts but does not apply, and behaviour that differs from what the configuration suggests, with workarounds.
 
 ### Check Connectivity
 

@@ -61,7 +61,6 @@ agent "waf" type="waf" { /* ... */ }
 system {
     // Numbers (integer)
     worker-threads 4
-    max-connections 1000
     graceful-shutdown-timeout-secs 30
 }
 
@@ -223,7 +222,6 @@ schema-version "1.0"
 
 system {
     worker-threads 0          // 0 = auto-detect CPU cores
-    max-connections 10000
     graceful-shutdown-timeout-secs 30
 }
 

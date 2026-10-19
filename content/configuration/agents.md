@@ -291,13 +291,18 @@ agent "analytics-agent" type="custom" {
 | `open` | Allow requests through when agent unavailable (availability-first) |
 
 {% callout(type="warning") %}
-As of 26.10_4, what decides a request when an agent is unavailable is the
-`failure-mode` on the **filter** that calls the agent, then the route's
-`policies { failure-mode }`, and otherwise `closed`. The value on the `agent`
-block itself is not used for that decision, and an unrecognised value such as
-`"fail-open"` silently means `closed`
-([#529](https://github.com/zentinelproxy/zentinel/issues/529)). Set
-`failure-mode` on the filter, as in [Your First Agent](/getting-started/first-agent/#6-stop-the-agent).
+What decides a request when an agent is unavailable during the request-headers
+call is the `failure-mode` on the **filter** that calls the agent, then the
+route's `policies { failure-mode }`, and otherwise `closed`. The value on the
+`agent` block does not decide that call; it applies to request bodies,
+responses and WebSocket frames. Set `failure-mode` on the filter, as in
+[Your First Agent](/getting-started/first-agent/#6-stop-the-agent).
+
+From 26.10_5, `zentinel test` and `lint` report an agent block's
+`failure-mode` when a filter using that agent sets none, and an unrecognised
+filter value such as `"fail-open"` (which means the route's mode, `closed` by
+default). Before 26.10_5 neither was reported
+([#529](https://github.com/zentinelproxy/zentinel/issues/529)).
 {% end %}
 
 ### Circuit Breaker

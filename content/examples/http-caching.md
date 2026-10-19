@@ -49,7 +49,6 @@ Create `zentinel.kdl`:
 
 system {
     worker-threads 4
-    max-connections 10000
 }
 
 listeners {
@@ -275,7 +274,7 @@ routes {
 
         matches {
             path-prefix "/api"
-            method "POST"  // one method: the parser reads only the first argument (26.10_3)
+            method "POST"
         }
 
         upstream "api-backend"
@@ -292,7 +291,7 @@ routes {
 
         matches {
             path-prefix "/_cache/purge"
-            method "POST"  // one method: the parser reads only the first argument (26.10_3)
+            method "POST"
         }
 
         builtin-handler "cache-purge"

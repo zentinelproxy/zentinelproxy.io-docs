@@ -35,7 +35,6 @@ Top-level block for server-wide configuration including worker threads, connecti
 ```kdl
 system {
     worker-threads 4
-    max-connections 10000
     graceful-shutdown-timeout-secs 30
     auto-reload #true
 }
@@ -263,16 +262,10 @@ system {
 
 ### `max-connections`
 
-Maximum number of simultaneous connections server-wide.
+Accepted but **not applied**: Zentinel does not limit client connections. From
+26.10_5, `zentinel test` and `zentinel lint` report it as not applied.
 
 **Context:** `system`
-**Default:** `10000`
-
-```kdl
-system {
-    max-connections 50000
-}
-```
 
 ---
 
@@ -293,7 +286,9 @@ system {
 
 ### `daemon`
 
-When enabled, Zentinel forks to the background after startup.
+When enabled, Zentinel forks to the background after startup, like the
+`-d` / `--daemon` flag. Read from the configuration from 26.10_5; before, only
+the flag worked.
 
 **Context:** `system`
 **Default:** `#false`
@@ -919,8 +914,8 @@ matches {
 }
 ```
 
-As of 26.10_3 the parser reads only the first argument: `method "GET" "POST"`
-matches `GET` only. Use one route per method.
+From 26.10_5, `method "GET" "POST"` matches either method. Before 26.10_5 only
+the first argument was read (`GET` only); use one route per method there.
 
 ---
 

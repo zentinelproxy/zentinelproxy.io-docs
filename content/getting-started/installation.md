@@ -264,21 +264,23 @@ EOF
 zentinel -c /path/to/zentinel.kdl
 
 # Check a configuration without running it
-zentinel test -c zentinel.kdl   # fails on anything that stops the proxy starting
-zentinel lint -c zentinel.kdl   # also reports settings that are being ignored
+zentinel test -c zentinel.kdl   # fails on anything that stops the proxy starting; warns about ignored settings
+zentinel test --strict -c zentinel.kdl   # also fails on ignored settings (for CI)
+zentinel lint -c zentinel.kdl   # ignored settings plus best-practice advice
 
 # Run with debug logging
 zentinel -c zentinel.kdl --verbose
 ```
 
-Run both `test` and `lint`: a misspelled optional setting is not an error, so `test` passes and the proxy uses the default. Only `lint` reports it. See [Quick Start](../quick-start/#4-check-the-configuration).
+A misspelled optional setting is not an error, so `test` passes and the proxy uses the default. From 26.10_5 `test` prints a warning for it and `test --strict` fails; before 26.10_5 only `lint` reported it. See [Quick Start](../quick-start/#4-check-the-configuration).
 
 ### Commands
 
 | Command | Description |
 |---------|-------------|
 | `run` | Run the proxy (the default when no command is given) |
-| `test` | Validate the configuration file and exit |
+| `test` | Validate the configuration file, print settings that are being ignored, and exit |
+| `test --strict` | As `test`, but exit `1` if any setting is being ignored (from 26.10_5) |
 | `lint` | Report ignored settings and best-practice issues |
 | `validate` | Validate the configuration with connectivity checks (upstreams, agents, certificates) |
 | `bundle` | Install, check and update the bundled agents |
@@ -290,7 +292,7 @@ Run both `test` and `lint`: a misspelled optional setting is not an error, so `t
 | `-c, --config <FILE>` | Configuration file path (also `ZENTINEL_CONFIG`) |
 | `-t, --test` | Test the configuration and exit (same as `test`) |
 | `--verbose` | Debug-level logging. For finer control, set `RUST_LOG` |
-| `-d, --daemon` | Run in the background |
+| `-d, --daemon` | Run in the background (same as `system { daemon #true }` from 26.10_5) |
 | `-u, --upgrade` | Take over listening sockets from a running instance (zero-downtime upgrade) |
 | `-V, --version` | Print version information |
 | `-h, --help` | Print help |

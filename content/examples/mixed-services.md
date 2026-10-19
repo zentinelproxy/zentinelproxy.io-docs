@@ -147,7 +147,7 @@ routes {
         priority 250
         matches {
             path-prefix "/api/products/"
-            method "POST"  // one method: the parser reads only the first argument (26.10_3)
+            method "POST"
         }
         upstream "product-service"
         filters "auth" "ratelimit"

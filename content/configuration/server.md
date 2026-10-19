@@ -4,14 +4,13 @@ weight = 2
 updated = 2026-10-18
 +++
 
-The `server` block configures global proxy settings including worker threads, connection limits, and process management.
+The `system` block (formerly `server`) configures global proxy settings including worker threads, shutdown and process management.
 
 ## Basic Configuration
 
 ```kdl
 system {
     worker-threads 0              // 0 = auto-detect CPU cores
-    max-connections 10000
     graceful-shutdown-timeout-secs 30
 }
 ```
@@ -39,23 +38,13 @@ system {
 
 ### Connection Limits
 
-```kdl
-system {
-    max-connections 10000
-}
-```
-
-Maximum total concurrent connections across all listeners. When reached, new connections are rejected.
-
-**Sizing guidelines:**
-
-| Deployment | Suggested Value |
-|------------|-----------------|
-| Development | 1000 |
-| Small production | 10000 |
-| Large production | 50000+ |
-
-Memory impact: ~10KB per connection.
+Zentinel does not limit the number of client connections. `system {
+max-connections }` is accepted but not applied; from 26.10_5 `zentinel test`
+and `zentinel lint` report it ("…is not applied and is being ignored"), and
+the shipped configurations no longer set it. Bound load with
+[rate limits](../filters/#rate-limiting), and cap connections in front of the
+proxy (a load balancer) or with the file descriptor limit (`ulimit -n`,
+systemd `LimitNOFILE=`).
 
 ### Graceful Shutdown
 
@@ -167,6 +156,12 @@ Run Zentinel as a background daemon:
 - Detaches from terminal
 - Writes PID to file for process management
 
+From 26.10_5, `daemon #true` in the configuration daemonizes the proxy, as the
+`-d` / `--daemon` flag does; either one is enough. Before 26.10_5 the
+configuration value was not read and only the flag worked. Under systemd or in
+a container, leave both off: the supervisor expects the process to stay in the
+foreground.
+
 ### User/Group
 
 ```kdl
@@ -206,7 +201,6 @@ listeners {
 system {
     // Performance
     worker-threads 0
-    max-connections 50000
 
     // Shutdown
     graceful-shutdown-timeout-secs 60
@@ -252,7 +246,6 @@ in the configuration file. The variables Zentinel reads are listed in
 | Setting | Default |
 |---------|---------|
 | `worker-threads` | `0` (auto) |
-| `max-connections` | `10000` |
 | `graceful-shutdown-timeout-secs` | `30` |
 | `trace-id-format` | `tinyflake` |
 | `auto-reload` | `false` |
@@ -265,7 +258,6 @@ in the configuration file. The variables Zentinel reads are listed in
 ```kdl
 system {
     worker-threads 0           // Use all cores
-    max-connections 100000     // High connection limit
     graceful-shutdown-timeout-secs 120  // Long drain time
 }
 ```
@@ -275,7 +267,6 @@ system {
 ```kdl
 system {
     worker-threads 2           // Limited threads
-    max-connections 5000       // Lower limit
     graceful-shutdown-timeout-secs 15   // Quick shutdown
 }
 ```

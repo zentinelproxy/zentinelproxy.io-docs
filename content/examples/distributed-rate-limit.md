@@ -47,7 +47,6 @@ Create `zentinel.kdl`:
 
 system {
     worker-threads 4
-    max-connections 10000
 }
 
 listeners {

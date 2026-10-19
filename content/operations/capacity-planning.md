@@ -41,7 +41,6 @@ Guide for sizing and scaling Zentinel deployments.
 ```kdl
 system {
     worker-threads 2
-    max-connections 5000
 }
 
 // Upstream connection pool (per upstream)
@@ -65,7 +64,6 @@ upstreams {
 ```kdl
 system {
     worker-threads 4
-    max-connections 20000
 }
 
 // Upstream connection pool (per upstream)
@@ -89,7 +87,6 @@ upstreams {
 ```kdl
 system {
     worker-threads 0  // Use all available cores
-    max-connections 50000
 }
 
 listeners {
@@ -228,7 +225,6 @@ system {
     worker-threads 8          // Increase from 4
 
     // Increase connection limits (if connection-bound)
-    max-connections 50000     // Increase from 20000
 }
 ```
 

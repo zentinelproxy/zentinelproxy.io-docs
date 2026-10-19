@@ -186,16 +186,21 @@ curl -s localhost:9090/metrics | grep open_connections
 curl -s localhost:9090/metrics | grep pending_requests
 ```
 
-**Mitigation**:
+**Mitigation**: Zentinel does not limit client connections, so shed load in
+front of it (the load balancer) or tighten rate limits. Rate limiters are not
+rebuilt on reload ([#543](https://github.com/zentinelproxy/zentinel/issues/543)),
+so a changed rate limit needs a restart:
+
 ```kdl
-// Reduce connection limits immediately
-limits {
-    max-connections 5000
-    max-connections-per-client 50
+filters {
+    filter "emergency-limit" {
+        type "rate-limit"
+        max-rps 20
+        burst 20
+        key "client-ip"
+    }
 }
 ```
-
-Then reload with `kill -HUP $(cat /var/run/zentinel.pid)`.
 
 ### TLS/Certificate Issues
 

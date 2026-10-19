@@ -50,10 +50,19 @@ zentinel -t -c zentinel.kdl
 
 **Options:**
 - `-c, --config <FILE>` - Configuration file to test
+- `--strict` - Fail if any setting is being ignored (from 26.10_5). Only on the
+  `test` subcommand, not on `-t` / `--test`
+
+From 26.10_5, `test` also prints every setting that is being ignored: unknown
+or misplaced keys, settings run together on one line, values that fall back to
+a default (an unknown `load-balancing` algorithm, health-check `type`,
+`priority` or `builtin-handler`), and settings that are accepted but not
+applied, such as `system { max-connections }`. These are the same findings as
+`lint`'s ignored-settings check, without its best-practice advice.
 
 **Exit codes:**
-- `0` - Configuration is valid
-- `1` - Configuration error
+- `0` - Configuration is valid, including when ignored settings are printed
+- `1` - Configuration error, or (with `--strict`) at least one ignored setting
 
 **Output:**
 ```
@@ -62,6 +71,13 @@ INFO Configuration test successful:
 INFO   - 2 listener(s)
 INFO   - 5 route(s)
 INFO   - 3 upstream(s)
+zentinel: configuration file zentinel.kdl test is successful
+```
+
+With an ignored setting:
+
+```
+  ⚠  'interval-sec' is not a setting in the 'health-check' block and is being ignored. Did you mean 'interval-secs'?
 zentinel: configuration file zentinel.kdl test is successful
 ```
 
@@ -113,8 +129,9 @@ zentinel lint --config zentinel.kdl
 
 **Exit codes:**
 - `0` - Configuration is valid, **including when warnings are reported**; lint
-  warnings are recommendations. To fail a CI job on them, check the output
-  for `⚠` lines.
+  warnings are recommendations. To fail a CI job on ignored settings, use
+  `zentinel test --strict` (from 26.10_5); for best-practice warnings, check
+  the output for `⚠` lines.
 - `1` - Configuration error
 
 **Output:**

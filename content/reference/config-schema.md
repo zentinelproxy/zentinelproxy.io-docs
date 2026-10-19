@@ -37,7 +37,6 @@ listeners {
 
 system {
     worker-threads 0                      // 0 = auto (CPU cores)
-    max-connections 10000
     graceful-shutdown-timeout-secs 30
     trace-id-format "tinyflake"           // or "uuid"
     auto-reload #false
@@ -67,11 +66,11 @@ upstreams {
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `worker-threads` | int | `0` | Worker threads (0=auto) |
-| `max-connections` | int | `10000` | Maximum connections |
+| `max-connections` | int | `10000` | Not applied; reported by `test` and `lint` from 26.10_5 |
 | `graceful-shutdown-timeout-secs` | int | `30` | Shutdown timeout |
 | `trace-id-format` | string | `tinyflake` | Trace ID format |
 | `auto-reload` | bool | `false` | Watch config for changes |
-| `daemon` | bool | `false` | Run as daemon |
+| `daemon` | bool | `false` | Run as daemon (read from the file from 26.10_5) |
 | `pid-file` | path | - | PID file path |
 | `user` | string | - | Drop privileges to user |
 | `group` | string | - | Drop privileges to group |
@@ -211,7 +210,7 @@ routes {
             path-prefix "/api/"
             path-regex "^/user/[0-9]+$"
             host "api.example.com"
-            method "GET"                   // one method per node
+            method "GET" "HEAD"            // any of these (26.10_5+; first only before)
             header "X-Key" "value"         // name, optional value
             query-param "format" "json"    // name, optional value
         }
@@ -411,7 +410,6 @@ agents {
 ```kdl
 system {
     worker-threads 0
-    max-connections 10000
 }
 
 listeners {
@@ -442,7 +440,6 @@ upstreams {
 ```kdl
 system {
     worker-threads 0
-    max-connections 50000
     graceful-shutdown-timeout-secs 60
     auto-reload #true
     daemon #true

@@ -97,10 +97,12 @@ matches {
 }
 ```
 
-Match a specific HTTP method. `method` takes **one** value: as of 26.10_3 the
-parser reads only the first argument, so `method "GET" "POST"` matches `GET`
-only, and two `method` lines are AND'ed (nothing matches both). To accept
-several methods, use one route per method or leave the method condition out.
+Match an HTTP method. From 26.10_5 `method` takes one or more values and
+matches any of them: `method "GET" "POST"` matches `GET` and `POST`. Write them
+on one line; two `method` lines are two conditions that must both match, so
+nothing matches them. Before 26.10_5 only the first value was read
+(`method "GET" "POST"` matched `GET` only); on those releases use one route per
+method.
 
 #### Header Matching
 

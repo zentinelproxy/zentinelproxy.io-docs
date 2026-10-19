@@ -50,7 +50,6 @@ Create `zentinel.kdl`:
 
 system {
     worker-threads 4
-    max-connections 5000
     graceful-shutdown-timeout-secs 30
 }
 

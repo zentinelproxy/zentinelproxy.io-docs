@@ -6,7 +6,7 @@ updated = 2026-10-19
 
 Zentinel uses [KDL](https://kdl.dev) (KDL Document Language) as its primary configuration format. KDL is a human-friendly document language with a clean syntax that's easy to read and write.
 
-Everything on this page describes release 26.10_3. Settings that are accepted but not applied are listed in [Known Limitations](/reference/known-limitations/).
+Everything on this page describes release 26.10_5. Settings that are accepted but not applied are listed in [Known Limitations](/reference/known-limitations/).
 
 ## Minimal Configuration
 
@@ -45,7 +45,7 @@ This configuration:
 - Forwards all requests to a backend service on port 3000
 - Uses automatic worker thread detection
 
-Check a configuration before you run it. `zentinel test` loads and validates it; `zentinel lint` also reports settings that are misspelled or in the wrong block, which `test` accepts without a word:
+Check a configuration before you run it. `zentinel test` loads and validates it and, from 26.10_5, warns about settings that are misspelled or in the wrong block (`--strict` makes them fatal); `zentinel lint` reports the same settings and adds best-practice advice:
 
 ```bash
 zentinel test -c zentinel.kdl
@@ -88,8 +88,9 @@ system {
 | `graceful-shutdown-timeout-secs` | `30` | Seconds to wait for connections to drain |
 | `pid-file` | - | Path to PID file |
 | `auto-reload` | `false` | Reload config on file changes |
-| `max-connections` | `10000` | Accepted, but not applied: the number of client connections is not capped |
-| `daemon` | `false` | Accepted, but not read. Use the `-d` / `--daemon` command-line flag |
+| `daemon` | `false` | Run in the background, like the `-d` / `--daemon` flag. Read from the file from 26.10_5; before, only the flag worked |
+
+`max-connections` is not applied: Zentinel does not cap client connections, and from 26.10_5 `zentinel test` and `lint` report the key.
 
 ## Listeners
 
@@ -189,7 +190,7 @@ When more than one route matches a request, the route with the higher priority w
 | `"high"` | `100` |
 | `"critical"` | `1000` |
 
-Names are case-insensitive. An unrecognised name is not an error: it is treated as `"normal"` without a warning ([#521](https://github.com/zentinelproxy/zentinel/issues/521)). Use an integer when you need a value between the named ones, for example `priority 200`.
+Names are case-insensitive. An unrecognised name is not an error: it is treated as `"normal"`, and from 26.10_5 `zentinel test` and `lint` report it (before, there was no warning). Use an integer when you need a value between the named ones, for example `priority 200`.
 
 ### Match Conditions
 
@@ -258,7 +259,7 @@ The default `round_robin` ignores `weight`: targets take turns regardless. To sp
 | `consistent_hash` | Consistent hashing |
 | `p2c` | Power of Two Choices |
 
-Spell the names with underscores. An unrecognised name, including `"least-connections"` with a hyphen, silently becomes `round_robin` ([#521](https://github.com/zentinelproxy/zentinel/issues/521)). The full list is in [Upstreams](/configuration/upstreams/).
+From 26.10_5 the names can be spelled with hyphens or underscores (`"least-connections"` or `"least_connections"`). An unrecognised name still falls back to `round_robin`, and `zentinel test` and `lint` report it. Before 26.10_5 a hyphenated name silently became `round_robin`, so use underscores on older releases. The full list is in [Upstreams](/configuration/upstreams/).
 
 ## Resource Limits
 
