@@ -1,6 +1,6 @@
 +++
 title = "Configuration Playground"
-weight = 6
+weight = 7
 updated = 2026-10-18
 +++
 

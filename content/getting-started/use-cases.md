@@ -1,6 +1,6 @@
 +++
 title = "Use Cases"
-weight = 5
+weight = 6
 updated = 2026-10-18
 +++
 

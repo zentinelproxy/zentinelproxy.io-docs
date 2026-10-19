@@ -309,6 +309,7 @@ Check that you passed the same file to both: `zentinel test -c zentinel.kdl` and
 ## Next Steps
 
 - [First Route](../first-route/): matching, priorities and route policies in depth
+- [Your First Agent](../first-agent/): run an agent, attach it to a route and see what happens when it stops
 - [Basic Configuration](../basic-configuration/): the blocks every configuration has
 - [Upstreams](/configuration/upstreams/): load balancing, health checks and connection pools
 - [Agents](/agents/): add WAF, authentication and rate limiting
