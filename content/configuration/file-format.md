@@ -489,6 +489,12 @@ Zentinel reloads its configuration without a restart on `SIGHUP`:
 kill -HUP $(pgrep -x zentinel)
 ```
 
+From 26.10_6 a `SIGHUP` that arrives while the proxy is still starting is
+queued, and the reload runs once the proxy is ready. Before, an early `SIGHUP`
+could terminate a starting proxy (for example a configuration-management run
+that reloads right after starting the service). `SIGTERM` and `SIGINT` still
+stop a starting proxy at once.
+
 With `system { auto-reload #true }` it also reloads when the configuration
 changes on disk. For a directory configuration it watches the whole directory,
 recursively, with a once-a-second poll as a fallback for filesystems that do

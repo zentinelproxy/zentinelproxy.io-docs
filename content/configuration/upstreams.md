@@ -754,10 +754,26 @@ added to an upstream starts probing, a changed one restarts with the new
 settings and a clean slate, and a removed one stops and returns every target to
 rotation. Upstreams whose check did not change keep their health state.
 
-Targets given as a host name (`target "backend.internal:80"`) are not
-probed, so they stay in rotation whatever their state
-([#544](https://github.com/zentinelproxy/zentinel/issues/544)). Use IP
-addresses, or `discovery "dns"`, for targets that need checks.
+From 26.10_6, targets given as a host name (`target "backend.internal:80"`)
+are health-checked:
+
+- The name is resolved at the start of every probe cycle, and **every**
+  resolved address is probed, with the same `Host` as for an IP target.
+- The target is healthy while any of its addresses is. If the name fails to
+  resolve for `unhealthy-threshold` cycles, the target is marked unhealthy.
+- When a request is sent to the target, the proxy dials the first resolved
+  address the checker has not marked unhealthy. For `localhost`, which
+  often resolves to `::1` first, an IPv4-only backend is therefore reached reliably.
+
+Without a health check, a host-name target is dialled at its first resolved
+address only, with no fallback to the others, and the name is resolved on the
+request path with a blocking lookup
+([#554](https://github.com/zentinelproxy/zentinel/issues/554)). For a
+`localhost` target and an IPv4-only backend that fails every other request;
+use `127.0.0.1`, or configure a health check.
+
+Before 26.10_6 host-name targets were never probed and stayed in rotation
+whatever their state, and the proxy always dialled the first resolved address.
 
 **Before 26.10_5:** probe results were not used for routing (a failing target
 kept its share of traffic, and with all targets failing requests still went to
