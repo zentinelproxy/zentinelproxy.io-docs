@@ -3208,13 +3208,14 @@ pii-detection {
 <small class="docs-ref">[Limits](/configuration/limits/)</small>
 <small class="source-ref">[`crates/common/src/limits.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/common/src/limits.rs)</small>
 
-A configuration file's `limits` block reads exactly the six keys below. The
-`-bytes` spellings (`max-header-size-bytes`, `max-body-size-bytes`) and the
-other keys earlier versions of this index listed (`max-connections-per-route`,
+A `limits` block reads exactly the six keys below, in a single file and in a
+directory configuration alike. The `-bytes` spellings
+(`max-header-size-bytes`, `max-body-size-bytes`) and the other keys earlier
+versions of this index listed (`max-connections-per-route`,
 `max-queued-requests`, `max-requests-per-second-*`, `max-memory-bytes`, ...)
-belong to the directory-configuration loader, which the `zentinel` command
-cannot load ([#541](https://github.com/zentinelproxy/zentinel/issues/541)).
-From 26.10_5, `zentinel test` and `zentinel lint` report them as ignored.
+are not read anywhere. From 26.10_5, `zentinel test` and `zentinel lint`
+report them as ignored. Before 26.10_6 a separate directory loader read some of
+them, but the `zentinel` command could not load a directory.
 
 ### `max-header-size`
 

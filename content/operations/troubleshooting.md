@@ -414,9 +414,8 @@ upstreams {
     }
 }
 
-// There is no memory cap setting: max-memory-percent is not implemented,
-// and max-memory-bytes is parsed (multi-file configs only) but not enforced
-// as of 26.10_3. Cap memory with the service manager instead
+// There is no memory cap setting: max-memory-percent and max-memory-bytes
+// are not read. Cap memory with the service manager instead
 // (systemd MemoryMax=, a container memory limit).
 ```
 
