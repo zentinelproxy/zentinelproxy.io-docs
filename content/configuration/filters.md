@@ -144,26 +144,78 @@ only as a total.
 | `delay` | Queue request until tokens available (up to max-delay-ms) |
 | `log-only` | Log but allow request through |
 
-#### Distributed Rate Limiting with Redis
+#### Distributed Rate Limiting
+
+A `rate-limit` filter can keep its buckets in Redis or memcached, so that every
+Zentinel instance draws from the same bucket:
 
 ```kdl
 filter "distributed-limiter" {
     type "rate-limit"
     max-rps 1000
     burst 100
-    backend "redis" {
-        url "redis://127.0.0.1:6379"
-        key-prefix "zentinel:ratelimit:"
-        pool-size 10
-        timeout-ms 50
-        fallback-local #true
-    }
+    key "client-ip"
+
+    backend "redis"
+    redis-url "redis://127.0.0.1:6379"
+    redis-prefix "zentinel:ratelimit:"
+    redis-timeout-ms 50
+    redis-fallback-local #true
 }
 ```
 
-The Redis and memcached backends count requests per fixed one-second window
-and do not apply `burst`
-([#543](https://github.com/zentinelproxy/zentinel/issues/543)).
+The backend settings are keys of the filter, not a nested block:
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `backend` | `"local"` | `"local"`, `"redis"` or `"memcached"` |
+| `redis-url` | `redis://127.0.0.1:6379` | Redis server |
+| `redis-prefix` | `zentinel:ratelimit:` | Prefix of the stored keys |
+| `redis-timeout-ms` | `50` | Timeout of one check |
+| `redis-fallback-local` | `#true` | When Redis cannot be reached, limit locally (per instance) instead of allowing the request |
+| `memcached-url` | `memcache://127.0.0.1:11211` | memcached server (1.6 or later); `memcache://`, `memcached://`, `tcp://` or `unix://` |
+| `memcached-prefix` | `zentinel:ratelimit:` | Prefix of the stored keys |
+| `memcached-timeout-ms` | `50` | Timeout of one check |
+| `memcached-fallback-local` | `#true` | As `redis-fallback-local` |
+
+Every backend runs the same token bucket as the local limiter: `burst` is the
+bucket size and `max-rps` the refill rate, so the same configuration admits the
+same sequence of requests and sends the same `X-RateLimit-*` and `Retry-After`
+headers on every backend. Stored keys include the route ID, so two routes
+limiting the same client do not share a bucket.
+
+- **Redis** advances the bucket with one Lua script per check, using the Redis
+  server's clock. A key expires once its bucket would be full again.
+- **memcached** uses compare-and-swap over the meta protocol, so it needs
+  memcached 1.6 or later. Each proxy uses its own clock; clock skew between
+  instances can only make the limit stricter. After 16 lost races in a row the
+  check counts as a backend failure.
+
+When the backend cannot be reached, the check falls back to a local bucket with
+`*-fallback-local #true` (the default), or lets the request through with
+`#false`.
+
+{% callout(type="warning", title="Release binaries limit per instance") %}
+The official release binaries and container images are built **without** the
+distributed rate-limit features. With them, `backend "redis"` and
+`backend "memcached"` are enforced per instance, like `backend "local"`, and
+the proxy logs a warning saying so when it builds the limiter. To share limits
+across instances, build from source with the feature enabled:
+
+```bash
+cargo build --release -p zentinel-proxy --features distributed-rate-limit
+```
+
+`distributed-rate-limit` enables both backends;
+`distributed-rate-limit-redis` and `distributed-rate-limit-memcached` enable
+one each. See [Building from Source](/development/building/).
+{% end %}
+
+**Before 26.10_6** the Redis and memcached backends were never used, in any
+build: every limiter was built in memory, so a "shared" limit was enforced
+separately on each instance. The backend implementations counted requests per
+fixed one-second window and ignored `burst`, and a memcached URL with an IP
+address (`memcache://127.0.0.1:11211`) could not connect.
 
 ### Global Rate Limits
 
@@ -200,9 +252,11 @@ route filter.
 Before 26.10_5, `default-rps` and `default-burst` were not applied, and
 `global` always keyed on the client IP whatever `key` said.
 
-Rate limiters are built at startup. A reload does not rebuild them, so restart
-the proxy after changing a rate limit
-([#543](https://github.com/zentinelproxy/zentinel/issues/543)).
+From 26.10_6 rate limiters are rebuilt on reload (`SIGHUP` or auto-reload): a
+changed, added or removed `rate-limit` filter, `rate-limits { default-rps }` or
+`global` limit takes effect on the next request. Limiters whose settings did
+not change keep their buckets. Before 26.10_6 a reload did not rebuild them,
+and a changed limit needed a restart.
 
 ### Headers Filter
 

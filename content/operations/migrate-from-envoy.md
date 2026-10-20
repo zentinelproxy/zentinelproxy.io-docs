@@ -355,7 +355,7 @@ A misspelled `load-balancing` value falls back to round robin without an error, 
 |--------------|----------|
 | `envoy.filters.http.router` | Implicit |
 | `local_ratelimit` | [`rate-limit` filter](/configuration/filters/#rate-limiting) |
-| `ratelimit` (global, with a rate limit service) | `rate-limit` filter with the Redis or Memcached backend ([distributed rate limiting](/configuration/filters/#distributed-rate-limiting-with-redis)) |
+| `ratelimit` (global, with a rate limit service) | `rate-limit` filter with the Redis or Memcached backend ([distributed rate limiting](/configuration/filters/#distributed-rate-limiting); the release binaries are built without it, so build from source) |
 | `ext_authz` | An `auth` [agent](/configuration/agents/). Agents speak the Zentinel agent protocol, not the `ext_authz` gRPC API, so the authorization service needs an agent in front of it or a rewrite |
 | `jwt_authn` | The [auth agent](/agents/), which validates JWTs |
 | `rbac` | The [policy agent](/agents/) |

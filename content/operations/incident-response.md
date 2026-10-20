@@ -1,7 +1,7 @@
 +++
 title = "Incident Response"
 weight = 6
-updated = 2026-10-19
+updated = 2026-10-20
 +++
 
 Procedures for responding to production incidents affecting Zentinel.
@@ -186,10 +186,12 @@ curl -s localhost:9090/metrics | grep open_connections
 curl -s localhost:9090/metrics | grep pending_requests
 ```
 
-**Mitigation**: Zentinel does not limit client connections, so shed load in
-front of it (the load balancer) or tighten rate limits. Rate limiters are not
-rebuilt on reload ([#543](https://github.com/zentinelproxy/zentinel/issues/543)),
-so a changed rate limit needs a restart:
+**Mitigation**: bound concurrent work with `limits { max-in-flight-requests
+max-total-connections }` (enforced from 26.10_6; see
+[Limits](/configuration/limits/#concurrency-limits)), shed load in front of the
+proxy (the load balancer), or tighten rate limits. From 26.10_6 a changed rate
+limit takes effect on reload (`kill -HUP $(pgrep -x zentinel)`); on earlier
+releases it needs a restart:
 
 ```kdl
 filters {
