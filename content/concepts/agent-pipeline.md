@@ -259,8 +259,16 @@ Each agent filter configures its own failure behavior independently:
 
 | Failure Mode | Behavior | Use Case |
 |--------------|----------|----------|
-| `fail-open` | Allow request to continue | Non-critical agents (analytics, logging) |
-| `fail-closed` | Block request with 503 | Critical security agents (auth, WAF) |
+| `open` | Allow request to continue | Non-critical agents (analytics, logging) |
+| `closed` | Block request with 503 | Critical security agents (auth, WAF) |
+
+The values are `open` and `closed`; anything else (such as `"fail-open"`) is
+reported by `zentinel lint` and treated as `closed`.
+
+A filter's `timeout-ms` can only **shorten** its agent's timeout, never extend
+it: the agent block's `timeout-ms` (default 1000) is also the agent's request
+timeout. Set the longest time an agent may take on the agent, and use the
+filter's `timeout-ms` to give one route a tighter budget.
 
 ```kdl
 filters {
@@ -268,14 +276,12 @@ filters {
         type "agent"
         agent "auth-agent"
         failure-mode "closed"     // Auth failure = block
-        timeout-ms 5000
     }
 
     filter "analytics" {
         type "agent"
         agent "analytics-agent"
         failure-mode "open"       // Analytics failure = continue
-        timeout-ms 2000
     }
 }
 ```
@@ -376,14 +382,12 @@ filters {
         type "agent"
         agent "auth-agent"
         failure-mode "closed"
-        timeout-ms 5000
     }
 
     filter "waf" {
         type "agent"
         agent "waf-agent"
         failure-mode "closed"
-        timeout-ms 3000
     }
 }
 ```
@@ -412,14 +416,12 @@ filters {
         type "agent"
         agent "auth-agent"
         failure-mode "closed"
-        timeout-ms 5000
     }
 
     filter "transform" {
         type "agent"
         agent "transform-agent"
         failure-mode "closed"
-        timeout-ms 2000
     }
 
     filter "audit" {
@@ -493,28 +495,24 @@ filters {
         type "agent"
         agent "ip-reputation-agent"
         failure-mode "closed"
-        timeout-ms 3000
     }
 
     filter "auth" {
         type "agent"
         agent "auth-agent"
         failure-mode "closed"
-        timeout-ms 5000
     }
 
     filter "waf" {
         type "agent"
         agent "waf-agent"
         failure-mode "closed"
-        timeout-ms 3000
     }
 
     filter "content-scanner" {
         type "agent"
         agent "content-scanner-agent"
         failure-mode "closed"
-        timeout-ms 5000
     }
 }
 ```
@@ -543,12 +541,14 @@ listeners {
 agents {
     agent "auth-agent" {
         unix-socket "/var/run/zentinel/auth.sock"
+        timeout-ms 5000
         events "request_headers"
         max-concurrent-calls 100
     }
 
     agent "waf-agent" {
         unix-socket "/var/run/zentinel/waf.sock"
+        timeout-ms 3000
         events "request_headers" "request_body" "response_body"
         max-concurrent-calls 50
     }

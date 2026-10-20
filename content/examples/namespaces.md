@@ -251,11 +251,6 @@ namespace "platform" {
 
     // Service within the platform namespace
     service "user-management" {
-        // Service-specific limits (not yet applied, see Limit Inheritance)
-        limits {
-            max-body-size 5242880  // 5MB
-        }
-
         routes {
             route "user-crud" {
                 priority "high"

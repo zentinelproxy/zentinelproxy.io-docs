@@ -1080,7 +1080,7 @@ For a complete traffic mirroring example with Docker Compose and test scripts, s
 From 26.10_6 a route can replace the response for chosen error statuses with
 its own page, in an `error-pages` block:
 
-```kdl
+```fragment,kdl
 routes {
     route "shop" {
         matches {
