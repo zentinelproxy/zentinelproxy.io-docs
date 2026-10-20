@@ -383,9 +383,9 @@ limits {
     max-header-size 8192              // bytes, all request headers
     max-header-count 100
     max-body-size 10485760            // bytes; routes can lower it
-    max-connections-per-client 100    // not applied (#542)
-    max-total-connections 10000       // not applied (#542)
-    max-in-flight-requests 10000      // not applied (#542)
+    max-in-flight-requests 10000      // enforced from 26.10_6; unset = unlimited
+    max-total-connections 10000       // enforced from 26.10_6; unset = unlimited
+    max-connections-per-client 100    // enforced from 26.10_6; trusted-proxies exempt
 }
 ```
 

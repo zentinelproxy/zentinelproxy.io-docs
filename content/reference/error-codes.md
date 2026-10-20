@@ -138,8 +138,10 @@ Limit types:
 - `queue_depth` - Request queue full
 
 These are the error type's categories. A request body over `max-body-size` is
-answered `413 Payload Too Large`, and connection and in-flight limits are not
-applied (see [Limits](/configuration/limits/#connection-limits)).
+answered `413 Payload Too Large`. From 26.10_6 a request over
+`max-in-flight-requests` is answered `503` with `Retry-After: 1`, and a
+connection over a connection limit is closed (see
+[Limits](/configuration/limits/#concurrency-limits)).
 
 **RateLimit**
 ```

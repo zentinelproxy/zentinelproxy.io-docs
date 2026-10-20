@@ -1,10 +1,28 @@
 +++
 title = "Namespaces & Services"
 weight = 11
-updated = 2026-10-19
+updated = 2026-10-20
 +++
 
 Namespaces and services provide hierarchical organization for Zentinel configuration, enabling multi-tenant deployments with runtime isolation.
+
+{% callout(type="warning", title="Namespaces are only partly wired") %}
+As of 26.10_6
+([#548](https://github.com/zentinelproxy/zentinel/issues/548)):
+
+- A namespace's routes are served only on a listener bound to it with
+  `namespace "<id>"` in the listener block. Without one, they are never
+  matched.
+- A route that uses a **namespace-local upstream** gets
+  `500 "Upstream pool not found"`; only global upstreams work.
+- Routes inside a `service` are never served, on any listener.
+- Scoped route matching and scoped rate limiting are built but not used on
+  the request path.
+
+Namespace `limits` are applied to the namespace's routes on its bound
+listeners (from 26.10_6); service `limits` are reported as ignored. The
+examples below show the intended model.
+{% end %}
 
 ## Overview
 
@@ -39,17 +57,24 @@ namespace "api" {
 
 ## Namespace with Limits
 
-{% callout(type="warning", title="Namespace and service limits are not applied") %}
-A `limits` block inside a namespace or service is parsed but not enforced
-([#542](https://github.com/zentinelproxy/zentinel/issues/542)); the global
-`limits` block applies to every request. It accepts the same six keys as the
-global block; `max-requests-per-second-global` and
-`max-requests-per-second-per-client` are not read from a configuration file, and
-from 26.10_5 `zentinel test` and `zentinel lint` report them as ignored. To
-limit request rates per namespace or service, attach
-[`rate-limit` filters](../filters/#rate-limiting) to its routes, as in
-[Rate Limiting](#rate-limiting) below.
-{% end %}
+From 26.10_6 a namespace's `limits` block is applied to requests on the
+namespace's routes, which are served on a listener bound to it with
+`namespace "<id>"`. It takes the same six keys as the global block:
+
+- body and header limits: the smallest of the global, the namespace and the
+  route's `policies { max-body-size }` applies; a key the namespace does not
+  set leaves the global value in force;
+- `max-in-flight-requests`: the namespace has its own counter, inside the
+  global limit;
+- `max-total-connections` and `max-connections-per-client`: counted for the
+  connections on listeners bound to the namespace, in addition to the global
+  limits.
+
+A service's `limits` block is not applied (no listener serves a service's
+routes) and `zentinel test` and `lint` report it as ignored. Before 26.10_6
+neither was applied. `max-requests-per-second-*` keys are not read; to limit
+request rates, attach [`rate-limit` filters](../filters/#rate-limiting) to the
+routes. See [Limits: Namespace Limits](../limits/#namespace-limits).
 
 A namespace can declare its own `limits` block:
 

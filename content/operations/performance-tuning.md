@@ -290,16 +290,17 @@ The parser accepts these keys, but the proxy does not act on them in the current
 
 | Key | Note |
 |-----|------|
-| `system { max-connections }` | The number of client connections is not capped |
+| `system { max-connections }` | Not applied. From 26.10_6 cap client connections with `limits { max-total-connections }` |
 | listener `max-concurrent-streams` | HTTP/2 stream limits are not configurable |
 | `connection-pool { max-connections max-idle max-lifetime-secs }` | Pool size is fixed and connections have no maximum lifetime |
 | `timeouts { request-secs }` | There is no total-request deadline; use read timeouts |
 | `http-version { max-h2-streams }` | Not applied to upstream connections |
-| `limits { max-connections-per-client max-total-connections max-in-flight-requests }` | Not enforced. Use a [rate-limit filter](/configuration/filters/#rate-limiting) to bound per-client load |
 | `compress` filter `level` and `algorithms` | The level is fixed at 6 and the encoding follows the client's `Accept-Encoding` |
 
 `system { daemon }` and route `policies { max-body-size }` had no effect before
-26.10_5; from 26.10_5 both are applied.
+26.10_5; from 26.10_5 both are applied. `limits { max-connections-per-client
+max-total-connections max-in-flight-requests }` had no effect before 26.10_6;
+from 26.10_6 they are enforced (see [Limits](/configuration/limits/#concurrency-limits)).
 
 ## See also
 

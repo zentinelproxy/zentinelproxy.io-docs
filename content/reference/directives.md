@@ -3299,10 +3299,13 @@ limits {
 
 ### `max-connections-per-client`
 
-Parsed but **not applied**: Zentinel does not limit client connections ([#542](https://github.com/zentinelproxy/zentinel/issues/542)).
+Maximum open connections from one client address (the TCP peer). A connection
+over it is closed before anything is read. Peers in the listener's
+`trusted-proxies` are exempt. Enforced from 26.10_6; parsed and not applied
+before. `0` means unlimited and is reported as ignored.
 
-**Context:** `limits`
-**Default:** `100`
+**Context:** `limits`, namespace `limits`
+**Default:** unlimited
 
 ```kdl
 limits {
@@ -3314,10 +3317,12 @@ limits {
 
 ### `max-total-connections`
 
-Parsed but **not applied** ([#542](https://github.com/zentinelproxy/zentinel/issues/542)).
+Maximum open client connections. A connection over it is closed before
+anything is read. Enforced from 26.10_6; parsed and not applied before. `0`
+means unlimited and is reported as ignored.
 
-**Context:** `limits`
-**Default:** `10000`
+**Context:** `limits`, namespace `limits`
+**Default:** unlimited
 
 ```kdl
 limits {
@@ -3329,10 +3334,12 @@ limits {
 
 ### `max-in-flight-requests`
 
-Parsed but **not applied** ([#542](https://github.com/zentinelproxy/zentinel/issues/542)).
+Maximum requests being processed at once. A request over it gets `503` with
+`Retry-After: 1`; builtin handlers are never refused. Enforced from 26.10_6;
+parsed and not applied before. `0` means unlimited and is reported as ignored.
 
-**Context:** `limits`
-**Default:** `10000`
+**Context:** `limits`, namespace `limits`
+**Default:** unlimited
 
 ```kdl
 limits {

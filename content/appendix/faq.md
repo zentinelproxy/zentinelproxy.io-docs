@@ -1,7 +1,7 @@
 +++
 title = "FAQ"
 weight = 2
-updated = 2026-10-19
+updated = 2026-10-20
 +++
 
 Frequently asked questions about Zentinel.
@@ -239,7 +239,7 @@ Set `worker-threads 0` (the default) to auto-detect based on CPU cores. For most
 
 ### How do I increase connection limits?
 
-Zentinel has no connection cap to raise: `system { max-connections }` and `limits { max-connections-per-client max-total-connections }` are accepted but not enforced (see [Known Limitations](@/reference/known-limitations.md)); from 26.10_5 `zentinel test` and `lint` report `system { max-connections }`. The limit you are likely to hit is the operating system's open-file limit. Raise it for the proxy process:
+From 26.10_6, `limits { max-total-connections max-connections-per-client max-in-flight-requests }` are enforced when set, and unlimited when not (see [Limits](@/configuration/limits.md#concurrency-limits)); raise or remove them. Before 26.10_6 they were accepted and not enforced. `system { max-connections }` is not applied, and `zentinel test` and `lint` report it. Beyond those, the limit you are likely to hit is the operating system's open-file limit. Raise it for the proxy process:
 ```bash
 ulimit -n 65535
 ```
