@@ -1,7 +1,7 @@
 +++
 title = "Filters"
 weight = 6
-updated = 2026-10-19
+updated = 2026-10-20
 +++
 
 Filters provide a flexible pipeline for request and response processing. They can be built-in (rate-limit, headers, CORS, compression) or external agents. Filters are defined centrally in the `filters` block with unique IDs, then referenced by name in route configurations.
@@ -367,14 +367,36 @@ filter "waf" {
 }
 ```
 
+| Key | Meaning |
+|-----|---------|
+| `agent` | ID of an agent in the `agents` block |
+| `timeout-ms` | Timeout of this filter's `request_headers` call, in milliseconds. It can only shorten the agent's own `timeout-ms`: the shorter of the two applies |
+| `failure-mode` | What happens when that call fails or times out: `"open"` lets the request through, `"closed"` refuses it |
+
+From 26.10_6, an agent filter's `timeout-ms` is applied to the
+`request_headers` call, the same call its `failure-mode` governs. The agent's
+`timeout-ms` (default `1000`) is also the request timeout of the agent's
+connection pool, so a larger filter value cannot take effect: `zentinel lint`
+reports it as ignored beyond the agent's value. A value of `0` or less is
+reported and ignored. Before 26.10_6 the filter's `timeout-ms` was not read,
+and every call used the agent's.
+
+`phase` is not read on an agent filter and is reported as ignored. Which events
+an agent receives is decided by the agent's `events`; applying
+`phase "response"` would stop a security agent from seeing request headers.
+`inspect-body` and `max-body-bytes` on an agent filter are parsed and not read
+either, and are not reported yet
+([#553](https://github.com/zentinelproxy/zentinel/issues/553)); set body
+inspection on the agent with `events` and `max-request-body-bytes`.
+
 Agent filters automatically process both request-phase and response-phase events based on the agent's `events` subscription. An agent subscribed to `response_headers` and `response_body` will be called during the response phase to inspect and modify the upstream response:
 
 ```kdl
-// Agent that transforms response content (e.g. image optimization)
+// Agent that transforms response content (e.g. image optimization).
+// The agent block sets timeout-ms 5000; the filter does not need its own.
 filter "image-optimization" {
     type "agent"
     agent "image-optimizer"
-    timeout-ms 5000
     failure-mode "open"
 }
 ```
@@ -400,7 +422,7 @@ Filter phase mapping:
 | `geo` | Request |
 | `timeout` | Request |
 | `log` | Configurable |
-| `agent` | Configurable |
+| `agent` | Set by the agent's `events`; `phase` is ignored |
 
 ## Filter Ordering
 

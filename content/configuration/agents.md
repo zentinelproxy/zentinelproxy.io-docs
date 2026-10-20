@@ -1,7 +1,7 @@
 +++
 title = "Agents"
 weight = 9
-updated = 2026-10-19
+updated = 2026-10-20
 +++
 
 Agents are external processes that extend Zentinel's functionality. They handle security policies, authentication, rate limiting, and custom business logic. The `agents` block configures how Zentinel connects to and communicates with these agents.
@@ -524,7 +524,6 @@ filters {
     filter "waf-filter" {
         type "agent"
         agent "modsecurity"
-        phase "request"
         failure-mode "closed"
     }
 }
@@ -565,12 +564,17 @@ filters {
     filter "waf-filter" {
         type "agent"
         agent "waf-agent"
-        phase "request"
         timeout-ms 200
         failure-mode "closed"
     }
 }
 ```
+
+A filter's `timeout-ms` applies to its `request_headers` call and can only
+shorten the agent's `timeout-ms`; the shorter of the two is used. `phase` is
+not read on an agent filter (the agent's `events` decide what it receives) and
+is reported as ignored. Both from 26.10_6; before, the filter's `timeout-ms`
+was not read either. See [Filters: Agent Filter](../filters/#agent-filter).
 
 ## Complete Examples
 

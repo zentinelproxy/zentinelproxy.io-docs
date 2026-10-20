@@ -2,7 +2,7 @@
 title = "Directive Index"
 weight = 1
 description = "Complete reference for all Zentinel configuration directives"
-updated = 2026-10-19
+updated = 2026-10-20
 +++
 
 Complete reference for all Zentinel configuration directives, verified against the source code. Each entry includes syntax, context, default values, and usage examples.
@@ -1638,13 +1638,42 @@ shadow {
 
 ### `error-pages`
 
-**Not configurable.** No KDL parser reads `error-pages` as of 26.10_3: both the
-single-file and the multi-file parser set a route's error pages to none, and
-the loader reports the block as an unrecognised route directive. Error
-responses use the default format for the route's `service-type` (JSON for
-`api`, `builtin` and `inference` routes, HTML for `web` and `static`). The `default-format`,
-`include-stack-trace`, `template-dir` and `pages` settings that earlier
-versions of this page listed have no effect.
+Custom pages for chosen error statuses on a route. Read from 26.10_6; before
+that no parser read the block and it was reported as ignored.
+
+**Context:** `route`
+
+```fragment,kdl
+error-pages {
+    default-format "json"
+    template-dir "/etc/zentinel/errors"
+    pages {
+        "404" {
+            message "Resource not found"
+        }
+        "503" {
+            format "html"
+            template "503.html"
+            message "Back in a minute"
+            headers {
+                Retry-After "30"
+            }
+        }
+    }
+}
+```
+
+| Key | Description |
+|-----|-------------|
+| `default-format` | `html`, `json`, `text` or `xml`. Default: `json` for `api`, `builtin` and `inference` routes, `html` for `web` and `static` |
+| `template-dir` | Base directory for relative `template` paths |
+| `pages` | One child per status (`"400"` to `"599"`) with `format`, `message`, `template` and `headers` |
+
+A page replaces an upstream error and the proxy's own error for its status.
+Templates take `{{status}}`, `{{title}}`, `{{message}}`, `{{request_id}}` and
+`{{timestamp}}`. Invalid values are reported as ignored and the generated page
+is used; `include-stack-trace` is reported as ignored. See
+[Error Pages](/configuration/routes/#error-pages).
 
 ---
 
@@ -2211,8 +2240,11 @@ agent "auth" {
 
 Maximum time to wait for agent response.
 
-**Context:** `agent`
+**Context:** `agent`, `filter` (agent)
 **Default:** `1000`
+
+On an agent filter it sets the timeout of the filter's `request_headers` call
+and can only shorten the agent's value; the shorter applies (from 26.10_6).
 
 ```fragment,kdl
 agent "auth" {
@@ -2502,6 +2534,9 @@ filter "rate-limit" {
 When filter runs. Options: `"request"`, `"response"`, `"both"`.
 
 **Context:** `filter` (headers)
+
+On an agent filter `phase` is not read and is reported as ignored; the agent's
+`events` decide which calls it receives.
 
 ```kdl
 filter "headers" {

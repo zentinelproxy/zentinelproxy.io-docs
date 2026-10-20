@@ -1,7 +1,7 @@
 +++
 title = "Upstreams"
 weight = 5
-updated = 2026-10-19
+updated = 2026-10-20
 +++
 
 The `upstreams` block defines backend server pools. Each upstream contains one or more targets with load balancing, health checks, and connection pooling.
@@ -75,6 +75,7 @@ upstream "backend" {
 | `locality_aware` | Zone-aware routing with fallback strategies |
 | `deterministic_subset` | Subset of backends per proxy (large clusters) |
 | `least_tokens_queued` | Token-based selection for LLM workloads |
+| `sticky` | Cookie-based session affinity, see [Sticky Sessions](#sticky-sessions) |
 
 ### Round Robin
 
@@ -159,6 +160,34 @@ the client's address from `X-Forwarded-For` rather than the load balancer's.
 
 Before 26.10_5 no client address reached peer selection: `ip_hash` sent every
 client to the same target, and `consistent_hash` did not hash on the client.
+
+### Sticky Sessions
+
+```kdl
+upstreams {
+    upstream "backend" {
+        target "10.0.1.1:8080"
+        target "10.0.1.2:8080"
+        load-balancing "sticky" {
+            cookie-name "SERVERID"     // default "SERVERID"
+            cookie-ttl 3600            // seconds, or a duration such as "1h"
+            cookie-path "/"
+            cookie-secure #true        // default #true
+            cookie-same-site "lax"     // "strict", "lax" or "none"
+            fallback "round_robin"     // algorithm for requests without a valid cookie
+        }
+    }
+}
+```
+
+The proxy sets a signed affinity cookie and sends later requests
+with that cookie to the same target. A request without a valid cookie is
+balanced with `fallback` (default `round_robin`).
+
+An unknown `fallback` or `cookie-same-site` value keeps the default (round
+robin, `lax`). From 26.10_6 it is logged at load and reported by
+`zentinel test` and `zentinel lint` as "is being ignored", with a suggestion
+for a misspelled algorithm; before, it was used silently.
 
 ### Consistent Hash
 

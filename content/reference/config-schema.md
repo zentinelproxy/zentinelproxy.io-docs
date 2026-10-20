@@ -1,7 +1,7 @@
 +++
 title = "Configuration Schema"
 weight = 5
-updated = 2026-10-19
+updated = 2026-10-20
 +++
 
 Quick reference for all Zentinel configuration options.
@@ -261,7 +261,14 @@ routes {
             fallback "index.html"
         }
 
-        // error-pages is not configurable (no parser reads it as of 26.10_3)
+        // Custom pages for chosen statuses (from 26.10_6)
+        error-pages {
+            pages {
+                "404" {
+                    message "Not found"
+                }
+            }
+        }
 
         websocket #true
         websocket-inspection #false
