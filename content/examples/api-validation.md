@@ -1,7 +1,7 @@
 +++
 title = "API Schema Validation"
 weight = 3
-updated = 2026-10-19
+updated = 2026-10-20
 +++
 
 Validate API requests and responses against JSON schemas or OpenAPI specifications at the proxy layer. This example demonstrates contract validation, ensuring all API traffic conforms to your API specifications.
@@ -579,9 +579,11 @@ Catches clients sending unexpected fields, preventing:
 
 ### Error Handling
 
-Error pages are not configurable from KDL: no parser reads an `error-pages`
-block. Validation failures are returned in the route's error format, which is
-JSON for `service-type "api"`.
+Validation failures are returned in the route's error format, which is JSON
+for `service-type "api"`. From 26.10_6 a route's
+[`error-pages`](/configuration/routes/#error-pages) block can set a
+`default-format` or a page for `400`; a page's `message` then replaces
+"Request validation failed".
 
 ## Benefits
 

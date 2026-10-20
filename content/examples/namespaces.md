@@ -1,10 +1,29 @@
 +++
 title = "Namespaces"
 weight = 17
-updated = 2026-10-19
+updated = 2026-10-20
 +++
 
 Organize resources using namespaces for multi-tenant or microservice architectures. This example shows hierarchical configuration with namespace-scoped resources, service definitions, and cross-namespace exports.
+
+{% callout(type="warning", title="Namespaces are only partly wired") %}
+As of 26.10_6
+([#548](https://github.com/zentinelproxy/zentinel/issues/548)):
+
+- A namespace's routes are served only on a listener bound to it with
+  `namespace "<id>"` in the listener block. Without one, they are never
+  matched.
+- A route that uses a **namespace-local upstream** gets
+  `500 "Upstream pool not found"`; only global upstreams work.
+- Routes inside a `service` are never served, on any listener.
+- Scoped route matching and scoped rate limiting are built but not used on
+  the request path.
+
+Namespace `limits` are applied to the namespace's routes on its bound
+listeners (from 26.10_6); service `limits` are reported as ignored. The
+example below shows the intended model; as written, its namespace routes
+are not reachable.
+{% end %}
 
 ## Use Case
 
@@ -137,7 +156,7 @@ agents {
 // Namespace: Platform (shared platform services)
 // =============================================================================
 namespace "platform" {
-    // Namespace-level limits (not yet applied, see Limit Inheritance)
+    // Namespace-level limits (applied on a listener bound to the namespace)
     limits {
         max-body-size 10485760  // 10MB
         max-connections-per-client 50
@@ -232,11 +251,6 @@ namespace "platform" {
 
     // Service within the platform namespace
     service "user-management" {
-        // Service-specific limits (not yet applied, see Limit Inheritance)
-        limits {
-            max-body-size 5242880  // 5MB
-        }
-
         routes {
             route "user-crud" {
                 priority "high"
@@ -549,13 +563,14 @@ exports {
 
 ### Limit Inheritance
 
-The configuration model lets a service's `limits` override its namespace's, and
-a namespace's override the global block. The proxy does not apply namespace or
-service `limits` yet: every request is held to the global `limits` block and to
-its route's `policies { max-body-size }`
-([#542](https://github.com/zentinelproxy/zentinel/issues/542)). To give a
-namespace a smaller body limit today, set `max-body-size` in the policies of its
-routes.
+From 26.10_6 a namespace's `limits` apply to requests on its routes (served
+on a listener bound to the namespace), together with the global block: the
+smallest body and header limits win, `max-in-flight-requests` has its own
+counter inside the global one, and the connection keys count the connections
+on the namespace's listeners. A service's `limits` block is not applied and is
+reported as ignored ([#548](https://github.com/zentinelproxy/zentinel/issues/548)).
+Before 26.10_6 neither was applied. See
+[Limits: Namespace Limits](/configuration/limits/#namespace-limits).
 
 ## Setup
 

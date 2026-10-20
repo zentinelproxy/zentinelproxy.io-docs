@@ -319,9 +319,8 @@ Zentinel is a next-generation reverse proxy built on [Cloudflare's Pingora](http
 <small class="source-ref">[`crates/proxy/src/rate_limit.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/proxy/src/rate_limit.rs)</small>
 
 - **Local rate limiting** — Per-instance, lock-free
-- **Distributed rate limiting** — Redis-based (optional feature)
-- **Memcached rate limiting** — Alternative distributed backend
-- Token bucket algorithm (local limiter; Redis and memcached count per window)
+- **Distributed rate limiting** — Redis or memcached backend, shared across instances (from 26.10_6; compile-time feature, not in the release binaries)
+- Token bucket algorithm on every backend
 - Configurable burst size (from 26.10_5)
 - Multiple key types: client IP, path, route, header value, MCP tool
 - Actions: Reject, Delay, Log only
@@ -529,7 +528,7 @@ Zentinel is a next-generation reverse proxy built on [Cloudflare's Pingora](http
 - Errors the proxy generates (unreachable upstream, timeout, no route, body too large) are JSON: `{"error":"503 Service Unavailable","trace_id":"..."}`, with the trace ID also in `X-Correlation-Id`
 - Request schema validation failures return a JSON body with `status`, `title`, `message`, `request_id`, `timestamp` and `details`
 - Upstream `4xx`/`5xx` responses are passed through unchanged (from 26.10_5; before, `Content-Type` was replaced)
-- Error pages and templates are not configurable from KDL
+- Per-route `error-pages` for chosen statuses, generated or from a template, replacing both upstream and proxy errors (from 26.10_6)
 
 ---
 
@@ -570,8 +569,8 @@ Zentinel is a next-generation reverse proxy built on [Cloudflare's Pingora](http
 
 ### Feature Flags (Compile-time)
 
-- `distributed-rate-limit` — Redis-based rate limiting
-- `distributed-rate-limit-memcached` — Memcached rate limiting
+- `distributed-rate-limit` — Redis and memcached rate limiting (both backends)
+- `distributed-rate-limit-redis`, `distributed-rate-limit-memcached` — one backend each
 - `kubernetes` — Kubernetes service discovery
 - `validation` — Extended configuration validation
 

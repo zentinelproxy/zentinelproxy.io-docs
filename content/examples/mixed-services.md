@@ -1,7 +1,7 @@
 +++
 title = "Microservices"
 weight = 5
-updated = 2026-10-19
+updated = 2026-10-20
 +++
 
 Route traffic to multiple backend services based on path, headers, and other criteria. This example demonstrates a microservices architecture with Zentinel as the API gateway.
@@ -418,9 +418,46 @@ zentinel-agent-ratelimit \
 
 ### Service-Specific Error Pages
 
-Error pages are not configurable from KDL: no parser reads an `error-pages`
-block. The error format follows the route's `service-type` — JSON for `api`,
-`builtin` and `inference`, HTML for `web` and `static`.
+From 26.10_6 each route can carry its own pages for chosen statuses, in the
+format that suits its clients:
+
+```fragment,kdl
+route "web-app" {
+    matches {
+        path-prefix "/"
+    }
+    upstream "web"
+    service-type "web"
+    error-pages {
+        pages {
+            "502" {
+                message "The site is having trouble, please try again."
+            }
+        }
+    }
+}
+
+route "api" {
+    matches {
+        path-prefix "/api/"
+    }
+    upstream "api"
+    service-type "api"
+    error-pages {
+        pages {
+            "502" {
+                format "json"
+                message "Upstream unavailable"
+            }
+        }
+    }
+}
+```
+
+A page's format defaults to the route's `default-format`, which follows the
+`service-type` (HTML for `web` and `static`, JSON for `api`, `builtin` and
+`inference`). Statuses without a page keep the default responses. See
+[Error Pages](/configuration/routes/#error-pages).
 
 ## Next Steps
 

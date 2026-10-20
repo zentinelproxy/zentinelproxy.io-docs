@@ -1,7 +1,7 @@
 +++
 title = "Routes"
 weight = 4
-updated = 2026-10-19
+updated = 2026-10-20
 +++
 
 The `routes` block defines how incoming requests are matched and forwarded to upstreams or handlers. Routes are evaluated by priority, with higher priority routes checked first.
@@ -596,7 +596,18 @@ route "user-api" {
     // Authentication and rate limiting
     filters "jwt-auth" "rate-limit"
 
-    // error-pages is not configurable from KDL, see Error Pages below
+    // Custom error pages (see Error Pages below)
+    error-pages {
+        pages {
+            "503" {
+                format "json"
+                message "The user service is unavailable, retry shortly"
+                headers {
+                    Retry-After "30"
+                }
+            }
+        }
+    }
 
     // Performance tuning
     policies {
@@ -1066,13 +1077,99 @@ For a complete traffic mirroring example with Docker Compose and test scripts, s
 
 ## Error Pages
 
-> **Not configurable from KDL.** The configuration schema has an `error-pages`
-> field, but neither KDL parser reads it, and `zentinel lint` reports an
-> `error-pages` block in a route as an ignored key. There are no error
-> templates ([#542](https://github.com/zentinelproxy/zentinel/issues/542)).
+From 26.10_6 a route can replace the response for chosen error statuses with
+its own page, in an `error-pages` block:
 
-What a client receives on an error depends on where the error came from. From
-26.10_5:
+```fragment,kdl
+routes {
+    route "shop" {
+        matches {
+            path-prefix "/"
+        }
+        upstream "web"
+        service-type "web"
+
+        error-pages {
+            default-format "html"                // html, json, text or xml
+            template-dir "/etc/zentinel/errors"  // base for relative templates
+            pages {
+                "404" {
+                    message "We could not find that page."
+                }
+                "503" {
+                    template "503.html"
+                    message "We are back in a minute."
+                    headers {
+                        Retry-After "30"
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+| Key | Where | Meaning |
+|-----|-------|---------|
+| `default-format` | `error-pages` | Format of pages that set no `format`, and of the errors the proxy generates on this route. Default: `json` on `api`, `builtin` and `inference` routes, `html` on `web` and `static` routes |
+| `template-dir` | `error-pages` | Directory a relative `template` is resolved against. Without it, a relative path is relative to the proxy's working directory |
+| `pages` | `error-pages` | One child per status, named by the status code in quotes (`"503" { }`), `400` to `599` |
+| `format` | page | `html`, `json`, `text` (or `plain`) or `xml` |
+| `message` | page | Text shown on the page, in place of the proxy's generic message |
+| `template` | page | File used as the page body, in the page's format |
+| `headers` | page | Extra response headers, one `Name "value"` per line |
+
+Without a `template`, the page is generated in its format and carries the
+status, the status's reason phrase, the `message` and the request ID. A
+template is read when the configuration is loaded (and on reload), and these
+placeholders are filled in:
+
+| Placeholder | Value |
+|-------------|-------|
+| `{{status}}` | Status code, for example `503` |
+| `{{title}}` | Reason phrase, for example `Service Unavailable` |
+| `{{message}}` | The page's `message`, or the proxy's message for the error |
+| `{{request_id}}` | The request's trace ID |
+| `{{timestamp}}` | Unix time in seconds |
+
+In `html` and `xml` pages the values are HTML-escaped, and in `json` pages
+they are escaped as JSON string content, so a message that contains request
+data (a static route's error names the requested path) cannot inject markup.
+Every page response also has `Content-Type` for its format and `X-Request-Id`.
+
+### Which errors a page replaces
+
+A page for a status replaces, on its route:
+
+- an **upstream** response with that status: status, headers and body are
+  replaced by the page (the upstream's `Content-Type`, `Content-Length` and
+  encoding headers go with them);
+- an error the **proxy** raises itself with that status: upstream unreachable
+  or timed out (`502`/`503`/`504`), every target failing its health check
+  (`503`), a body over the limit (`413`), a header over the limit (`500`).
+
+Statuses without a page behave as described in the next section: upstream
+errors pass through unchanged, and the proxy's own errors get its JSON body.
+Rate-limit `429` and `max-in-flight-requests` `503` responses are written
+directly and are not replaced. A request that matches no route has no route
+pages, so its `404` is always the JSON body.
+
+Invalid values do not stop the configuration from loading. A missing or
+unreadable template, an unknown format, a page name that is not a status from
+400 to 599, or a header with an invalid name or value is reported by
+`zentinel test` and `zentinel lint` as "is being ignored" (and fails
+`test --strict`); the page is then generated in its format, or the header is
+left out. `include-stack-trace` is reported as ignored: the proxy produces no
+stack traces.
+
+**Before 26.10_6** no parser read `error-pages`: the whole block was reported
+as ignored and every error used the default responses below. Generated HTML
+error pages also inserted the message unescaped.
+
+### Default error responses
+
+What a client receives on an error when the route has no page for its status.
+From 26.10_5:
 
 | Situation | Status | Body | `Content-Type` |
 |-----------|--------|------|----------------|

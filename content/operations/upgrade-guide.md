@@ -1,7 +1,7 @@
 +++
 title = "Upgrade Guide"
 weight = 10
-updated = 2026-10-19
+updated = 2026-10-20
 +++
 
 How to move a Zentinel deployment to a newer release, and which releases change behaviour you may depend on.
@@ -88,6 +88,11 @@ Releases not listed here are dependency, security or documentation updates with 
 
 | Release | Type | What changes | What to do |
 |---------|------|--------------|------------|
+| **26.10_6** | Behaviour | `limits { max-in-flight-requests max-total-connections max-connections-per-client }` are enforced; before they were parsed and ignored. Unset means unlimited (the documented defaults never applied) and `0` means unlimited. Over `max-in-flight-requests` a request gets `503` with `Retry-After: 1`; over a connection limit the connection is closed. The starter configuration older installs keep at `/etc/zentinel/zentinel.kdl` sets `max-connections-per-client 100`, counted per TCP peer. Namespace `limits` are applied to the namespace's routes | **Behind a load balancer or NAT:** list it in the listener's [`trusted-proxies`](/configuration/listeners/#trusted-proxies), which exempts it from `max-connections-per-client` (the proxy logs an `INFO` note at startup when a per-client limit is set without `trusted-proxies`), or remove the line. Check `max-total-connections` and `max-in-flight-requests` against peak load. See [Limits](/configuration/limits/#concurrency-limits) |
+| **26.10_6** | Behaviour | Route `error-pages` blocks are read: a page replaces the upstream's and the proxy's response for its status. Agent filter `timeout-ms` applies (it can only shorten the agent's); `phase` on an agent filter is reported as ignored | Review `error-pages` blocks that were ignored until now; check agent filters whose `timeout-ms` is shorter than the agent's |
+| **26.10_6** | Behaviour | Rate limiters are rebuilt on reload. Redis and memcached backends are used and run the same token bucket as the local limiter, but only in binaries built with `--features distributed-rate-limit`; the release binaries still limit per instance and log a warning | Builds with the feature: expect limits to be shared across instances, so per-instance values set to compensate are now too strict |
+| **26.10_6** | Behaviour | Host-name targets are health-checked (every resolved address, every probe cycle); with a check, the proxy dials the first healthy address. An early `SIGHUP` no longer stops a starting proxy | Check health-check paths on host-name targets, which were never probed before |
+| **26.10_6** | Tooling | `-c <dir>` and `ZENTINEL_CONFIG=<dir>` load a directory. `test --strict` and `lint` check every file read, included ones too, so a typo in an included file now fails `--strict` | Run `zentinel test --strict` before upgrading |
 | **26.10_5** | Behaviour | Zentinel sends `X-Forwarded-For`, `-Proto` and `-Host`, replacing client-sent ones, and drops client-sent `Forwarded` and `X-Real-IP`, unless the peer is in the listener's new `trusted-proxies`. The client IP for rate limits, geo filters, `ip_hash`, agents and logs follows the same rule | **Behind a load balancer:** list it in [`trusted-proxies`](/configuration/listeners/#trusted-proxies), or backends see its address and `client-ip` rate limits count it as one client |
 | **26.10_5** | Behaviour | Failing health checks take targets out of rotation; with all failing, requests get `503`. Health checks follow reloads, and discovery-backed upstreams are probed. The HTTP check honours `expected-status` and `timeout-secs` and sends `Host` | Check health-check `path`, `expected-status` and `host` against what each backend answers before upgrading |
 | **26.10_5** | Behaviour | Rate limiting: `burst` is the token-bucket size (default `10`, so `max-rps 100` without `burst` admits 10 at once); `rate-limits { default-rps }` applies to routes without a limit; `global { key }` and `header:<name>` keys work; `client-ip` buckets are per client (they were shared) | Set `burst` where clients send in bursts; expect `429`s from `default-rps` |

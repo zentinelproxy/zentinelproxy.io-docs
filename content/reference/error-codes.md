@@ -1,7 +1,7 @@
 +++
 title = "Error Codes"
 weight = 3
-updated = 2026-10-19
+updated = 2026-10-20
 +++
 
 HTTP status codes and error responses returned by Zentinel.
@@ -40,9 +40,11 @@ HTTP status codes and error responses returned by Zentinel.
 
 ## Error Response Format
 
-There are no configurable error pages or templates. The body depends
-on where the error came from; see [Error Pages](/configuration/routes/#error-pages)
-for the full table. Errors the proxy generates itself (unreachable upstream,
+The body depends on where the error came from; see
+[Error Pages](/configuration/routes/#error-pages) for the full table. From
+26.10_6 a route can set its own page for chosen statuses with `error-pages`,
+which replaces both the upstream's and the proxy's response for that status.
+Without a page, errors the proxy generates itself (unreachable upstream,
 timeout, no healthy target, no matching route, request body too large) look the
 same on every route type:
 
@@ -136,8 +138,10 @@ Limit types:
 - `queue_depth` - Request queue full
 
 These are the error type's categories. A request body over `max-body-size` is
-answered `413 Payload Too Large`, and connection and in-flight limits are not
-applied (see [Limits](/configuration/limits/#connection-limits)).
+answered `413 Payload Too Large`. From 26.10_6 a request over
+`max-in-flight-requests` is answered `503` with `Retry-After: 1`, and a
+connection over a connection limit is closed (see
+[Limits](/configuration/limits/#concurrency-limits)).
 
 **RateLimit**
 ```

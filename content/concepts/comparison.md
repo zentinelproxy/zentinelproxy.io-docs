@@ -617,8 +617,9 @@ Zentinel's agent model provides unique isolation guarantees:
 
 Native support for distributed rate limiting across instances:
 
-- Redis backend (feature: `distributed-rate-limit`)
-- Memcached backend (feature: `distributed-rate-limit-memcached`)
+- Redis and memcached backends (compile-time feature `distributed-rate-limit`;
+  the release binaries are built without it and limit per instance)
+- Same token bucket and `burst` semantics as the local limiter
 - Graceful degradation to local limits if backend fails
 
 ### Service Discovery

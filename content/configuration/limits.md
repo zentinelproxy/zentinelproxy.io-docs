@@ -1,35 +1,35 @@
 +++
 title = "Limits"
 weight = 6
-updated = 2026-10-19
+updated = 2026-10-20
 +++
 
-The `limits` block bounds the size of requests. This page describes what a
-single configuration file (`zentinel -c zentinel.kdl`) reads, which is the only
-form the `zentinel` command can load
-([#541](https://github.com/zentinelproxy/zentinel/issues/541)).
+The `limits` block bounds the size of requests, the number of requests the
+proxy works on at once, and the number of client connections it holds. A
+single file and a directory configuration read it the same way.
 
 {% callout(type="warning", title="Six keys, no -bytes suffix") %}
-A `limits` block in a configuration file reads exactly these keys:
-`max-header-size`, `max-header-count`, `max-body-size`,
-`max-connections-per-client`, `max-total-connections` and
-`max-in-flight-requests`. The `-bytes` spellings (`max-body-size-bytes`,
-`max-header-size-bytes`) and every other key once listed here
-(`max-header-value-bytes`, `max-decompression-ratio`,
-`max-requests-per-second-*`, `max-agent-*`, `max-memory-bytes`, ...) belong to
-the directory-configuration parser and are ignored. From 26.10_5,
-`zentinel test` and `zentinel lint` report them as "is being ignored", with
-"Did you mean 'max-body-size'?" for the `-bytes` names. Before 26.10_5 nothing
-reported them, so a limit written with `-bytes` silently ran at the default.
+A `limits` block reads exactly these keys: `max-header-size`,
+`max-header-count`, `max-body-size`, `max-connections-per-client`,
+`max-total-connections` and `max-in-flight-requests`. The `-bytes` spellings
+(`max-body-size-bytes`, `max-header-size-bytes`) and every other key once
+listed here (`max-header-value-bytes`, `max-decompression-ratio`,
+`max-requests-per-second-*`, `max-agent-*`, `max-memory-bytes`, ...) are not
+read. From 26.10_5, `zentinel test` and `zentinel lint` report them as "is
+being ignored", with "Did you mean 'max-body-size'?" for the `-bytes` names.
+Before 26.10_5 nothing reported them, so a limit written with `-bytes` silently
+ran at the default.
 {% end %}
 
 ## Basic Configuration
 
 ```kdl
 limits {
-    max-header-size 8192         // total size of all request headers, bytes
-    max-header-count 100         // number of request headers
-    max-body-size 10485760       // request body, bytes (10 MiB)
+    max-header-size 8192              // total size of all request headers, bytes
+    max-header-count 100              // number of request headers
+    max-body-size 10485760            // request body, bytes (10 MiB)
+    max-in-flight-requests 10000      // requests being processed at once
+    max-total-connections 10000       // open client connections
 }
 ```
 
@@ -38,13 +38,13 @@ limits {
 | `max-header-size` | `8192` | Yes |
 | `max-header-count` | `100` | Yes |
 | `max-body-size` | `10485760` (10 MiB) | Yes; see [Body Limits](#body-limits) |
-| `max-connections-per-client` | `100` | **No**, see [Connection Limits](#connection-limits) |
-| `max-total-connections` | `10000` | **No** |
-| `max-in-flight-requests` | `10000` | **No** |
+| `max-in-flight-requests` | unlimited | From 26.10_6; see [Concurrency Limits](#concurrency-limits) |
+| `max-total-connections` | unlimited | From 26.10_6 |
+| `max-connections-per-client` | unlimited | From 26.10_6 |
 
-The same six keys are accepted in a namespace's or service's `limits` block,
-but the proxy does not apply namespace and service limits
-([#542](https://github.com/zentinelproxy/zentinel/issues/542)).
+A namespace's `limits` block takes the same six keys and is applied to that
+namespace's routes from 26.10_6; see [Namespace Limits](#namespace-limits). A
+service's `limits` block is not applied and is reported as ignored.
 
 ## Header Limits
 
@@ -137,20 +137,121 @@ exceed max_body_size_bytes`). From 26.10_5 any value loads.
 The size of request bodies sent to an agent is set on the agent, with
 `max-request-body-bytes`; see [Agents](../agents/).
 
-## Connection Limits
+## Concurrency Limits
 
-`max-connections-per-client`, `max-total-connections` and
-`max-in-flight-requests` are read and range-checked, but nothing in the proxy
-applies them: Zentinel does not limit client connections or concurrent requests
-([#542](https://github.com/zentinelproxy/zentinel/issues/542)). Bound load
-with [rate limits](../filters/#rate-limiting), and cap connections in front of
-the proxy (a load balancer) or with the operating system's file descriptor
-limit:
+From 26.10_6 the three concurrency keys are enforced. Each is unlimited unless
+it is written.
 
-```bash
-ulimit -n                  # Current soft limit
-cat /proc/sys/fs/file-max  # System limit
+```kdl
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+        trusted-proxies "10.0.0.0/8"   // the load balancer
+    }
+}
+
+limits {
+    max-in-flight-requests 10000      // requests being processed at once
+    max-total-connections 10000       // open client connections, all clients
+    max-connections-per-client 100    // open connections from one client address
+}
 ```
+
+**`max-in-flight-requests`** counts requests from the moment they are matched to
+a route until they end, however they end (response sent, upstream error, client
+gone). A request over the limit gets `503 Service Unavailable` with
+`Retry-After: 1` and the proxy's JSON error body, and the connection is closed.
+It is logged at `WARN` ("Request refused: max-in-flight-requests reached") and
+counted in `zentinel_blocked_requests_total{reason="in_flight_limit_exceeded"}`.
+Builtin handlers (`health`, `status`, `metrics`, ...) are never refused, so a
+busy proxy still passes its own health check.
+
+**`max-total-connections`** and **`max-connections-per-client`** count open
+connections, for as long as each stays open (an HTTP/1 keep-alive connection
+or a whole HTTP/2 session). A connection over either limit is closed before
+anything is read from it, and logged at `WARN` ("Connection refused:
+connection limit reached"). The client is the TCP peer address: a client's own
+address from `X-Forwarded-For` is not known when the connection is accepted.
+
+Behind a load balancer or NAT, the TCP peer is the balancer, so one address
+carries many clients. Peers listed in the listener's
+[`trusted-proxies`](../listeners/#trusted-proxies) are therefore **exempt from
+`max-connections-per-client`**; they still count against
+`max-total-connections`. When `max-connections-per-client` is set and a
+listener has no `trusted-proxies`, the proxy logs an `INFO` note at startup
+pointing at `trusted-proxies`.
+
+A value of `0` for any of the three keys means unlimited, as it effectively was
+before 26.10_6, and `zentinel test` and `zentinel lint` report it as ignored.
+Changes take effect on reload: connection limits apply to the next connection
+accepted, in-flight limits to the next request.
+
+`system { max-connections }` is a different key and is still not applied;
+`zentinel test` and `lint` report it. Use `limits { max-total-connections }`.
+
+**Before 26.10_6** the three keys were parsed and not enforced, whatever their
+value, and the documented defaults (`100` per client, `10000` total and in
+flight) never applied. The starter configuration that older install scripts
+wrote sets `max-connections-per-client 100`; from 26.10_6 it is enforced. See
+the [Upgrade Guide](/operations/upgrade-guide/).
+
+## Namespace Limits
+
+From 26.10_6 a namespace's `limits` block is applied to requests on that
+namespace's routes, which are the routes served on a listener bound to the
+namespace with `namespace "..."`:
+
+```kdl
+listeners {
+    listener "public" {
+        address "0.0.0.0:8080"
+        protocol "http"
+        namespace "public-api"
+    }
+}
+
+upstreams {
+    upstream "api-backend" {
+        target "127.0.0.1:3000"
+    }
+}
+
+namespace "public-api" {
+    limits {
+        max-body-size 1048576          // 1 MiB
+        max-in-flight-requests 500
+        max-connections-per-client 20
+    }
+
+    routes {
+        route "public" {
+            matches {
+                path-prefix "/v1/"
+            }
+            upstream "api-backend"
+        }
+    }
+}
+```
+
+- `max-body-size`, `max-header-size` and `max-header-count`: the smallest of
+  the global, the namespace and (for the body) the route's
+  `policies { max-body-size }` applies. A key the namespace does not set leaves
+  the global value in force.
+- `max-in-flight-requests`: the namespace has its own counter, inside the
+  global limit. A request must fit both.
+- `max-total-connections` and `max-connections-per-client`: counted for the
+  connections on the listeners bound to the namespace, in addition to the
+  global limits.
+
+A service's `limits` block is not applied: no listener serves a service's
+routes ([#548](https://github.com/zentinelproxy/zentinel/issues/548)).
+`zentinel test` and `lint` report it as ignored; set the limits on the
+namespace. Namespaces have further gaps (routes that use a namespace-local
+upstream get `500`); see [Known Limitations](/reference/known-limitations/).
+
+Before 26.10_6, namespace and service limits were parsed and not applied.
 
 ## Rate Limiting
 
@@ -160,10 +261,9 @@ the top-level `rate-limits` block for a default and a server-wide limit; see
 `burst` is the bucket size and `max-rps` the refill rate.
 
 The `max-requests-per-second-global`, `-per-client` and `-per-route` keys are
-read only from directory configurations. Earlier versions of this page said
-their bucket held ten times the per-second limit; it holds one second's worth
-(1×), and namespace and service limits are not applied at all
-([#542](https://github.com/zentinelproxy/zentinel/issues/542)).
+not read; `zentinel test` and `lint` report them as ignored. Before 26.10_6 the
+separate directory loader read them, but the `zentinel` command could not load
+a directory.
 
 ## Memory Limits
 
@@ -284,9 +384,9 @@ agents {
 | `max-idle` | `connection-pool` | `20` | Idle connections kept per target |
 | `max-concurrent-calls` | `agent` | `100` | In-flight calls to one agent |
 
-`system { max-connections }` is not in this list: Zentinel does not limit
-client connections, and from 26.10_5 `zentinel test` and `lint` report the key
-as not applied.
+`system { max-connections }` is not in this list: it is not applied, and from
+26.10_5 `zentinel test` and `lint` report it. Client connections are bounded by
+`limits { max-total-connections }` (from 26.10_6).
 
 **A `0` here means unbounded, not disabled.** A `connection-pool` with
 `max-connections 0` accumulates connections against a slow upstream until the process runs out of
@@ -358,9 +458,9 @@ checks in the table above are reported only by `zentinel lint`.
 | `max-header-size` | 8192 | Yes |
 | `max-header-count` | 100 | Yes |
 | `max-body-size` | 10485760 (10 MiB) | Yes |
-| `max-connections-per-client` | 100 | No |
-| `max-total-connections` | 10000 | No |
-| `max-in-flight-requests` | 10000 | No |
+| `max-in-flight-requests` | unlimited | Yes, from 26.10_6 |
+| `max-total-connections` | unlimited | Yes, from 26.10_6 |
+| `max-connections-per-client` | unlimited | Yes, from 26.10_6 (peers in `trusted-proxies` exempt) |
 | Rate limits | None | See [Filters](../filters/#rate-limiting) |
 | Memory limit | None | No such setting |
 
@@ -368,9 +468,12 @@ checks in the table above are reported only by `zentinel lint`.
 
 Requests refused by a limit are counted in `zentinel_blocked_requests_total`,
 labelled by `reason`: `header_size_exceeded`, `header_count_exceeded`,
-`body_size_exceeded` and, for rate limits, `rate_limited`. Each refusal is
-also logged at `WARN` with the trace ID, the limit and the actual value, for
-example `Request body size limit exceeded`.
+`body_size_exceeded`, `in_flight_limit_exceeded` and, for rate limits,
+`rate_limited`. Each refusal is also logged at `WARN` with the trace ID, the
+limit and the actual value, for example `Request body size limit exceeded`.
+Connections closed by `max-total-connections` or `max-connections-per-client`
+are logged at `WARN` ("Connection refused: connection limit reached") with the
+client address; they are not counted in a metric.
 
 ## Troubleshooting
 
@@ -385,6 +488,19 @@ grep -n max-body-size zentinel.kdl
 
 Raise the global limit to the largest body you accept, then set lower limits
 per route. Before 26.10_5, an over-limit body got `500` instead of `413`.
+
+### 503 with `Retry-After: 1`
+
+The request was over `max-in-flight-requests`, globally or in its namespace.
+The `WARN` line names the scope. Raise the limit, or add capacity.
+
+### Connections closed right after connecting
+
+A connection over `max-total-connections` or `max-connections-per-client` is
+closed before a request is read; clients see a reset or an empty reply. If all
+clients arrive through a load balancer, list it in the listener's
+`trusted-proxies` so that `max-connections-per-client` does not count it as one
+client.
 
 ### 429 Too Many Requests
 

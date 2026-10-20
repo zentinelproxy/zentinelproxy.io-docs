@@ -1,7 +1,7 @@
 +++
 title = "Configuration Management"
 weight = 1
-updated = 2026-02-19
+updated = 2026-10-20
 +++
 
 Managing Zentinel configurations across environments.
@@ -49,6 +49,12 @@ listeners {
     }
 }
 ```
+
+From 26.10_6 you can also pass the directory itself, `zentinel -c /etc/zentinel/`.
+Every `*.kdl` file below it is read; the files under `includes/` are read once,
+through the `include` lines, and non-KDL files such as `agents/*.conf` are
+ignored. See [Multi-File Configuration](/configuration/file-format/#multi-file-configuration)
+for the rules.
 
 ## Environment-Specific Configuration
 

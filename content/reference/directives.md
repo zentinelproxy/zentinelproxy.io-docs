@@ -2,7 +2,7 @@
 title = "Directive Index"
 weight = 1
 description = "Complete reference for all Zentinel configuration directives"
-updated = 2026-10-19
+updated = 2026-10-20
 +++
 
 Complete reference for all Zentinel configuration directives, verified against the source code. Each entry includes syntax, context, default values, and usage examples.
@@ -262,8 +262,10 @@ system {
 
 ### `max-connections`
 
-Accepted but **not applied**: Zentinel does not limit client connections. From
-26.10_5, `zentinel test` and `zentinel lint` report it as not applied.
+Accepted but **not applied**. From 26.10_5, `zentinel test` and `zentinel lint`
+report it as not applied. To cap client connections, use
+[`limits { max-total-connections }`](#max-total-connections) (enforced from
+26.10_6).
 
 **Context:** `system`
 
@@ -1638,13 +1640,42 @@ shadow {
 
 ### `error-pages`
 
-**Not configurable.** No KDL parser reads `error-pages` as of 26.10_3: both the
-single-file and the multi-file parser set a route's error pages to none, and
-the loader reports the block as an unrecognised route directive. Error
-responses use the default format for the route's `service-type` (JSON for
-`api`, `builtin` and `inference` routes, HTML for `web` and `static`). The `default-format`,
-`include-stack-trace`, `template-dir` and `pages` settings that earlier
-versions of this page listed have no effect.
+Custom pages for chosen error statuses on a route. Read from 26.10_6; before
+that no parser read the block and it was reported as ignored.
+
+**Context:** `route`
+
+```fragment,kdl
+error-pages {
+    default-format "json"
+    template-dir "/etc/zentinel/errors"
+    pages {
+        "404" {
+            message "Resource not found"
+        }
+        "503" {
+            format "html"
+            template "503.html"
+            message "Back in a minute"
+            headers {
+                Retry-After "30"
+            }
+        }
+    }
+}
+```
+
+| Key | Description |
+|-----|-------------|
+| `default-format` | `html`, `json`, `text` or `xml`. Default: `json` for `api`, `builtin` and `inference` routes, `html` for `web` and `static` |
+| `template-dir` | Base directory for relative `template` paths |
+| `pages` | One child per status (`"400"` to `"599"`) with `format`, `message`, `template` and `headers` |
+
+A page replaces an upstream error and the proxy's own error for its status.
+Templates take `{{status}}`, `{{title}}`, `{{message}}`, `{{request_id}}` and
+`{{timestamp}}`. Invalid values are reported as ignored and the generated page
+is used; `include-stack-trace` is reported as ignored. See
+[Error Pages](/configuration/routes/#error-pages).
 
 ---
 
@@ -2211,8 +2242,11 @@ agent "auth" {
 
 Maximum time to wait for agent response.
 
-**Context:** `agent`
+**Context:** `agent`, `filter` (agent)
 **Default:** `1000`
+
+On an agent filter it sets the timeout of the filter's `request_headers` call
+and can only shorten the agent's value; the shorter applies (from 26.10_6).
 
 ```fragment,kdl
 agent "auth" {
@@ -2502,6 +2536,9 @@ filter "rate-limit" {
 When filter runs. Options: `"request"`, `"response"`, `"both"`.
 
 **Context:** `filter` (headers)
+
+On an agent filter `phase` is not read and is reported as ignored; the agent's
+`events` decide which calls it receives.
 
 ```kdl
 filter "headers" {
@@ -3208,13 +3245,14 @@ pii-detection {
 <small class="docs-ref">[Limits](/configuration/limits/)</small>
 <small class="source-ref">[`crates/common/src/limits.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/common/src/limits.rs)</small>
 
-A configuration file's `limits` block reads exactly the six keys below. The
-`-bytes` spellings (`max-header-size-bytes`, `max-body-size-bytes`) and the
-other keys earlier versions of this index listed (`max-connections-per-route`,
+A `limits` block reads exactly the six keys below, in a single file and in a
+directory configuration alike. The `-bytes` spellings
+(`max-header-size-bytes`, `max-body-size-bytes`) and the other keys earlier
+versions of this index listed (`max-connections-per-route`,
 `max-queued-requests`, `max-requests-per-second-*`, `max-memory-bytes`, ...)
-belong to the directory-configuration loader, which the `zentinel` command
-cannot load ([#541](https://github.com/zentinelproxy/zentinel/issues/541)).
-From 26.10_5, `zentinel test` and `zentinel lint` report them as ignored.
+are not read anywhere. From 26.10_5, `zentinel test` and `zentinel lint`
+report them as ignored. Before 26.10_6 a separate directory loader read some of
+them, but the `zentinel` command could not load a directory.
 
 ### `max-header-size`
 
@@ -3263,10 +3301,13 @@ limits {
 
 ### `max-connections-per-client`
 
-Parsed but **not applied**: Zentinel does not limit client connections ([#542](https://github.com/zentinelproxy/zentinel/issues/542)).
+Maximum open connections from one client address (the TCP peer). A connection
+over it is closed before anything is read. Peers in the listener's
+`trusted-proxies` are exempt. Enforced from 26.10_6; parsed and not applied
+before. `0` means unlimited and is reported as ignored.
 
-**Context:** `limits`
-**Default:** `100`
+**Context:** `limits`, namespace `limits`
+**Default:** unlimited
 
 ```kdl
 limits {
@@ -3278,10 +3319,12 @@ limits {
 
 ### `max-total-connections`
 
-Parsed but **not applied** ([#542](https://github.com/zentinelproxy/zentinel/issues/542)).
+Maximum open client connections. A connection over it is closed before
+anything is read. Enforced from 26.10_6; parsed and not applied before. `0`
+means unlimited and is reported as ignored.
 
-**Context:** `limits`
-**Default:** `10000`
+**Context:** `limits`, namespace `limits`
+**Default:** unlimited
 
 ```kdl
 limits {
@@ -3293,10 +3336,12 @@ limits {
 
 ### `max-in-flight-requests`
 
-Parsed but **not applied** ([#542](https://github.com/zentinelproxy/zentinel/issues/542)).
+Maximum requests being processed at once. A request over it gets `503` with
+`Retry-After: 1`; builtin handlers are never refused. Enforced from 26.10_6;
+parsed and not applied before. `0` means unlimited and is reported as ignored.
 
-**Context:** `limits`
-**Default:** `10000`
+**Context:** `limits`, namespace `limits`
+**Default:** unlimited
 
 ```kdl
 limits {

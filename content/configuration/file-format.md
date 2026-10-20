@@ -1,7 +1,7 @@
 +++
 title = "File Format"
 weight = 1
-updated = 2026-10-19
+updated = 2026-10-20
 +++
 
 Zentinel uses [KDL](https://kdl.dev/) as its primary configuration format. KDL is a human-friendly document language that's easy to read, write, and diff.
@@ -356,40 +356,82 @@ File format is auto-detected by extension:
 
 ## Multi-File Configuration
 
-For complex deployments, split configuration across multiple files:
+A configuration can be split across several KDL files in two ways: an entry
+file that pulls in the others with `include`, or a directory passed to `-c`.
+Both are read as one document by the same parser, so a block means the same
+thing whichever file it is in.
 
 ```
 /etc/zentinel/
-├── zentinel.kdl        # Main config (includes others)
+├── zentinel.kdl        # system, limits, include "..."
+├── listeners/
+│   └── http.kdl
 ├── routes/
 │   ├── api.kdl
-│   ├── static.kdl
-│   └── admin.kdl
-├── upstreams/
-│   ├── backend.kdl
-│   └── cache.kdl
-└── agents/
-    └── security.kdl
+│   └── static.kdl
+└── upstreams/
+    └── backends.kdl
 ```
 
-Use directory loading:
+Each file holds ordinary top-level blocks (`listeners { }`, `routes { }`,
+`upstreams { }`, ...). A complete example is in the repository under
+[`config/example-multi-file`](https://github.com/zentinelproxy/zentinel/tree/main/config/example-multi-file).
+
+### Loading a Directory
+
+From 26.10_6, every command that takes `-c` accepts a directory, and so does
+`ZENTINEL_CONFIG`:
 
 ```bash
-zentinel --config-dir /etc/zentinel/
+zentinel test --strict -c /etc/zentinel/
+zentinel lint -c /etc/zentinel/
+zentinel validate -c /etc/zentinel/
+zentinel -c /etc/zentinel/
+ZENTINEL_CONFIG=/etc/zentinel/ zentinel run
 ```
 
-Or use `include` directives in your main config:
+There is no separate `--config-dir` flag. Before 26.10_6, `-c <dir>` failed
+with "Is a directory"; use the entry file (`-c /etc/zentinel/zentinel.kdl`)
+on those releases.
 
-```kdl
-// zentinel.kdl
-include "routes/*.kdl"
-include "upstreams/*.kdl"
-include "agents/*.kdl"
+How a directory is read:
+
+- Every `*.kdl` file below the directory is found, recursively, and read in
+  path order.
+- A file that another file in the directory includes is read once, through
+  that `include`, not a second time on its own. So the layout above (an entry
+  file with `include "routes/*.kdl"`) and a `conf.d`-style folder of
+  standalone files both load.
+- A file reached from two entry files, or a circular include, is an error.
+  A "diamond" (two files that both include a third) is currently rejected as
+  circular too ([#553](https://github.com/zentinelproxy/zentinel/issues/553)).
+- Hidden files and folders are skipped: editor lock files such as
+  `.#zentinel.kdl`, `.git`, and the `..data` folder of a Kubernetes ConfigMap
+  mount, whose files would otherwise be read twice. So are files whose name
+  contains `.example.` or `.bak`, or ends in `~`.
+- The `environments/` folder is skipped. Its files are alternatives to one
+  another (`staging.kdl`, `production.kdl`), and the command line has no way
+  to choose one.
+- A singleton block written in two files (`system`, `limits`, ...) is taken
+  from the file read last, with a warning. A listener, route, upstream, filter
+  or agent ID defined in two files is an error.
+
+`zentinel test --strict` and `zentinel lint` check every file that is read,
+included ones too, and name the file in each finding:
+
 ```
+/etc/zentinel/routes/api.kdl: 'timeout-sec' is not a setting in the 'policies'
+block and is being ignored. Did you mean 'timeout-secs'?
+```
+
+Before 26.10_6 only the file named with `-c` was checked, so a misspelled key
+in an included file passed `--strict`, even for a single-file configuration.
 
 ### Include Behavior
 
-The `include` directive is processed as a pre-processing step when loading configuration with `Config::from_file()` or `zentinel --config`. Include directives are resolved before the configuration is parsed, so included files can contain any top-level blocks (`routes`, `upstreams`, `agents`, etc.).
+The `include` directive is expanded before the configuration is parsed, so
+included files can contain any top-level blocks (`routes`, `upstreams`,
+`agents`, etc.).
 
 **Glob patterns** — Include paths support glob patterns (`*`, `**`, `?`). Matched files are sorted alphabetically for deterministic ordering.
 
@@ -418,12 +460,17 @@ routes {
 Validate configuration before applying:
 
 ```bash
-# Check syntax and semantics
-zentinel --config zentinel.kdl --validate
+# Parse and validate; --strict also fails on settings that are ignored
+zentinel test --strict -c zentinel.kdl
 
-# Dry-run mode
-zentinel --config zentinel.kdl --dry-run
+# Also check that upstreams, agents and certificates are reachable
+zentinel validate -c zentinel.kdl
+
+# Best-practice warnings
+zentinel lint -c zentinel.kdl
 ```
+
+Each command takes a file or a directory.
 
 Common validation errors:
 
@@ -436,15 +483,24 @@ Common validation errors:
 
 ## Hot Reload
 
-Zentinel supports configuration reload without restart:
+Zentinel reloads its configuration without a restart on `SIGHUP`:
 
 ```bash
-# Send SIGHUP to reload
-kill -HUP $(cat /var/run/zentinel.pid)
-
-# Or use the admin endpoint
-curl -X POST http://localhost:9090/admin/reload
+kill -HUP $(pgrep -x zentinel)
 ```
+
+From 26.10_6 a `SIGHUP` that arrives while the proxy is still starting is
+queued, and the reload runs once the proxy is ready. Before, an early `SIGHUP`
+could terminate a starting proxy (for example a configuration-management run
+that reloads right after starting the service). `SIGTERM` and `SIGINT` still
+stop a starting proxy at once.
+
+With `system { auto-reload #true }` it also reloads when the configuration
+changes on disk. For a directory configuration it watches the whole directory,
+recursively, with a once-a-second poll as a fallback for filesystems that do
+not deliver change events; one edit can occasionally trigger two reloads
+([#553](https://github.com/zentinelproxy/zentinel/issues/553)), which is
+harmless.
 
 Reload behavior:
 1. Parse new configuration
