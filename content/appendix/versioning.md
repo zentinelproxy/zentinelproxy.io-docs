@@ -70,7 +70,8 @@ This table maps CalVer release versions to the crate version actually **publishe
 
 | Release (CalVer) | Crate Version (SemVer) | Protocol | Release Date | Status |
 |---------|---------------|----------|--------------|--------|
-| **26.10_6** | `0.6.49` | `2` | 2026-10-20 | Current — connection and in-flight limits enforced; error pages; directory configs; read the upgrade notes |
+| **26.10_7** | `0.6.50` | `2` | 2026-10-20 | Current — namespaces and services served end to end; error pages for refusals; host-name fallback; read the upgrade notes |
+| **26.10_6** | `0.6.49` | `2` | 2026-10-20 | Previous — connection and in-flight limits enforced; error pages; directory configs; read the upgrade notes |
 | **26.10_5** | `0.6.48` | `2` | 2026-10-19 | Previous — health checks steer routing; per-client rate limits; forwarded headers with `trusted-proxies` (read the upgrade notes) |
 | **26.10_4** | `0.6.47` | `2` | 2026-10-19 | Previous — agents reconnect after a restart; API schema validation fixed |
 | **26.10_3** | `0.6.46` | `2` | 2026-10-18 | Previous — security and dependency maintenance; minimum Rust 1.96 |
@@ -100,7 +101,7 @@ This table maps CalVer release versions to the crate version actually **publishe
 
 ```bash
 zentinel --version
-# zentinel 0.6.49 (release 26.10_6, commit 903b587-dirty)
+# zentinel 0.6.50 (release 26.10_7, commit cb19f74-dirty)
 ```
 
 The binary prints the crate SemVer, then the CalVer release and the commit.
