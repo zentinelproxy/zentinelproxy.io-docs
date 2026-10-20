@@ -1,7 +1,7 @@
 +++
 title = "Listeners"
 weight = 3
-updated = 2026-10-19
+updated = 2026-10-20
 +++
 
 The `listeners` block defines network endpoints where Zentinel accepts incoming connections. Each listener binds to an address, specifies a protocol, and optionally configures TLS.
@@ -144,6 +144,50 @@ routes {
 ```
 
 Route to use when no other route matches. If not set and no route matches, Zentinel returns 404.
+
+### Namespace
+
+`namespace "<id>"` binds a top-level listener to a
+[namespace](/configuration/namespaces/): it serves that namespace's routes
+(and those of its services without a listener of their own), never the global
+routes. A listener declared inside a namespace's `listeners` block or a
+service's `listener` block is bound to that scope without this key.
+
+```kdl
+listeners {
+    listener "public" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+    listener "internal" {
+        address "127.0.0.1:8081"
+        protocol "http"
+        namespace "admin"
+    }
+}
+
+namespace "admin" {
+    upstreams {
+        upstream "backend" {
+            target "127.0.0.1:4000"
+        }
+    }
+    routes {
+        route "console" {
+            matches {
+                path-prefix "/"
+            }
+            upstream "backend"
+        }
+    }
+}
+```
+
+Here the `admin` routes are served only on `127.0.0.1:8081`. From 26.10_7 a
+namespace without a listener of its own is served on the global listeners; see
+[Which listener serves a route](/configuration/namespaces/#which-listener-serves-a-route).
+Before 26.10_7 such a namespace was not served at all, and a route of a bound
+namespace that used the namespace's own upstream got `500`.
 
 ### Trusted Proxies and Forwarded Headers {#trusted-proxies}
 

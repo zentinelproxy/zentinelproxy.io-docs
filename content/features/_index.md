@@ -103,11 +103,11 @@ Zentinel is a next-generation reverse proxy built on [Cloudflare's Pingora](http
 - **Default route fallback**
 
 ### Scope-Aware Routing
-<small class="source-ref">[`crates/proxy/src/scoped_routing.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/proxy/src/scoped_routing.rs)</small>
+<small class="source-ref">[`crates/config/src/scopes.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/scopes.rs)</small>
 
 - Hierarchical routing (global → namespace → service)
-- Visibility rules between scopes
-- Qualified ID resolution
+- Each route served on the listeners of its nearest scope that has one
+- Qualified ID resolution (`ns:name`, `ns:svc:name`)
 
 ---
 

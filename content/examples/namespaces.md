@@ -6,23 +6,13 @@ updated = 2026-10-20
 
 Organize resources using namespaces for multi-tenant or microservice architectures. This example shows hierarchical configuration with namespace-scoped resources, service definitions, and cross-namespace exports.
 
-{% callout(type="warning", title="Namespaces are only partly wired") %}
-As of 26.10_6
-([#548](https://github.com/zentinelproxy/zentinel/issues/548)):
-
-- A namespace's routes are served only on a listener bound to it with
-  `namespace "<id>"` in the listener block. Without one, they are never
-  matched.
-- A route that uses a **namespace-local upstream** gets
-  `500 "Upstream pool not found"`; only global upstreams work.
-- Routes inside a `service` are never served, on any listener.
-- Scoped route matching and scoped rate limiting are built but not used on
-  the request path.
-
-Namespace `limits` are applied to the namespace's routes on its bound
-listeners (from 26.10_6); service `limits` are reported as ignored. The
-example below shows the intended model; as written, its namespace routes
-are not reachable.
+{% callout(type="info", title="From 26.10_7") %}
+This example is served as written from 26.10_7. Before, its namespace and
+service routes were never matched (none of the namespaces has a listener
+bound to it), and routes using a namespace's own upstream got `500`. It is the
+same configuration as
+[`config/examples/namespaces.kdl`](https://github.com/zentinelproxy/zentinel/blob/main/config/examples/namespaces.kdl)
+in the Zentinel repository.
 {% end %}
 
 ## Use Case
@@ -65,15 +55,28 @@ are not reachable.
 Create `zentinel.kdl`:
 
 ```kdl
-// Namespaces and Hierarchical Configuration
-// Multi-tenant architecture with scoped resources
+// Example: Namespaces and Hierarchical Configuration
+//
+// This example demonstrates how to organize resources using namespaces
+// for multi-tenant or microservice architectures with:
+// - Namespace-scoped resources (routes, upstreams, agents, filters)
+// - Service definitions within namespaces
+// - Resource exports for sharing across namespaces
+// - Hierarchical scope resolution (service → namespace → exports → global)
+//
+// None of these namespaces or services has a listener of its own, so all of
+// their routes are served on the global listeners below, matched together
+// with the global routes by priority. A namespace or service that declares a
+// listener (or a top-level listener with `namespace "..."`) is served only
+// there. Scoped routes and upstreams appear in logs and metrics under their
+// qualified ids, e.g. `platform:users-api`, `platform:user-service`.
 
 system {
     worker-threads 4
 }
 
 // =============================================================================
-// Global listeners (shared across all namespaces)
+// Global listeners (serve the global routes and every namespace's routes)
 // =============================================================================
 listeners {
     listener "http" {
@@ -113,6 +116,13 @@ upstreams {
             interval-secs 10
         }
     }
+
+    // Shared logging/analytics service
+    upstream "analytics" {
+        target "analytics.internal:8080" weight=1
+
+        load-balancing "round_robin"
+    }
 }
 
 // =============================================================================
@@ -130,13 +140,6 @@ filters {
     filter "global-cors" {
         type "cors"
     }
-
-    // Attaches the global WAF agent to routes that list it
-    filter "waf" {
-        type "agent"
-        agent "waf-agent"
-        failure-mode "closed"
-    }
 }
 
 // =============================================================================
@@ -145,7 +148,7 @@ filters {
 agents {
     agent "waf-agent" {
         type "waf"
-        unix-socket path="/var/run/zentinel/waf.sock"
+        grpc address="http://localhost:50051"
         events "request_headers" "request_body"
         timeout-ms 200
         failure-mode "closed"
@@ -156,7 +159,7 @@ agents {
 // Namespace: Platform (shared platform services)
 // =============================================================================
 namespace "platform" {
-    // Namespace-level limits (applied on a listener bound to the namespace)
+    // Namespace-level limits
     limits {
         max-body-size 10485760  // 10MB
         max-connections-per-client 50
@@ -199,7 +202,7 @@ namespace "platform" {
     agents {
         agent "auth-agent" {
             type "auth"
-            unix-socket path="/var/run/zentinel/platform-auth.sock"
+            grpc address="http://localhost:50052"
             events "request_headers"
             timeout-ms 100
             failure-mode "closed"
@@ -217,6 +220,7 @@ namespace "platform" {
             }
 
             upstream "user-service"
+
             filters "platform-auth" "global-rate-limit"
 
             policies {
@@ -234,6 +238,7 @@ namespace "platform" {
             }
 
             upstream "notification-service"
+
             filters "platform-auth"
 
             policies {
@@ -244,13 +249,22 @@ namespace "platform" {
 
     // Export resources for use by other namespaces
     exports {
+        // Allow other namespaces to use user-service
         upstreams "user-service"
+        // Allow other namespaces to use platform auth
         filters "platform-auth"
         agents "auth-agent"
     }
 
     // Service within the platform namespace
+    // User management service
     service "user-management" {
+        // A service's limits apply to its routes, within the
+        // namespace's (the smallest value wins).
+        limits {
+            max-in-flight-requests 500
+        }
+
         routes {
             route "user-crud" {
                 priority "high"
@@ -258,8 +272,10 @@ namespace "platform" {
                 matches {
                     host "users.example.com"
                     path-prefix "/api"
+                    method "GET" "POST" "PUT" "DELETE"
                 }
 
+                // Reference namespace upstream
                 upstream "user-service"
 
                 policies {
@@ -293,6 +309,16 @@ namespace "storefront" {
     limits {
         max-body-size 52428800  // 50MB for product images
         max-connections-per-client 100
+    }
+
+    // Namespace-scoped filters
+    filters {
+        filter "waf-agent" {
+            type "agent"
+            agent "waf-agent"
+            timeout-ms 200
+            failure-mode "closed"
+        }
     }
 
     upstreams {
@@ -332,11 +358,10 @@ namespace "storefront" {
 
             policies {
                 timeout-secs 10
-            }
-
-            cache {
-                enabled #true
-                default-ttl-secs 300
+                cache {
+                    enabled #true
+                    ttl-secs 300
+                }
             }
         }
 
@@ -349,6 +374,7 @@ namespace "storefront" {
             }
 
             upstream "cart-service"
+
             filters "platform:platform-auth"
 
             policies {
@@ -368,7 +394,7 @@ namespace "storefront" {
             upstream "checkout-service"
 
             // Full security for checkout
-            filters "platform:platform-auth" "waf"
+            filters "platform:platform-auth" "waf-agent"
 
             policies {
                 timeout-secs 60
@@ -474,7 +500,7 @@ namespace "analytics" {
 }
 
 // =============================================================================
-// Global routes (match after namespace routes)
+// Global routes (matched with the namespace routes above, by priority)
 // =============================================================================
 routes {
     route "health" {
@@ -532,12 +558,28 @@ observability {
 
 ## Key Concepts
 
+### Which Listener Serves a Route
+
+None of the namespaces or services above has a listener of its own, so all of
+their routes are served on the two global listeners, matched together with the
+global routes by priority, then specificity. A namespace or service that
+declares a listener (or a top-level listener with `namespace "..."`) is served
+only there, and such a listener never serves global routes. See
+[Which listener serves a route](/configuration/namespaces/#which-listener-serves-a-route).
+
+Scoped routes and upstreams appear in logs and metrics under their qualified
+ids, for example `platform:users-api`, `platform:user-management:user-crud` and
+`platform:user-service`.
+
 ### Scope Resolution
 
 Resources are resolved in this order:
 1. **Service scope** - Check current service first
 2. **Namespace scope** - Check containing namespace
-3. **Global scope** - Check global definitions
+3. **Exported resources** - Check what other namespaces export
+4. **Global scope** - Check global definitions
+
+A qualified reference such as `platform:platform-auth` is used as written.
 
 ### Cross-Namespace References
 
@@ -563,13 +605,14 @@ exports {
 
 ### Limit Inheritance
 
-From 26.10_6 a namespace's `limits` apply to requests on its routes (served
-on a listener bound to the namespace), together with the global block: the
-smallest body and header limits win, `max-in-flight-requests` has its own
-counter inside the global one, and the connection keys count the connections
-on the namespace's listeners. A service's `limits` block is not applied and is
-reported as ignored ([#548](https://github.com/zentinelproxy/zentinel/issues/548)).
-Before 26.10_6 neither was applied. See
+A namespace's `limits` apply to requests on its routes, together with the
+global block, and from 26.10_7 a service's `limits` (here
+`user-management`'s `max-in-flight-requests 500`) apply within the
+namespace's: the smallest body and header limits win, and
+`max-in-flight-requests` has its own counter in each scope. The connection
+keys (`max-connections-per-client` above) count only connections on a scope's
+own listeners, so in this example, where the namespaces are served on the
+global listeners, they do not apply. See
 [Limits: Namespace Limits](/configuration/limits/#namespace-limits).
 
 ## Setup
@@ -583,11 +626,11 @@ zentinel -c zentinel.kdl
 ### 2. Verify Configuration
 
 ```bash
-# Validate config
-zentinel validate -c zentinel.kdl
+# Validate config, including scoped listeners that cannot be bound
+zentinel test --strict -c zentinel.kdl
 
-# Show resolved routes
-zentinel routes -c zentinel.kdl
+# Also check that upstreams and agents are reachable
+zentinel validate -c zentinel.kdl
 ```
 
 ## Testing
@@ -637,6 +680,10 @@ curl -H "Host: analytics.internal" \
 
 ### Namespace-Specific Rate Limits
 
+A namespace has no rate-limit setting of its own. Define a `rate-limit` filter
+in the namespace and attach it to its routes; it is counted separately from
+filters of the same name in other scopes, with buckets per route:
+
 ```kdl
 namespace "premium-tenant" {
     filters {
@@ -645,6 +692,22 @@ namespace "premium-tenant" {
             max-rps 10000  // Higher limits for premium
             burst 20000
             key "client-ip"
+        }
+    }
+
+    upstreams {
+        upstream "backend" {
+            target "127.0.0.1:3000"
+        }
+    }
+
+    routes {
+        route "api" {
+            matches {
+                path-prefix "/premium/"
+            }
+            upstream "backend"
+            filters "tenant-rate-limit"
         }
     }
 }

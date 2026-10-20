@@ -426,6 +426,8 @@ filter "waf" {
 | `agent` | ID of an agent in the `agents` block |
 | `timeout-ms` | Timeout of this filter's `request_headers` call, in milliseconds. It can only shorten the agent's own `timeout-ms`: the shorter of the two applies |
 | `failure-mode` | What happens when that call fails or times out: `"open"` lets the request through, `"closed"` refuses it |
+| `inspect-body` | From 26.10_7. `#false` sends no request body to the agent on the routes that use this filter. Left out or `#true`, the agent's `events` decide |
+| `max-body-bytes` | From 26.10_7. Largest request body sent to the agent on these routes, in bytes. It can only lower the agent's `max-request-body-bytes`: the smaller of the two applies |
 
 From 26.10_6, an agent filter's `timeout-ms` is applied to the
 `request_headers` call, the same call its `failure-mode` governs. The agent's
@@ -438,10 +440,6 @@ and every call used the agent's.
 `phase` is not read on an agent filter and is reported as ignored. Which events
 an agent receives is decided by the agent's `events`; applying
 `phase "response"` would stop a security agent from seeing request headers.
-`inspect-body` and `max-body-bytes` on an agent filter are parsed and not read
-either, and are not reported yet
-([#553](https://github.com/zentinelproxy/zentinel/issues/553)); set body
-inspection on the agent with `events` and `max-request-body-bytes`.
 
 Agent filters automatically process both request-phase and response-phase events based on the agent's `events` subscription. An agent subscribed to `response_headers` and `response_body` will be called during the response phase to inspect and modify the upstream response:
 
@@ -454,6 +452,83 @@ filter "image-optimization" {
     failure-mode "open"
 }
 ```
+
+#### Request bodies per route
+
+From 26.10_7 an agent filter can narrow what request body its agent gets on
+the routes that use it. It cannot widen it: the agent receives request bodies
+only if its `events` include `"request_body"`, and only up to its own
+`max-request-body-bytes`. Request bodies are buffered for agents only when the
+configuration has a top-level `waf` block (with `mode "off"`); its
+[`body-inspection`](/configuration/waf/#body-inspection) settings decide
+whether and for which content types.
+
+```kdl
+waf {
+    mode "off"
+    body-inspection {
+        inspect-request-body #true
+    }
+}
+
+agents {
+    agent "waf-agent" type="waf" {
+        unix-socket "/var/run/zentinel/waf.sock"
+        events "request_headers" "request_body"
+        max-request-body-bytes 1048576
+        failure-mode "closed"
+    }
+}
+
+filters {
+    // Bodies up to 64 KiB on /api/; larger ones are refused with 413,
+    // because the agent fails closed.
+    filter "waf-api" {
+        type "agent"
+        agent "waf-agent"
+        failure-mode "closed"
+        max-body-bytes 65536
+    }
+    // Headers only on uploads.
+    filter "waf-headers-only" {
+        type "agent"
+        agent "waf-agent"
+        failure-mode "closed"
+        inspect-body #false
+    }
+}
+
+routes {
+    route "api" {
+        matches { path-prefix "/api/" }
+        upstream "backend"
+        filters "waf-api"
+    }
+    route "uploads" {
+        matches { path-prefix "/upload/" }
+        upstream "backend"
+        filters "waf-headers-only"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        target "127.0.0.1:3000"
+    }
+}
+```
+
+A body over the effective limit is handled as one over the agent's own limit:
+it is not sent and the request goes on if the agent fails open, and the request
+is refused with `413` if the agent fails closed. Neither setting affects
+response bodies.
+
+`zentinel test` and `lint` report a value that cannot apply as "is being
+ignored": `inspect-body #true` or `max-body-bytes` for an agent without
+`request_body` events, `max-body-bytes` together with `inspect-body #false`, a
+`max-body-bytes` above the agent's limit (ignored beyond it), and a value that
+is not a boolean or a positive number of bytes. Before 26.10_7 both settings
+were parsed and not read.
 
 ## Filter Phases
 

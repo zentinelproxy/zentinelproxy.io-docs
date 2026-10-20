@@ -1,7 +1,7 @@
 +++
 title = "Caching"
 weight = 7
-updated = 2026-10-19
+updated = 2026-10-20
 +++
 
 Zentinel provides HTTP response caching to reduce upstream load and improve response times. Caching is configured at two levels: global storage settings and per-route caching policies.
@@ -115,6 +115,13 @@ cache {
 | `disk-shards` | `16` | Number of disk cache shards |
 | `status-header` | `false` | Add `Cache-Status` response header ([RFC 9211](https://www.rfc-editor.org/rfc/rfc9211)) |
 | `status-header-name` | `"zentinel"` | Custom cache identifier in the `Cache-Status` header |
+
+From 26.10_7, `max-size-bytes` is accepted in this block as another name for
+`max-size`, and `lock-timeout-secs` for `lock-timeout`, in the same units
+(bytes and seconds). If a block writes both names, the original
+(`max-size`, `lock-timeout`) wins and `zentinel test` reports the other as
+ignored. Before 26.10_7 both spellings were dropped silently and the defaults
+applied.
 
 ## Per-Route Caching
 

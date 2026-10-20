@@ -403,8 +403,9 @@ How a directory is read:
   file with `include "routes/*.kdl"`) and a `conf.d`-style folder of
   standalone files both load.
 - A file reached from two entry files, or a circular include, is an error.
-  A "diamond" (two files that both include a third) is currently rejected as
-  circular too ([#553](https://github.com/zentinelproxy/zentinel/issues/553)).
+  From 26.10_7 a "diamond" below one entry file (two files that both include
+  a third) loads, and the shared file is read once; see
+  [Include Behavior](#include-behavior).
 - Hidden files and folders are skipped: editor lock files such as
   `.#zentinel.kdl`, `.git`, and the `..data` folder of a Kubernetes ConfigMap
   mount, whose files would otherwise be read twice. So are files whose name
@@ -439,7 +440,9 @@ included files can contain any top-level blocks (`routes`, `upstreams`,
 
 **Recursive includes** — Included files can contain their own `include` directives, which are expanded recursively.
 
-**Circular include detection** — Zentinel tracks which files have already been included (using canonical paths) and returns an error if a circular include is detected.
+**Each file is read once** — From 26.10_7 a file reached a second time through includes (a "diamond": two included files that both include a third) is read only the first time, so its routes and upstreams are defined once. Before 26.10_7 a diamond was rejected as a circular include.
+
+**Circular include detection** — Only a file that includes itself, directly or through other files, is an error. The error names the chain of files that leads back to it (`Circular include detected: '/etc/zentinel/b.kdl' includes itself ('zentinel.kdl' -> '/etc/zentinel/b.kdl' -> '/etc/zentinel/c.kdl' -> '/etc/zentinel/b.kdl')`). In a [configuration directory](#loading-a-directory), a file reached from two entry files is still an error.
 
 **No-match behavior** — If a glob pattern matches no files, Zentinel logs a warning but continues loading. This allows optional includes like `include "overrides/*.kdl"` where the directory may be empty.
 
@@ -497,10 +500,15 @@ stop a starting proxy at once.
 
 With `system { auto-reload #true }` it also reloads when the configuration
 changes on disk. For a directory configuration it watches the whole directory,
-recursively, with a once-a-second poll as a fallback for filesystems that do
-not deliver change events; one edit can occasionally trigger two reloads
-([#553](https://github.com/zentinelproxy/zentinel/issues/553)), which is
-harmless.
+recursively. Once a second it also compares the content of every file the
+configuration reads, includes too, with what the last reload read, which
+catches filesystems that do not deliver change events and included files
+outside the watched directory.
+
+From 26.10_7 one edit gives one reload, and saving a file without changing its
+content (a `touch`) does not reload. Before 26.10_7 one edit could trigger two
+reloads, and for a single-file configuration the poll looked only at the entry
+file, so a change to an included file outside its directory could be missed.
 
 Reload behavior:
 1. Parse new configuration

@@ -380,6 +380,10 @@ system {
 ### `auto-reload`
 
 When enabled, Zentinel watches the configuration file for changes and automatically reloads.
+Once a second it also checks every file the configuration reads (included files
+too). From 26.10_7 one edit gives one reload, and saving a file without
+changing its content does not reload. See
+[Hot Reload](/configuration/file-format/#hot-reload).
 
 **Context:** `system`
 **Default:** `#false`
@@ -505,6 +509,27 @@ listener "http" {
     default-route "not-found"  // id of a route defined under routes
 }
 ```
+
+---
+
+### `namespace` (listener)
+
+Binds a top-level listener to a namespace. It then serves only that
+namespace's routes (and those of its services without a listener of their
+own), never the global routes. A listener inside a namespace or service block
+is bound to that scope without it.
+
+**Context:** `listener`
+
+```fragment,kdl
+listener "internal" {
+    address "127.0.0.1:8081"
+    protocol "http"
+    namespace "admin"
+}
+```
+
+See [Which listener serves a route](/configuration/namespaces/#which-listener-serves-a-route).
 
 ---
 
@@ -1671,7 +1696,13 @@ error-pages {
 | `template-dir` | Base directory for relative `template` paths |
 | `pages` | One child per status (`"400"` to `"599"`) with `format`, `message`, `template` and `headers` |
 
-A page replaces an upstream error and the proxy's own error for its status.
+A page replaces an upstream error and the proxy's own error for its status,
+and from 26.10_7 the proxy's own refusals on the route too (rate limits,
+`max-in-flight-requests`, geo, prompt injection, WebSocket not enabled, no
+usable upstream, agent blocks without a body of their own). A refusal's
+`Retry-After` and `X-RateLimit-*` headers are kept and override a page header
+of the same name; a page without `message` shows the refusal's message. An
+agent block with its own body is sent as `text/plain` and never replaced.
 Templates take `{{status}}`, `{{title}}`, `{{message}}`, `{{request_id}}` and
 `{{timestamp}}`. Invalid values are reported as ignored and the generated page
 is used; `include-stack-trace` is reported as ignored. See
@@ -2546,6 +2577,36 @@ filter "headers" {
     phase "response"
 }
 ```
+
+---
+
+### `inspect-body`, `max-body-bytes` (agent filter)
+
+Narrow the request body an agent filter's agent receives on the routes that use
+the filter. Applied from 26.10_7; before that both were parsed and not read.
+
+**Context:** `filter` (agent)
+
+```fragment,kdl
+filter "waf-api" {
+    type "agent"
+    agent "waf-agent"
+    max-body-bytes 65536    // lowers the agent's max-request-body-bytes
+}
+filter "waf-headers-only" {
+    type "agent"
+    agent "waf-agent"
+    inspect-body #false     // no request body to this agent on these routes
+}
+```
+
+`inspect-body #false` withholds the request body; left out or `#true`, the
+agent's `events` decide. `max-body-bytes` can only lower the agent's
+`max-request-body-bytes`; a larger body is skipped if the agent fails open and
+refused with `413` if it fails closed. Neither affects response bodies, and
+request bodies reach agents only with a top-level `waf` block. Values that
+cannot apply are reported as ignored. See
+[Agent Filter](/configuration/filters/#request-bodies-per-route).
 
 ---
 

@@ -162,6 +162,9 @@ limits {
 a route until they end, however they end (response sent, upstream error, client
 gone). A request over the limit gets `503 Service Unavailable` with
 `Retry-After: 1` and the proxy's JSON error body, and the connection is closed.
+From 26.10_7, a route with an [error page](/configuration/routes/#error-pages)
+for `503` sends that page instead of the JSON body, still with
+`Retry-After: 1`.
 It is logged at `WARN` ("Request refused: max-in-flight-requests reached") and
 counted in `zentinel_blocked_requests_total{reason="in_flight_limit_exceeded"}`.
 Builtin handlers (`health`, `status`, `metrics`, ...) are never refused, so a
@@ -198,9 +201,13 @@ the [Upgrade Guide](/operations/upgrade-guide/).
 
 ## Namespace Limits
 
-From 26.10_6 a namespace's `limits` block is applied to requests on that
-namespace's routes, which are the routes served on a listener bound to the
-namespace with `namespace "..."`:
+A namespace's `limits` block is applied to requests on that namespace's
+routes, and from 26.10_7 a service's `limits` block to requests on the
+service's routes, within the namespace's. From 26.10_7 this holds on whichever
+listener serves the route (see
+[Which listener serves a route](/configuration/namespaces/#which-listener-serves-a-route));
+in 26.10_6 only routes on a listener bound to the namespace with
+`namespace "..."` were served and limited:
 
 ```kdl
 listeners {
@@ -236,22 +243,21 @@ namespace "public-api" {
 ```
 
 - `max-body-size`, `max-header-size` and `max-header-count`: the smallest of
-  the global, the namespace and (for the body) the route's
-  `policies { max-body-size }` applies. A key the namespace does not set leaves
-  the global value in force.
+  the global, the namespace, the service and (for the body) the route's
+  `policies { max-body-size }` applies. A key a scope does not set leaves the
+  enclosing value in force.
 - `max-in-flight-requests`: the namespace has its own counter, inside the
-  global limit. A request must fit both.
-- `max-total-connections` and `max-connections-per-client`: counted for the
-  connections on the listeners bound to the namespace, in addition to the
-  global limits.
+  global limit, and a service its own, inside the namespace's. A request must
+  fit all of them.
+- `max-total-connections` and `max-connections-per-client`: counted only for
+  the connections on the scope's own listeners (a namespace's include its
+  services' listeners), in addition to the global limits. A namespace served on
+  the global listeners has no connections of its own, so these keys do not
+  apply to it there.
 
-A service's `limits` block is not applied: no listener serves a service's
-routes ([#548](https://github.com/zentinelproxy/zentinel/issues/548)).
-`zentinel test` and `lint` report it as ignored; set the limits on the
-namespace. Namespaces have further gaps (routes that use a namespace-local
-upstream get `500`); see [Known Limitations](/reference/known-limitations/).
-
-Before 26.10_6, namespace and service limits were parsed and not applied.
+Before 26.10_7 a service's `limits` block was not applied and was reported as
+ignored. Before 26.10_6, namespace and service limits were parsed and not
+applied.
 
 ## Rate Limiting
 

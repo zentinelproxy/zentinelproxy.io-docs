@@ -44,6 +44,10 @@ The body depends on where the error came from; see
 [Error Pages](/configuration/routes/#error-pages) for the full table. From
 26.10_6 a route can set its own page for chosen statuses with `error-pages`,
 which replaces both the upstream's and the proxy's response for that status.
+From 26.10_7 it also replaces the proxy's refusals on that route (rate limits,
+`max-in-flight-requests`, geo and prompt-injection blocks, WebSocket not
+enabled, no usable upstream, agent blocks without their own body), keeping
+their `Retry-After` and `X-RateLimit-*` headers.
 Without a page, errors the proxy generates itself (unreachable upstream,
 timeout, no healthy target, no matching route, request body too large) look the
 same on every route type:
@@ -64,7 +68,10 @@ Server Error"`), and the no-route `404` had an empty `trace_id`.
 
 A rate-limit filter answers `429` with `Content-Type: text/plain; charset=utf-8`,
 the body `Rate limit exceeded`, and `X-RateLimit-Limit`, `X-RateLimit-Remaining`,
-`X-RateLimit-Reset` and `Retry-After` headers.
+`X-RateLimit-Reset` and `Retry-After` headers. A request over
+`max-in-flight-requests` gets the JSON body above with status `503` and
+`Retry-After: 1`. An agent that blocks with a body of its own sends that body
+as `text/plain`, whatever the route's pages say.
 
 When the upstream itself answers `4xx`/`5xx`, the client gets the upstream's
 response unchanged: status, headers including `Content-Type`, and body. Before

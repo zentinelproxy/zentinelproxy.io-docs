@@ -5,7 +5,7 @@ description = "Settings Zentinel accepts but does not apply, and behaviour that 
 updated = 2026-10-20
 +++
 
-This page lists what release **26.10_6** accepts in a configuration but does not
+This page lists what release **26.10_7** accepts in a configuration but does not
 apply, and where its behaviour differs from what you would reasonably expect.
 Each entry links the tracking issue where there is one, and gives a workaround
 where one exists. Entries are removed when a release fixes them; the
@@ -23,17 +23,6 @@ Two habits catch most of these early:
 
 ## Checking a configuration
 
-**An include "diamond" is rejected.** Two files that both include the same
-third file fail to load with a circular-include error, although nothing is
-circular. [#553](https://github.com/zentinelproxy/zentinel/issues/553).
-*Workaround:* include the shared file from one place only.
-
-**The top-level `cache` block reads `max-size` and `lock-timeout`.** The
-spellings `max-size-bytes` and `lock-timeout-secs` in that block are ignored,
-and `zentinel test` does not report them yet.
-[#553](https://github.com/zentinelproxy/zentinel/issues/553).
-*Workaround:* use the names on [Cache](/configuration/cache/).
-
 **No environment variable substitution.** `${VAR}` is kept as literal text.
 `zentinel test` rejects it in a listener address, an upstream target and the
 metrics address; elsewhere it is used as written.
@@ -50,14 +39,6 @@ metrics address; elsewhere it is used as written.
 **A request over a header limit gets `500`**, not `431`. See
 [Limits](/configuration/limits/#header-limits).
 
-## Agents
-
-**The agent filter's `inspect-body` and `max-body-bytes` are not applied.**
-They are parsed and not read at request time, and `zentinel test` does not
-report them yet. [#553](https://github.com/zentinelproxy/zentinel/issues/553).
-*Workaround:* control body inspection on the agent block, with `events` and
-`max-request-body-bytes`.
-
 ## Rate limiting
 
 **Release binaries limit per instance with `backend "redis"` or
@@ -68,28 +49,13 @@ limiter. *Workaround:* build from source with
 `--features distributed-rate-limit`. See
 [Filters: Distributed Rate Limiting](/configuration/filters/#distributed-rate-limiting).
 
-## Upstreams and health checks
-
-**Host-name targets without a health check use only the first resolved
-address.** There is no fallback to the other addresses, so a `localhost` target
-that resolves to `::1` first fails against an IPv4-only backend. The name is
-also resolved with a blocking lookup on the request path, which holds a worker
-thread for the duration of each DNS query.
-[#554](https://github.com/zentinelproxy/zentinel/issues/554).
-*Workaround:* configure a `health-check` on the upstream (the proxy then dials
-the first healthy address), use IP addresses, or use `discovery "dns"`.
-
 ## Namespaces
 
-**Namespaces are only partly wired.** Routes inside a `service` are never
-served, on any listener. A namespace's own routes are served only on a listener
-bound to it with `namespace "<id>"`, and a route there that uses a
-namespace-local upstream gets `500 "Upstream pool not found"`; only global
-upstreams work. Scoped route matching and scoped rate limits are built but not
-used on the request path.
-[#548](https://github.com/zentinelproxy/zentinel/issues/548).
-*Workaround:* define upstreams globally, bind a listener to each namespace, and
-put service routes in the namespace. See [Namespaces](/configuration/namespaces/).
+**The `zentinel_scoped_*` metrics are not emitted.** Metrics with `namespace`
+and `service` labels are not produced. *Workaround:* select a namespace or
+service by the qualified route id in the ordinary metrics, for example
+`zentinel_requests_total{route=~"api:.*"}`. See
+[Metrics: Scoped Metrics](/reference/metrics/#scoped-metrics).
 
 ## Listeners and TLS
 
@@ -114,14 +80,6 @@ other than `"info"`/`"json"` produces an "Unwired feature" warning. The
 report it. Cap client connections with `limits { max-total-connections }`
 (enforced from 26.10_6). More settings of this kind are in
 [Performance Tuning: Settings with no effect](/operations/performance-tuning/#settings-with-no-effect).
-
-**With `auto-reload`, one edit can trigger two reloads**, one from the file
-watcher and one from the poll fallback. Both load the same configuration. For a
-single-file configuration the poll fallback only watches the entry file, so a
-change to an included file is missed when the watcher misses it.
-[#553](https://github.com/zentinelproxy/zentinel/issues/553).
-*Workaround:* send `SIGHUP` after changing an included file if a reload does
-not appear in the log.
 
 ## Documented elsewhere
 

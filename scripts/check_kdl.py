@@ -255,7 +255,6 @@ LOAD_BALANCING = {
 LB_RE = re.compile(r'(?m)^\s*load-balancing\s+"([^"]+)"')
 
 
-METHOD_RE = re.compile(r'(?m)^\s*method((?:\s+"[^"]*")+)')
 
 
 def block_inside(code, child, parent):
@@ -278,10 +277,6 @@ def block_inside(code, child, parent):
 def traps(snippet):
     code = strip_comments(snippet)
     found = [msg for rx, msg in TRAPS if rx.search(code)]
-    for args in METHOD_RE.findall(code):
-        if len(re.findall(r'"[^"]*"', args)) > 1:
-            found.append("method %s: the parser reads only the first method "
-                         "(kdl/routes.rs), so the others never match" % args.strip())
     if block_inside(code, "filters", "route"):
         found.append("a filters { } block inside a route is ignored: routes reference "
                      "filters by name (filters \"a\" \"b\"), defined in the top-level filters block")

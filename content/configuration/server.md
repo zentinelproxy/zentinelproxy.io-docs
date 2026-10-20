@@ -1,7 +1,7 @@
 +++
 title = "Server"
 weight = 2
-updated = 2026-10-19
+updated = 2026-10-20
 +++
 
 The `system` block (formerly `server`) configures global proxy settings including worker threads, shutdown and process management.
@@ -119,6 +119,11 @@ When enabled, Zentinel watches the configuration file and automatically reloads 
 Reload triggers:
 - File modification
 - File creation (if watching a directory)
+
+Once a second the proxy also compares the content of every file the
+configuration reads, included files too, with what the last reload read. From
+26.10_7 one edit gives one reload, and saving a file without changing its
+content does not reload. See [Hot Reload](/configuration/file-format/#hot-reload).
 
 ## Process Management
 

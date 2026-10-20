@@ -40,6 +40,32 @@ The target parser reads only the address and `weight` (as a property,
 `weight=2`, or in the block form `target { address "10.0.1.1:8080"; weight 2 }`).
 A per-target `max-requests` limit is not configurable from KDL as of 26.10_3.
 
+### Host-name Targets
+
+A target can be a host name (`target "backend.internal:8080"`) instead of an IP
+address. From 26.10_7:
+
+- The name is resolved without blocking a worker thread, and the answer is
+  cached. An answer is reused for 5 seconds, then refreshed in the background
+  while requests keep using it. A request waits for DNS only on first use, or
+  once refreshes have failed for 60 seconds; the old answer is then dropped,
+  and the request fails if the new lookup fails too.
+- An address that fails to connect is skipped for 30 seconds, and the request
+  is retried on the name's other addresses. So `target "localhost:8080"`
+  reaches a backend that listens only on `127.0.0.1`, although `localhost`
+  usually resolves to `::1` first.
+
+The retry goes back through target selection, so with several targets it can
+land on another target. If the route has a
+[`retry-policy`](/configuration/routes/#retry-policy), it uses one of its
+attempts. Targets given as IP addresses are never retried this way. With a
+[health check](#health-check-behavior), addresses the check marks unhealthy are
+skipped first.
+
+Before 26.10_7 a host-name target was resolved with a blocking lookup on every
+request, and without a health check only its first resolved address was ever
+dialled.
+
 ### Target Metadata
 
 Per-target `metadata` is not configurable from KDL as of 26.10_3: the target
@@ -765,12 +791,10 @@ are health-checked:
   address the checker has not marked unhealthy. For `localhost`, which
   often resolves to `::1` first, an IPv4-only backend is therefore reached reliably.
 
-Without a health check, a host-name target is dialled at its first resolved
-address only, with no fallback to the others, and the name is resolved on the
-request path with a blocking lookup
-([#554](https://github.com/zentinelproxy/zentinel/issues/554)). For a
-`localhost` target and an IPv4-only backend that fails every other request;
-use `127.0.0.1`, or configure a health check.
+From 26.10_7 a host-name target without a health check also falls back across
+its addresses: one that refuses a connection is skipped for 30 seconds, and
+the request is retried on the others. See
+[Host-name Targets](#host-name-targets).
 
 Before 26.10_6 host-name targets were never probed and stayed in rotation
 whatever their state, and the proxy always dialled the first resolved address.

@@ -1146,13 +1146,32 @@ A page for a status replaces, on its route:
   encoding headers go with them);
 - an error the **proxy** raises itself with that status: upstream unreachable
   or timed out (`502`/`503`/`504`), every target failing its health check
-  (`503`), a body over the limit (`413`), a header over the limit (`500`).
+  (`503`), a body over the limit (`413`), a header over the limit (`500`);
+- from 26.10_7, a request the **proxy refuses** on the route: a rate limit
+  (`429`, including the inference token limit and token budget), a request over
+  `max-in-flight-requests` (`503`), a geo block, a prompt-injection block, a
+  WebSocket upgrade on a route without `websocket #true` (`403`), a route
+  without a usable upstream (`500`), and an agent block that carries no body of
+  its own.
+
+The refusal's own headers are kept with the page: `Retry-After` and the
+`X-RateLimit-*` headers are always sent, and they override a page header of the
+same name. A page without a `message` shows the refusal's message (for example
+`Rate limit exceeded` or `WebSocket not enabled for this route`).
+
+An agent block that carries its own body is not replaced: the agent's body is
+sent as `text/plain`, with the agent's status. This holds in the request-body
+phase too; before 26.10_7 a body-phase block was answered with the proxy's
+generic JSON body instead of the agent's.
 
 Statuses without a page behave as described in the next section: upstream
-errors pass through unchanged, and the proxy's own errors get its JSON body.
-Rate-limit `429` and `max-in-flight-requests` `503` responses are written
-directly and are not replaced. A request that matches no route has no route
-pages, so its `404` is always the JSON body.
+errors pass through unchanged, and the proxy's own errors and refusals get
+their default body. A request that matches no route has no route pages, so its
+`404` is always the JSON body.
+
+**Before 26.10_7** rate-limit, in-flight, geo, prompt-injection, WebSocket,
+no-upstream and header-phase agent refusals were written directly and never
+replaced by a page.
 
 Invalid values do not stop the configuration from loading. A missing or
 unreadable template, an unknown format, a page name that is not a status from
@@ -1180,13 +1199,24 @@ From 26.10_5:
 | No route matches | `404` | `{"error":"404 Not Found","trace_id":"..."}` | `application/json` |
 | Upstream answers with `4xx`/`5xx` | upstream's | upstream's, unchanged | upstream's, unchanged |
 | Static file not found | `404` | `404 Not Found` | `text/plain` |
-| Rate-limit filter | `429` | `Rate limit exceeded` | `text/plain; charset=utf-8` |
+| Request over `max-in-flight-requests` | `503` | `{"error":"503 Service Unavailable","trace_id":"..."}`, with `Retry-After: 1` | `application/json` |
+| Rate-limit filter | `429` | `Rate limit exceeded`, with `X-RateLimit-*` and `Retry-After` | `text/plain; charset=utf-8` |
+| Inference token limit or token budget | `429` | `Token rate limit exceeded` or `Token budget exhausted` | `text/plain; charset=utf-8` |
+| Geo block | the filter's status | the filter's block message, or `Access denied` | `text/plain` |
+| Prompt-injection block | the guardrail's status | `{"error":"prompt_injection_blocked","message":"..."}` | `application/json` |
+| WebSocket upgrade on a route without `websocket #true` | `403` | `WebSocket not enabled for this route` | `text/plain` |
+| Route without a usable upstream | `500` | `Internal Server Error` | `text/plain` |
+| Agent block with its own body (never replaced by a page) | agent's | agent's | `text/plain` |
+| Agent block without a body, on request headers | agent's | `Blocked by agent` | `text/plain` |
+| Agent block without a body, on the request body | agent's | `{"error":"403 Forbidden","trace_id":"..."}` (the agent's status) | `application/json` |
 | Request schema validation | `400` | see [Validation Error Responses](#validation-error-responses) | `application/json; charset=utf-8` |
 
 Errors the proxy generates itself have the same JSON shape on every route type:
 `error` (status code and the status's standard reason phrase) and `trace_id`,
 which is also sent as the `X-Correlation-Id` response header. There is no
-`status` or `request_id` field.
+`status` or `request_id` field. From 26.10_7 the refusals in the table carry
+`X-Correlation-Id` too (all but an agent's own body sent on request headers),
+and the proxy closes the connection after each of them.
 
 When the **upstream** returns `4xx`/`5xx`, the response is passed through as
 the upstream sent it: status, headers (including `Content-Type`) and body.
