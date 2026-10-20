@@ -1,7 +1,7 @@
 +++
 title = "Troubleshooting"
 weight = 1
-updated = 2026-10-19
+updated = 2026-10-20
 +++
 
 Guide to diagnosing and resolving common Zentinel issues.
@@ -163,7 +163,9 @@ journalctl -u zentinel | grep -i health
 1. Circuit breaker open
 2. Every target of the upstream is failing its health check. From 26.10_5, failing targets are taken out of rotation, and when none is left Zentinel answers 503 instead of trying them. Check the health-check `path`, `expected-status` and `host` against what the backend returns.
 
-Rate limits answer with their `status-code` (default `429`). Zentinel does not limit client connections, so a connection limit is not a cause.
+3. From 26.10_6, the request was over `limits { max-in-flight-requests }`, globally or in its namespace. That `503` carries `Retry-After: 1`, and the proxy logs `Request refused: max-in-flight-requests reached` at `WARN`. See [Limits](/configuration/limits/#concurrency-limits).
+
+Rate limits answer with their `status-code` (default `429`). Connections over `max-total-connections` or `max-connections-per-client` are closed before a request is read, so they show up as resets, not as `503`.
 
 **Solutions:**
 ```kdl

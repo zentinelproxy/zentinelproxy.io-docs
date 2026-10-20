@@ -528,7 +528,7 @@ Zentinel is a next-generation reverse proxy built on [Cloudflare's Pingora](http
 - Errors the proxy generates (unreachable upstream, timeout, no route, body too large) are JSON: `{"error":"503 Service Unavailable","trace_id":"..."}`, with the trace ID also in `X-Correlation-Id`
 - Request schema validation failures return a JSON body with `status`, `title`, `message`, `request_id`, `timestamp` and `details`
 - Upstream `4xx`/`5xx` responses are passed through unchanged (from 26.10_5; before, `Content-Type` was replaced)
-- Error pages and templates are not configurable from KDL
+- Per-route `error-pages` for chosen statuses, generated or from a template, replacing both upstream and proxy errors (from 26.10_6)
 
 ---
 

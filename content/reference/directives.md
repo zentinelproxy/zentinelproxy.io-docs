@@ -262,8 +262,10 @@ system {
 
 ### `max-connections`
 
-Accepted but **not applied**: Zentinel does not limit client connections. From
-26.10_5, `zentinel test` and `zentinel lint` report it as not applied.
+Accepted but **not applied**. From 26.10_5, `zentinel test` and `zentinel lint`
+report it as not applied. To cap client connections, use
+[`limits { max-total-connections }`](#max-total-connections) (enforced from
+26.10_6).
 
 **Context:** `system`
 
