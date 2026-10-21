@@ -1,0 +1,4 @@
+{#- Site override: the theme's 404 template plus the Zentinel stylesheets
+    in <head> (partials/zentinel-head.html). Nothing else changes. -#}
+{% extends "tanuki/templates/404.html" %}
+{% block head %}{{ super() }}{% include "partials/zentinel-head.html" %}{% endblock %}

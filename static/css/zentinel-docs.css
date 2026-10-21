@@ -1,0 +1,467 @@
+/* Zentinel docs: overrides on top of the tanuki theme for what
+   zentinel-bridge.css does not reach. Loaded last, after zentinel-fonts,
+   -tokens, -bridge, -frame and site.css (partials/zentinel-head.html).
+
+   Only --z-* roles from zentinel-tokens.css are used here, so both themes
+   follow tanuki's [data-theme] on <html>. Never put a raw colour in this
+   file; if a role is missing, add it to zentinelproxy/design. */
+
+/* -------------------------------------------------------------------------
+   1. Catppuccin palette -> Zentinel roles.
+   tanuki's components read --ctp-* directly in ~200 places (inline code,
+   code blocks, sidebar, buttons, search), which the bridge cannot reach.
+   Pointing the palette itself at the roles recolours all of them at once.
+   ------------------------------------------------------------------------- */
+:root {
+  --ctp-base: var(--z-bg);
+  --ctp-mantle: var(--z-surface);
+  --ctp-crust: var(--z-surface-raised);
+  --ctp-surface0: var(--z-surface-raised);
+  --ctp-surface1: var(--z-border);
+  --ctp-surface2: var(--z-border-strong);
+  --ctp-overlay0: var(--z-muted);
+  --ctp-overlay1: var(--z-muted);
+  --ctp-overlay2: var(--z-muted);
+  --ctp-text: var(--z-text);
+  --ctp-subtext1: var(--z-text);
+  --ctp-subtext0: var(--z-muted);
+  --ctp-mauve: var(--z-accent-text);
+  --ctp-pink: var(--z-accent-2-text);
+  --ctp-lavender: var(--z-link-hover);
+  --ctp-blue: var(--z-link);
+  --ctp-sapphire: var(--z-info);
+  --ctp-sky: var(--z-info);
+  --ctp-teal: var(--z-accent-2-text);
+  --ctp-green: var(--z-success);
+  --ctp-yellow: var(--z-warn);
+  --ctp-peach: var(--z-accent-text);
+  --ctp-red: var(--z-danger);
+  --ctp-maroon: var(--z-danger);
+  --ctp-rosewater: var(--z-accent-2-text);
+  --ctp-flamingo: var(--z-accent-2-text);
+
+  /* tanuki names the bridge does not cover. */
+  --color-border-strong: var(--z-border-strong);
+  --radius-sm: var(--z-radius-sm);
+  --radius-md: var(--z-radius-md);
+  --radius-lg: var(--z-radius-md);
+  --radius-xl: var(--z-radius-lg);
+  --shadow-sm: var(--z-shadow-sm);
+  --shadow-md: var(--z-shadow-md);
+  --shadow-lg: var(--z-shadow-lg);
+  --shadow-glow: 0 0 0 transparent;
+  /* Accent wash used for active/selected rows instead of tanuki's
+     hard-coded rgba(mauve, .1). */
+  --zd-wash: color-mix(in srgb, var(--z-accent) 12%, transparent);
+  --zd-wash-2: color-mix(in srgb, var(--z-accent-2) 18%, transparent);
+}
+
+body {
+  font-family: var(--z-font-text);
+  line-height: var(--z-leading-body);
+  background-color: var(--z-bg);
+  color: var(--z-text);
+}
+
+/* -------------------------------------------------------------------------
+   2. Headings: Unbounded for h1-h3, text face below, heading role colour.
+   ------------------------------------------------------------------------- */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--z-heading);
+  line-height: var(--z-leading-heading);
+  letter-spacing: var(--z-tracking-heading);
+}
+
+h1, h2, h3 {
+  font-family: var(--z-font-display);
+  font-weight: var(--z-weight-display);
+}
+
+h1 {
+  font-size: var(--z-size-3xl);
+  letter-spacing: var(--z-tracking-display);
+  line-height: var(--z-leading-display);
+}
+
+h2 { font-size: var(--z-size-2xl); }
+h3 { font-size: var(--z-size-lg); }
+h4 { font-size: var(--z-size-base); font-weight: var(--z-weight-bold); }
+
+@media (min-width: 768px) {
+  h1 { font-size: var(--z-size-4xl); }
+  h2 { font-size: var(--z-size-2xl); }
+  h3 { font-size: var(--z-size-xl); }
+}
+
+/* Long words in display headings (e.g. config keys) must not widen the page. */
+h1, h2, h3 { overflow-wrap: anywhere; }
+
+/* -------------------------------------------------------------------------
+   3. Links, focus, inline code, kbd, mark.
+   ------------------------------------------------------------------------- */
+a { color: var(--z-link); }
+a:hover {
+  color: var(--z-link-hover);
+  text-decoration-color: currentColor;
+}
+
+/* One focus ring everywhere (frame.css sets :focus-visible; tanuki's
+   component rules set their own outlines and box-shadow glows). */
+:focus-visible,
+.theme-toggle:focus-visible,
+.toc__link:focus-visible,
+.btn:focus-visible {
+  outline: 2px solid var(--z-focus);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+code:not(pre code) {
+  font-family: var(--z-font-mono);
+  font-size: 0.875em;
+  color: var(--z-code-accent);
+  background: var(--z-code-bg);
+  border: 1px solid var(--z-border);
+  border-radius: var(--z-radius-sm);
+  padding: 0.1em 0.35em;
+}
+
+/* Inline code inside a link keeps the link colour, so it reads as a link. */
+a code:not(pre code) { color: inherit; }
+
+kbd {
+  font-family: var(--z-font-mono);
+  background: var(--z-surface-raised);
+  border-color: var(--z-border-strong);
+  box-shadow: 0 2px 0 var(--z-border-strong);
+}
+
+mark {
+  background: var(--z-selection-bg);
+  color: var(--z-selection-fg);
+}
+
+blockquote {
+  background: var(--z-surface);
+  border-left-color: var(--z-accent-2);
+  color: var(--z-text);
+}
+
+hr { border-color: var(--z-border); }
+
+/* -------------------------------------------------------------------------
+   4. Header and logo.
+   The mascot img from [extra.home_site] is replaced by the interim lockup
+   (shisa disc + wordmark): dark/light variants painted on the link, so the
+   theme switch needs no script. The link keeps its aria-label.
+   ------------------------------------------------------------------------- */
+.header {
+  background: rgba(var(--color-bg-rgb), 0.88);
+  border-bottom-color: var(--z-border);
+}
+
+.header__home {
+  width: auto;
+  height: 40px;
+  aspect-ratio: 710.22 / 159.79;
+  padding: 0;
+  border: 0;
+  border-radius: var(--z-radius-sm);
+  background: url("../img/zentinel-lockup-dark.svg") no-repeat center / contain;
+}
+
+[data-theme="light"] .header__home {
+  background-image: url("../img/zentinel-lockup-light.svg");
+}
+
+.header__home:hover {
+  background-color: transparent;
+  opacity: 0.85;
+}
+
+.header__home-logo { display: none; }
+
+.header__logo {
+  font-family: var(--z-font-display);
+  font-weight: var(--z-weight-display);
+  font-size: var(--z-size-sm);
+  letter-spacing: var(--z-tracking-heading);
+  color: var(--z-muted);
+}
+
+.header__logo:hover {
+  color: var(--z-heading);
+  text-decoration: none;
+}
+
+/* On a phone the lockup alone identifies the site; the "Zentinel
+   Documentation" text and its separator would push the actions off-screen. */
+@media (max-width: 560px) {
+  .header { padding-inline: var(--z-space-4); }
+  .header__home { height: 32px; }
+  .header__separator,
+  .header__logo { display: none; }
+}
+
+/* Icon buttons in the header (search, theme, GitHub, edit). */
+.header .btn--ghost,
+.search-toggle,
+.theme-toggle,
+.sidebar-toggle,
+.toc-toggle {
+  color: var(--z-muted);
+  border-radius: var(--z-radius-sm);
+}
+
+.header .btn--ghost:hover,
+.search-toggle:hover,
+.theme-toggle:hover,
+.sidebar-toggle:hover,
+.toc-toggle:hover {
+  color: var(--z-heading);
+  background: var(--z-surface-raised);
+}
+
+.scroll-progress__bar { background: var(--z-gradient-brand); }
+
+/* -------------------------------------------------------------------------
+   5. Version picker.
+   ------------------------------------------------------------------------- */
+.version-picker__button {
+  font-family: var(--z-font-mono);
+  background: var(--z-surface);
+  border-color: var(--z-border);
+  border-radius: var(--z-radius-sm);
+  color: var(--z-text);
+}
+
+.version-picker__button:hover { border-color: var(--z-border-strong); }
+
+.version-picker__dropdown {
+  background: var(--z-surface-raised);
+  border-color: var(--z-border);
+  border-radius: var(--z-radius-md);
+  box-shadow: var(--z-shadow-lg);
+}
+
+.version-picker__item { font-family: var(--z-font-mono); }
+.version-picker__item.active { background: var(--zd-wash); color: var(--z-accent-text); }
+
+.version-picker__badge {
+  background: var(--z-accent);
+  color: var(--z-on-accent);
+  font-family: var(--z-font-text);
+  font-weight: var(--z-weight-semibold);
+}
+
+/* -------------------------------------------------------------------------
+   6. Sidebar.
+   ------------------------------------------------------------------------- */
+.sidebar {
+  background: var(--z-surface);
+  border-right-color: var(--z-border);
+}
+
+.sidebar__title,
+.toc__section-title {
+  color: var(--z-heading);
+}
+
+.sidebar__title {
+  font-family: var(--z-font-mono);
+  font-size: var(--z-size-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--z-tracking-caps);
+  color: var(--z-muted);
+}
+
+.toc__section-title {
+  font-weight: var(--z-weight-semibold);
+}
+
+.toc__link {
+  color: var(--z-muted);
+  border-radius: var(--z-radius-sm);
+}
+
+.toc__link:hover,
+.toc__section-title:hover {
+  color: var(--z-heading);
+  background: var(--z-surface-raised);
+  text-decoration: none;
+}
+
+.toc__link.active,
+.toc__section-title.active {
+  color: var(--z-accent-text);
+  background: var(--zd-wash);
+  box-shadow: inset 2px 0 0 var(--z-accent);
+}
+
+.toc__toggle { color: var(--z-muted); }
+.toc__toggle:hover { color: var(--z-heading); }
+
+/* Right-hand "on this page" panel. */
+.page-toc a.active,
+.page-toc__link.active { color: var(--z-accent-text); }
+
+/* -------------------------------------------------------------------------
+   7. Code blocks.
+   tanuki hard-codes Catppuccin hexes on pre (#313243) and its header bar
+   (#1e1e2e), and switches light pre to #fff; all replaced here.
+   ------------------------------------------------------------------------- */
+pre,
+[data-theme="light"] pre {
+  background: var(--z-code-bg);
+  border: 1px solid var(--z-border);
+  border-radius: var(--z-radius-md);
+  max-width: 100%;
+}
+
+pre code {
+  color: var(--z-code-fg);
+  font-family: var(--z-font-mono);
+  line-height: var(--z-leading-code);
+}
+
+pre[data-lang]::before,
+[data-theme="light"] pre[data-lang]::before {
+  font-family: var(--z-font-mono);
+  letter-spacing: var(--z-tracking-caps);
+  color: var(--z-muted);
+  background: var(--z-surface-raised);
+  border-bottom: 1px solid var(--z-border);
+}
+
+.copy-button {
+  font-family: var(--z-font-mono);
+  color: var(--z-muted);
+  background: var(--z-surface);
+  border-color: var(--z-border-strong);
+  border-radius: var(--z-radius-sm);
+}
+
+.copy-button:hover {
+  color: var(--z-heading);
+  background: var(--z-surface-raised);
+}
+
+.copy-button.copied { color: var(--z-success); border-color: var(--z-success); }
+
+/* -------------------------------------------------------------------------
+   8. Tables.
+   ------------------------------------------------------------------------- */
+table {
+  border: 1px solid var(--z-border);
+  border-radius: var(--z-radius-md);
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+}
+
+th, td { border-bottom: 1px solid var(--z-border); }
+tbody tr:last-child td { border-bottom: 0; }
+
+th {
+  background: var(--z-surface-raised);
+  color: var(--z-heading);
+  font-weight: var(--z-weight-semibold);
+}
+
+tr:hover td { background: var(--z-surface); }
+
+/* tanuki makes tables their own scroll container below 768px; keep that and
+   just let the rounded border follow. */
+@media (max-width: 768px) {
+  table { overflow-x: auto; }
+}
+
+/* -------------------------------------------------------------------------
+   9. Callouts (templates/shortcodes/callout.html; base rules in site.css).
+   ------------------------------------------------------------------------- */
+.callout {
+  background: var(--z-surface);
+  border: 1px solid var(--z-border);
+  border-left: 4px solid var(--z-info);
+  border-radius: var(--z-radius-sm) var(--z-radius-md) var(--z-radius-md) var(--z-radius-sm);
+}
+
+.callout-note,
+.callout-info { border-left-color: var(--z-info); }
+.callout-tip,
+.callout-success { border-left-color: var(--z-success); }
+.callout-warning { border-left-color: var(--z-warn); }
+.callout-danger,
+.callout-caution,
+.callout-error { border-left-color: var(--z-danger); }
+.callout-important { border-left-color: var(--z-accent-2); }
+
+.callout > strong:first-child { color: var(--z-heading); }
+
+/* -------------------------------------------------------------------------
+   10. Search dialog.
+   ------------------------------------------------------------------------- */
+.search-overlay { background: rgb(var(--z-shadow-rgb) / 0.72); }
+
+.search {
+  background: var(--z-surface);
+  border-color: var(--z-border);
+  border-radius: var(--z-radius-lg);
+  box-shadow: var(--z-shadow-lg);
+}
+
+/* The input is borderless in tanuki; the focus ring goes on its row. */
+.search__input {
+  font-family: var(--z-font-text);
+  color: var(--z-text);
+}
+
+.search__input:focus-visible { outline: none; }
+.search__input::placeholder { color: var(--z-muted); }
+.search__input-wrapper:focus-within { box-shadow: inset 0 -2px 0 var(--z-focus); }
+
+.search__result:hover { background: var(--z-surface-raised); }
+.search__result.selected { background: var(--zd-wash); }
+.search__result-title mark,
+.search__result-preview mark {
+  background: var(--z-selection-bg);
+  color: var(--z-selection-fg);
+}
+
+/* -------------------------------------------------------------------------
+   11. Prev / next strips and tanuki's primary button (family's raised CTA).
+   ------------------------------------------------------------------------- */
+/* Prev/next are full-height edge strips in tanuki: only recolour them. */
+.nav-button { color: var(--z-muted); }
+.nav-button:hover { background: var(--z-surface); }
+.nav-button:hover svg { color: var(--z-accent-text); }
+
+.btn--primary {
+  background: var(--z-accent);
+  color: var(--z-on-accent);
+  border-radius: var(--z-button-radius);
+  box-shadow: 0 var(--z-button-depth) 0 var(--z-button-edge), var(--z-shadow-sm);
+}
+
+.btn--primary:hover {
+  background: var(--z-accent-hover);
+  color: var(--z-on-accent);
+  box-shadow: 0 var(--z-button-depth-hover) 0 var(--z-button-edge), var(--z-shadow-sm);
+}
+
+/* -------------------------------------------------------------------------
+   12. Section index lists.
+   ------------------------------------------------------------------------- */
+.page-list li {
+  border-color: var(--z-border);
+  border-radius: var(--z-radius-md);
+}
+
+.page-list a { font-weight: var(--z-weight-semibold); }
+.page-list p { color: var(--z-muted); }
+
+/* -------------------------------------------------------------------------
+   13. Phone width: nothing may widen the page.
+   ------------------------------------------------------------------------- */
+.article__content { min-width: 0; overflow-wrap: break-word; }
+.article__content img { max-width: 100%; height: auto; }

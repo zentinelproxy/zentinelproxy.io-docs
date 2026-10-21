@@ -52,7 +52,7 @@ show_theme_toggle = true
 [extra.home_site]
 name = "Zentinel"
 url = "https://zentinelproxy.io"
-logo = "img/zentinel-mascot.png"
+logo = "img/zentinel-lockup-dark.svg"
 
 # Version picker
 [extra.versions]

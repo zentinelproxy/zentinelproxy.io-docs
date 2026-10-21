@@ -1,0 +1,21 @@
+{#- Zentinel design system, loaded into <head> after the theme's style.css
+    through `{% block head %}` in this site's page.html, section.html and
+    404.html. Order matters: fonts, tokens, bridge, frame are vendored from
+    zentinelproxy/design (static/css/zentinel-*.css, do not edit them here),
+    then zentinel-docs.css holds the docs-only overrides on top of tanuki. -#}
+<link rel="preload" href="{{ get_url(path='fonts/atkinson-hyperlegible-next-latin-wght-normal.woff2') | safe }}" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="{{ get_url(path='css/zentinel-fonts.css') | safe }}">
+<link rel="stylesheet" href="{{ get_url(path='css/zentinel-tokens.css') | safe }}">
+<link rel="stylesheet" href="{{ get_url(path='css/zentinel-bridge.css') | safe }}">
+<link rel="stylesheet" href="{{ get_url(path='css/zentinel-frame.css') | safe }}">
+<link rel="stylesheet" href="{{ get_url(path='css/site.css') | safe }}">
+<link rel="stylesheet" href="{{ get_url(path='css/zentinel-docs.css') | safe }}">
+{#- Dark is the family's default ground. tanuki resolves an unset preference
+    ('auto') to the OS scheme, and its theme.js re-applies that after load, so
+    a first visit is seeded with 'dark'. Any choice made with the toggle
+    (light / dark / auto) is stored by tanuki and wins from then on. -#}
+<script>
+(function(){try{if(!localStorage.getItem('tanuki-theme')){localStorage.setItem('tanuki-theme','dark');
+document.documentElement.setAttribute('data-theme','dark');
+document.documentElement.setAttribute('data-theme-setting','dark');}}catch(e){}})();
+</script>

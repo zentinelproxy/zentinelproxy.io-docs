@@ -2,6 +2,9 @@
 
 {% block title %}{{ section.title }}{% endblock %}
 
+{#- Site override: Zentinel stylesheets in <head>, see partials/zentinel-head.html. -#}
+{% block head %}{{ super() }}{% include "partials/zentinel-head.html" %}{% endblock %}
+
 {% set mode = config.extra.mode | default(value="site") %}
 
 {% block sidebar %}
