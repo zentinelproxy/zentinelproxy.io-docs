@@ -24,3 +24,6 @@ validation_errors.txt
 # Python bytecode from the analysis scripts in this directory
 __pycache__/
 *.pyc
+
+# Font licences travel with the vendored fonts (zentinelproxy/design sync).
+!static/fonts/*-OFL.txt
