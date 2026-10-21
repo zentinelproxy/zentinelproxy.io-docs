@@ -533,6 +533,7 @@ iptables -A INPUT -p tcp --syn -j DROP
 - [ ] Request size limits configured
 
 **Headers**:
+- [ ] `trusted-proxies` lists only the load balancers or CDNs you operate, and clients cannot reach the listener around them (see [Trusted Proxies](/configuration/listeners/#trusted-proxies))
 - [ ] Security headers configured
 - [ ] Server identification headers removed
 
