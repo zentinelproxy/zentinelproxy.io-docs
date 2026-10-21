@@ -1,0 +1,38 @@
+{#- Site override of tanuki's theme toggle: the shared ghost icon button
+    (.z-btn--ghost.z-btn--icon), and no aria-live on the button itself
+    (theme.js announces the change in its own status region; a live button
+    re-read its whole label). theme.js still binds by .theme-toggle, and the
+    footer switch (partials/zentinel-footer.html) shares its setting. -#}
+<button class="theme-toggle z-btn z-btn--ghost z-btn--icon" type="button" aria-label="Colour theme: cycles through light, dark and system" title="Theme: light, dark or system">
+    <span class="theme-toggle__icons">
+        {# Sun icon (for switching to light mode) #}
+        <span class="theme-toggle__sun" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="4"/>
+                <path d="M12 2v2"/>
+                <path d="M12 20v2"/>
+                <path d="m4.93 4.93 1.41 1.41"/>
+                <path d="m17.66 17.66 1.41 1.41"/>
+                <path d="M2 12h2"/>
+                <path d="M20 12h2"/>
+                <path d="m6.34 17.66-1.41 1.41"/>
+                <path d="m19.07 4.93-1.41 1.41"/>
+            </svg>
+        </span>
+
+        {# Moon icon (for switching to dark mode) #}
+        <span class="theme-toggle__moon" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+            </svg>
+        </span>
+
+        {# Eclipse icon (for switching to auto/system mode) #}
+        <span class="theme-toggle__auto" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 2a7 7 0 1 0 7 7"/>
+            </svg>
+        </span>
+    </span>
+</button>

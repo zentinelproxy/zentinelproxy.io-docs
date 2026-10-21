@@ -28,8 +28,8 @@
 }
 
 .toc__group .toc__toggle:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 1px;
+  outline: 2px solid var(--z-focus);
+  outline-offset: 2px;
 }
 
 /* Collapsed lists are also hidden from keyboard focus and screen readers. */

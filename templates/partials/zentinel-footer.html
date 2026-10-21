@@ -1,0 +1,106 @@
+{#- The Zentinel family footer, as on zentinelproxy.io (templates/base.html
+    there): lockup, tagline, one line on Zentinel, the theme switch, four link
+    columns and a bottom bar. Included through `{% block footer %}` in this
+    site's page.html, section.html and 404.html; tanuki renders no footer in
+    docs mode. Site links are absolute (zentinelproxy.io); docs links go
+    through get_url so they stay on this site.
+
+    The theme switch drives tanuki's own mechanism (localStorage
+    `tanuki-theme` = auto | light | dark, and data-theme / data-theme-setting
+    on <html>), so it and the header toggle always agree: see
+    static/js/zentinel-docs.js. -#}
+{%- set site = "https://zentinelproxy.io" -%}
+{%- set gh = config.extra.github -%}
+<footer class="zd-footer" role="contentinfo">
+    <div class="zd-footer__inner">
+        <div class="zd-footer__top">
+            <div class="zd-footer__brand">
+                <a href="{{ site }}/" class="zd-footer__lockup" aria-label="Zentinel home">
+                    <img class="zd-footer__lockup-img zd-footer__lockup-img--dark" src="{{ get_url(path='img/zentinel-lockup-dark.svg') | safe }}" alt="" width="196" height="44" loading="lazy">
+                    <img class="zd-footer__lockup-img zd-footer__lockup-img--light" src="{{ get_url(path='img/zentinel-lockup-light.svg') | safe }}" alt="" width="196" height="44" loading="lazy">
+                </a>
+                <p class="zd-footer__title">A security-first reverse proxy, built to guard the free web.</p>
+                <p class="zd-footer__description">Explicit configuration, bounded resources and isolated security agents, on Cloudflare's Pingora. Open source under Apache 2.0.</p>
+                <div class="zd-footer__theme">
+                    <span class="zd-footer__theme-label" aria-hidden="true">Theme</span>
+                    <fieldset class="zd-theme-switch z-segmented">
+                        <legend class="sr-only">Colour theme</legend>
+                        <label title="Follow the system setting">
+                            <input type="radio" name="zd-theme" value="auto" checked>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+                            <span>System</span>
+                        </label>
+                        <label>
+                            <input type="radio" name="zd-theme" value="light">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+                            <span>Light</span>
+                        </label>
+                        <label>
+                            <input type="radio" name="zd-theme" value="dark">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                            <span>Dark</span>
+                        </label>
+                    </fieldset>
+                </div>
+            </div>
+            <nav class="zd-footer__links" aria-label="Footer">
+                <div class="zd-footer__col">
+                    <h2 class="zd-footer__heading">Product</h2>
+                    <ul>
+                        <li><a href="{{ site }}/features/">Features</a></li>
+                        <li><a href="{{ site }}/playground/">Playground</a></li>
+                        <li><a href="{{ site }}/converter/">Config Converter</a></li>
+                        <li><a href="{{ site }}/benchmarks/">Benchmarks</a></li>
+                        <li><a href="{{ site }}/compare/">Compare</a></li>
+                        <li><a href="{{ site }}/control-plane/">Control Plane</a></li>
+                        <li><a href="https://registry.zentinelproxy.io/">Agent Registry</a></li>
+                    </ul>
+                </div>
+                <div class="zd-footer__col">
+                    <h2 class="zd-footer__heading">Learn</h2>
+                    <ul>
+                        <li><a href="{{ site }}/customize/">Install &amp; Configure</a></li>
+                        <li><a href="{{ get_url(path='/') | safe }}">Documentation</a></li>
+                        <li><a href="{{ get_url(path='getting-started/') | safe }}">Getting Started</a></li>
+                        <li><a href="{{ get_url(path='configuration/') | safe }}">Configuration</a></li>
+                        <li><a href="{{ get_url(path='examples/') | safe }}">Examples</a></li>
+                        <li><a href="{{ site }}/blog/">Blog</a></li>
+                        <li><a href="{{ site }}/manifesto/">Manifesto</a></li>
+                    </ul>
+                </div>
+                <div class="zd-footer__col">
+                    <h2 class="zd-footer__heading">Community</h2>
+                    <ul>
+                        <li><a href="{{ gh | safe }}">GitHub</a></li>
+                        <li><a href="{{ gh | safe }}/discussions">Discussions</a></li>
+                        <li><a href="{{ gh | safe }}/issues">Issues</a></li>
+                        <li><a href="{{ site }}/contributing/">Contributing</a></li>
+                        {% if config.extra.discord %}
+                        <li><a href="{{ config.extra.discord | safe }}" target="_blank" rel="noopener">Discord<span class="sr-only"> (opens in a new tab)</span></a></li>
+                        {% endif %}
+                        <li><a href="{{ site }}/support/">Support</a></li>
+                    </ul>
+                </div>
+                <div class="zd-footer__col">
+                    <h2 class="zd-footer__heading">Trust</h2>
+                    <ul>
+                        <li><a href="{{ site }}/security/">Security</a></li>
+                        <li><a href="{{ site }}/supply-chain/">Supply Chain</a></li>
+                        <li><a href="{{ get_url(path='appendix/changelog/') | safe }}">Changelog</a></li>
+                        <li><a href="{{ get_url(path='appendix/faq/') | safe }}">FAQ</a></li>
+                        <li><a href="{{ gh | safe }}/blob/main/LICENSE">Licence</a></li>
+                    </ul>
+                </div>
+            </nav>
+        </div>
+        <div class="zd-footer__bottom">
+            <p>Zentinel is licensed under <a href="{{ gh | safe }}/blob/main/LICENSE">Apache 2.0</a>.</p>
+            {% if config.extra.software_version %}
+            <p class="zd-footer__version"><a href="{{ gh | safe }}/releases/tag/{{ config.extra.software_version }}">Zentinel {{ config.extra.software_version }}</a></p>
+            {% endif %}
+            <p class="zd-footer__family">Documentation &copy; {{ now() | date(format='%Y') }}, part of <a href="https://raskell.io">raskell.io</a></p>
+        </div>
+    </div>
+</footer>
+{#- One polite live region for status messages (code-block copy feedback). -#}
+<div id="z-announce" class="sr-only" role="status" aria-live="polite"></div>

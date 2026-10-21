@@ -1,70 +1,31 @@
 /* Zentinel docs: overrides on top of the tanuki theme for what
-   zentinel-bridge.css does not reach. Loaded last, after zentinel-fonts,
+   zentinel-bridge.css cannot reach. Loaded last, after zentinel-fonts,
    -tokens, -bridge, -frame and site.css (partials/zentinel-head.html).
 
-   Only --z-* roles from zentinel-tokens.css are used here, so both themes
-   follow tanuki's [data-theme] on <html>. Never put a raw colour in this
-   file; if a role is missing, add it to zentinelproxy/design. */
+   The bridge (vendored from zentinelproxy/design) already points tanuki's
+   --color-*, the Catppuccin --ctp-* palette, --radius-*, --shadow-* and
+   --font-* at the --z-* roles. What is left here is docs layout and
+   per-selector overrides: tanuki rules that hard-code a Catppuccin hex or
+   read a variable other than the one their role implies.
 
-/* -------------------------------------------------------------------------
-   1. Catppuccin palette -> Zentinel roles.
-   tanuki's components read --ctp-* directly in ~200 places (inline code,
-   code blocks, sidebar, buttons, search), which the bridge cannot reach.
-   Pointing the palette itself at the roles recolours all of them at once.
-   ------------------------------------------------------------------------- */
+   Only --z-* roles from zentinel-tokens.css are used, so both themes follow
+   tanuki's [data-theme] on <html>. Never put a raw colour in this file; if a
+   role is missing, add it to zentinelproxy/design. */
+
 :root {
-  --ctp-base: var(--z-bg);
-  --ctp-mantle: var(--z-surface);
-  --ctp-crust: var(--z-surface-raised);
-  --ctp-surface0: var(--z-surface-raised);
-  --ctp-surface1: var(--z-border);
-  --ctp-surface2: var(--z-border-strong);
-  --ctp-overlay0: var(--z-muted);
-  --ctp-overlay1: var(--z-muted);
-  --ctp-overlay2: var(--z-muted);
-  --ctp-text: var(--z-text);
-  --ctp-subtext1: var(--z-text);
-  --ctp-subtext0: var(--z-muted);
-  --ctp-mauve: var(--z-accent-text);
-  --ctp-pink: var(--z-accent-2-text);
-  --ctp-lavender: var(--z-link-hover);
-  --ctp-blue: var(--z-link);
-  --ctp-sapphire: var(--z-info);
-  --ctp-sky: var(--z-info);
-  --ctp-teal: var(--z-accent-2-text);
-  --ctp-green: var(--z-success);
-  --ctp-yellow: var(--z-warn);
-  --ctp-peach: var(--z-accent-text);
-  --ctp-red: var(--z-danger);
-  --ctp-maroon: var(--z-danger);
-  --ctp-rosewater: var(--z-accent-2-text);
-  --ctp-flamingo: var(--z-accent-2-text);
-
-  /* tanuki names the bridge does not cover. */
-  --color-border-strong: var(--z-border-strong);
-  --radius-sm: var(--z-radius-sm);
-  --radius-md: var(--z-radius-md);
-  --radius-lg: var(--z-radius-md);
-  --radius-xl: var(--z-radius-lg);
-  --shadow-sm: var(--z-shadow-sm);
-  --shadow-md: var(--z-shadow-md);
-  --shadow-lg: var(--z-shadow-lg);
-  --shadow-glow: 0 0 0 transparent;
-  /* Accent wash used for active/selected rows instead of tanuki's
-     hard-coded rgba(mauve, .1). */
+  /* Accent wash for active/selected rows, replacing tanuki's hard-coded
+     rgba(203, 166, 247, 0.1) (mauve) on .version-picker__item.active,
+     .search__result.selected and the sidebar. */
   --zd-wash: color-mix(in srgb, var(--z-accent) 12%, transparent);
-  --zd-wash-2: color-mix(in srgb, var(--z-accent-2) 18%, transparent);
 }
 
-body {
-  font-family: var(--z-font-text);
-  line-height: var(--z-leading-body);
-  background-color: var(--z-bg);
-  color: var(--z-text);
-}
+body { line-height: var(--z-leading-body); }
 
 /* -------------------------------------------------------------------------
    2. Headings: Unbounded for h1-h3, text face below, heading role colour.
+   The colour has to be a selector: tanuki's h1-h6 rule (base/_typography)
+   reads var(--color-text), not --color-heading, so the bridge cannot
+   reach it.
    ------------------------------------------------------------------------- */
 h1, h2, h3, h4, h5, h6 {
   color: var(--z-heading);
@@ -105,15 +66,36 @@ a:hover {
   text-decoration-color: currentColor;
 }
 
-/* One focus ring everywhere (frame.css sets :focus-visible; tanuki's
-   component rules set their own outlines and box-shadow glows). */
+/* One focus ring everywhere: frame.css sets it on :focus-visible, but
+   tanuki's component rules replace it with outline: none plus a purple
+   box-shadow glow at higher specificity. These win those back. */
 :focus-visible,
 .theme-toggle:focus-visible,
+.search-toggle:focus-visible,
+.sidebar-toggle:focus-visible,
+.toc-toggle:focus-visible,
+.page-toc-toggle:focus-visible,
+.fab:focus-visible,
 .toc__link:focus-visible,
+.toc__section-title:focus-visible,
+.toc__group .toc__toggle:focus-visible,
+.version-picker__button:focus-visible,
+.version-picker__item:focus-visible,
+.search__result:focus-visible,
+.copy-button:focus-visible,
 .btn:focus-visible {
   outline: 2px solid var(--z-focus);
   outline-offset: 2px;
   box-shadow: none;
+}
+
+/* Rows inside a panel ring inside their own box, so the ring is not clipped
+   by the panel's overflow. */
+.version-picker__item:focus-visible,
+.search__result:focus-visible,
+.toc__link:focus-visible,
+.toc__section-title:focus-visible {
+  outline-offset: -2px;
 }
 
 code:not(pre code) {
@@ -156,7 +138,7 @@ hr { border-color: var(--z-border); }
    theme switch needs no script. The link keeps its aria-label.
    ------------------------------------------------------------------------- */
 .header {
-  background: rgba(var(--color-bg-rgb), 0.88);
+  background: rgb(var(--z-bg-rgb) / 0.88);
   border-bottom-color: var(--z-border);
 }
 
@@ -215,55 +197,129 @@ hr { border-color: var(--z-border); }
   .header__logo { display: none; }
 }
 
-/* Icon buttons in the header (search, theme, GitHub, edit). */
+/* Icon buttons in the header and on the page (sidebar, contents, search,
+   theme, GitHub, the floating "on this page" and scroll-to-top buttons):
+   the shared ghost icon button (.z-btn--ghost.z-btn--icon in frame.css).
+   The theme toggle carries those classes (partials/theme-toggle.html); the
+   rest are tanuki markup, so the same values are applied here. */
 .header .btn--ghost,
 .search-toggle,
-.theme-toggle,
 .sidebar-toggle,
-.toc-toggle {
+.toc-toggle,
+.page-toc-toggle,
+.fab {
+  width: var(--z-control-height-md);
+  height: var(--z-control-height-md);
+  padding: 0;
+  border: 0;
+  border-radius: var(--z-control-radius);
+  background: transparent;
   color: var(--z-muted);
-  border-radius: var(--z-radius-sm);
+  box-shadow: inset 0 0 0 var(--z-control-border-width) var(--z-border-strong);
+  transition:
+    background-color var(--z-duration-fast) var(--z-ease-standard),
+    color var(--z-duration-fast) var(--z-ease-standard);
+}
+
+.page-toc-toggle,
+.fab {
+  background: var(--z-surface);
+  box-shadow: inset 0 0 0 var(--z-control-border-width) var(--z-border-strong), var(--z-shadow-md);
 }
 
 .header .btn--ghost:hover,
 .search-toggle:hover,
-.theme-toggle:hover,
 .sidebar-toggle:hover,
-.toc-toggle:hover {
+.toc-toggle:hover,
+.page-toc-toggle:hover,
+.fab:hover {
   color: var(--z-heading);
   background: var(--z-surface-raised);
+  border-color: transparent;
+  transform: none;
 }
+
+/* The theme toggle: tanuki's round, bouncing, glowing button becomes the
+   ghost icon button. Its hover scale and glow, the radial ::before and the
+   per-icon Catppuccin colours are tanuki's (higher specificity than
+   frame.css), so they are undone here; the sun/moon/system icon swap on
+   [data-theme-setting] stays. */
+.theme-toggle.z-btn {
+  --toggle-size: var(--z-control-height-md);
+  overflow: hidden;
+}
+
+.theme-toggle.z-btn:hover,
+.theme-toggle.z-btn:active {
+  transform: none;
+  border-color: transparent;
+  box-shadow: inset 0 0 0 var(--z-control-border-width) var(--z-border-strong);
+}
+
+.theme-toggle.z-btn::before { content: none; }
+
+.theme-toggle :is(.theme-toggle__sun, .theme-toggle__moon, .theme-toggle__auto) { color: inherit; }
+
+/* No bounce or sparkles (theme.js): the family's controls answer with
+   colour, and the shisa is the only mascot. */
+.theme-toggle.animating { animation: none; }
+.theme-sparkle { display: none !important; }
+
+/* tanuki hides the sidebar's close button where the sidebar is docked;
+   .z-btn's display would bring it back. */
+@media (min-width: 1024px) {
+  .sidebar__close.z-btn { display: none; }
+}
+
+/* The sidebar's mobile "Theme" row. */
+.sidebar__action .theme-toggle.z-btn { flex: none; }
 
 .scroll-progress__bar { background: var(--z-gradient-brand); }
 
 /* -------------------------------------------------------------------------
    5. Version picker.
    ------------------------------------------------------------------------- */
-.version-picker__button {
+/* The trigger is a ghost .z-btn--sm and the panel a .z-menu of
+   .z-menu__item links (partials/version-picker.html). tanuki still owns the
+   open/close (position, opacity, .open); these undo its first/last-child
+   radii and purple active wash. */
+.version-picker__button.z-btn {
+  gap: var(--z-space-2);
   font-family: var(--z-font-mono);
-  background: var(--z-surface);
-  border-color: var(--z-border);
-  border-radius: var(--z-radius-sm);
   color: var(--z-text);
 }
 
-.version-picker__button:hover { border-color: var(--z-border-strong); }
+.version-picker__button.z-btn:hover { color: var(--z-heading); border-color: transparent; }
 
-.version-picker__dropdown {
+.version-picker__dropdown.z-menu {
+  margin-top: var(--z-space-2);
   background: var(--z-surface-raised);
-  border-color: var(--z-border);
-  border-radius: var(--z-radius-md);
-  box-shadow: var(--z-shadow-lg);
 }
 
-.version-picker__item { font-family: var(--z-font-mono); }
-.version-picker__item.active { background: var(--zd-wash); color: var(--z-accent-text); }
+.version-picker__item.z-menu__item {
+  border-radius: var(--z-control-radius);
+  font-family: var(--z-font-mono);
+  color: var(--z-text);
+}
+
+.version-picker__item.z-menu__item.active {
+  background: var(--zd-wash);
+  color: var(--z-accent-text);
+}
+
+.version-picker__item--link.z-menu__item {
+  font-family: var(--z-font-text);
+  color: var(--z-muted);
+}
+
+.version-picker__divider { border-top-color: var(--z-border); }
 
 .version-picker__badge {
   background: var(--z-accent);
   color: var(--z-on-accent);
   font-family: var(--z-font-text);
   font-weight: var(--z-weight-semibold);
+  border-radius: var(--z-radius-sm);
 }
 
 /* -------------------------------------------------------------------------
@@ -310,8 +366,20 @@ hr { border-color: var(--z-border); }
   box-shadow: inset 2px 0 0 var(--z-accent);
 }
 
-.toc__toggle { color: var(--z-muted); }
-.toc__toggle:hover { color: var(--z-heading); }
+/* Group expanders (partials/sidebar.html) and the sidebar's close button
+   (a ghost .z-btn--icon there). The expanders stay borderless chevrons but
+   take the control radius, hover and ring of the family. */
+.toc__toggle {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--z-control-radius);
+  color: var(--z-muted);
+}
+
+.toc__toggle:hover {
+  color: var(--z-heading);
+  background: var(--z-surface-raised);
+}
 
 /* Right-hand "on this page" panel. */
 .page-toc a.active,
@@ -345,20 +413,30 @@ pre[data-lang]::before,
   border-bottom: 1px solid var(--z-border);
 }
 
-.copy-button {
-  font-family: var(--z-font-mono);
-  color: var(--z-muted);
-  background: var(--z-surface);
-  border-color: var(--z-border-strong);
-  border-radius: var(--z-radius-sm);
+/* Copy buttons: code.js creates .copy-button, zentinel-docs.js adds the
+   shared .z-copy (and mirrors code.js's .copied to data-copied, announced
+   in #z-announce), so frame.css styles it, including the copied state.
+   tanuki shows the button on pre:hover only; it must also show for keyboard
+   focus and on screens that cannot hover. */
+.code-buttons { top: 0.25rem; right: 0.375rem; }
+
+.copy-button.z-copy {
+  min-height: 1.75rem;
+  font-family: var(--z-font-text);
 }
 
-.copy-button:hover {
-  color: var(--z-heading);
-  background: var(--z-surface-raised);
+.copy-button.z-copy svg { width: 14px; height: 14px; }
+
+pre:focus-within .copy-button,
+.copy-button:focus-visible,
+.copy-button[data-copied] {
+  opacity: 1;
 }
 
-.copy-button.copied { color: var(--z-success); border-color: var(--z-success); }
+@media (hover: none) {
+  .code-buttons .copy-button,
+  .copy-button { opacity: 1; }
+}
 
 /* -------------------------------------------------------------------------
    8. Tables.
@@ -422,22 +500,63 @@ tr:hover td { background: var(--z-surface); }
   box-shadow: var(--z-shadow-lg);
 }
 
-/* The input is borderless in tanuki; the focus ring goes on its row. */
-.search__input {
-  font-family: var(--z-font-text);
-  color: var(--z-text);
+/* The field is a .z-input and the close button a ghost .z-btn--icon
+   (partials/search.html). tanuki's input is borderless with outline: none;
+   the shared field brings its border and the focus ring back. */
+.search__input-wrapper {
+  gap: var(--z-space-2);
+  padding: var(--z-space-3) var(--z-space-4);
+  border-bottom-color: var(--z-border);
 }
 
-.search__input:focus-visible { outline: none; }
-.search__input::placeholder { color: var(--z-muted); }
-.search__input-wrapper:focus-within { box-shadow: inset 0 -2px 0 var(--z-focus); }
+.search__input.z-input {
+  flex: 1;
+  background: var(--z-bg);
+}
 
-.search__result:hover { background: var(--z-surface-raised); }
-.search__result.selected { background: var(--zd-wash); }
+.search__shortcut.z-kbd { flex: none; }
+
+.search__close.z-btn { margin-left: 0; color: var(--z-muted); }
+
+/* Results: rows like .z-menu__item (search.js renders .search__result
+   links and moves .selected with the arrow keys). */
+.search__results { padding: var(--z-space-2); }
+
+.search__result {
+  border-radius: var(--z-control-radius);
+  padding: var(--z-space-3) var(--z-space-3);
+  color: var(--z-text);
+  transition: background-color var(--z-duration-fast) var(--z-ease-standard);
+}
+
+.search__result + .search__result { margin-top: 2px; }
+
+.search__result:hover {
+  background: var(--z-surface-raised);
+  text-decoration: none;
+}
+
+.search__result.selected {
+  background: var(--zd-wash);
+  box-shadow: inset 2px 0 0 var(--z-accent);
+}
+
+.search__result-title { color: var(--z-heading); }
+.search__result.selected .search__result-title { color: var(--z-accent-text); }
+.search__result-path { font-family: var(--z-font-mono); font-size: var(--z-size-xs); color: var(--z-muted); }
+.search__result-preview { color: var(--z-muted); }
+
 .search__result-title mark,
 .search__result-preview mark {
   background: var(--z-selection-bg);
   color: var(--z-selection-fg);
+}
+
+.search__no-results { color: var(--z-muted); }
+
+.search__footer {
+  border-top-color: var(--z-border);
+  color: var(--z-muted);
 }
 
 /* -------------------------------------------------------------------------
@@ -477,3 +596,228 @@ tr:hover td { background: var(--z-surface); }
    ------------------------------------------------------------------------- */
 .article__content { min-width: 0; overflow-wrap: break-word; }
 .article__content img { max-width: 100%; height: auto; }
+
+/* -------------------------------------------------------------------------
+   14. Family footer (partials/zentinel-footer.html), as on zentinelproxy.io.
+   tanuki renders no footer in docs mode; this spans the main column.
+   ------------------------------------------------------------------------- */
+.zd-footer {
+  margin-top: var(--z-space-16);
+  padding: var(--z-space-16) 0 var(--z-space-10);
+  background: var(--z-surface);
+  border-top: 1px solid var(--z-border);
+}
+
+.zd-footer__inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--z-layout-gutter);
+}
+
+.zd-footer__top {
+  display: grid;
+  grid-template-columns: minmax(15rem, 1fr) minmax(0, 2.4fr);
+  gap: var(--z-space-12) var(--z-space-12);
+  margin-bottom: var(--z-space-12);
+}
+
+@media (max-width: 1180px) {
+  .zd-footer__top { grid-template-columns: minmax(0, 1fr); }
+}
+
+.zd-footer__brand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--z-space-4);
+  max-width: 26rem;
+}
+
+.zd-footer__lockup {
+  display: inline-flex;
+  margin-bottom: var(--z-space-2);
+  border-radius: var(--z-radius-sm);
+}
+
+.zd-footer__lockup-img { display: block; height: 44px; width: auto; }
+.zd-footer__lockup-img--light { display: none; }
+[data-theme="light"] .zd-footer__lockup-img--dark { display: none; }
+[data-theme="light"] .zd-footer__lockup-img--light { display: block; }
+
+.zd-footer__title {
+  margin: 0;
+  font-family: var(--z-font-display);
+  font-weight: var(--z-weight-display);
+  font-size: var(--z-size-xl);
+  line-height: var(--z-leading-heading);
+  letter-spacing: var(--z-tracking-heading);
+  color: var(--z-heading);
+  text-wrap: balance;
+}
+
+.zd-footer__description {
+  margin: 0;
+  color: var(--z-muted);
+  line-height: var(--z-leading-body);
+}
+
+.zd-footer__theme {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--z-space-3);
+  margin-top: var(--z-space-4);
+}
+
+.zd-footer__theme-label {
+  font-size: var(--z-size-sm);
+  font-weight: var(--z-weight-semibold);
+  color: var(--z-muted);
+}
+
+.zd-theme-switch > label svg { flex-shrink: 0; }
+
+.zd-footer__links {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--z-space-10) var(--z-space-8);
+}
+
+@media (max-width: 760px) {
+  .zd-footer__links { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 340px) {
+  .zd-footer__links { grid-template-columns: minmax(0, 1fr); }
+}
+
+.zd-footer__col { min-width: 0; }
+
+.zd-footer__col ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--z-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.zd-footer__col li { margin: 0; }
+
+.zd-footer__col a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  color: var(--z-text);
+  text-decoration: none;
+}
+
+.zd-footer__col a:hover {
+  color: var(--z-link);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* An h2 for the outline, so undo tanuki's h2 (size, rule, margins, the
+   anchor-link cursor) and the docs' display face. */
+.zd-footer__heading {
+  margin: 0 0 var(--z-space-3);
+  padding: 0;
+  border: 0;
+  cursor: auto;
+  font-family: var(--z-font-text);
+  font-size: var(--z-size-xs);
+  font-weight: var(--z-weight-bold);
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: var(--z-tracking-caps);
+  color: var(--z-muted);
+}
+
+.zd-footer__bottom {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--z-space-3) var(--z-space-8);
+  padding-top: var(--z-space-6);
+  /* keep clear of tanuki's scroll-to-top button in the corner */
+  padding-right: 64px;
+  border-top: 1px solid var(--z-border);
+}
+
+.zd-footer__bottom p {
+  margin: 0;
+  font-size: var(--z-size-sm);
+  color: var(--z-muted);
+}
+
+.zd-footer__bottom a {
+  color: var(--z-text);
+  text-decoration: underline;
+  text-decoration-color: var(--z-border-strong);
+  text-underline-offset: 3px;
+}
+
+.zd-footer__bottom a:hover {
+  color: var(--z-link);
+  text-decoration-color: currentColor;
+}
+
+.zd-footer__version a { font-family: var(--z-font-mono); }
+.zd-footer__family { margin-left: auto; }
+
+@media (max-width: 640px) {
+  .zd-footer { padding-top: var(--z-space-12); }
+  .zd-footer__bottom { flex-direction: column; align-items: flex-start; }
+  .zd-footer__family { margin-left: 0; }
+}
+
+/* -------------------------------------------------------------------------
+   15. Touch targets: 44px on coarse pointers (WCAG 2.5.8 asks 24; the
+   family uses --z-control-target-min). frame.css already grows the .z-*
+   controls; these are the tanuki controls without those classes.
+   ------------------------------------------------------------------------- */
+@media (pointer: coarse) {
+  .header .btn--ghost,
+  .search-toggle,
+  .sidebar-toggle,
+  .toc-toggle,
+  .page-toc-toggle,
+  .fab,
+  .toc__group .toc__toggle {
+    min-width: var(--z-control-target-min);
+    min-height: var(--z-control-target-min);
+  }
+
+  .toc__link,
+  .toc__section-title,
+  .search__result,
+  .zd-footer__col a,
+  .page-toc a,
+  .sidebar__version-link {
+    display: flex;
+    align-items: center;
+    min-height: var(--z-control-target-min);
+  }
+
+  .zd-footer__col a { display: inline-flex; }
+}
+
+/* -------------------------------------------------------------------------
+   16. Reduced motion: no movement anywhere. tokens.css already zeroes the
+   --z-* durations; tanuki's own transitions and keyframes (dropdown slide,
+   search zoom, theme bounce, sidebar collapse, scroll-to-top) use literal
+   times, so they are stopped here.
+   ------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
+}

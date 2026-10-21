@@ -1,4 +1,8 @@
 {#- Site override: the theme's 404 template plus the Zentinel stylesheets
-    in <head> (partials/zentinel-head.html). Nothing else changes. -#}
+    in <head> (partials/zentinel-head.html), the family footer
+    (partials/zentinel-footer.html) and static/js/zentinel-docs.js. -#}
 {% extends "tanuki/templates/404.html" %}
 {% block head %}{{ super() }}{% include "partials/zentinel-head.html" %}{% endblock %}
+{% block footer %}{% include "partials/zentinel-footer.html" %}{% endblock %}
+{#- After the theme's scripts (deferred, so it runs after code.js and theme.js). -#}
+{% block scripts %}{{ super() }}<script src="{{ get_url(path='js/zentinel-docs.js') | safe }}" defer></script>{% endblock %}

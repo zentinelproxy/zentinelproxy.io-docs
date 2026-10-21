@@ -47,6 +47,9 @@ og_image_alt = "Zentinel Documentation - A security-first reverse proxy"
 discussions = "https://github.com/zentinelproxy/zentinel/discussions"
 edit_url = "https://github.com/zentinelproxy/zentinelproxy.io-docs/edit/main/content"
 show_theme_toggle = true
+# The current zentinel release (GitHub release tag), shown in the footer as on
+# zentinelproxy.io. Bump it with ZENTINEL_RELEASE in .github/workflows/build.yml.
+software_version = "26.10_7"
 
 # Home site link (back to main landing page)
 [extra.home_site]

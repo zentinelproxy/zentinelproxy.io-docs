@@ -4,6 +4,11 @@
 
 {#- Site override: Zentinel stylesheets in <head>, see partials/zentinel-head.html. -#}
 {% block head %}{{ super() }}{% include "partials/zentinel-head.html" %}{% endblock %}
+{#- Site override: the family footer (tanuki renders none in docs mode) and
+    the docs script, after the theme's. -#}
+{% block footer %}{% include "partials/zentinel-footer.html" %}{% endblock %}
+{#- After the theme's scripts (deferred, so it runs after code.js and theme.js). -#}
+{% block scripts %}{{ super() }}<script src="{{ get_url(path='js/zentinel-docs.js') | safe }}" defer></script>{% endblock %}
 
 {% set mode = config.extra.mode | default(value="site") %}
 
