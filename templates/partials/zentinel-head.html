@@ -10,12 +10,6 @@
 <link rel="stylesheet" href="{{ get_url(path='css/zentinel-frame.css') | safe }}">
 <link rel="stylesheet" href="{{ get_url(path='css/site.css') | safe }}">
 <link rel="stylesheet" href="{{ get_url(path='css/zentinel-docs.css') | safe }}">
-{#- Dark is the family's default ground. tanuki resolves an unset preference
-    ('auto') to the OS scheme, and its theme.js re-applies that after load, so
-    a first visit is seeded with 'dark'. Any choice made with the toggle
-    (light / dark / auto) is stored by tanuki and wins from then on. -#}
-<script>
-(function(){try{if(!localStorage.getItem('tanuki-theme')){localStorage.setItem('tanuki-theme','dark');
-document.documentElement.setAttribute('data-theme','dark');
-document.documentElement.setAttribute('data-theme-setting','dark');}}catch(e){}})();
-</script>
+{#- No theme is seeded: like the site's System setting, an unset preference
+    follows the OS (tanuki's 'auto'), and dark only wins when the OS says
+    nothing. The toggle's choice is stored by tanuki. -#}
