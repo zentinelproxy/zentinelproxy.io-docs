@@ -160,22 +160,34 @@ hr { border-color: var(--z-border); }
   border-bottom-color: var(--z-border);
 }
 
+/* The lockup sits on ::before, not on the link's own background: tanuki's
+   .header__home:hover sets the `background` shorthand, which would reset a
+   background-image there and make the logo vanish on hover. */
 .header__home {
+  position: relative;
   width: auto;
   height: 40px;
   aspect-ratio: 710.22 / 159.79;
   padding: 0;
   border: 0;
   border-radius: var(--z-radius-sm);
+  background: none;
+  transition: opacity var(--z-duration-fast) var(--z-ease-standard);
+}
+
+.header__home::before {
+  content: "";
+  position: absolute;
+  inset: 0;
   background: url("../img/zentinel-lockup-dark.svg") no-repeat center / contain;
 }
 
-[data-theme="light"] .header__home {
+[data-theme="light"] .header__home::before {
   background-image: url("../img/zentinel-lockup-light.svg");
 }
 
 .header__home:hover {
-  background-color: transparent;
+  background: none;
   opacity: 0.85;
 }
 
