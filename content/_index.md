@@ -4,11 +4,11 @@ weight = 0
 sort_by = "weight"
 template = "section.html"
 +++
-Welcome to **Zentinel**, a high-performance **reverse proxy** platform built on [Cloudflare's Pingora](https://github.com/cloudflare/pingora) framework. Zentinel extends Pingora's robust foundation with enterprise-grade features designed for modern web infrastructure.
+**Zentinel** is a security-first **reverse proxy** built to guard the free web. It is written in Rust on [Cloudflare's Pingora](https://github.com/cloudflare/pingora), with explicit configuration, bounded resources, and WAF, authentication and other policy in isolated agents.
 
 ## What is Zentinel?
 
-Zentinel is a reverse proxy that combines the performance and reliability of Pingora with routing, static file serving, request validation and an external agent system. Whether you're serving static files, proxying REST APIs, or managing complex web applications, Zentinel provides the tools and flexibility you need for production deployments.
+Zentinel sits in front of your services. It terminates TLS, routes requests by host and path, balances load across upstreams with active health checks, serves static files and validates API requests against a JSON schema. Policy that needs more than configuration, such as WAF inspection or authentication, runs in [agents](@/agents/_index.md): separate processes the proxy talks to over a Unix domain socket or gRPC, each with its own timeout and failure mode, so a slow or crashed agent does not take the proxy down.
 
 ## Key Features
 

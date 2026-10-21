@@ -80,7 +80,7 @@ Request matching: path, headers, methods, priority, upstream assignment
 Backend pools: targets, load balancing, health checks, circuit breakers, TLS to backends
 
 ### agents
-External processors: WAF, auth, rate limiting via Unix socket/gRPC/HTTP
+External processors: WAF, auth and other policy, over a Unix domain socket or gRPC (agent protocol v2; the HTTP transport is rejected)
 
 ### limits
 Request limits: body size, header size, rate limits, connection limits

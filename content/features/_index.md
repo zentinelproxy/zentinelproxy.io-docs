@@ -6,11 +6,11 @@ template = "section.html"
 description = "Complete feature list for Zentinel reverse proxy"
 +++
 
-Zentinel is a next-generation reverse proxy built on [Cloudflare's Pingora](https://github.com/cloudflare/pingora) framework. This page provides a comprehensive overview of all features available in the current version.
+Zentinel is a security-first reverse proxy built on [Cloudflare's Pingora](https://github.com/cloudflare/pingora). This page lists what it does, with a link to the source that implements each feature.
 
 <div class="feature-version-notice">
 
-**Version:** This feature list reflects Zentinel v26.01. Features may vary between versions.
+**Version:** Where this list and the linked source disagree, the source is right. Settings that are accepted but not yet applied are listed in [Known Limitations](@/reference/known-limitations.md); earlier release series are in the [Version Archive](@/v/_index.md).
 
 </div>
 
