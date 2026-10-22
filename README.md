@@ -13,6 +13,7 @@
 
 <p align="center">
   <a href="https://github.com/zentinelproxy/zentinelproxy.io-docs/actions/workflows/build.yml"><img alt="CI" src="https://github.com/zentinelproxy/zentinelproxy.io-docs/actions/workflows/build.yml/badge.svg"></a>
+  <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-9b4d8a?style=flat&labelColor=1f161e">
 </p>
 
 <p align="center">
@@ -155,7 +156,9 @@ what serves docs.zentinelproxy.io.
 
 ## License
 
-This repository has no `LICENSE` file yet. The typefaces in `static/fonts/`
+MIT, see [`LICENSE`](LICENSE).
+
+The typefaces in `static/fonts/`
 (Unbounded, Atkinson Hyperlegible Next and Mono) are under the SIL Open Font
 License 1.1.
 
