@@ -70,7 +70,8 @@ This table maps CalVer release versions to the crate version actually **publishe
 
 | Release (CalVer) | Crate Version (SemVer) | Protocol | Release Date | Status |
 |---------|---------------|----------|--------------|--------|
-| **26.10_7** | `0.6.50` | `2` | 2026-10-20 | Current — namespaces and services served end to end; error pages for refusals; host-name fallback; read the upgrade notes |
+| **26.10_8** | `0.6.51` | `2` | 2026-10-22 | Current — agents get their `config { }` block and are acted on in every phase; every bundled agent rebuilt and smoke-tested; read the upgrade notes |
+| **26.10_7** | `0.6.50` | `2` | 2026-10-20 | Previous — namespaces and services served end to end; error pages for refusals; host-name fallback; read the upgrade notes |
 | **26.10_6** | `0.6.49` | `2` | 2026-10-20 | Previous — connection and in-flight limits enforced; error pages; directory configs; read the upgrade notes |
 | **26.10_5** | `0.6.48` | `2` | 2026-10-19 | Previous — health checks steer routing; per-client rate limits; forwarded headers with `trusted-proxies` (read the upgrade notes) |
 | **26.10_4** | `0.6.47` | `2` | 2026-10-19 | Previous — agents reconnect after a restart; API schema validation fixed |
@@ -101,7 +102,7 @@ This table maps CalVer release versions to the crate version actually **publishe
 
 ```bash
 zentinel --version
-# zentinel 0.6.50 (release 26.10_7, commit cb19f74-dirty)
+# zentinel 0.6.51 (release 26.10_8, commit 0f1677d)
 ```
 
 The binary prints the crate SemVer, then the CalVer release and the commit.
