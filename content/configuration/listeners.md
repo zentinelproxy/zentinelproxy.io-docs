@@ -230,6 +230,25 @@ above, a request from the load balancer `10.0.0.5` carrying
 `X-Forwarded-For: 198.51.100.7` is treated as coming from `198.51.100.7`, and
 the backend receives `X-Forwarded-For: 198.51.100.7, 10.0.0.5`.
 
+**A trusted peer is believed, not checked.** For a peer in `trusted-proxies`,
+Zentinel does not validate `X-Forwarded-Proto`, `X-Forwarded-Host`,
+`Forwarded` or `X-Real-IP`: whatever the peer sends reaches the backend as it
+arrived, and the entries already in its `X-Forwarded-For` are passed on as
+received, with the peer appended. A backend that builds absolute URLs
+(redirects, password-reset links, canonical URLs) from `X-Forwarded-Host` or
+`X-Forwarded-Proto` will use whatever value arrives. Anyone who can open a
+connection from an address inside a listed range, or reach Zentinel through a
+trusted peer that does not overwrite these headers, chooses those values.
+
+> **Note:** List only the addresses of load balancers or CDNs you operate, and
+> as narrowly as you can. A broad range, such as `0.0.0.0/0` or a whole private
+> network, makes every host in it a source of unchecked forwarded headers.
+> Block direct access to the Zentinel listener from anywhere but the trusted
+> proxies, with a firewall or security group. In the backend, read only the
+> headers your load balancer always overwrites, and take the client address
+> from `X-Forwarded-For` by walking from the right past your own proxies, as
+> Zentinel does, not from its left-most entry.
+
 **Why the default trusts nobody.** A client can send any `X-Forwarded-For` it
 likes. If Zentinel passed it on, or used it as the client IP, a client could
 pick the address that backends log, that rate limits count against and that
