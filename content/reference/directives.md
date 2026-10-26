@@ -2,7 +2,7 @@
 title = "Directive Index"
 weight = 1
 description = "Complete reference for all Zentinel configuration directives"
-updated = 2026-10-20
+updated = 2026-10-26
 +++
 
 Complete reference for all Zentinel configuration directives, verified against the source code. Each entry includes syntax, context, default values, and usage examples.
@@ -1029,8 +1029,13 @@ policies {
 
 Behavior when agent/upstream fails. Options: `"open"` (allow), `"closed"` (reject).
 
-**Context:** `policies`, `agent`
+**Context:** `policies`, `agent`, `filter` (agent)
 **Default:** `"closed"`
+
+What decides a request whose agent fails is the agent **filter's**
+`failure-mode`, then the route's `policies { failure-mode }`, then `"closed"`;
+from 26.10_8 on every path (headers, bodies, responses). On an `agent` block
+the setting applies only to WebSocket frames.
 
 ```fragment,kdl
 policies {
@@ -2287,6 +2292,27 @@ agent "auth" {
 
 ---
 
+### `connect-timeout-ms`
+
+Time allowed for connecting to the agent and completing the handshake
+(including the delivery of its `config { }` block), per connection. From
+26.10_8.
+
+**Context:** `agent`
+**Default:** `5000`
+
+Startup waits at most the longest `connect-timeout-ms` plus 5 seconds for
+the agents; one that has not answered by then is not used until it does, and
+its filters follow their `failure-mode`.
+
+```fragment,kdl
+agent "auth" {
+    connect-timeout-ms 2000
+}
+```
+
+---
+
 ### `max-request-body-bytes`
 
 Maximum request body to send to agent.
@@ -2317,10 +2343,15 @@ agent "logger" {
 
 ### `request-body-mode`
 
-How to handle request body. Options: `"buffer"`, `"stream"`, `"hybrid"`.
+How to handle request body. Options: `"buffer"`, `"stream"`, `"hybrid:<bytes>"`.
 
 **Context:** `agent`
 **Default:** `"buffer"`
+
+Applied from 26.10_8; before, every request body was buffered whole. When a
+route's body agents disagree, the most conservative mode applies: `buffer`
+over `hybrid` (largest threshold) over `stream`. See
+[Body Streaming Modes](/configuration/agents/#body-streaming-modes).
 
 ```fragment,kdl
 agent "waf" {

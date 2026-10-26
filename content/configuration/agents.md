@@ -1,7 +1,7 @@
 +++
 title = "Agents"
 weight = 9
-updated = 2026-10-20
+updated = 2026-10-26
 +++
 
 Agents are external processes that extend Zentinel's functionality. They handle security policies, authentication, rate limiting, and custom business logic. The `agents` block configures how Zentinel connects to and communicates with these agents.
@@ -291,11 +291,14 @@ agent "analytics-agent" type="custom" {
 | `open` | Allow requests through when agent unavailable (availability-first) |
 
 {% callout(type="warning") %}
-What decides a request when an agent is unavailable during the request-headers
-call is the `failure-mode` on the **filter** that calls the agent, then the
-route's `policies { failure-mode }`, and otherwise `closed`. The value on the
-`agent` block does not decide that call; it applies to request bodies,
-responses and WebSocket frames. Set `failure-mode` on the filter, as in
+What decides a request when an agent is unavailable is the `failure-mode` on
+the **filter** that calls the agent, then the route's `policies {
+failure-mode }`, and otherwise `closed`. From 26.10_8 that rule decides on
+every path: request headers, request bodies, responses and dispatch failures.
+The value on the `agent` block applies only to WebSocket frames (up to 26.10_7
+it also decided bodies and responses, so an agent set to `"open"` on a route
+at the default now refuses on body and response failures where it used to pass
+them). Set `failure-mode` on the filter, as in
 [Your First Agent](/getting-started/first-agent/#6-stop-the-agent).
 
 From 26.10_5, `zentinel test` and `lint` report an agent block's
@@ -338,10 +341,21 @@ Circuit breaker states:
 ```kdl
 agent "waf-agent" type="waf" {
     unix-socket "/var/run/zentinel/waf.sock"
-    timeout-ms 200         // Total call timeout
-    chunk-timeout-ms 5000  // Per-chunk timeout (streaming)
+    timeout-ms 200           // Total call timeout
+    chunk-timeout-ms 5000    // Per-chunk timeout (streaming)
+    connect-timeout-ms 5000  // Connect + handshake, per connection (from 26.10_8)
 }
 ```
+
+`connect-timeout-ms` (default 5000, from 26.10_8) bounds the connect and the
+handshake of every connection to the agent, including the config delivery.
+Startup waits at most the longest `connect-timeout-ms` plus 5 seconds for the
+agents, in parallel; an agent that has not answered by then is not used, its
+filters follow their `failure-mode`, and the pool keeps reconnecting in the
+background and uses the agent once it answers. Before 26.10_8 an agent that
+accepted the connection but never answered the handshake kept the proxy from
+starting, whatever its `failure-mode`. Reconnect retries and their backoff are
+not configurable.
 
 ## Body Processing
 
@@ -386,6 +400,26 @@ agent "hybrid-agent" type="custom" {
 | `buffer` | Collect entire body before sending (default) |
 | `stream` | Send chunks as they arrive |
 | `hybrid:<bytes>` | Buffer up to threshold, then stream |
+
+From 26.10_8 the mode is applied; before, every request body was buffered
+whole whatever the mode said. When a route's body agents disagree, the most
+conservative mode applies: `buffer` over `hybrid` (largest threshold) over
+`stream`, so no agent gets less of the body at once than it asked for. In
+buffer mode, and for the buffered part of hybrid mode, the body is **held back
+from the upstream until the agents have allowed it**; a refused body never
+reaches the upstream. The upstream still sees the request line and headers
+before the body decision
+([#608](https://github.com/zentinelproxy/zentinel/issues/608) tracks an opt-in
+mode that avoids it), and request-header changes an agent makes on the body
+cannot be applied for the same reason: they are dropped, with a warning logged
+once per agent. Decisions on streamed chunks (Block, Challenge, Redirect) are
+answered as on a buffered body.
+
+Request bodies go to every route agent subscribed to `request_body`, with or
+without a top-level `waf` block (before 26.10_8 they were sent only with
+`waf { body-inspection { inspect-request-body } }`). Set `inspect-request-body
+#false` there to keep bodies from agents, or narrow one filter with
+`inspect-body #false` (see [Filters](/configuration/filters/)).
 
 ## WAF Body Inspection
 
@@ -544,7 +578,29 @@ agent "waf-agent" type="waf" {
 }
 ```
 
-The configuration is passed to the agent when it connects.
+From 26.10_8 the block is delivered on **every connection** the proxy opens
+to the agent: the first one, each pooled connection, and every reconnect. Over
+a Unix socket it travels in the handshake, followed by a Configure event; over
+gRPC as a ConfigureEvent followed by a Ping. The reply confirms the agent
+handled it. An agent that rejects its config, or does not answer it, is not
+used: the connection fails with an `ERROR` log and is retried, and meanwhile
+its filters' `failure-mode` applies (`closed` answers `503`).
+
+Because the same block arrives again on every reconnect, an agent's configure
+handler has to be **idempotent**: applying it twice must leave the agent as
+applying it once does, and a partial block should merge with the agent's
+defaults rather than replace everything (the waf and modsec agents do this
+from 0.4.1; modsec 0.4.0 loaded zero rules from a partial block and reported
+success). Agents that reset state on configure do so per connection.
+
+Before 26.10_8 the block never reached the agent, whatever the agent's README
+said. Agents that ignored it start receiving it when you upgrade, so check
+that each `config { }` block says what you mean: fields it leaves out can
+replace the agent's command-line flags with defaults (ai-gateway, waf, modsec,
+graphql-security, denylist). Agents built on a released Rust SDK get the block
+over a Unix socket as soon as the proxy is upgraded; gRPC agents need a build
+against `zentinel-agent-protocol` 0.6.51 or later (older gRPC servers dropped
+the Configure event). Reverse connections get no config.
 
 ## Attaching Agents to Routes
 

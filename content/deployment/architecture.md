@@ -1,7 +1,7 @@
 +++
 title = "Deployment Architecture"
 weight = 1
-updated = 2026-10-18
+updated = 2026-10-26
 +++
 
 This page explains Zentinel's deployment philosophy and why agents are managed externally.
@@ -209,10 +209,16 @@ agent "auth" type="auth" {
 
     // Per-chunk timeout for streamed bodies
     chunk-timeout-ms 5000
+
+    // Connect + handshake, per connection (from 26.10_8)
+    connect-timeout-ms 5000
 }
 ```
 
-Agent connect timeouts and retries are not configurable from KDL.
+`connect-timeout-ms` (default 5000, from 26.10_8) bounds the connect and
+handshake of each connection to the agent; startup waits at most the longest
+one plus 5 seconds, and an agent that has not answered by then is used once it
+does. Reconnect retries and their backoff are not configurable.
 
 ## Best Practices
 

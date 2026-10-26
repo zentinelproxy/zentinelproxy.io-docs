@@ -2,10 +2,10 @@
 title = "Known Limitations"
 weight = 6
 description = "Settings Zentinel accepts but does not apply, and behaviour that differs from what the configuration suggests"
-updated = 2026-10-20
+updated = 2026-10-26
 +++
 
-This page lists what release **26.10_7** accepts in a configuration but does not
+This page lists what release **26.10_8** accepts in a configuration but does not
 apply, and where its behaviour differs from what you would reasonably expect.
 Each entry links the tracking issue where there is one, and gives a workaround
 where one exists. Entries are removed when a release fixes them; the
@@ -99,5 +99,8 @@ These are described on the page for the feature:
 | WebSocket ping interval/timeout and maximum message size are not configurable ([#369](https://github.com/zentinelproxy/zentinel/issues/369)) | [WebSocket example](/examples/websocket/) |
 | Upstream connection draining and slow start are not configurable | [Load Balancer example](/examples/load-balancer/#connection-draining-and-slow-start) |
 | Request hedging is not configurable | [Mixed Services example](/examples/mixed-services/#request-hedging) |
-| Agent connect timeouts and retries are not configurable | [Deployment Architecture](/deployment/architecture/) |
+| Agent reconnect retries and their backoff are not configurable (`connect-timeout-ms` bounds each attempt from 26.10_8) | [Deployment Architecture](/deployment/architecture/#timeouts) |
+| The upstream sees a request's line and headers before the agents decide on its body; a refused body is held back from 26.10_8 ([#608](https://github.com/zentinelproxy/zentinel/issues/608)) | [Agents: Body Streaming Modes](/configuration/agents/#body-streaming-modes) |
+| Request-header changes an agent makes in the request-body phase are dropped (logged once per agent) | [Agents: Body Streaming Modes](/configuration/agents/#body-streaming-modes) |
+| Reverse connections (agents dialing in) receive no `config { }` block | [Agent Protocol](/agents/v2/protocol/#configuration-delivery) |
 | Connection pool, `timeouts { request-secs }`, `http-version { max-h2-streams }` and other parsed-only keys | [Performance Tuning](/operations/performance-tuning/#settings-with-no-effect) |

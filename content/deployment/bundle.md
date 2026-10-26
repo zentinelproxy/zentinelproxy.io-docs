@@ -1,38 +1,67 @@
 +++
 title = "Bundle Installation"
 weight = 1
-updated = 2026-10-18
+updated = 2026-10-26
 +++
 
-The `zentinel bundle` command provides a streamlined way to install Zentinel with its bundled agents. This is the recommended approach for production deployments on Linux servers.
+`zentinel bundle` installs the agents Zentinel is released with: it downloads
+each agent's release binary, verifies it, puts it next to the proxy and writes
+the `agents { }` block that wires the proxy to it. It is the recommended way to
+run agents on a Linux or macOS host.
+
+{% callout(type="info", title="From 26.10_8") %}
+Before 26.10_8 `bundle install` pinned agent releases that could not complete
+the agent-protocol handshake, wrote a YAML file per agent that no agent read,
+and left the proxy's configuration to you, so the agents listened on their
+built-in defaults while the documented KDL pointed elsewhere. From 26.10_8
+every bundled agent is built from its tag and smoke-tested behind a real
+Zentinel before it is published, and the install starts each agent on exactly
+the socket or address it writes into `agents.kdl`. Binaries up to 0.6.50
+(26.10_7) keep their compiled-in lock and still install the old releases: run
+the bundle command of the Zentinel you deploy.
+{% end %}
 
 ## Overview
 
-Instead of manually downloading and configuring each agent, the bundle command:
+`zentinel bundle install` does five things:
 
-1. Downloads agent binaries from their official GitHub releases
-2. Installs them to the appropriate system locations
-3. Optionally generates configuration and systemd service files
+1. Reads the version lock compiled into the binary (`bundle-versions.lock`:
+   the bundle version, and for every agent its release, repository and the
+   platforms it is published for).
+2. Downloads each agent's archive from its GitHub release and checks it
+   against the published `.sha256`.
+3. Installs the binary as `zentinel-<name>-agent` in the bin directory.
+4. Writes `agents.kdl` in the config directory: an `agents { }` block with one
+   entry per installed agent, on the socket or address the agent is started
+   on.
+5. With `--systemd`, writes one unit per agent that starts it that way.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    zentinel bundle install                           │
+│                    zentinel bundle install                          │
 │                                                                     │
-│  Reads lock file → Downloads agents → Installs binaries             │
+│  Reads lock file → Downloads + verifies → Installs binaries         │
+│                  → Writes agents.kdl (+ systemd units)              │
 │                                                                     │
-│  26 bundled agents across 7 categories:                             │
-│    Core        ─ WAF, Denylist, Rate Limiter                        │
+│  24 bundled agents across 7 categories:                             │
+│    Core        ─ WAF, Denylist                                      │
 │    Security    ─ ZentinelSec, ModSecurity, IP Reputation,           │
-│                  Bot Management, Content Scanner                    │
+│                  Bot Management, Content Scanner, AI Gateway        │
 │    API         ─ GraphQL Security, gRPC Inspector, SOAP,            │
 │                  API Deprecation                                    │
 │    Protocol    ─ WebSocket Inspector, MQTT Gateway                  │
-│    Scripting   ─ Lua, JS, WASM                                     │
+│    Scripting   ─ Lua, JS, WASM                                      │
 │    Utility     ─ Transform, Audit Logger, Mock Server, Chaos,       │
 │                  Image Optimization                                 │
-│    Identity    ─ SPIFFE                                             │
+│    Identity    ─ SPIFFE, Auth                                       │
 └─────────────────────────────────────────────────────────────────────┘
 ```
+
+The `ratelimit` agent is no longer in the bundle: rate limiting is built into
+Zentinel (`policies { rate-limit { ... } }`, see
+[Rate Limiting](/configuration/filters/#rate-limiting)). `zentinel bundle
+install ratelimit` says so instead of installing it; `zentinel bundle
+uninstall ratelimit` still removes a copy installed earlier.
 
 ## Quick Start
 
@@ -40,15 +69,24 @@ Instead of manually downloading and configuring each agent, the bundle command:
 # 1. Install Zentinel
 curl -fsSL https://get.zentinelproxy.io | sh
 
-# 2. Install bundled agents
-sudo zentinel bundle install
+# 2. Install the bundled agents, with a systemd unit for each
+sudo zentinel bundle install --systemd
 
-# 3. Check status
+# 3. Wire them into the proxy: the install prints this line
+echo 'include "/etc/zentinel/agents/agents.kdl"' | sudo tee -a /etc/zentinel/zentinel.kdl
+
+# 4. Start the agents, then the proxy
+sudo systemctl daemon-reload
+sudo systemctl enable --now zentinel-waf.service zentinel-denylist.service
+sudo systemctl restart zentinel.service
+
+# 5. Check
 zentinel bundle status
-
-# 4. Configure and start
-sudo systemctl start zentinel.target
 ```
+
+Installing agents does not send traffic through them: a route only calls an
+agent through a `filter` that names it. See [Wiring agents into the
+proxy](#wiring-agents-into-the-proxy).
 
 ## Commands Reference
 
@@ -58,271 +96,240 @@ sudo systemctl start zentinel.target
 # Install all bundled agents
 sudo zentinel bundle install
 
-# Install with systemd services
+# Also write a systemd unit per agent
 sudo zentinel bundle install --systemd
 
-# Install a specific agent only
+# Install one agent only (agents.kdl still lists every installed agent)
 sudo zentinel bundle install waf
 
-# Preview without installing
+# Preview: what would be installed, and the command each agent is started with
 zentinel bundle install --dry-run
 
-# Force reinstall even if up to date
+# Reinstall even if the installed version is up to date
 sudo zentinel bundle install --force
 
-# Custom installation prefix
-sudo zentinel bundle install --prefix /opt/zentinel
+# Install under a prefix (bin/, etc/zentinel/agents/, run/zentinel/, lib/systemd/system/)
+zentinel bundle install --prefix /opt/zentinel
 
-# Skip checksum verification
+# Skip checksum verification (not recommended)
 sudo zentinel bundle install --skip-verify
 ```
+
+After installing, the command prints the path of `agents.kdl`, the `include`
+line to add to `zentinel.kdl`, and either the `systemctl` commands to start the
+units or the command line each agent is started with.
 
 ### Check Status
 
 ```bash
-zentinel bundle status
+zentinel bundle status      # -v adds the paths in use
 ```
-
-Example output:
 
 ```
 Zentinel Bundle Status
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Bundle version: 26.02_14
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Bundle version: 26.10_02
 Install path:   /usr/local/bin
 
-Agent                Installed    Expected     Status
-─────────────────────────────────────────────────────────────
-api-deprecation      0.4.0        0.4.0        ✓ up to date
-audit-logger         0.4.0        0.4.0        ✓ up to date
-bot-management       0.4.0        0.4.0        ✓ up to date
-chaos                0.4.0        0.4.0        ✓ up to date
-content-scanner      0.4.0        0.4.0        ✓ up to date
-denylist             0.3.0        0.3.0        ✓ up to date
-graphql-security     0.4.0        0.4.0        ✓ up to date
-grpc-inspector       0.4.0        0.4.0        ✓ up to date
-image-optimization   0.1.0        0.1.0        ✓ up to date
-ip-reputation        0.4.0        0.4.0        ✓ up to date
-js                   0.3.0        0.3.0        ✓ up to date
-lua                  0.3.0        0.3.0        ✓ up to date
-mock-server          0.4.0        0.4.0        ✓ up to date
-modsec               0.3.0        0.3.0        ✓ up to date
-mqtt-gateway         0.4.0        0.4.0        ✓ up to date
-ratelimit            0.3.0        0.3.0        ✓ up to date
-soap                 0.4.0        0.4.0        ✓ up to date
-spiffe               0.3.0        0.3.0        ✓ up to date
-transform            0.4.0        0.4.0        ✓ up to date
-waf                  0.3.0        0.3.0        ✓ up to date
-wasm                 0.3.0        0.3.0        ✓ up to date
-websocket-inspector  0.4.0        0.4.0        ✓ up to date
-zentinelsec          0.3.0        0.3.0        ✓ up to date
+Agent           Installed    Expected     Status
+───────────────────────────────────────────────────────
+ai-gateway      0.3.0        0.3.0        ✓ up to date
+api-deprecation 0.5.0        0.5.0        ✓ up to date
+audit-logger    0.5.0        0.5.0        ✓ up to date
+auth            0.3.0        0.3.0        ✓ up to date
+bot-management  0.5.0        0.5.0        ✓ up to date
+...
+waf             0.4.1        0.4.1        ✓ up to date
+wasm            -            0.4.0        ✗ not installed
+zentinelsec     0.4.0        0.4.0        ✓ up to date
 
-Total: 23 | Up to date: 23 | Outdated: 0 | Not installed: 0
+Total: 24 | Up to date: 23 | Outdated: 0 | Not installed: 1
 ```
 
 ### List Available Agents
 
 ```bash
-# List agents
 zentinel bundle list
 
-# With download URLs
+# With repository, binary name, transport, required file and download URL
 zentinel bundle list --verbose
 ```
 
 ### Check for Updates
 
 ```bash
-# Check what's available
+# Compare the compiled-in lock with the published one, agent by agent
 zentinel bundle update
 
-# Apply updates
+# Same, and print the install command to apply them
 zentinel bundle update --apply
 ```
+
+`bundle update` reads the current lock from
+[`api.zentinelproxy.io/v1/bundle/`](https://api.zentinelproxy.io/v1/bundle/)
+(falling back to `bundle-versions.lock` on Zentinel's `main` branch) and lists
+every agent whose version differs from the one your binary pins. Applying an
+update is `zentinel bundle install --force`.
 
 ### Uninstall Agents
 
 ```bash
-# Remove all agents
-sudo zentinel bundle uninstall
-
-# Remove specific agent
-sudo zentinel bundle uninstall waf
-
-# Preview
-zentinel bundle uninstall --dry-run
+sudo zentinel bundle uninstall            # all agents
+sudo zentinel bundle uninstall waf        # one agent
+zentinel bundle uninstall --dry-run       # preview
 ```
 
-## Bundled Agents
+Uninstalling removes binaries only; configuration files and `agents.kdl` are
+left in place.
 
-The bundle includes 23 agents across 7 categories covering common production use cases.
+## What the Install Writes
 
-### Core Agents
+### Binaries
 
-#### WAF Agent (v0.3.0)
+`<bin dir>/zentinel-<name>-agent`, one per agent, executable.
 
-Pure Rust web application firewall with 285 detection rules, anomaly scoring, and API security.
+### agents.kdl
 
-**Configuration:** `/etc/zentinel/agents/waf.yaml`
+`<config dir>/agents.kdl` is a complete top-level `agents { }` block for every
+bundled agent whose binary is installed, each on the socket or address the
+agent is started on. It is rewritten on every install, so install agents one
+at a time if you like: the file always lists all of them. Pull it into
+`zentinel.kdl` with `include` (see [Includes](/configuration/file-format/#include-behavior))
+or paste the block in.
 
-```yaml
-socket:
-  path: /var/run/zentinel/waf.sock
+```fragment,kdl
+// Generated by `zentinel bundle install` (bundle 26.10_02); rerunning it
+// overwrites this file. Use it from zentinel.kdl with
+//
+//     include "/etc/zentinel/agents/agents.kdl"
+//
+// and send a route's traffic through an agent with a filter:
+//
+//     filters { filter "waf" { type "agent"; agent "waf"; } }
+//     routes { route "app" { filters "waf"; ... } }
+//
+// `events` defaults to request headers only: add "request_body" (and the
+// response events) for agents that inspect bodies.
+agents {
+    // waf 0.4.1, started as:
+    //   /usr/local/bin/zentinel-waf-agent --socket /run/zentinel-agents/waf.sock
+    agent "waf" {
+        unix-socket "/run/zentinel-agents/waf.sock"
+        failure-mode "open"
+    }
 
-modsecurity:
-  engine: "On"
+    // zentinelsec 0.4.0, started as:
+    //   /usr/local/bin/zentinel-zentinelsec-agent --grpc-address 127.0.0.1:50151
+    agent "zentinelsec" {
+        grpc address="http://127.0.0.1:50151"
+        failure-mode "open"
+    }
 
-crs:
-  paranoia_level: 1
-  inbound_anomaly_score_threshold: 5
+    // lua 0.4.0, started as:
+    //   /usr/local/bin/zentinel-lua-agent --socket /run/zentinel-agents/lua.sock --script /etc/zentinel/agents/lua.lua
+    // It does not start until /etc/zentinel/agents/lua.lua exists.
+    agent "lua" {
+        unix-socket "/run/zentinel-agents/lua.sock"
+        failure-mode "open"
+    }
+    ...
+}
 ```
 
-#### Denylist Agent (v0.3.0)
+Every generated entry carries `failure-mode "open"`, but on an `agent` block
+that setting only applies to WebSocket frames: what decides a request when the
+agent is unreachable is the `failure-mode` on the **filter** that calls it,
+then the route's, and `closed` when neither is set. So an installed agent that
+is not running refuses the requests of every filter that names it until you
+set `failure-mode "open"` on that filter, and `zentinel test --strict` reports
+the generated line as ignored until the filter sets a mode (see [Failure
+Mode](/configuration/agents/#failure-mode)). Add `timeout-ms`, `events` or a
+`config { }` block to an entry as the agent's README describes, in
+`zentinel.kdl` rather than in the generated file, which the next install
+rewrites.
 
-Block requests based on IP addresses, CIDR ranges, or custom patterns with real-time updates.
+### How each agent is started
 
-**Configuration:** `/etc/zentinel/agents/denylist.yaml`
+Every bundled agent takes the same command line (agent protocol v2):
 
-```yaml
-socket:
-  path: /var/run/zentinel/denylist.sock
+| Agent | Started with |
+|-------|--------------|
+| Most agents | `--socket <socket dir>/<name>.sock`, wired in as `unix-socket "<same path>"` |
+| `zentinelsec` | `--grpc-address 127.0.0.1:50151`, wired in as `grpc address="http://127.0.0.1:50151"`. Its release only serves gRPC |
+| `lua`, `js` | the socket, plus `--script <config dir>/lua.lua` or `js.js` |
+| `wasm` | the socket, plus `--module <config dir>/wasm.wasm` |
 
-ip_denylist:
-  enabled: true
+The scripting agents do not start without their file. The install does not
+invent one (the format is the agent's; see the agent's README): it prints the
+path to create, and the systemd unit carries a matching `ConditionPathExists=`
+so the unit waits quietly until the file exists.
 
-path_denylist:
-  enabled: true
-  patterns:
-    - ".*\\.php$"
-    - "/wp-admin.*"
-```
+Agents that take a configuration file of their own (`--config`, YAML for most)
+are started without one. Add the flag to the generated unit's `ExecStart=`
+or to your own supervisor's command line, as the agent's README describes. A
+file in the config directory that an earlier `bundle install` wrote (a
+`<name>.yaml` with a `socket:` block) is not read by any agent; the install
+points such files out, and you can delete them.
 
-#### Rate Limiter Agent (v0.3.0, deprecated)
+## Installation Paths
 
-Token bucket rate limiting with configurable windows and limits per route, IP, or custom keys.
+The install is system-wide when run as root (or when every directory below is
+writable), user-local otherwise, and under a prefix with `--prefix`.
 
-**Configuration:** `/etc/zentinel/agents/ratelimit.yaml`
+| | System-wide (root) | User-local | `--prefix DIR` |
+|---|---|---|---|
+| Binaries | `/usr/local/bin/` | `~/.local/bin/` | `DIR/bin/` |
+| `agents.kdl`, agent files | `/etc/zentinel/agents/` | `~/.config/zentinel/agents/` | `DIR/etc/zentinel/agents/` |
+| Sockets | `/run/zentinel-agents/` | `~/.local/state/zentinel/run/` | `DIR/run/zentinel/` |
+| systemd units | `/etc/systemd/system/` | `~/.config/systemd/user/` | `DIR/lib/systemd/system/` |
 
-```yaml
-socket:
-  path: /var/run/zentinel/ratelimit.sock
+The socket directory is created with mode `0750` (system-wide, owned by the
+installing user and group) or `0700` (otherwise). A system-wide install does
+not use `/run/zentinel`: that is the proxy unit's `RuntimeDirectory=`, which
+systemd deletes whenever the proxy stops, and agent sockets in it would vanish
+with it. The user-local socket directory is deliberately not
+`$XDG_RUNTIME_DIR`: its path is written into the proxy's configuration, so it
+has to be the same in every session and survive a logout.
 
-rules:
-  - name: api_per_ip
-    match:
-      path_prefix: /api
-    limit:
-      requests_per_second: 100
-      burst: 200
-    key: client_ip
-```
+Unix socket paths are limited to 103 bytes. The install warns when a prefix
+makes a socket path longer than that; use a shorter `--prefix`.
 
-### Security Agents
+## Wiring Agents into the Proxy
 
-| Agent | Version | Description |
-|-------|---------|-------------|
-| **ZentinelSec** | v0.3.0 | Pure Rust ModSecurity-compatible WAF with full OWASP CRS — no C dependencies |
-| **ModSecurity** | v0.3.0 | OWASP CRS via libmodsecurity with 800+ detection rules |
-| **IP Reputation** | v0.4.0 | Threat intelligence with AbuseIPDB, file-based blocklists, Tor exit node detection |
-| **Bot Management** | v0.4.0 | Multi-signal bot detection, known bot verification, behavioral tracking |
-| **Content Scanner** | v0.4.0 | ClamAV-based malware scanning for file uploads |
-
-### API Security Agents
-
-| Agent | Version | Description |
-|-------|---------|-------------|
-| **GraphQL Security** | v0.4.0 | Query depth limiting, complexity analysis, introspection control |
-| **gRPC Inspector** | v0.4.0 | Method authorization, rate limiting, metadata inspection |
-| **SOAP** | v0.4.0 | Envelope validation, WS-Security, XXE prevention |
-| **API Deprecation** | v0.4.0 | RFC 8594 Sunset headers, usage tracking, automatic redirects |
-
-### Protocol Agents
-
-| Agent | Version | Description |
-|-------|---------|-------------|
-| **WebSocket Inspector** | v0.4.0 | Content filtering, schema validation, attack detection for WebSocket frames |
-| **MQTT Gateway** | v0.4.0 | Topic-based ACLs, client auth, payload inspection, QoS enforcement |
-
-### Scripting Agents
-
-| Agent | Version | Description |
-|-------|---------|-------------|
-| **Lua** | v0.3.0 | Custom Lua scripts for request/response processing |
-| **JS** | v0.3.0 | JavaScript logic using QuickJS engine |
-| **WASM** | v0.3.0 | WebAssembly modules for high-performance processing |
-
-### Utility Agents
-
-| Agent | Version | Description |
-|-------|---------|-------------|
-| **Transform** | v0.4.0 | URL rewriting, header manipulation, JSON body transforms |
-| **Audit Logger** | v0.4.0 | Structured logging with PII redaction, compliance templates (SOC2, HIPAA, PCI, GDPR) |
-| **Mock Server** | v0.4.0 | Configurable stub responses with templating and latency simulation |
-| **Chaos** | v0.4.0 | Fault injection for resilience testing (latency, errors, timeouts) |
-| **Image Optimization** | v0.1.0 | JPEG/PNG to WebP/AVIF conversion with content negotiation and caching |
-
-### Identity Agents
-
-| Agent | Version | Description |
-|-------|---------|-------------|
-| **SPIFFE** | v0.3.0 | SPIFFE/SPIRE workload identity for zero-trust service-to-service communication |
-
-## Configuration
-
-After installing agents, configure Zentinel to use them.
-
-### Add Agents to zentinel.kdl
+`agents.kdl` makes the proxy connect to the agents. Traffic reaches an agent
+only through a filter on a route:
 
 ```kdl
 agents {
     agent "waf" {
-        unix-socket "/var/run/zentinel/waf.sock"
-        timeout-ms 100
+        unix-socket "/run/zentinel-agents/waf.sock"
         failure-mode "open"
     }
-
-    agent "ratelimit" {
-        unix-socket "/var/run/zentinel/ratelimit.sock"
-        timeout-ms 50
-        failure-mode "open"
-    }
-
     agent "denylist" {
-        unix-socket "/var/run/zentinel/denylist.sock"
-        timeout-ms 20
+        unix-socket "/run/zentinel-agents/denylist.sock"
         failure-mode "open"
     }
-
     agent "image-optimization" {
-        unix-socket "/var/run/zentinel/image-optimization.sock"
-        timeout-ms 500
+        unix-socket "/run/zentinel-agents/image-optimization.sock"
         failure-mode "open"
     }
 }
-```
 
-### Apply Agents to Routes
-
-Routes attach agents through `filters`: define one agent filter per agent,
-then list the filters on each route in the order they should run.
-
-```kdl
 filters {
     filter "denylist" {
         type "agent"
         agent "denylist"
-    }
-    filter "ratelimit" {
-        type "agent"
-        agent "ratelimit"
+        failure-mode "closed"
     }
     filter "waf" {
         type "agent"
         agent "waf"
+        failure-mode "closed"
     }
     filter "image-optimization" {
         type "agent"
         agent "image-optimization"
+        failure-mode "open"
     }
 }
 
@@ -331,8 +338,8 @@ routes {
         priority "high"
         matches { path-prefix "/api" }
         upstream "backend"
-        // Order matters: check deny first, then rate limit, then WAF
-        filters "denylist" "ratelimit" "waf"
+        // Order matters: check the denylist first, then the WAF
+        filters "denylist" "waf"
     }
 
     route "images" {
@@ -341,160 +348,155 @@ routes {
         upstream "cdn"
         filters "denylist" "image-optimization"
     }
+}
 
-    route "static" {
-        priority "normal"
-        matches { path-prefix "/static" }
-        upstream "cdn"
-        // Static content only needs denylist
-        filters "denylist"
+upstreams {
+    upstream "backend" {
+        target "127.0.0.1:3000"
+    }
+    upstream "cdn" {
+        target "127.0.0.1:3001"
     }
 }
 ```
 
+In your own `zentinel.kdl` the `agents { }` block comes from the include, and
+the rest is yours. Agents that inspect bodies need `events` on their entry
+(the default is request headers only); the agent's README says which. From
+26.10_8 an agent's `config { }` block is delivered on every connection, see
+[Agent-Specific Configuration](/configuration/agents/#agent-specific-configuration).
+
 ## Systemd Integration
 
-Install with systemd services for production:
+`bundle install --systemd` writes `zentinel-<name>.service` per installed
+agent. Rerunning the install overwrites them.
 
 ```bash
-# Install with systemd
 sudo zentinel bundle install --systemd
-
-# Reload systemd
 sudo systemctl daemon-reload
-
-# Enable the target (starts on boot)
-sudo systemctl enable zentinel.target
-
-# Start everything
-sudo systemctl start zentinel.target
-```
-
-The `zentinel.target` groups all services:
-
-```bash
-# Check all services
-sudo systemctl status zentinel.target
-
-# View proxy logs
-sudo journalctl -u zentinel -f
-
-# View WAF logs
+sudo systemctl enable --now zentinel-waf.service zentinel-denylist.service
 sudo journalctl -u zentinel-waf -f
 ```
 
-### Service Dependencies
+A **system-wide** install gets system units that run as `zentinel` (the
+proxy's user, so the proxy may connect to the sockets) with the socket
+directory as a preserved `RuntimeDirectory=` shared by every agent unit,
+`Before=zentinel.service` (the proxy connects to its agents at startup) and
+`WantedBy=multi-user.target`. There is no umbrella target: enable the units
+you use.
 
-```
-zentinel.target
-├── zentinel.service              (proxy)
-├── zentinel-waf.service
-├── zentinel-denylist.service
-├── zentinel-ratelimit.service
-├── zentinel-zentinelsec.service
-├── zentinel-modsec.service
-├── zentinel-ip-reputation.service
-├── zentinel-bot-management.service
-├── zentinel-content-scanner.service
-├── zentinel-graphql-security.service
-├── zentinel-grpc-inspector.service
-├── zentinel-soap.service
-├── zentinel-api-deprecation.service
-├── zentinel-websocket-inspector.service
-├── zentinel-mqtt-gateway.service
-├── zentinel-lua.service
-├── zentinel-js.service
-├── zentinel-wasm.service
-├── zentinel-transform.service
-├── zentinel-audit-logger.service
-├── zentinel-mock-server.service
-├── zentinel-chaos.service
-├── zentinel-image-optimization.service
-└── zentinel-spiffe.service
-```
+A **user-local** install gets user units (`systemctl --user daemon-reload`,
+`systemctl --user enable --now zentinel-waf.service`), without `User=` (a
+user manager cannot switch users) and without `ProtectHome=` (it would hide a
+binary in `~/.local/bin`). A **prefix** install writes the units under
+`DIR/lib/systemd/system/`; link them into `~/.config/systemd/user/` to use
+them as user units.
 
-All agent services depend on `zentinel.service` and are part of `zentinel.target`.
+Each unit is a plain `Type=simple` service with `Restart=on-failure`,
+`NoNewPrivileges=true` and `RUST_LOG=info`; system units add
+`ProtectSystem=strict`, `ProtectHome=true`, `PrivateTmp=true` and a
+`RestrictAddressFamilies=` of Unix and IP sockets. The install prints exactly
+which `systemctl` commands to run.
 
-## Installation Paths
+## Bundled Agents
 
-### System-wide (requires root)
+The versions are pinned in the lock compiled into your binary: `zentinel
+bundle list` prints them, and
+[`api.zentinelproxy.io/v1/bundle/`](https://api.zentinelproxy.io/v1/bundle/)
+serves the current one. Each agent's options are in its README, linked from
+the [Agent Registry](https://registry.zentinelproxy.io/).
 
-| Type | Path |
-|------|------|
-| Binaries | `/usr/local/bin/zentinel-{agent}-agent` |
-| Configs | `/etc/zentinel/agents/{agent}.yaml` |
-| Systemd | `/etc/systemd/system/zentinel-{agent}.service` |
-| Runtime | `/var/run/zentinel/` |
+| Category | Agent | What it does |
+|----------|-------|--------------|
+| Core | `waf` | Pure Rust web application firewall with anomaly scoring and API security rules |
+| Core | `denylist` | Blocks by IP, CIDR, path and User-Agent patterns, with lists updated at runtime |
+| Security | `zentinelsec` | Pure Rust ModSecurity-compatible engine running the OWASP CRS, no C dependencies (gRPC) |
+| Security | `modsec` | OWASP CRS through libmodsecurity |
+| Security | `ip-reputation` | Threat intelligence: AbuseIPDB, file-based blocklists, Tor exit nodes |
+| Security | `bot-management` | Multi-signal bot scoring and known-bot verification |
+| Security | `content-scanner` | ClamAV malware scanning of uploads |
+| Security | `ai-gateway` | Prompt and response policy for LLM traffic |
+| API | `graphql-security` | Query depth and complexity limits, introspection control |
+| API | `grpc-inspector` | Method authorization, metadata inspection |
+| API | `soap` | Envelope validation, WS-Security, XXE prevention |
+| API | `api-deprecation` | RFC 8594 `Sunset` headers, redirects and blocks for retired endpoints |
+| Protocol | `websocket-inspector` | Frame filtering and schema validation for WebSocket traffic |
+| Protocol | `mqtt-gateway` | Topic ACLs, client auth and payload inspection for MQTT |
+| Scripting | `lua`, `js`, `wasm` | Your own request/response logic in Lua, JavaScript (QuickJS) or WebAssembly; each needs its script or module file |
+| Utility | `transform` | URL rewriting, header manipulation, JSON body transforms |
+| Utility | `audit-logger` | Structured audit logging with PII redaction and compliance templates |
+| Utility | `mock-server` | Stub responses with templating and latency simulation |
+| Utility | `chaos` | Fault injection: latency, errors, timeouts |
+| Utility | `image-optimization` | JPEG/PNG to WebP/AVIF with content negotiation |
+| Identity | `spiffe` | SPIFFE/SPIRE workload identity for service-to-service calls |
+| Identity | `auth` | JWT, Basic and API-key authentication |
 
-### User-local (no root)
-
-| Type | Path |
-|------|------|
-| Binaries | `~/.local/bin/zentinel-{agent}-agent` |
-| Configs | `~/.config/zentinel/agents/{agent}.yaml` |
-| Systemd | `~/.config/systemd/user/zentinel-{agent}.service` |
-
-The command automatically detects whether to use system-wide or user-local paths.
+The `policy` and `data-masking` agents have no release yet and are not in the
+bundle. No agent is published for `darwin-x86_64`; on that platform
+`bundle install` says so instead of reporting a download error.
 
 ## Version Management
 
-Agent versions are coordinated via a lock file embedded in Zentinel:
+The lock (`bundle-versions.lock` in the Zentinel repository, embedded in the
+binary at build time) names, for every agent, a release that exists for every
+platform listed for it; CI requests each asset before the lock can change.
+Your Zentinel release therefore installs a set of agents that was tested
+together.
 
 ```bash
-# Check current versions
-zentinel bundle status
-
-# Check for updates
-zentinel bundle update
-
-# Update to latest
-zentinel bundle install --force
+zentinel bundle status            # installed vs. pinned, per agent
+zentinel bundle update            # pinned vs. the published lock
+sudo zentinel bundle install --force   # move to the pinned versions
 ```
 
-The lock file ensures that all installed components are tested to work together.
+Set `ZENTINEL_BUNDLE_DOWNLOAD_URL` to replace `https://github.com` in the asset
+URLs when you mirror the releases.
 
 ## Troubleshooting
 
-### Permission Denied
+### Permission denied
 
 ```bash
-# Use sudo for system-wide installation
-sudo zentinel bundle install
-
-# Or use user-local paths
-zentinel bundle install --prefix ~/.local
+sudo zentinel bundle install          # system-wide
+zentinel bundle install               # user-local: ~/.local/bin, ~/.config/zentinel/agents
+zentinel bundle install --prefix ~/zentinel
 ```
 
-### Download Failed
+The install checks that every directory it will create is writable before it
+starts, and falls back to user-local paths when one is not.
 
-Check network connectivity:
+### Download failed
 
 ```bash
-# Show download URLs
-zentinel bundle list --verbose
-
-# Test connectivity
+zentinel bundle list --verbose        # the exact URL per agent and platform
 curl -I https://github.com/zentinelproxy/zentinel-agent-waf/releases
 ```
 
-### Agent Won't Start
+A checksum mismatch fails the install for that agent; `--skip-verify` installs
+it anyway and reports it as unverified.
 
-Check logs and socket permissions:
+### An agent does not start
 
 ```bash
-# Check logs
-sudo journalctl -u zentinel-waf -f
-
-# Check socket directory
-ls -la /var/run/zentinel/
-
-# Ensure zentinel user owns the directory
-sudo chown zentinel:zentinel /var/run/zentinel
+sudo journalctl -u zentinel-waf -f                 # its log
+sudo systemctl cat zentinel-waf.service            # the command line it runs
+ls -la /run/zentinel-agents/                       # sockets present?
+zentinel bundle install --dry-run                  # the command each agent is started with
 ```
 
-### Version Mismatch
+The scripting agents wait for their file (`ConditionPathExists=` in the unit:
+`systemctl status` shows the unit as inactive with a condition failed, not as
+failed). The proxy logs `Failed to connect to agent` with the path it tried;
+compare it with the agent's `--socket`. Both come from `agents.kdl` and the
+unit, so they differ only if one of them was edited.
 
-Force reinstall:
+### The proxy refuses requests with 503
+
+A filter with `failure-mode "closed"` whose agent is not reachable refuses the
+request. Check the agent's unit, and that the proxy runs as a user that may
+open the socket (`zentinel`, group `zentinel`, on a system-wide install).
+
+### Version mismatch
 
 ```bash
 sudo zentinel bundle install --force
@@ -506,12 +508,12 @@ sudo zentinel bundle install --force
 # 1. Install Zentinel
 curl -fsSL https://get.zentinelproxy.io | sh
 
-# 2. Install bundled agents with systemd
+# 2. Install the agents with systemd units
 sudo zentinel bundle install --systemd
 
-# 3. Create configuration
+# 3. Write the proxy configuration
 sudo mkdir -p /etc/zentinel
-sudo cat > /etc/zentinel/config.kdl << 'EOF'
+sudo tee /etc/zentinel/zentinel.kdl > /dev/null << 'KDL'
 system {
     worker-threads 0
 }
@@ -523,36 +525,18 @@ listeners {
     }
 }
 
-agents {
-    agent "denylist" {
-        unix-socket "/var/run/zentinel/denylist.sock"
-        timeout-ms 20
-        failure-mode "open"
-    }
-    agent "ratelimit" {
-        unix-socket "/var/run/zentinel/ratelimit.sock"
-        timeout-ms 50
-        failure-mode "open"
-    }
-    agent "waf" {
-        unix-socket "/var/run/zentinel/waf.sock"
-        timeout-ms 100
-        failure-mode "open"
-    }
-}
+include "/etc/zentinel/agents/agents.kdl"
 
 filters {
     filter "denylist" {
         type "agent"
         agent "denylist"
-    }
-    filter "ratelimit" {
-        type "agent"
-        agent "ratelimit"
+        failure-mode "closed"
     }
     filter "waf" {
         type "agent"
         agent "waf"
+        failure-mode "closed"
     }
 }
 
@@ -560,7 +544,7 @@ routes {
     route "default" {
         matches { path-prefix "/" }
         upstream "backend"
-        filters "denylist" "ratelimit" "waf"
+        filters "denylist" "waf"
     }
 }
 
@@ -569,21 +553,25 @@ upstreams {
         target "127.0.0.1:3000"
     }
 }
-EOF
+KDL
 
-# 4. Start everything
+# 4. Check the configuration, then start the agents and the proxy
+zentinel test --strict -c /etc/zentinel/zentinel.kdl
 sudo systemctl daemon-reload
-sudo systemctl enable zentinel.target
-sudo systemctl start zentinel.target
+sudo systemctl enable --now zentinel-denylist.service zentinel-waf.service
+sudo systemctl enable --now zentinel.service
 
 # 5. Verify
 curl localhost:8080/_builtin/health
-sudo systemctl status zentinel.target
+zentinel bundle status
 ```
 
 ## See Also
 
 - [Installation](/getting-started/installation/) - Installing Zentinel
-- [Systemd Deployment](../systemd/) - Production systemd setup
+- [Systemd Deployment](../systemd/) - Production systemd setup for the proxy
 - [Docker Compose](../docker-compose/) - Container deployment with agents
-- [Configuration Reference](/configuration/agents/) - Agent configuration options
+- [Agents](/configuration/agents/) - Agent configuration, events, `config { }` delivery
+- [Agent Registry](https://registry.zentinelproxy.io/) and
+  [API reference](https://api.zentinelproxy.io/reference/) - the bundle lock
+  and every agent's metadata as JSON

@@ -1,7 +1,7 @@
 +++
 title = "Protocol Specification"
 weight = 1
-updated = 2026-02-27
+updated = 2026-10-26
 +++
 
 This document describes the v2 wire protocol for communication between the Zentinel proxy dataplane and external processing agents.
@@ -154,6 +154,25 @@ pub struct UdsCapabilities {
     pub max_concurrent_requests: Option<u32>,
 }
 ```
+
+### Configuration Delivery
+
+From Zentinel 26.10_8 the proxy delivers the agent block's `config { }` on
+**every** connection it opens to the agent: the first one, each pooled
+connection and every reconnect. Over the Unix socket the configuration is
+carried in the handshake and followed by a Configure message; over gRPC it is
+sent as a `ConfigureEvent` followed by a Ping. The agent's reply to that
+message confirms that it handled the configuration. A reply that reports an
+error, or none within the agent's `connect-timeout-ms`, takes the connection
+out of use: the proxy logs an `ERROR`, retries, and meanwhile the agent's
+filters follow their `failure-mode`.
+
+Because the same block arrives again on every reconnect, the configure handler
+**must be idempotent**: applying it twice has to leave the agent in the state
+that applying it once does, and a partial block should merge with the agent's
+defaults rather than reset everything. Reverse connections receive no
+configuration. Releases before 26.10_8 never sent the block; gRPC agents built
+against `zentinel-agent-protocol` older than 0.6.51 drop the event.
 
 ---
 
@@ -315,6 +334,17 @@ pub struct CancelRequestMessage {
 │         │ ◄─────────────────── │         │
 └─────────┘                       └─────────┘
 ```
+
+The upstream request is started once the request headers are allowed, so the
+upstream sees the request line and headers before the agents decide on the
+body. From 26.10_8, in buffer mode and for the buffered part of hybrid mode,
+the body itself is held back until the agents' decision, so a refused body
+never reaches the upstream
+([#608](https://github.com/zentinelproxy/zentinel/issues/608) tracks an
+opt-in mode that holds the headers back too). Request-header operations
+returned from the body phase cannot be applied and are dropped;
+`response_headers` operations from either request phase are applied to the
+client's response.
 
 ### Response-Phase Flow
 
