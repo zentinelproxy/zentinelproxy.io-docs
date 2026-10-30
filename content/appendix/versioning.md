@@ -70,7 +70,8 @@ This table maps CalVer release versions to the crate version actually **publishe
 
 | Release (CalVer) | Crate Version (SemVer) | Protocol | Release Date | Status |
 |---------|---------------|----------|--------------|--------|
-| **26.10_9** | `0.6.52` | `2` | 2026-10-28 | Current — reload loads changed agents; SIGTERM/SIGINT drain; SIGUSR1 reopens logs; tokio 1.54 fix for `cargo install`; read the upgrade notes |
+| **26.10_10** | `0.6.53` | `2` | 2026-10-30 | Current — shutdown timeouts above 300 s get their full drain; systemd unit `TimeoutStopSec=40`; `bundle install` writes an `agents.kdl` that `--strict` accepts; read the upgrade notes |
+| **26.10_9** | `0.6.52` | `2` | 2026-10-28 | Previous — reload loads changed agents; SIGTERM/SIGINT drain; SIGUSR1 reopens logs; tokio 1.54 fix for `cargo install`; read the upgrade notes |
 | **26.10_8** | `0.6.51` | `2` | 2026-10-22 | Previous — agents get their `config { }` block and are acted on in every phase; every bundled agent rebuilt and smoke-tested; read the upgrade notes |
 | **26.10_7** | `0.6.50` | `2` | 2026-10-20 | Previous — namespaces and services served end to end; error pages for refusals; host-name fallback; read the upgrade notes |
 | **26.10_6** | `0.6.49` | `2` | 2026-10-20 | Previous — connection and in-flight limits enforced; error pages; directory configs; read the upgrade notes |
@@ -103,7 +104,7 @@ This table maps CalVer release versions to the crate version actually **publishe
 
 ```bash
 zentinel --version
-# zentinel 0.6.52 (release 26.10_9, commit 9813f05)
+# zentinel 0.6.53 (release 26.10_10, commit b490f28)
 ```
 
 The binary prints the crate SemVer, then the CalVer release and the commit.
