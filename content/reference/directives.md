@@ -434,7 +434,11 @@ listener "http" {
 
 ### `protocol`
 
-Network protocol for the listener. Options: `"http"`, `"https"`, `"h2"` (HTTP/2), `"h3"` (HTTP/3/QUIC).
+Network protocol for the listener. Options: `"http"`, `"https"`, `"h2"`
+(HTTP/2 over TLS), `"h2c"` (HTTP/2 over cleartext, prior knowledge, from
+26.10_11). `"h3"` is rejected (not implemented). `"https"` and `"h2"` need a
+`tls` block; from 26.10_11 a listener without one is a configuration error.
+See [Listeners: Protocol](/configuration/listeners/#protocol).
 
 **Context:** `listener`
 **Default:** `"http"`
@@ -443,6 +447,10 @@ Network protocol for the listener. Options: `"http"`, `"https"`, `"h2"` (HTTP/2)
 listener "secure" {
     address "0.0.0.0:443"
     protocol "https"
+    tls {
+        cert-file "/etc/zentinel/certs/server.crt"
+        key-file "/etc/zentinel/certs/server.key"
+    }
 }
 ```
 
@@ -492,6 +500,10 @@ listener "h2" {
     address "0.0.0.0:8443"
     protocol "h2"
     max-concurrent-streams 250
+    tls {
+        cert-file "/etc/zentinel/certs/server.crt"
+        key-file "/etc/zentinel/certs/server.key"
+    }
 }
 ```
 
