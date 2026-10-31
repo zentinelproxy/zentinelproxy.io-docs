@@ -222,14 +222,35 @@ upstreams {
 | `http-version { min-version }` | `1` | With `max-version`, selects the ALPN protocols offered to TLS upstreams |
 | `http-version { max-version }` | `2` | `1`/`2`: offer `h2` and `http/1.1`. `2`/`2`: require HTTP/2. `1`/`1`: HTTP/1.1 only |
 | `http-version { h2-ping-interval }` | `0` (off) | Seconds between HTTP/2 PING frames on idle upstream connections |
+| `http-version { max-h2-streams }` | `100` | Concurrent streams per upstream HTTP/2 connection (applied from 26.10_11; before, every connection carried one stream) |
 
-HTTP/2 to upstreams only works over TLS: an upstream without a `tls` block is always spoken to over HTTP/1.1. With the defaults, a TLS upstream that supports HTTP/2 is used over HTTP/2.
+Over TLS, HTTP/2 is negotiated through ALPN: with the defaults, a TLS upstream that supports HTTP/2 is used over HTTP/2. An upstream without a `tls` block is spoken to over HTTP/1.1 unless it sets `h2c #true` (below). From 26.10_11, `min-version 2` on an upstream without `tls` is a configuration error that points to `h2c`; it used to fall back to HTTP/1.1 silently.
 
 **When to change them:**
 
 - **gRPC backends**: set `min-version 2` so that a backend which does not negotiate HTTP/2 fails clearly instead of being spoken to over HTTP/1.1.
 - **Backends with HTTP/2 bugs or per-connection limits**: set `max-version 1`.
 - **Long-lived HTTP/2 connections through NAT or firewalls** that drop idle flows: set `h2-ping-interval` below their idle timeout.
+
+### HTTP/2 over cleartext to upstreams (h2c) {#h2c-upstreams}
+
+For a trusted internal hop where the backend speaks HTTP/2 without TLS (a
+gRPC service inside a cluster, for example), set `h2c #true` on the upstream
+(from 26.10_11):
+
+```kdl
+upstreams {
+    upstream "grpc-internal" {
+        target "10.0.2.1:50051"
+        h2c #true
+    }
+}
+```
+
+HTTP/2 is used with prior knowledge: there is no negotiation and no fallback,
+so a backend that does not speak HTTP/2 fails the request. `zentinel test`
+rejects `h2c` together with a `tls` block, `max-version 1` or `min-version 1`.
+Gateway API GRPCRoute backends use h2c automatically.
 
 ## Request limits
 
@@ -294,13 +315,14 @@ The parser accepts these keys, but the proxy does not act on them in the current
 | listener `max-concurrent-streams` | HTTP/2 stream limits are not configurable |
 | `connection-pool { max-connections max-idle max-lifetime-secs }` | Pool size is fixed and connections have no maximum lifetime |
 | `timeouts { request-secs }` | There is no total-request deadline; use read timeouts |
-| `http-version { max-h2-streams }` | Not applied to upstream connections |
-| `compress` filter `level` and `algorithms` | The level is fixed at 6 and the encoding follows the client's `Accept-Encoding` |
 
 `system { daemon }` and route `policies { max-body-size }` had no effect before
 26.10_5; from 26.10_5 both are applied. `limits { max-connections-per-client
 max-total-connections max-in-flight-requests }` had no effect before 26.10_6;
 from 26.10_6 they are enforced (see [Limits](/configuration/limits/#concurrency-limits)).
+`http-version { max-h2-streams }` and the `compress` filter's `level`,
+`algorithms` and `content-types` had no effect before 26.10_11; from 26.10_11
+they are applied (see [Filters: Compression](/configuration/filters/)).
 
 ## See also
 

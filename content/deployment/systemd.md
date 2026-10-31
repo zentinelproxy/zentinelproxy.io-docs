@@ -312,14 +312,12 @@ agents {
         unix-socket "/var/run/zentinel/auth.sock"
         events "request_headers"
         timeout-ms 50
-        failure-mode "closed"
     }
 
     agent "waf" type="waf" {
         grpc "http://127.0.0.1:50051"
         events "request_headers" "request_body"
         timeout-ms 100
-        failure-mode "open"
         max-request-body-bytes 1048576
     }
 }

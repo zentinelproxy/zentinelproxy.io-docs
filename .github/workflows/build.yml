@@ -23,8 +23,8 @@ jobs:
     env:
       # Pinned Zentinel release the snippets are checked against. Bump both
       # together when documenting a newer release.
-      ZENTINEL_RELEASE: "26.10_10"
-      ZENTINEL_SHA256: "9b805f46b5272732bba613b2d26261db751353f80d3f41e03d925f0f11712858"
+      ZENTINEL_RELEASE: "26.10_11"
+      ZENTINEL_SHA256: "0c35141330126516d30e4901a2749d3e353b703351ede1ea6f093eb682e5c203"
     steps:
       - uses: actions/checkout@v4
 

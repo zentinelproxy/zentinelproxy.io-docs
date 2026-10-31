@@ -15,6 +15,7 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 
 | CalVer | Crate Version | Date | Highlights |
 |--------|---------------|------|------------|
+| [26.10_11](#26-10-11) | 0.6.54 | 2026-10-31 | **OCSP stapling works** (on by default, so the proxy now contacts each certificate's OCSP responder); **the `compress` filter no longer breaks every response it applies to**, applies its `algorithms`, and produces gzip/zstd only; **WebSocket frames reach the route's agents** and the agent-level `failure-mode` is deprecated; a body an agent refuses no longer trips the upstream's circuit breaker; response-phase Redirect/Challenge, filter `timeout-ms` on every path; reloads rebuild route error pages, schemas and static files; `request-body-mode "inspect-first"`; h2c on listeners and upstreams (**read the upgrade notes**) |
 | [26.10_10](#26-10-10) | 0.6.53 | 2026-10-30 | **A `graceful-shutdown-timeout-secs` above 300 s is no longer cut short** by Pingora's 300 s grace period; the shipped systemd unit has `TimeoutStopSec=40` (**read the upgrade notes**); `bundle install` no longer writes a `failure-mode` on the generated agents that `--strict` rejects; TLS accepts no longer scan every pending handshake |
 | [26.10_9](#26-10-9) | 0.6.52 | 2026-10-28 | **A reload loads added, renamed and reconfigured agents** (their filters used to call nothing); **SIGTERM/SIGINT drain open connections** before exiting; **SIGUSR1 reopens the log files** and SIGUSR2 no longer kills the proxy (**read the upgrade notes**); `cargo install` builds work with tokio 1.54; bundle `26.10_03` pins zentinelsec 0.4.1 |
 | [26.10_8](#26-10-8) | 0.6.51 | 2026-10-22 | **Agents get their `config { }` block and are acted on in every phase** (config delivered on every connection, response-phase blocks enforced, Challenge fails closed, request bodies reach subscribed agents and are held back until allowed; **read the upgrade notes**); a silent agent no longer holds up startup; daemon mode works; **every bundled agent is rebuilt from its tag and smoke-tested** (most published agents could not complete a v2 handshake over a socket) |
@@ -80,6 +81,174 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 | [26.01_3](#26-01-3) | 0.2.3 | 2026-01-05 | Bug fixes |
 | [26.01_0](#26-01-0) | 0.2.0 | 2026-01-01 | First CalVer release |
 | [25.12](#25-12) | 0.1.x | 2025-12 | Initial public releases |
+
+---
+
+## 26.10_11
+
+**Date:** 2026-10-31
+**Crate version:** 0.6.54
+
+A batch of "parses but does nothing" fixes. OCSP stapling, the `compress` filter's settings and agent inspection of WebSocket frames were configurable and documented but never happened; they now do. The `compress` filter itself broke every response it applied to and is fixed. A request body an agent refuses no longer counts against a healthy upstream, and a reload now rebuilds each route's error pages, schema validator and static file server. HTTP/2 over cleartext (h2c) is supported on listeners and upstreams. **Read the upgrade notes:** several configurations that used to load silently now fail, warn or behave differently.
+
+### Upgrade notes
+- **A plain upstream with an HTTP/2-only `http-version` no longer loads.**
+  `http-version { min-version 2 }` on an upstream without `tls` used to be
+  served over HTTP/1.1 without a word (there is no ALPN without TLS). It is
+  now a configuration error that points to `h2c #true`. Add `h2c #true` if the
+  backend speaks cleartext HTTP/2, or remove `min-version 2` to keep
+  HTTP/1.1. (#614)
+- **An `https` or `h2` listener without a `tls` block no longer loads.** It
+  used to pass validation and then bind nothing at startup (an error in the
+  log, no socket). The error says to add `tls`, or to use `protocol "h2c"`
+  for HTTP/2 without TLS. (#614)
+- **OCSP stapling now actually happens, and it is on by default**
+  (`ocsp-stapling` defaults to `#true`). For each certificate whose AIA names
+  an OCSP responder, the proxy now contacts that responder over HTTP from
+  shortly after startup, and again at least hourly. If egress to your CA's
+  responder is blocked, you will see one warning per certificate and
+  `zentinel_tls_ocsp_fetch_total{result="failure"}` rising; handshakes are
+  unaffected. Set `ocsp-stapling #false` to keep the old behaviour. The
+  responder is found through the issuer certificate, so `cert-file` must
+  contain the chain (leaf, then intermediate); a leaf-only file is warned
+  about and served unstapled. (#590)
+- **A `compress` filter that lists `deflate`, or sets a `level` outside 1-9,
+  no longer loads.** The proxy cannot produce deflate; the entry used to be
+  skipped without a word. Use `gzip` (the same DEFLATE compression; every
+  client that accepts deflate accepts gzip). An unknown algorithm name is now
+  an error too, where it was dropped. (#591)
+- **`algorithms` and `content-types` on a `compress` filter now take effect,
+  so responses may be encoded differently.** `algorithms "br" "gzip" "zstd"`,
+  the documented form, used to keep only its first entry, and
+  `content-types` was replaced by a fixed list of four types. Check both
+  against what you want compressed. (#591)
+- **The `compress` filter does not produce Brotli, and its default is now
+  `gzip` alone** (was gzip, br). Pingora's Brotli encoder flushes at the end
+  of the body instead of finishing the stream, so its output cannot be
+  decoded. `br`/`brotli` in `algorithms` is still accepted, skipped in favour
+  of the next listed algorithm the client accepts, and reported by
+  `zentinel test`/`lint` as a warning. Use `zstd` alongside `gzip` for a
+  stronger coding. (#591)
+- **The agent-level `failure-mode` is deprecated and has no effect.**
+  WebSocket frames were the last path it decided; they now follow the same
+  rule as every other path: the agent filter's `failure-mode`, else the
+  route's `policies { failure-mode }`, else closed. A fail-closed failure
+  closes the connection with 1011. **If you relied on an agent's
+  `failure-mode "open"` for WebSocket frames, set `failure-mode "open"` on
+  its filter.** `zentinel test` and the startup log report the key wherever
+  it is set, naming the filters and routes where the value belongs. The key
+  still parses; it will be removed in a later release. (#586)
+- **WebSocket frames never reached an agent.** The proxy had no dispatch
+  for them: every frame was a failed call ("Unsupported event type"), so
+  with the agent's default `failure-mode "open"` frames passed uninspected,
+  and with `"closed"` every inspected WebSocket was closed on its first
+  frame. Frames are now sent to agents over UDS and reverse connections. gRPC
+  agents still cannot answer frames (the gRPC response has no WebSocket
+  decision) and get an explicit error, answered by the filter's failure
+  mode. (#586)
+- **WebSocket frames go only to the route's agents.** Every loaded agent
+  subscribed to `websocket_frame` used to see every route's frames, whether
+  or not the route listed it in its `filters`, and the 100 ms per-frame
+  timeout was hard-coded and failed open. Each frame now goes to the agents
+  of the route's filter chain, in order, under the filter's `timeout-ms`
+  (shortening the agent's) and failure mode. (#586)
+
+### Added
+- **`request-body-mode "inspect-first"` on an agent: decide on the whole
+  request body before the upstream is contacted** (#608). In the other
+  modes the upstream already has the request headers when the body is
+  inspected, so a refused request reaches it as an aborted request, and
+  request-header changes an agent asks for on the body are dropped. With
+  `inspect-first` the body is read in full and decided on first: a refused
+  request never reaches the upstream, and the body-phase request-header
+  changes are applied. It is bounded by the route's body-size limit (413
+  above it), holds the body in memory, and adds the upload time to the
+  upstream's start, so it is opt-in. One agent asking for it sets the
+  route's mode. Not a response mode: `response-body-mode "inspect-first"`
+  is a configuration error.
+- **`h2c #true` on an upstream: HTTP/2 over cleartext TCP** with prior
+  knowledge, for trusted internal hops where TLS ends elsewhere (#614). There
+  is no negotiation and no fallback: a backend that does not speak HTTP/2
+  fails the request. `zentinel test` rejects `h2c` together with `tls`,
+  `max-version 1` or `min-version 1`.
+- **`protocol "h2c"` on a listener: HTTP/2 over cleartext TCP** with prior
+  knowledge, for trusted internal hops (#614). A client that does not open
+  with the HTTP/2 connection preface within 10 s is refused: one that sent
+  something else (HTTP/1.1) gets `505 HTTP Version Not Supported`. h2c
+  listeners run in a Pingora service of their own, so `http` listeners are
+  unchanged and do not start accepting HTTP/2; their connections count
+  against the same connection limits. A `tls` block on an h2c listener is a
+  configuration error.
+
+### Fixed
+- **A route added or changed by a reload kept no error pages, API schema
+  validator or static file server.** They were built once at startup: a
+  static route added by a reload served without its files, a changed
+  `error-pages` or `api-schema` stayed the old one, and a removed route's
+  stayed loaded. They are now rebuilt with the routes on every reload
+  (`Route components reloaded added=… replaced=… removed=… unchanged=…`).
+  (#572)
+- **A reload that changes `observability` or `cache` now says a restart is
+  needed**, as it already did for `listeners` and `system`. Both are set up
+  at startup, and changes to them were ignored without a word. Every
+  top-level block now declares what a reload does with it, so a new block
+  cannot ship without choosing. (#572)
+- **OCSP stapling was parsed and never applied** (#590): no handshake ever
+  carried a staple, so clients made their own OCSP lookups (slower, and a
+  privacy leak to the CA) and a must-staple certificate was rejected by
+  strict clients. Each listener now fetches the response for every served
+  certificate (default and SNI) from the certificate's own responder,
+  checks it (successful, for this serial, status `good`, within
+  `thisUpdate`/`nextUpdate`), and staples it for TLS 1.2 and 1.3 clients
+  that request status. Responses are refreshed in the background at half
+  their validity (at least hourly) and survive certificate reloads; an
+  expired or revoked response is dropped, never served. An unreachable or
+  misbehaving responder never fails a handshake: it is logged and counted
+  in the new `zentinel_tls_ocsp_fetch_total{listener,result}`;
+  `zentinel_tls_ocsp_stapled_certificates{listener}` shows how many
+  certificates currently carry a staple.
+- **A `compress` filter broke every response it applied to** (since
+  26.02_10): compression was switched on after Pingora's compression module
+  had already passed over the response header, and the module panicked on the
+  first body chunk, so clients got an empty reply or a truncated body. The
+  filter now configures the module before the response header reaches it.
+  (#591)
+- **The `compress` filter's `algorithms` list is applied**: only the listed
+  algorithms are produced (gzip and zstd), in the listed order of preference
+  among those the client accepts (q=0 refusals respected), and the filter's
+  `level` is used instead of a fixed 6. A response the upstream already encoded in a coding
+  the client accepts is passed through as before. `zentinel lint` now checks
+  a compress filter's keys. (#591)
+- **`max-h2-streams` was never applied** to upstream HTTP/2 connections, so
+  every one carried a single stream (Pingora's default) and concurrent
+  requests each opened a connection of their own. It now reaches the
+  connection (default 100). (#614)
+- **Gateway API: GRPCRoute upstreams now use `h2c`.** They asked for HTTP/2
+  only, on plain cluster Services, which without TLS could not take effect.
+  (#614)
+- **An agent filter's `timeout-ms` now applies on every event path.** It
+  was honoured on request headers only; the request body, response headers
+  and response body calls waited for the agent's own `timeout-ms` instead.
+  A filter that tightened its route's latency budget, say to 100 ms for an
+  agent with 1000 ms, waited the full 1000 ms there. The filter's value can
+  still only shorten the agent's, never extend it. (#589)
+- **A request an agent refuses on its body no longer counts against the
+  upstream.** Pingora has already connected and sent the headers when the
+  body is inspected, so the refusal abandons the upstream request, and that
+  abort was reported as a connection failure (`Connection failure reported
+  for target`) to the target's circuit breaker. A stream of refused uploads
+  could take a healthy backend out of rotation, on purpose or not. Refused
+  requests are now left out of the target's circuit breaker and
+  load-balancer accounting entirely; genuine upstream failures still count.
+  (#610)
+- **An agent's `Redirect` or `Challenge` in a response phase is acted on.**
+  Since 26.10_9 a `Block` on response headers or the response body was
+  enforced (#584), but a `Redirect` or `Challenge` there was dropped and the
+  upstream response sent. Both are now answered as in the request phases (a
+  redirect with its `Location`, a challenge as 403, or 401 with
+  `WWW-Authenticate`), replacing the upstream response while its header is
+  unsent and aborting it after, as a block does. Logged and audited with the
+  decision type as `action`. (#588)
 
 ---
 

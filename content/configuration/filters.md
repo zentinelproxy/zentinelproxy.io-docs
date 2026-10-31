@@ -317,19 +317,34 @@ Compress response bodies:
 ```kdl
 filter "compress" {
     type "compress"
-    algorithms "brotli" "gzip" "zstd"
-    min-size 1024          // Minimum size to compress (bytes)
-    level 6                // Compression level (1-9)
+    algorithms "zstd" "gzip"   // In order of preference
+    min-size 1024              // Minimum size to compress (bytes)
+    level 6                    // Compression level (1-9)
     content-types "text/html" "text/css" "application/json" "application/javascript"
 }
 ```
 
-| Algorithm | Description |
-|-----------|-------------|
-| `gzip` | Widely supported, good compression |
-| `brotli` | Better compression, modern browsers |
-| `deflate` | Legacy, wide support |
-| `zstd` | Fast compression/decompression |
+| Algorithm | Produced | Notes |
+|-----------|----------|-------|
+| `gzip` | Yes | Universal client support. The default |
+| `zstd` | Yes | Stronger and faster than gzip; supported by current browsers |
+| `br` / `brotli` | **No** | Accepted, but skipped with a warning from `zentinel test` and `lint`: Pingora's Brotli encoder does not finish its stream, so its output cannot be decoded |
+| `deflate` | **No** | A configuration error. Use `gzip`: it is the same DEFLATE compression, and every client that accepts deflate accepts gzip |
+
+| Key | Default | Meaning |
+|-----|---------|---------|
+| `algorithms` | `"gzip"` | The codings the filter may produce, in order of preference. The first one listed that the client accepts (`q` above 0) is used; a client that accepts none of them gets the response uncompressed. Also accepted comma-separated in one string. An unknown name is an error |
+| `content-types` | `text/html`, `text/css`, `application/json`, `application/javascript` | MIME type prefixes to compress |
+| `min-size` | `1024` | Responses smaller than this are sent uncompressed |
+| `level` | `6` | Compression level, 1-9. Anything else is an error |
+
+A response the upstream already encoded in a coding the client accepts is
+passed through unchanged; the filter does not transcode.
+
+Before 26.10_11 the compress filter broke every response it applied to
+(clients got an empty reply or a truncated body, since 26.02_10), only the
+first entry of `algorithms` was kept and not applied, and `content-types` and
+`level` were not read.
 
 ### GeoIP Filter
 
@@ -424,13 +439,15 @@ filter "waf" {
 | Key | Meaning |
 |-----|---------|
 | `agent` | ID of an agent in the `agents` block |
-| `timeout-ms` | Timeout of this filter's `request_headers` call, in milliseconds. It can only shorten the agent's own `timeout-ms`: the shorter of the two applies |
-| `failure-mode` | What happens when that call fails or times out: `"open"` lets the request through, `"closed"` refuses it |
+| `timeout-ms` | Timeout of each call to the agent on the routes that use this filter, in milliseconds: request headers, request body, response headers, response body and WebSocket frames. It can only shorten the agent's own `timeout-ms`: the shorter of the two applies |
+| `failure-mode` | What happens when a call fails or times out: `"open"` lets the request (or frame) through, `"closed"` refuses it. Unset, the route's `policies { failure-mode }` applies, and without that, `"closed"` |
 | `inspect-body` | From 26.10_7. `#false` sends no request body to the agent on the routes that use this filter. Left out or `#true`, the agent's `events` decide |
 | `max-body-bytes` | From 26.10_7. Largest request body sent to the agent on these routes, in bytes. It can only lower the agent's `max-request-body-bytes`: the smaller of the two applies |
 
 From 26.10_6, an agent filter's `timeout-ms` is applied to the
-`request_headers` call, the same call its `failure-mode` governs. The agent's
+`request_headers` call; from 26.10_11 it applies to every event path,
+including request and response bodies and WebSocket frames (before 26.10_11
+those waited for the agent's own `timeout-ms`). The agent's
 `timeout-ms` (default `1000`) is also the request timeout of the agent's
 connection pool, so a larger filter value cannot take effect: `zentinel lint`
 reports it as ignored beyond the agent's value. A value of `0` or less is
@@ -476,7 +493,6 @@ agents {
         unix-socket "/var/run/zentinel/waf.sock"
         events "request_headers" "request_body"
         max-request-body-bytes 1048576
-        failure-mode "closed"
     }
 }
 
@@ -628,7 +644,7 @@ filters {
     // Response compression
     filter "compress" {
         type "compress"
-        algorithms "brotli" "gzip"
+        algorithms "gzip" "zstd"
         min-size 1024
     }
 
@@ -670,7 +686,7 @@ routes {
 | Rate Limit | `status-code` | `429` |
 | Rate Limit | `max-delay-ms` | `5000` |
 | Headers | `phase` | `request` |
-| Compress | `algorithms` | `gzip`, `brotli` |
+| Compress | `algorithms` | `gzip` |
 | Compress | `min-size` | `1024` |
 | Compress | `level` | `6` |
 | CORS | `allowed-origins` | `*` |

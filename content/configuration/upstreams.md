@@ -942,6 +942,32 @@ Circuit breaker states:
 - **Open**: Requests fail immediately (circuit tripped)
 - **Half-Open**: Limited requests to test recovery
 
+## HTTP/2 over Cleartext (h2c) {#h2c}
+
+An upstream without `tls` is spoken to over HTTP/1.1. For a trusted internal
+backend that speaks HTTP/2 without TLS, set `h2c #true` (from 26.10_11):
+
+```kdl
+upstreams {
+    upstream "grpc-internal" {
+        target "10.0.2.1:50051"
+        h2c #true
+    }
+}
+```
+
+- HTTP/2 is used with prior knowledge. There is no negotiation and no
+  fallback: a backend that does not speak HTTP/2 fails the request.
+- `zentinel test` rejects `h2c` together with a `tls` block, `max-version 1`
+  or `min-version 1`.
+- `http-version { min-version 2 }` on an upstream without `tls` is a
+  configuration error that points to `h2c` (it used to be served over HTTP/1.1
+  without a word).
+- Gateway API GRPCRoute backends use h2c automatically.
+
+See [Performance Tuning: HTTP/2 to upstreams](/operations/performance-tuning/#http-2-to-upstreams)
+for `max-h2-streams` and the other `http-version` settings.
+
 ## Upstream TLS
 
 When your backend serves HTTPS (typically on port 443), you **must** add a `tls` block to the upstream. Without it, Zentinel connects with plaintext HTTP, which causes TLS handshake failures, connection resets, or redirect loops.

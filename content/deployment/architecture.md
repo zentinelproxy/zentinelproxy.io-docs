@@ -179,14 +179,12 @@ agents {
     agent "auth" type="auth" {
         unix-socket "/run/zentinel/auth.sock"
         timeout-ms 100
-        failure-mode "closed"
     }
 
     // gRPC (local or remote)
     agent "waf" type="waf" {
         grpc "http://waf-service:50051"
         timeout-ms 200
-        failure-mode "open"
     }
 }
 ```
@@ -228,12 +226,10 @@ does. Reconnect retries and their backoff are not configurable.
 // Good: Explicit failure handling
 agent "auth" type="auth" {
     unix-socket "/run/zentinel/auth.sock"
-    failure-mode "closed"  // Security: fail closed
 }
 
 agent "metrics" type="custom" {
     grpc "http://localhost:50052"
-    failure-mode "open"  // Observability: fail open
 }
 ```
 

@@ -400,7 +400,6 @@ agents {
         // Or: grpc "http://127.0.0.1:50051"
 
         timeout-ms 100
-        failure-mode "closed"              // closed, open
         max-request-body-bytes 1048576
         events "request_headers" "response_headers"
 

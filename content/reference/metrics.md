@@ -313,6 +313,28 @@ TLS handshake duration.
 
 **Version values:** `TLS1.2`, `TLS1.3`
 
+### zentinel_tls_ocsp_fetch_total
+
+OCSP response fetches for stapling, by outcome (from 26.10_11). See
+[Listeners: OCSP Stapling](/configuration/listeners/#ocsp-stapling).
+
+| Type | Labels | Description |
+|------|--------|-------------|
+| Counter | `listener`, `result` | OCSP fetch attempts |
+
+**Result values:** `success`, `failure` (responder unreachable or HTTP error),
+`invalid` (unusable response), `revoked` (status not `good`), `no_issuer`
+(`cert-file` has no issuer certificate)
+
+### zentinel_tls_ocsp_stapled_certificates
+
+Certificates on a listener currently served with a valid OCSP staple (from
+26.10_11).
+
+| Type | Labels | Description |
+|------|--------|-------------|
+| Gauge | `listener` | Stapled certificates |
+
 ## System Metrics
 
 ### zentinel_memory_usage_bytes

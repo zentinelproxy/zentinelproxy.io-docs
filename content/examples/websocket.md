@@ -102,14 +102,12 @@ agents {
         unix-socket path="/var/run/zentinel/ws-inspector.sock"
         events "websocket_frame"
         timeout-ms 50
-        failure-mode "open"
     }
 
     agent "auth" {
         unix-socket path="/var/run/zentinel/auth.sock"
         events "request_headers"
         timeout-ms 50
-        failure-mode "closed"
     }
 }
 
@@ -435,13 +433,11 @@ agents {
         unix-socket path="/var/run/zentinel/ws-inspector.sock"
         events "websocket_frame"
         timeout-ms 20
-        failure-mode "open"
     }
     agent "auth" {
         unix-socket path="/var/run/zentinel/auth.sock"
         events "request_headers"
         timeout-ms 50
-        failure-mode "closed"
     }
 }
 

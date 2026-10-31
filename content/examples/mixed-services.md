@@ -265,14 +265,12 @@ agents {
         unix-socket path="/var/run/zentinel/auth.sock"
         events "request_headers"
         timeout-ms 50
-        failure-mode "closed"
     }
 
     agent "ratelimit" {
         unix-socket path="/var/run/zentinel/ratelimit.sock"
         events "request_headers"
         timeout-ms 20
-        failure-mode "open"
     }
 }
 

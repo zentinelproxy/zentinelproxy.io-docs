@@ -185,14 +185,12 @@ data:
             unix-socket "/var/run/zentinel/auth.sock"
             events "request_headers"
             timeout-ms 50
-            failure-mode "closed"
         }
 
         agent "waf" type="waf" {
             grpc "http://127.0.0.1:50051"
             events "request_headers" "request_body"
             timeout-ms 100
-            failure-mode "open"
         }
     }
 
@@ -330,7 +328,6 @@ agent "waf" type="waf" {
     grpc "http://waf-agent.default.svc.cluster.local:50051"
     events "request_headers" "request_body"
     timeout-ms 200
-    failure-mode "open"
 }
 ```
 

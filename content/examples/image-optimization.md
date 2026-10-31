@@ -78,7 +78,6 @@ agents {
         events "request_headers" "response_headers" "response_body" "request_complete"
 
         timeout-ms 5000
-        failure-mode "open"
         response-body-mode "buffer"
         max-response-body-bytes 10485760
 
@@ -227,7 +226,6 @@ agent "image-opt" type="custom" {
     events "request_headers" "response_headers" "response_body" "request_complete"
 
     timeout-ms 5000
-    failure-mode "open"
 }
 ```
 

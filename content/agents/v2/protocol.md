@@ -339,12 +339,15 @@ The upstream request is started once the request headers are allowed, so the
 upstream sees the request line and headers before the agents decide on the
 body. From 26.10_8, in buffer mode and for the buffered part of hybrid mode,
 the body itself is held back until the agents' decision, so a refused body
-never reaches the upstream
-([#608](https://github.com/zentinelproxy/zentinel/issues/608) tracks an
-opt-in mode that holds the headers back too). Request-header operations
-returned from the body phase cannot be applied and are dropped;
-`response_headers` operations from either request phase are applied to the
-client's response.
+never reaches the upstream. Request-header operations returned from the body
+phase cannot be applied and are dropped; `response_headers` operations from
+either request phase are applied to the client's response.
+
+With `request-body-mode "inspect-first"` (from 26.10_11) the order changes:
+the body is read in full and decided on **before** an upstream is selected,
+so a refused request never reaches the upstream at all, and request-header
+operations from the body phase are applied. See
+[Agents: inspect-first](/configuration/agents/#inspect-first).
 
 ### Response-Phase Flow
 
@@ -384,6 +387,42 @@ Agents that subscribe to `response_headers` and `response_body` events can inspe
 | `Some("<base64>")` | Replace body with decoded base64 data |
 
 When response body processing is active, the proxy sets `Connection: close` and removes `Content-Length` since the body size may change.
+
+### Decisions in each phase
+
+Every decision type has the same meaning in every phase; only `Allow` lets
+the request, or the upstream's response, through.
+
+| Decision | Request headers / body | Response headers | Response body |
+|----------|------------------------|------------------|---------------|
+| `Allow` | Proxied | Upstream response sent | Body sent |
+| `Block` | Agent's status, body, headers | Replaces the upstream response | Aborts the response¹ |
+| `Redirect` | Agent's 301/302/303/307/308 (else 302) with `Location` | Replaces the upstream response | Aborts the response¹ |
+| `Challenge` | 403, or 401 with `WWW-Authenticate` | Replaces the upstream response | Aborts the response¹ |
+
+¹ Once the status line has gone out it cannot be replaced: the body is
+withheld and the connection closed without ending it, so the client sees an
+incomplete response. If the header has not gone out yet (a body that arrived
+with it), the decision's response replaces the upstream's instead.
+
+Response-phase `Block` is enforced from 26.10_9; response-phase `Redirect` and
+`Challenge` were ignored (the upstream response was sent) before 26.10_11.
+They are logged and audited with the decision type as `action`.
+
+### WebSocket frames
+
+An agent subscribed to `websocket_frame` receives the frames of WebSocket
+connections on the routes whose `filters` list it, in filter order, under
+each filter's `timeout-ms` and `failure-mode` (from 26.10_11; before, every
+frame-subscribed agent saw every route's frames, under a hard-coded 100 ms
+timeout that failed open). A fail-closed failure closes the connection with
+1011.
+
+Frames are delivered over Unix sockets and reverse connections. **gRPC agents
+cannot inspect frames**: the gRPC response has no WebSocket decision, so a
+frame call to a gRPC agent fails and is answered by the filter's failure
+mode. Before 26.10_11 no transport delivered frames: every frame was a failed
+call, decided by the agent-level `failure-mode`.
 
 ### Cancellation Flow
 

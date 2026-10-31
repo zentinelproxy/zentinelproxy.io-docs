@@ -307,7 +307,6 @@ agents {
         unix-socket "/var/run/zentinel/waf.sock"
         events "request_headers" "request_body"
         timeout-ms 200
-        failure-mode "closed"
     }
 }
 

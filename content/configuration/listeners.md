@@ -71,11 +71,40 @@ listener "secure" {
 | `http` | Plain HTTP/1.1 | No |
 | `https` | HTTP/1.1 over TLS | Yes |
 | `h2` | HTTP/2 (with TLS via ALPN) | Yes |
+| `h2c` | HTTP/2 over cleartext TCP, prior knowledge only (from 26.10_11) | No (a `tls` block is an error) |
 | `h3` | **Not implemented** — rejected at validation | — |
 
 `h2` and `https` produce the same listener: an `https` listener already
 advertises HTTP/2 through ALPN, so either spelling gets you HTTP/2 with an
-HTTP/1.1 fallback.
+HTTP/1.1 fallback. Both need a `tls` block: from 26.10_11 an `https` or `h2`
+listener without one is a configuration error (it used to load and then bind
+nothing).
+
+#### HTTP/2 over cleartext (h2c) {#h2c}
+
+`protocol "h2c"` serves HTTP/2 without TLS, for trusted internal hops where TLS
+ends in front of Zentinel (a load balancer, a service mesh sidecar):
+
+```kdl
+listeners {
+    listener "internal-h2c" {
+        address "127.0.0.1:8081"
+        protocol "h2c"
+    }
+}
+```
+
+- **Prior knowledge only.** There is no `Upgrade: h2c` negotiation. A client
+  must open with the HTTP/2 connection preface (for example
+  `curl --http2-prior-knowledge`) within 10 s. A client that sends HTTP/1.1
+  instead gets `505 HTTP Version Not Supported`.
+- h2c listeners run in a Pingora service of their own, so `http` listeners are
+  unchanged and do not start accepting HTTP/2. Their connections count
+  against the same connection limits.
+- A `tls` block on an h2c listener is a configuration error.
+
+For HTTP/2 over cleartext towards a backend, see
+[Upstreams: h2c](/configuration/upstreams/#h2c).
 
 `h3` is accepted by the parser but there is no QUIC support in the proxy, so a
 config naming it is rejected before startup rather than binding a socket that
@@ -445,12 +474,49 @@ upstreams {
 }
 ```
 
-Server fetches and staples OCSP responses, proving certificate validity without clients contacting the CA.
+The proxy fetches an OCSP response for every certificate it serves (the
+default certificate and each SNI certificate) and staples it into the
+handshake for TLS 1.2 and 1.3 clients that ask for certificate status. Clients
+then do not have to contact the CA themselves: handshakes are faster, the CA
+does not learn which sites a client visits, and a must-staple certificate is
+accepted by strict clients. Stapling was parsed but never applied before
+26.10_11.
 
-Benefits:
-- Faster TLS handshakes
-- Better client privacy
-- Reduced CA load
+How it works:
+
+- **Responder.** The responder URL comes from the certificate's Authority
+  Information Access extension, and the request is built from the issuer
+  certificate. **`cert-file` must therefore contain the chain**: the leaf,
+  then the intermediate. A leaf-only file is warned about at startup and
+  served without a staple.
+- **Checks.** A response is stapled only if the responder answered
+  successfully, the response is for this certificate's serial, the status is
+  `good`, and the current time is within `thisUpdate`/`nextUpdate`. The
+  responder's signature is checked by the client, not by the proxy.
+- **Refresh.** Responses are fetched in the background shortly after
+  startup and refreshed at half their validity window, at least hourly; a
+  failed fetch is retried every 5 minutes. Staples survive a certificate
+  reload for certificates that did not change.
+- **Never fatal.** An unreachable or misbehaving responder never fails a
+  handshake or startup: the certificate is served without a staple, a warning
+  is logged, and the failure is counted. An expired, revoked or unknown
+  response is dropped, never served.
+
+Stapling is **on by default**, so the proxy makes outbound HTTP requests to
+each certificate's OCSP responder. Where egress to the CA is blocked, set
+`ocsp-stapling #false`, or expect one warning per certificate and a rising
+failure count.
+
+| Metric | Labels | Meaning |
+|--------|--------|---------|
+| `zentinel_tls_ocsp_fetch_total` | `listener`, `result` | OCSP fetch attempts by outcome: `success`, `failure`, `invalid`, `revoked`, `no_issuer` |
+| `zentinel_tls_ocsp_stapled_certificates` | `listener` | Certificates currently carrying a staple |
+
+Check a listener with:
+
+```bash
+openssl s_client -connect example.com:443 -servername example.com -status </dev/null 2>/dev/null | grep -A3 'OCSP Response Status'
+```
 
 ### Custom Cipher Suites
 

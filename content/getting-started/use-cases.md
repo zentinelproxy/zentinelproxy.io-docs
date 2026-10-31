@@ -193,7 +193,6 @@ agents {
         unix-socket "/var/run/zentinel/waf.sock"
         events "request_headers" "request_body"
         timeout-ms 200
-        failure-mode "closed"
         max-request-body-bytes 1048576
     }
 }

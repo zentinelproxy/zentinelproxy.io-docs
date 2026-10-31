@@ -151,7 +151,6 @@ agents {
         unix-socket "/var/run/zentinel/waf.sock"
         events "request_headers" "request_body"
         timeout-ms 100
-        failure-mode "closed"
     }
 
     // Authentication
@@ -159,7 +158,6 @@ agents {
         unix-socket "/var/run/zentinel/auth.sock"
         events "request_headers"
         timeout-ms 50
-        failure-mode "closed"
     }
 
     // Standard rate limiting
@@ -167,7 +165,6 @@ agents {
         unix-socket "/var/run/zentinel/ratelimit.sock"
         events "request_headers"
         timeout-ms 20
-        failure-mode "open"
     }
 
     // Strict rate limiting for admin
@@ -175,7 +172,6 @@ agents {
         unix-socket "/var/run/zentinel/ratelimit-strict.sock"
         events "request_headers"
         timeout-ms 20
-        failure-mode "closed"
     }
 }
 
