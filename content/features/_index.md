@@ -234,8 +234,7 @@ Zentinel is a security-first reverse proxy built on [Cloudflare's Pingora](https
 
 ### Compression
 
-- On-the-fly gzip compression
-- On-the-fly Brotli compression
+- On-the-fly gzip and zstd compression (Brotli is not produced)
 - Content negotiation (Accept-Encoding)
 - Pre-computed compression variants in cache
 

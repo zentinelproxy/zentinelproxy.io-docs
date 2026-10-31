@@ -14,14 +14,12 @@ agents {
         unix-socket "/var/run/zentinel/waf.sock"
         events "request_headers" "request_body"
         timeout-ms 200
-        failure-mode "closed"
     }
 
     agent "auth-agent" type="auth" {
         grpc "http://localhost:50051"
         events "request_headers"
         timeout-ms 100
-        failure-mode "closed"
         circuit-breaker {
             failure-threshold 5
             timeout-seconds 30
@@ -222,7 +220,6 @@ agent "image-optimizer" type="custom" {
     unix-socket "/var/run/zentinel/image-opt.sock"
     events "request_headers" "response_headers" "response_body"
     timeout-ms 5000
-    failure-mode "open"
 }
 ```
 
@@ -271,41 +268,52 @@ When response body processing is active, the proxy automatically sets `Connectio
 
 ### Failure Mode
 
-Configure behavior when the agent is unavailable:
+What happens when a call to an agent fails or times out is decided per route,
+on the **filter** that calls the agent:
 
 ```kdl
-agent "auth-agent" type="auth" {
-    unix-socket "/var/run/zentinel/auth.sock"
-    failure-mode "closed"   // Block requests if agent fails
+agents {
+    agent "auth-agent" type="auth" {
+        unix-socket "/var/run/zentinel/auth.sock"
+    }
+    agent "analytics-agent" type="custom" {
+        unix-socket "/var/run/zentinel/analytics.sock"
+    }
 }
 
-agent "analytics-agent" type="custom" {
-    unix-socket "/var/run/zentinel/analytics.sock"
-    failure-mode "open"     // Allow requests if agent fails
+filters {
+    filter "auth" {
+        type "agent"
+        agent "auth-agent"
+        failure-mode "closed"   // Refuse requests if the agent fails
+    }
+    filter "analytics" {
+        type "agent"
+        agent "analytics-agent"
+        failure-mode "open"     // Let requests through if the agent fails
+    }
 }
 ```
 
 | Mode | Behavior |
 |------|----------|
-| `closed` | Block requests when agent unavailable (security-first) |
-| `open` | Allow requests through when agent unavailable (availability-first) |
+| `closed` | Refuse the request (or close the WebSocket with 1011) when the agent is unavailable (security-first) |
+| `open` | Let the request (or frame) through when the agent is unavailable (availability-first) |
+
+The rule is the same on every path (request headers, request bodies,
+response headers and bodies, WebSocket frames, and dispatch failures): the
+filter's `failure-mode`, else the route's `policies { failure-mode }`, else
+`closed`. See [Your First Agent](/getting-started/first-agent/#6-stop-the-agent).
 
 {% callout(type="warning") %}
-What decides a request when an agent is unavailable is the `failure-mode` on
-the **filter** that calls the agent, then the route's `policies {
-failure-mode }`, and otherwise `closed`. From 26.10_8 that rule decides on
-every path: request headers, request bodies, responses and dispatch failures.
-The value on the `agent` block applies only to WebSocket frames (up to 26.10_7
-it also decided bodies and responses, so an agent set to `"open"` on a route
-at the default now refuses on body and response failures where it used to pass
-them). Set `failure-mode` on the filter, as in
-[Your First Agent](/getting-started/first-agent/#6-stop-the-agent).
-
-From 26.10_5, `zentinel test` and `lint` report an agent block's
-`failure-mode` when a filter using that agent sets none, and an unrecognised
-filter value such as `"fail-open"` (which means the route's mode, `closed` by
-default). Before 26.10_5 neither was reported
-([#529](https://github.com/zentinelproxy/zentinel/issues/529)).
+**`failure-mode` on an `agent` block is deprecated and has no effect** from
+26.10_11. Up to 26.10_10 it still decided WebSocket frames (and, up to
+26.10_7, bodies and responses too); WebSocket frames now follow the filter
+rule above. `zentinel test`, `lint` and the startup log report the key
+wherever it is set, naming the filters and routes where the value belongs. The
+key still parses and will be removed in a later release. **If you relied on an
+agent's `failure-mode "open"` for WebSocket frames, set `failure-mode "open"`
+on its filter.**
 {% end %}
 
 ### Circuit Breaker
@@ -400,20 +408,52 @@ agent "hybrid-agent" type="custom" {
 | `buffer` | Collect entire body before sending (default) |
 | `stream` | Send chunks as they arrive |
 | `hybrid:<bytes>` | Buffer up to threshold, then stream |
+| `inspect-first` | Request bodies only, from 26.10_11. Read the whole body and decide on it **before the upstream is contacted** (see below) |
 
 From 26.10_8 the mode is applied; before, every request body was buffered
 whole whatever the mode said. When a route's body agents disagree, the most
-conservative mode applies: `buffer` over `hybrid` (largest threshold) over
-`stream`, so no agent gets less of the body at once than it asked for. In
+conservative mode applies: `inspect-first` over `buffer` over `hybrid`
+(largest threshold) over `stream`, so no agent gets less of the body at once
+than it asked for. In
 buffer mode, and for the buffered part of hybrid mode, the body is **held back
 from the upstream until the agents have allowed it**; a refused body never
 reaches the upstream. The upstream still sees the request line and headers
-before the body decision
-([#608](https://github.com/zentinelproxy/zentinel/issues/608) tracks an opt-in
-mode that avoids it), and request-header changes an agent makes on the body
-cannot be applied for the same reason: they are dropped, with a warning logged
-once per agent. Decisions on streamed chunks (Block, Challenge, Redirect) are
-answered as on a buffered body.
+before the body decision, and request-header changes an agent makes on the
+body cannot be applied for the same reason: they are dropped, with a warning
+logged once per agent. Decisions on streamed chunks (Block, Challenge,
+Redirect) are answered as on a buffered body.
+
+A request an agent refuses on its body abandons the upstream request that was
+already started. From 26.10_11 that abort is not counted against the upstream:
+it does not reach the target's circuit breaker, passive health or
+load-balancer accounting, so refused uploads cannot take a healthy backend out
+of rotation. Genuine upstream failures still count.
+
+#### `inspect-first` {#inspect-first}
+
+```kdl
+agents {
+    agent "upload-scanner" type="custom" {
+        unix-socket "/var/run/zentinel/scanner.sock"
+        events "request_headers" "request_body"
+        request-body-mode "inspect-first"
+    }
+}
+```
+
+With `request-body-mode "inspect-first"` (from 26.10_11) the proxy reads the
+request body in full and the route's body agents decide on it **before an
+upstream is selected**:
+
+- a refused request never reaches the upstream, not even its request line and
+  headers;
+- request-header changes the agents ask for in the body phase are applied.
+
+The cost is why it is opt-in: the whole body is held in memory, bounded by the
+route's body-size limit (a larger body gets `413`) rather than the agent's
+inspection limit, and the upstream request starts only after the full upload.
+One agent asking for `inspect-first` sets the route's mode. It is a request
+mode only: `response-body-mode "inspect-first"` is a configuration error.
 
 Request bodies go to every route agent subscribed to `request_body`, with or
 without a top-level `waf` block (before 26.10_8 they were sent only with
@@ -530,7 +570,6 @@ agents {
         unix-socket "/var/run/zentinel/modsec.sock"
         events "request_headers" "request_body"
         timeout-ms 200
-        failure-mode "closed"
         request-body-mode "buffer"
         circuit-breaker {
             failure-threshold 10
@@ -642,7 +681,6 @@ agents {
         unix-socket "/var/run/zentinel/modsec.sock"
         events "request_headers" "request_body"
         timeout-ms 200
-        failure-mode "closed"
         max-request-body-bytes 1048576    // 1MB for inspection
         request-body-mode "buffer"
         circuit-breaker {
@@ -665,7 +703,6 @@ agents {
         grpc "http://auth-service:50051"
         events "request_headers"
         timeout-ms 50
-        failure-mode "closed"
         circuit-breaker {
             failure-threshold 5
             timeout-seconds 30
@@ -686,7 +723,6 @@ agents {
         grpc "http://ratelimit-service:50051"
         events "request_headers"
         timeout-ms 20
-        failure-mode "open"    // Allow through if service down
         circuit-breaker {
             failure-threshold 3
             timeout-seconds 15
@@ -703,7 +739,6 @@ agents {
         unix-socket "/var/run/zentinel/image-opt.sock"
         events "request_headers" "response_headers" "response_body"
         timeout-ms 5000
-        failure-mode "open"
         response-body-mode "buffer"
         max-response-body-bytes 10485760    // 10MB
     }
@@ -737,7 +772,6 @@ agents {
         http "http://analytics:8080/log"
         events "log"           // Only receive completion events
         timeout-ms 1000
-        failure-mode "open"    // Don't block requests for logging
     }
 }
 ```
@@ -900,7 +934,6 @@ agents {
         grpc "http://ratelimit.internal:50051"
         events "request_headers"
         timeout-ms 20
-        failure-mode "open"
     }
 }
 ```

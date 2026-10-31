@@ -243,8 +243,9 @@ route's, and is `closed` (503) when neither is set; see [Failure
 Mode](/configuration/agents/#failure-mode). So an installed agent that is not
 running refuses the requests of every filter that names it, unless that filter
 sets `failure-mode "open"`. (Up to 26.10_9 the generated entries carried
-`failure-mode "open"`, which on an `agent` block only covers WebSocket frames;
-`zentinel test --strict` reported it as ignored. Rerun the install to drop it.)
+`failure-mode "open"`, which on an `agent` block covered only WebSocket frames
+and from 26.10_11 has no effect at all; `zentinel test` reports it. Rerun the
+install to drop it.)
 Add `timeout-ms`, `events` or a
 `config { }` block to an entry as the agent's README describes, in
 `zentinel.kdl` rather than in the generated file, which the next install

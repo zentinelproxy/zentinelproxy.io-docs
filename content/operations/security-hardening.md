@@ -283,7 +283,6 @@ agents {
         unix-socket "/var/run/zentinel/auth.sock"
         events "request_headers"
         timeout-ms 50
-        failure-mode "closed"
     }
 }
 
@@ -341,7 +340,6 @@ agents {
         unix-socket "/var/run/zentinel/ratelimit.sock"
         events "request_headers"
         timeout-ms 20
-        failure-mode "open"
     }
 
     // Strict rate limiting for login: 5 req/min
@@ -349,7 +347,6 @@ agents {
         unix-socket "/var/run/zentinel/ratelimit-strict.sock"
         events "request_headers"
         timeout-ms 20
-        failure-mode "closed"
     }
 }
 

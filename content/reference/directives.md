@@ -651,7 +651,11 @@ tls {
 
 ### `ocsp-stapling`
 
-Enables OCSP stapling for certificate validation.
+Staples an OCSP response into the TLS handshake for every served certificate.
+Applied from 26.10_11 (before, it was parsed and nothing was stapled). The
+proxy fetches responses from each certificate's OCSP responder, so `cert-file`
+must contain the issuer (leaf, then intermediate). A failing responder never
+fails a handshake. See [Listeners: OCSP Stapling](/configuration/listeners/#ocsp-stapling).
 
 **Context:** `tls` (listener)
 **Default:** `#true`
@@ -1029,13 +1033,14 @@ policies {
 
 Behavior when agent/upstream fails. Options: `"open"` (allow), `"closed"` (reject).
 
-**Context:** `policies`, `agent`, `filter` (agent)
+**Context:** `policies`, `filter` (agent); deprecated on `agent`
 **Default:** `"closed"`
 
 What decides a request whose agent fails is the agent **filter's**
-`failure-mode`, then the route's `policies { failure-mode }`, then `"closed"`;
-from 26.10_8 on every path (headers, bodies, responses). On an `agent` block
-the setting applies only to WebSocket frames.
+`failure-mode`, then the route's `policies { failure-mode }`, then `"closed"`,
+on every path: headers, bodies, responses (from 26.10_8) and WebSocket frames
+(from 26.10_11). On an `agent` block the setting is deprecated and has no
+effect from 26.10_11; `zentinel test` reports it.
 
 ```fragment,kdl
 policies {
@@ -2248,7 +2253,6 @@ agents {
         type "auth"
         unix-socket "/var/run/zentinel/auth.sock"
         timeout-ms 1000
-        failure-mode "closed"
     }
 }
 ```
@@ -2643,16 +2647,19 @@ cannot apply are reported as ignored. See
 
 ### `algorithms`
 
-Compression algorithms, as one comma-separated string. Options: `gzip`, `br`
-(or `brotli`), `deflate`, `zstd`.
+Compression algorithms the filter may produce, in order of preference: the
+first one the client accepts is used. Produced: `gzip`, `zstd`. `br` (or
+`brotli`) is accepted but skipped with a warning (Pingora's Brotli output
+cannot be decoded); `deflate` and unknown names are configuration errors.
+Several arguments or one comma-separated string. Applied from 26.10_11.
 
 **Context:** `filter` (compress)
-**Default:** `"gzip,br"`
+**Default:** `"gzip"`
 
 ```kdl
 filter "compress" {
     type "compress"
-    algorithms "gzip,br"
+    algorithms "zstd" "gzip"
 }
 ```
 
@@ -2676,14 +2683,25 @@ filter "compress" {
 
 ### `content-types`
 
-Not configurable from KDL as of 26.10_3: the compress filter always uses
-`text/html`, `text/css`, `application/json` and `application/javascript`.
+MIME type prefixes the compress filter compresses. Applied from 26.10_11
+(before, a fixed list was used).
+
+**Context:** `filter` (compress)
+**Default:** `"text/html" "text/css" "application/json" "application/javascript"`
+
+```kdl
+filter "compress" {
+    type "compress"
+    content-types "text/html" "application/json" "image/svg+xml"
+}
+```
 
 ---
 
 ### `level`
 
-Compression level (1-9).
+Compression level, 1-9; anything else is a configuration error. Applied
+from 26.10_11 (before, the level was fixed at 6).
 
 **Context:** `filter` (compress)
 **Default:** `6`

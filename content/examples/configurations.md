@@ -143,21 +143,18 @@ agents {
         unix-socket "/var/run/zentinel/ai-gateway.sock"
         events "request_headers" "request_body"
         timeout-ms 100
-        failure-mode "closed"
     }
 
     agent "auth" type="auth" {
         unix-socket "/var/run/zentinel/auth.sock"
         events "request_headers"
         timeout-ms 50
-        failure-mode "closed"
     }
 
     agent "ratelimit" type="rate_limit" {
         unix-socket "/var/run/zentinel/ratelimit.sock"
         events "request_headers"
         timeout-ms 20
-        failure-mode "open"
     }
 }
 

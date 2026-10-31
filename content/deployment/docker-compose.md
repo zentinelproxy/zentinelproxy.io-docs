@@ -287,14 +287,12 @@ agents {
         unix-socket "/var/run/zentinel/auth.sock"
         events "request_headers"
         timeout-ms 50
-        failure-mode "closed"
     }
 
     agent "echo" type="custom" {
         unix-socket "/var/run/zentinel/echo.sock"
         events "request_headers"
         timeout-ms 50
-        failure-mode "open"
     }
 }
 

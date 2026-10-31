@@ -37,7 +37,6 @@ agents {
         unix-socket "/var/run/zentinel/waf.sock"
         events "request_headers" "request_body"
         timeout-ms 50
-        failure-mode "closed"
     }
 }
 ```
@@ -56,7 +55,6 @@ agents {
         unix-socket "/var/run/zentinel/zentinelsec.sock"
         events "request_headers" "request_body"
         timeout-ms 100
-        failure-mode "closed"
     }
 }
 ```
@@ -84,7 +82,6 @@ agents {
         unix-socket "/var/run/zentinel/modsec.sock"
         events "request_headers" "request_body"
         timeout-ms 200
-        failure-mode "closed"
     }
 }
 ```

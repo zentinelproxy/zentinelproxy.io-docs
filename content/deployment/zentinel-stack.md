@@ -337,7 +337,6 @@ agents {
         unix-socket "/tmp/auth.sock"
         events "request_headers"
         timeout-ms 50
-        failure-mode "closed"
         restart-policy "always"
         max-restarts 5
     }
@@ -347,7 +346,6 @@ agents {
         grpc "http://127.0.0.1:50051"
         events "request_headers" "request_body"
         timeout-ms 100
-        failure-mode "open"
         restart-policy "on-failure"
     }
 }

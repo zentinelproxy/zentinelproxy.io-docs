@@ -296,14 +296,12 @@ agents {
         type "auth"
         unix-socket "/tmp/zentinel/auth.sock"
         timeout-ms 100
-        failure-mode "closed"
     }
 
     agent "ratelimit" {
         type "rate_limit"
         unix-socket "/tmp/zentinel/ratelimit.sock"
         timeout-ms 50
-        failure-mode "open"
     }
 }
 
@@ -515,6 +513,34 @@ Reload behavior:
 2. Validate syntax and semantics
 3. If valid, atomically swap configuration
 4. If invalid, keep old configuration and log error
+
+### What a reload applies {#what-a-reload-applies}
+
+Every top-level block either takes effect on reload or is reported as needing
+a restart. A change to a restart-only block logs a warning naming the block
+(`'cache' changed in the new configuration, but it is NOT applied by hot
+reload (...); restart zentinel to apply it`) and the rest of the reload goes
+ahead.
+
+| Block | On reload |
+|-------|-----------|
+| `routes` | Applied: route matchers, rate limiters and each route's error pages, API schema validator and static file server are rebuilt (`Route components reloaded added=… replaced=… removed=… unchanged=…`) |
+| `upstreams` | Applied: pools rebuilt, health checks reconciled |
+| `filters` | Applied: read per request; rate limiters rebuilt |
+| `agents` | Applied: agents loaded, replaced and removed |
+| `waf` | Applied: read per request |
+| `namespaces` | Applied, through the blocks they expand into |
+| `limits` | Applied: read per request and per connection |
+| `rate-limits` | Applied: limiters rebuilt; unchanged ones keep their buckets |
+| `listeners` | **Restart required**: listeners are bound at startup (certificates are reloaded on `SIGHUP`) |
+| `system` | **Restart required**: worker threads and process-level settings are fixed at startup |
+| `observability` | **Restart required**: logging, access/error/audit logs, metrics and tracing are set up at startup |
+| `cache` | **Restart required**: cache storage (backend, size, disk path) is configured once at startup |
+
+Before 26.10_11 a route added or changed by a reload kept no error pages, API
+schema validator or static file server (a static route added by a reload
+served without its files), and changes to `observability` and `cache` were
+ignored without a warning.
 
 ## Next Steps
 

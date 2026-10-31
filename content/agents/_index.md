@@ -90,7 +90,6 @@ agents {
         unix-socket "/var/run/zentinel/auth.sock"
         events "request_headers"
         timeout-ms 100
-        failure-mode "closed"
     }
 
     // gRPC agent
@@ -98,7 +97,6 @@ agents {
         grpc "http://localhost:50051"
         events "request_headers" "request_body"
         timeout-ms 200
-        failure-mode "open"
         circuit-breaker {
             failure-threshold 5
             timeout-seconds 30

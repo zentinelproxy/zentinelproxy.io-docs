@@ -2,10 +2,10 @@
 title = "Known Limitations"
 weight = 6
 description = "Settings Zentinel accepts but does not apply, and behaviour that differs from what the configuration suggests"
-updated = 2026-10-26
+updated = 2026-10-31
 +++
 
-This page lists what release **26.10_8** accepts in a configuration but does not
+This page lists what release **26.10_11** accepts in a configuration but does not
 apply, and where its behaviour differs from what you would reasonably expect.
 Each entry links the tracking issue where there is one, and gives a workaround
 where one exists. Entries are removed when a release fixes them; the
@@ -66,6 +66,37 @@ validation. An `https` listener serves HTTP/1.1 and HTTP/2 (through ALPN).
 "Unwired feature" warning at startup. See
 [Listeners](/configuration/listeners/).
 
+**`Upgrade: h2c` is not supported.** HTTP/2 over cleartext works with prior
+knowledge only (`protocol "h2c"` on a listener, `h2c #true` on an upstream).
+
+## Compression
+
+**The `compress` filter does not produce Brotli.** Pingora's Brotli encoder
+does not finish its stream, so its output cannot be decoded. `br`/`brotli` in
+`algorithms` is accepted, skipped in favour of the next listed algorithm the
+client accepts, and reported by `zentinel test` and `lint`.
+*Workaround:* list `zstd` alongside `gzip`. See
+[Filters: Compression](/configuration/filters/#compression-filter).
+
+**Responses served from the cache are not compressed** by the `compress`
+filter.
+
+## Agents
+
+**gRPC agents cannot inspect WebSocket frames.** The gRPC response has no
+WebSocket decision, so a frame call to a gRPC agent fails and is answered by
+its filter's `failure-mode`. *Workaround:* use a Unix-socket agent for frame
+inspection. See [Agent Protocol](/agents/v2/protocol/#websocket-frames).
+
+**`failure-mode` on an `agent` block has no effect** (deprecated). Set it on the
+agent filter. See [Agents: Failure Mode](/configuration/agents/#failure-mode).
+
+## Reload
+
+**`listeners`, `system`, `observability` and `cache` need a restart.** A
+reload that changes them logs a warning naming the block and applies the rest.
+See [Hot Reload](/configuration/file-format/#what-a-reload-applies).
+
 
 ## Process, logging and resource limits
 
@@ -90,7 +121,6 @@ These are described on the page for the feature:
 | The top-level `waf` block is not wired into the proxy; any `mode` but `"off"` is rejected | [WAF](/configuration/waf/) |
 | `reverse-listener` (agents dialing in) is not read from KDL | [Reverse Connections](/agents/v2/reverse-connections/) |
 | `mime-types` for static files is not configurable | [Directive Index](/reference/directives/#mime-types) |
-| Compress filter `content-types` is not configurable | [Directive Index](/reference/directives/#content-types) |
 | CORS filter settings are not read; the filter uses defaults | [Directive Index](/reference/directives/) |
 | Target `max-requests` and `metadata` are ignored | [Upstreams](/configuration/upstreams/) |
 | Locality-aware fallback strategy is not configurable | [Upstreams](/configuration/upstreams/#locality-aware) |
@@ -100,7 +130,6 @@ These are described on the page for the feature:
 | Upstream connection draining and slow start are not configurable | [Load Balancer example](/examples/load-balancer/#connection-draining-and-slow-start) |
 | Request hedging is not configurable | [Mixed Services example](/examples/mixed-services/#request-hedging) |
 | Agent reconnect retries and their backoff are not configurable (`connect-timeout-ms` bounds each attempt from 26.10_8) | [Deployment Architecture](/deployment/architecture/#timeouts) |
-| The upstream sees a request's line and headers before the agents decide on its body; a refused body is held back from 26.10_8 ([#608](https://github.com/zentinelproxy/zentinel/issues/608)) | [Agents: Body Streaming Modes](/configuration/agents/#body-streaming-modes) |
-| Request-header changes an agent makes in the request-body phase are dropped (logged once per agent) | [Agents: Body Streaming Modes](/configuration/agents/#body-streaming-modes) |
+| The upstream sees a request's line and headers before the agents decide on its body, and body-phase request-header changes are dropped, unless the route uses `request-body-mode "inspect-first"` (from 26.10_11) | [Agents: inspect-first](/configuration/agents/#inspect-first) |
 | Reverse connections (agents dialing in) receive no `config { }` block | [Agent Protocol](/agents/v2/protocol/#configuration-delivery) |
-| Connection pool, `timeouts { request-secs }`, `http-version { max-h2-streams }` and other parsed-only keys | [Performance Tuning](/operations/performance-tuning/#settings-with-no-effect) |
+| Connection pool, `timeouts { request-secs }` and other parsed-only keys | [Performance Tuning](/operations/performance-tuning/#settings-with-no-effect) |
