@@ -32,8 +32,8 @@ Messages are length-prefixed JSON:
 
 ```
 ┌──────────────────┬─────────────────────────────────────┐
-│ Length (4 bytes) │ JSON Message (variable length)       │
-│ Big-endian u32   │ UTF-8 encoded                        │
+│ Length (4 bytes) │ JSON Message (variable length)      │
+│ Big-endian u32   │ UTF-8 encoded                       │
 └──────────────────┴─────────────────────────────────────┘
 ```
 

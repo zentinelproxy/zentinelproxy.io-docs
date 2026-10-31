@@ -84,17 +84,17 @@ Client                          Zentinel
 Zentinel parses the incoming HTTP request:
 
 ```
-┌─────────────────────────────────────────────────────────────┐
+┌──────────────────────────────────────────────────────────────┐
 │                      HTTP Request                            │
-├─────────────────────────────────────────────────────────────┤
+├──────────────────────────────────────────────────────────────┤
 │  POST /api/users HTTP/1.1                    ◀── Request Line│
 │  Host: api.example.com                       ◀── Headers     │
 │  Content-Type: application/json                              │
 │  Authorization: Bearer eyJ...                                │
 │  X-Request-Id: abc-123                                       │
 │                                                              │
-│  {"name": "Alice", "email": "alice@..."}     ◀── Body       │
-└─────────────────────────────────────────────────────────────┘
+│  {"name": "Alice", "email": "alice@..."}     ◀── Body        │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 **Extracted information:**
@@ -136,14 +136,14 @@ Every request gets a correlation ID for distributed tracing:
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│                    Trace ID Sources                           │
+│                    Trace ID Sources                          │
 ├──────────────────────────────────────────────────────────────┤
 │  1. Incoming header (X-Request-Id, X-Correlation-Id)         │
 │     └─▶ Reuse existing ID from upstream services             │
 │                                                              │
 │  2. Generate new ID if not present                           │
-│     ├─▶ UUID v4: 550e8400-e29b-41d4-a716-446655440000       │
-│     └─▶ UUID v7: 018f6b1c-8a1d-7000-8000-000000000000       │
+│     ├─▶ UUID v4: 550e8400-e29b-41d4-a716-446655440000        │
+│     └─▶ UUID v7: 018f6b1c-8a1d-7000-8000-000000000000        │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -182,7 +182,7 @@ Request: POST /api/users/123/profile
 │ path:  │   │ path:  │   │ path:  │
 │ /api/* │   │ /api/  │   │ /*     │
 │        │   │ users/*│   │        │
-└────────┘   └────────┘   └────────┘
+└────┬───┘   └────┬───┘   └────────┘
      │            │
      │       ✓ MATCH (more specific)
      │
@@ -304,10 +304,10 @@ For routes with configured agents, external processing occurs:
        ┌──────────────┼──────────────┐
        │              │              │
        ▼              ▼              ▼
-  ┌─────────┐   ┌─────────┐   ┌─────────┐
-  │  Auth   │   │   WAF   │   │  Rate   │
-  │  Agent  │   │  Agent  │   │  Limit  │
-  └────┬────┘   └────┬────┘   └────┬────┘
+  ┌─────────┐    ┌─────────┐    ┌─────────┐
+  │  Auth   │    │   WAF   │    │  Rate   │
+  │  Agent  │    │  Agent  │    │  Limit  │
+  └────┬────┘    └────┬────┘    └────┬────┘
        │              │              │
        ▼              ▼              ▼
    Decision       Decision       Decision
@@ -406,18 +406,18 @@ Zentinel selects a backend server from the upstream pool:
 Upstream Pool: "backend"
 ┌─────────────────────────────────────────────────────────────┐
 │                                                             │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │  Server A   │  │  Server B   │  │  Server C   │         │
-│  │ 10.0.0.1:80 │  │ 10.0.0.2:80 │  │ 10.0.0.3:80 │         │
-│  │             │  │             │  │             │         │
-│  │ weight: 5   │  │ weight: 3   │  │ weight: 2   │         │
-│  │ healthy: ✓  │  │ healthy: ✓  │  │ healthy: ✗  │         │
-│  └─────────────┘  └─────────────┘  └─────────────┘         │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐          │
+│  │  Server A   │  │  Server B   │  │  Server C   │          │
+│  │ 10.0.0.1:80 │  │ 10.0.0.2:80 │  │ 10.0.0.3:80 │          │
+│  │             │  │             │  │             │          │
+│  │ weight: 5   │  │ weight: 3   │  │ weight: 2   │          │
+│  │ healthy: ✓  │  │ healthy: ✓  │  │ healthy: ✗  │          │
+│  └─────┬───────┘  └─────┬───────┘  └─────────────┘          │
 │        │                │                                   │
-│        └────────────────┘                                   │
+│        └──────┬─────────┘                                   │
 │               │                                             │
 │               ▼                                             │
-│      Load Balancer (round_robin)                           │
+│      Load Balancer (round_robin)                            │
 │               │                                             │
 │               ▼                                             │
 │         Selected: Server A                                  │
@@ -442,19 +442,19 @@ Zentinel reuses connections to upstreams:
 ```
 ┌────────────────────────────────────────┐
 │          Connection Pool               │
-│  ┌──────────────────────────────────┐  │
-│  │  Idle Connections                │  │
-│  │  ┌────┐ ┌────┐ ┌────┐           │  │
-│  │  │Conn│ │Conn│ │Conn│           │  │
-│  │  │ #1 │ │ #2 │ │ #3 │           │  │
-│  │  └────┘ └────┘ └────┘           │  │
-│  └──────────────────────────────────┘  │
+│  ┌─────────────────────────────────┐   │
+│  │  Idle Connections               │   │
+│  │  ┌────┐ ┌────┐ ┌────┐           │   │
+│  │  │Conn│ │Conn│ │Conn│           │   │
+│  │  │ #1 │ │ #2 │ │ #3 │           │   │
+│  │  └────┘ └────┘ └────┘           │   │
+│  └─────────────────────────────────┘   │
 │                                        │
 │  Request arrives:                      │
 │  1. Check for idle connection          │
-│  2. If available, reuse               │
-│  3. If not, create new (up to limit)  │
-│  4. If at limit, queue or reject      │
+│  2. If available, reuse                │
+│  3. If not, create new (up to limit)   │
+│  4. If at limit, queue or reject       │
 └────────────────────────────────────────┘
 ```
 
@@ -466,18 +466,18 @@ The request is sent to the selected upstream:
 
 ```
 Original Request          Modified Request (to upstream)
-┌──────────────────┐      ┌──────────────────────────────┐
-│ POST /api/users  │      │ POST /api/users HTTP/1.1     │
-│ Host: api.ex.com │  ──▶ │ Host: api.example.com        │
-│ Auth: Bearer ... │      │ X-Correlation-Id: abc-123    │
-└──────────────────┘      │ X-Forwarded-For: 192.168.1.1 │
-                          │ X-Forwarded-Proto: https     │
-                          │ X-Forwarded-By: Zentinel     │
-                          │ X-User-Id: user-789          │ ◀── From agent
+┌──────────────────┐      ┌───────────────────────────────┐
+│ POST /api/users  │      │ POST /api/users HTTP/1.1      │
+│ Host: api.ex.com │  ──▶ │ Host: api.example.com         │
+│ Auth: Bearer ... │      │ X-Correlation-Id: abc-123     │
+└──────────────────┘      │ X-Forwarded-For: 192.168.1.1  │
+                          │ X-Forwarded-Proto: https      │
+                          │ X-Forwarded-By: Zentinel      │
+                          │ X-User-Id: user-789           │ ◀── From agent
                           │ Content-Type: application/json│
-                          │                              │
-                          │ {"name": "Alice", ...}       │
-                          └──────────────────────────────┘
+                          │                               │
+                          │ {"name": "Alice", ...}        │
+                          └───────────────────────────────┘
 ```
 
 ### Added Headers
@@ -538,14 +538,14 @@ routes {
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Upstream Response                         │
+│                    Upstream Response                        │
 ├─────────────────────────────────────────────────────────────┤
 │  HTTP/1.1 200 OK                         ◀── Status Line    │
 │  Content-Type: application/json          ◀── Headers        │
 │  X-Request-Id: upstream-456                                 │
 │  Cache-Control: no-cache                                    │
-│                                                              │
-│  {"id": 123, "name": "Alice", ...}       ◀── Body          │
+│                                                             │
+│  {"id": 123, "name": "Alice", ...}       ◀── Body           │
 └─────────────────────────────────────────────────────────────┘
 ```
 

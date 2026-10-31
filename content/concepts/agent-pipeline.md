@@ -41,7 +41,7 @@ An agent pipeline is an ordered sequence of filters attached to a route. Each fi
                      │
                      ▼
               ┌────────────┐
-              │  Upstream   │
+              │  Upstream  │
               └──────┬─────┘
                      │
     ─────────────────┼───── Response Phase (bottom → top) ─────
@@ -82,16 +82,16 @@ When multiple agents participate in a pipeline, their decisions and mutations ar
 Agents return one of three decisions: **allow**, **block**, or **redirect**. The pipeline uses **first-block-wins** semantics:
 
 ```
-┌──────────────────────────────────────────────────────────────┐
+┌───────────────────────────────────────────────────────────────┐
 │                   Decision Aggregation                        │
-├──────────┬───────────┬───────────┬───────────────────────────┤
+├──────────┬───────────┬───────────┬────────────────────────────┤
 │ Agent 1  │ Agent 2   │ Agent 3   │ Pipeline Result            │
-├──────────┼───────────┼───────────┼───────────────────────────┤
+├──────────┼───────────┼───────────┼────────────────────────────┤
 │ allow    │ allow     │ allow     │ allow                      │
 │ allow    │ block     │ (skipped) │ block (from Agent 2)       │
 │ allow    │ redirect  │ (skipped) │ redirect (from Agent 2)    │
 │ block    │ (skipped) │ (skipped) │ block (from Agent 1)       │
-└──────────┴───────────┴───────────┴───────────────────────────┘
+└──────────┴───────────┴───────────┴────────────────────────────┘
 ```
 
 The first non-allow decision terminates the pipeline. Remaining agents are not called.
@@ -212,7 +212,7 @@ Every agent filter has a configurable concurrency semaphore that limits how many
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Agent: WAF                                │
+│                    Agent: WAF                               │
 │                                                             │
 │  Semaphore: 3/3 in-flight                                   │
 │  ┌────────┐ ┌────────┐ ┌────────┐                           │

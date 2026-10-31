@@ -17,7 +17,7 @@ Zentinel's routing system determines how incoming requests are matched to config
                   │                 │
                   │  ┌───────────┐  │
                   │  │   Cache   │◀─┼── Cache hit? Return immediately
-                  │  └───────────┘  │
+                  │  └─────┬─────┘  │
                   │        │        │
                   │        ▼        │
                   │  ┌───────────┐  │
@@ -350,7 +350,7 @@ When routes have the same priority, specificity breaks ties:
 
 ```
 Specificity Scores:
-┌─────────────────────────────────────┐
+┌─────────────────────┬───────────────┐
 │ Match Type          │ Score         │
 ├─────────────────────┼───────────────┤
 │ Exact path          │ 1000          │
@@ -362,7 +362,7 @@ Specificity Scores:
 │ Query param (value) │ 25            │
 │ Query param (pres.) │ 15            │
 │ Method              │ 10            │
-└─────────────────────────────────────┘
+└─────────────────────┴───────────────┘
 ```
 
 **Example:**
@@ -421,7 +421,7 @@ Zentinel caches route matches for performance:
 
 ```
 ┌───────────────────────────────────────────────────────────┐
-│                     Route Cache                            │
+│                     Route Cache                           │
 │  ┌─────────────────────────────────────────────────────┐  │
 │  │ Cache Key: "{method}:{host}:{path}"                 │  │
 │  │                                                     │  │

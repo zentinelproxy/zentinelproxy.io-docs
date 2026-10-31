@@ -37,10 +37,10 @@ Agents are **external processes** that communicate with Zentinel over a well-def
 - **Log** audit information for observability
 
 ```
-┌───────────────────────────────────────────────────────────────────────────┐
-│                             Zentinel Proxy                                 │
-│  ┌─────────────────────────────────────────────────────────────────────┐  │
-│  │                          Agent Manager                               │  │
+┌──────────────────────────────────────────────────────────────────────────┐
+│                             Zentinel Proxy                               │
+│  ┌────────────────────────────────────────────────────────────────────┐  │
+│  │                          Agent Manager                             │  │
 │  │  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────┐        │  │
 │  │  │   Auth    │  │ RateLimit │  │    WAF    │  │  Policy   │        │  │
 │  │  │  Client   │  │  Client   │  │  Client   │  │  Client   │        │  │

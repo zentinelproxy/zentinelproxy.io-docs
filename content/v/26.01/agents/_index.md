@@ -21,7 +21,7 @@ Agents are **external processes** that communicate with Zentinel over a well-def
 ┌─────────────────────────────────────────────────────────────────┐
 │                         Zentinel Proxy                          │
 │  ┌─────────────────────────────────────────────────────────┐    │
-│  │                    Agent Manager                         │    │
+│  │                    Agent Manager                        │    │
 │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐      │    │
 │  │  │   Auth      │  │  Rate Limit │  │    WAF      │      │    │
 │  │  │   Client    │  │   Client    │  │   Client    │      │    │

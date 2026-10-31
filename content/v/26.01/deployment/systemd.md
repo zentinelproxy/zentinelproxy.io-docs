@@ -8,10 +8,10 @@ systemd is the recommended deployment method for production Zentinel installatio
 ## Overview
 
 ```
-┌────────────────────────────────────────────────────────────┐
-│                      systemd                               │
+┌───────────────────────────────────────────────────────────┐
+│                      systemd                              │
 │  ┌─────────────────────────────────────────────────────┐  │
-│  │              zentinel-agents.target                  │  │
+│  │              zentinel-agents.target                 │  │
 │  │  ┌──────────────┐ ┌──────────────┐ ┌─────────────┐  │  │
 │  │  │zentinel-auth │ │zentinel-waf  │ │zentinel-echo│  │  │
 │  │  │   .service   │ │  .service    │ │  .service   │  │  │
@@ -21,13 +21,13 @@ systemd is the recommended deployment method for production Zentinel installatio
 │  │  │zentinel-auth │ │zentinel-waf  │ │zentinel-echo│  │  │
 │  │  │   .socket    │ │  .socket     │ │  .socket    │  │  │
 │  │  └──────────────┘ └──────────────┘ └─────────────┘  │  │
-│  └─────────────────────────────────────────────────────┘  │
-│                            │                               │
-│                            ▼                               │
+│  └─────────────────────────┬───────────────────────────┘  │
+│                            │                              │
+│                            ▼                              │
 │               ┌────────────────────────┐                  │
 │               │    zentinel.service    │                  │
 │               └────────────────────────┘                  │
-└────────────────────────────────────────────────────────────┘
+└───────────────────────────────────────────────────────────┘
 ```
 
 ## Installation

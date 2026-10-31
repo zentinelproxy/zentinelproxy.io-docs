@@ -16,9 +16,9 @@ The `AgentPool` maintains multiple connections per agent for:
 - **Smart routing**: Load-balanced request distribution
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        AgentPool                            │
-│                                                             │
+┌────────────────────────────────────────────────────────────┐
+│                        AgentPool                           │
+│                                                            │
 │  ┌─────────────────┐  ┌─────────────────┐                  │
 │  │   Agent: waf    │  │  Agent: auth    │                  │
 │  │                 │  │                 │                  │
@@ -36,10 +36,10 @@ The `AgentPool` maintains multiple connections per agent for:
 │  │  Health: OK     │  │  Health: OK     │                  │
 │  │  In-flight: 12  │  │  In-flight: 8   │                  │
 │  └─────────────────┘  └─────────────────┘                  │
-│                                                             │
+│                                                            │
 │  Load Balancer: LeastConnections                           │
 │  Circuit Breaker: Enabled                                  │
-└─────────────────────────────────────────────────────────────┘
+└────────────────────────────────────────────────────────────┘
 ```
 
 ---
