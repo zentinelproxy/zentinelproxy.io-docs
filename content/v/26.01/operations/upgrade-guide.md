@@ -161,9 +161,10 @@ echo "Upgrade successful!"
 ```
 Phase 1: Deploy new version alongside old
 ┌─────────────────────────────────────────────────┐
-│              Load Balancer                       │
+│              Load Balancer                      │
+│                     │                           │
 │        ┌────────────┴────────────┐              │
-│        ▼ (100%)                  ▼ (0%)          │
+│        ▼ (100%)                  ▼ (0%)         │
 │  ┌───────────┐            ┌───────────┐         │
 │  │Blue (v1.x)│            │Green(v2.x)│         │
 │  │  Active   │            │  Standby  │         │
@@ -172,9 +173,10 @@ Phase 1: Deploy new version alongside old
 
 Phase 2: Shift traffic to new version
 ┌─────────────────────────────────────────────────┐
-│              Load Balancer                       │
+│              Load Balancer                      │
+│                     │                           │
 │        ┌────────────┴────────────┐              │
-│        ▼ (0%)                    ▼ (100%)        │
+│        ▼ (0%)                    ▼ (100%)       │
 │  ┌───────────┐            ┌───────────┐         │
 │  │Blue (v1.x)│            │Green(v2.x)│         │
 │  │  Standby  │            │  Active   │         │

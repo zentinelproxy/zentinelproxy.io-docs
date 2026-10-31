@@ -33,7 +33,7 @@ Automatically convert JPEG and PNG images to WebP or AVIF on the fly using the i
          ┌─────────┐   ┌─────────┐   ┌──────────┐
          │  Image  │   │ Static  │   │   API    │
          │  Origin │   │ Assets  │   │ Backend  │
-         └─────────┘   └─────────┘   └──────────┘
+         └─────────┘   └─────┬───┘   └──────────┘
                              │
                     ┌────────▼────────┐
                     │  Image Opt      │

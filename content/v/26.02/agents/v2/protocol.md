@@ -121,10 +121,11 @@ Proxy                                    Agent
 
 ```
 00 00 00 4A 10 {"request_id":1,"method":"GET","uri":"/api/users"...}
-└────┬─────┘ └┘ └──────────────────────┬────────────────────────┘
-   74 bytes  │         JSON payload (RequestHeaders)
-             │
-    Type: RequestHeaders (0x10)
+└────┬────┘└┬┘ └─────────────────────────┬─────────────────────────┘
+     │      │                            │
+ 74 bytes   │              JSON payload (RequestHeaders)
+            │
+  Type: RequestHeaders (0x10)
 ```
 
 ### Handshake Protocol
@@ -305,14 +306,14 @@ pub struct CancelRequestMessage {
 
 ```
 ┌─────────┐    RequestHeaders     ┌─────────┐
-│  Proxy  │ ───────────────────► │  Agent  │
+│  Proxy  │ ────────────────────► │  Agent  │
 │         │                       │         │
 │         │    RequestBodyChunk   │         │
-│         │ ───────────────────► │         │
+│         │ ────────────────────► │         │
 │         │    (repeat)           │         │
 │         │                       │         │
 │         │    Decision           │         │
-│         │ ◄─────────────────── │         │
+│         │ ◄──────────────────── │         │
 └─────────┘                       └─────────┘
 ```
 
@@ -322,24 +323,25 @@ Agents that subscribe to `response_headers` and `response_body` events can inspe
 
 ```
 ┌─────────┐    RequestHeaders       ┌─────────┐
-│  Proxy  │ ─────────────────────► │  Agent  │
+│  Proxy  │ ──────────────────────► │  Agent  │
 │         │    Decision (allow)     │         │
-│         │ ◄───────────────────── │         │
+│         │ ◄────────────────────── │         │
 │         │                         │         │
-│         │  (proxy forwards to upstream,     │
-│         │   receives response)              │
+│         │    (proxy forwards to   │         │
+│         │     upstream, receives  │         │
+│         │     response)           │         │
 │         │                         │         │
 │         │    ResponseHeaders      │         │
-│         │ ─────────────────────► │         │
+│         │ ──────────────────────► │         │
 │         │    Decision             │         │
 │         │    (+ header mods)      │         │
-│         │ ◄───────────────────── │         │
+│         │ ◄────────────────────── │         │
 │         │                         │         │
 │         │    ResponseBodyChunk    │         │
-│         │ ─────────────────────► │         │
+│         │ ──────────────────────► │         │
 │         │    Decision             │         │
 │         │    (+ body mutation)    │         │
-│         │ ◄───────────────────── │         │
+│         │ ◄────────────────────── │         │
 └─────────┘                         └─────────┘
 ```
 
@@ -359,10 +361,10 @@ When response body processing is active, the proxy sets `Connection: close` and 
 
 ```
 ┌─────────┐    RequestHeaders     ┌─────────┐
-│  Proxy  │ ───────────────────► │  Agent  │
+│  Proxy  │ ────────────────────► │  Agent  │
 │         │                       │         │
 │         │    CancelRequest      │         │
-│         │ ───────────────────► │         │
+│         │ ────────────────────► │         │
 │         │                       │         │
 │         │    (agent cleans up)  │         │
 └─────────┘                       └─────────┘

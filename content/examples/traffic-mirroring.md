@@ -40,7 +40,7 @@ Traffic mirroring duplicates live requests to a shadow upstream for testing purp
 ┌──────────────┐
 │ Production   │
 │  Upstream    │
-└──────────────┘
+└────┬─────────┘
      │
      │ Response
      ▼

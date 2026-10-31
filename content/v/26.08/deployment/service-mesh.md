@@ -10,27 +10,28 @@ Zentinel integrates with service mesh environments through dynamic service disco
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    SERVICE MESH INTEGRATION                          │
+│                    SERVICE MESH INTEGRATION                         │
 ├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  Pattern 1: Ingress Gateway                                          │
+│                                                                     │
+│  Pattern 1: Ingress Gateway                                         │
 │  ┌──────────┐      ┌──────────┐      ┌──────────┐                   │
 │  │ Internet │─────▶│ Zentinel │─────▶│ Mesh     │                   │
 │  │          │      │ (edge)   │      │ Services │                   │
-│  └──────────┘      └──────────┘      └──────────┘                   │
-│                          │                                           │
-│                    Service Discovery                                 │
-│                    (DNS/Consul/K8s)                                  │
-│                                                                      │
-│  Pattern 2: Sidecar-Adjacent                                         │
+│  └──────────┘      └─────┬────┘      └──────────┘                   │
+│                          │                                          │
+│                    Service Discovery                                │
+│                    (DNS/Consul/K8s)                                 │
+│                                                                     │
+│  Pattern 2: Sidecar-Adjacent                                        │
 │  ┌──────────┐      ┌──────────────────────────┐                     │
-│  │ Internet │─────▶│ Pod                       │                     │
+│  │ Internet │─────▶│ Pod                      │                     │
 │  │          │      │ ┌────────┐  ┌──────────┐ │                     │
 │  └──────────┘      │ │Zentinel│─▶│ Sidecar  │ │                     │
 │                    │ │        │  │(Envoy/   │ │                     │
 │                    │ └────────┘  │ Linkerd) │ │                     │
-│                    └─────────────┴──────────┴─┘                     │
-│                                                                      │
+│                    │             └──────────┘ │                     │
+│                    └──────────────────────────┘                     │
+│                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 

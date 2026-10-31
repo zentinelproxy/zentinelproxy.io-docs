@@ -41,10 +41,10 @@ The rest of this page documents the manual setup (useful when installing from so
 ## Overview
 
 ```
-┌────────────────────────────────────────────────────────────┐
-│                      systemd                               │
+┌───────────────────────────────────────────────────────────┐
+│                      systemd                              │
 │  ┌─────────────────────────────────────────────────────┐  │
-│  │              zentinel-agents.target                  │  │
+│  │              zentinel-agents.target                 │  │
 │  │  ┌──────────────┐ ┌──────────────┐ ┌─────────────┐  │  │
 │  │  │zentinel-auth │ │zentinel-waf  │ │zentinel-echo│  │  │
 │  │  │   .service   │ │  .service    │ │  .service   │  │  │
@@ -54,13 +54,13 @@ The rest of this page documents the manual setup (useful when installing from so
 │  │  │zentinel-auth │ │zentinel-waf  │ │zentinel-echo│  │  │
 │  │  │   .socket    │ │  .socket     │ │  .socket    │  │  │
 │  │  └──────────────┘ └──────────────┘ └─────────────┘  │  │
-│  └─────────────────────────────────────────────────────┘  │
-│                            │                               │
-│                            ▼                               │
+│  └─────────────────────────┬───────────────────────────┘  │
+│                            │                              │
+│                            ▼                              │
 │               ┌────────────────────────┐                  │
 │               │    zentinel.service    │                  │
 │               └────────────────────────┘                  │
-└────────────────────────────────────────────────────────────┘
+└───────────────────────────────────────────────────────────┘
 ```
 
 ## Installation

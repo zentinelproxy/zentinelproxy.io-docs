@@ -16,7 +16,7 @@ Instead of manually downloading and configuring each agent, the bundle command:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    zentinel bundle install                           │
+│                    zentinel bundle install                          │
 │                                                                     │
 │  Reads lock file → Downloads agents → Installs binaries             │
 │                                                                     │
@@ -27,7 +27,7 @@ Instead of manually downloading and configuring each agent, the bundle command:
 │    API         ─ GraphQL Security, gRPC Inspector, SOAP,            │
 │                  API Deprecation                                    │
 │    Protocol    ─ WebSocket Inspector, MQTT Gateway                  │
-│    Scripting   ─ Lua, JS, WASM                                     │
+│    Scripting   ─ Lua, JS, WASM                                      │
 │    Utility     ─ Transform, Audit Logger, Mock Server, Chaos,       │
 │                  Image Optimization                                 │
 │    Identity    ─ SPIFFE                                             │
