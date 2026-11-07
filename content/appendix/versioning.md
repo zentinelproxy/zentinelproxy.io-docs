@@ -106,7 +106,7 @@ This table maps CalVer release versions to the crate version actually **publishe
 
 ```bash
 zentinel --version
-# zentinel 0.6.54 (release 26.10_11, commit 582ae61)
+# zentinel 0.6.55 (release 26.11_1, commit b3a8659)
 ```
 
 The binary prints the crate SemVer, then the CalVer release and the commit.

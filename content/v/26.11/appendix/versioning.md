@@ -1,0 +1,486 @@
++++
+title = "Versioning"
+weight = 2
+updated = 2026-10-20
++++
+
+How Zentinel versions work, mapping between release and crate versions, and changelogs.
+
+## Dual Versioning Scheme
+
+Zentinel uses two versioning systems for different audiences:
+
+| System | Format | Example | Audience | Used For |
+|--------|--------|---------|----------|----------|
+| **Release Version** | CalVer (`YY.MM_PATCH`) | `26.01_0` | Operators, enterprise, docs | Downloads, release tags, LTS windows, support contracts |
+| **Crate Version** | SemVer (`MAJOR.MINOR.PATCH`) | `0.3.0` | Library consumers | Cargo.toml, crates.io, dependency management |
+
+**CalVer is the primary version.** When you deploy Zentinel, report issues, reference documentation, or verify supply chain artifacts, use the CalVer release version. SemVer exists solely for Rust's package ecosystem.
+
+### Release Version (CalVer)
+
+All public-facing releases use [Calendar Versioning](https://calver.org/) in `YY.MM_PATCH` format:
+
+```
+YY.MM_PATCH
+
+26.01_0  - January 2026, first release
+26.01_1  - January 2026, first patch
+26.02_0  - February 2026, first release
+```
+
+- **`YY.MM`** identifies the release series (e.g., `26.01` = January 2026)
+- **`_PATCH`** increments for bug fixes and security patches within a series
+
+This provides:
+- **Age at a glance** — `25.06_3` tells you the release is from June 2025
+- **LTS windows tied to the calendar** — an LTS branch like `26.01 LTS` receives security backports for 12 months, through January 2027
+- **Upgrade urgency** — if you're running `25.06_3` and the current release is `26.01_0`, you're 7 months behind
+
+### Crate Version (SemVer)
+
+Rust crates published to crates.io use [Semantic Versioning](https://semver.org/). This is an implementation detail for library consumers using Zentinel crates as dependencies. Operators do not need to track SemVer.
+
+```
+MAJOR.MINOR.PATCH
+
+0.1.0  - Initial development
+0.2.0  - New features (pre-1.0, may have breaking changes)
+1.0.0  - First stable release
+1.1.0  - New features, backwards compatible
+1.1.1  - Bug fixes only
+2.0.0  - Breaking changes
+```
+
+### Which Version Do I Use?
+
+| Context | Use |
+|---------|-----|
+| Downloading binaries | CalVer (`26.01_0`) |
+| Docker image tags | CalVer (`ghcr.io/zentinelproxy/zentinel:26.01_0`) |
+| Filing issues / support tickets | CalVer |
+| Verifying supply chain signatures | CalVer (matches release tag) |
+| LTS / support contracts | CalVer series (`26.01 LTS`) |
+| Cargo.toml dependencies | SemVer (`zentinel = "0.3"`) |
+| crates.io | SemVer |
+
+## Version Mapping
+
+This table maps CalVer release versions to the crate version actually **published to crates.io** — the version to depend on. It is not the version in `Cargo.toml` at the tagged commit; the release pipeline publishes that value plus one. Rows from 26.04_1 onward were reconciled against crates.io on 2026-08-24; rows before 26.04_1 are unverified.
+
+| Release (CalVer) | Crate Version (SemVer) | Protocol | Release Date | Status |
+|---------|---------------|----------|--------------|--------|
+| **26.11_1** | `0.6.55` | `2` | 2026-11-07 | Current — security and dependency maintenance (`rustls-webpki` distrusted-intermediate fix); minimum Rust 1.99 |
+| **26.10_11** | `0.6.54` | `2` | 2026-10-31 | Previous — last of the 26.10 series; OCSP stapling works; `compress` filter fixed (gzip/zstd, `algorithms` applied); WebSocket frames reach the route's agents, agent-level `failure-mode` deprecated; `request-body-mode "inspect-first"`; h2c; read the upgrade notes |
+| **26.10_10** | `0.6.53` | `2` | 2026-10-30 | Previous — shutdown timeouts above 300 s get their full drain; systemd unit `TimeoutStopSec=40`; `bundle install` writes an `agents.kdl` that `--strict` accepts; read the upgrade notes |
+| **26.10_9** | `0.6.52` | `2` | 2026-10-28 | Previous — reload loads changed agents; SIGTERM/SIGINT drain; SIGUSR1 reopens logs; tokio 1.54 fix for `cargo install`; read the upgrade notes |
+| **26.10_8** | `0.6.51` | `2` | 2026-10-22 | Previous — agents get their `config { }` block and are acted on in every phase; every bundled agent rebuilt and smoke-tested; read the upgrade notes |
+| **26.10_7** | `0.6.50` | `2` | 2026-10-20 | Previous — namespaces and services served end to end; error pages for refusals; host-name fallback; read the upgrade notes |
+| **26.10_6** | `0.6.49` | `2` | 2026-10-20 | Previous — connection and in-flight limits enforced; error pages; directory configs; read the upgrade notes |
+| **26.10_5** | `0.6.48` | `2` | 2026-10-19 | Previous — health checks steer routing; per-client rate limits; forwarded headers with `trusted-proxies` (read the upgrade notes) |
+| **26.10_4** | `0.6.47` | `2` | 2026-10-19 | Previous — agents reconnect after a restart; API schema validation fixed |
+| **26.10_3** | `0.6.46` | `2` | 2026-10-18 | Previous — security and dependency maintenance; minimum Rust 1.96 |
+| **26.10_2** | `0.6.45` | `2` | 2026-10-11 | Previous — ACME Renewal Information (RFC 9773) |
+| **26.10_1** | `0.6.44` | `2` | 2026-10-10 | Previous |
+| **26.09_6** | `0.6.43` | `2` | 2026-09-15 | Previous — Pingora 0.9.0; last of the 26.09 series |
+| **26.09_1** | `0.6.38` | `2` | 2026-09-01 | Previous |
+| **26.08_14** | `0.6.37` | `2` | 2026-08-29 | Previous — last of the 26.08 series |
+| **26.08_5** | `0.6.28` | `2` | 2026-08-24 | Previous |
+| **26.08_4** | `0.6.27` | `2` | 2026-08-23 | Previous |
+| **26.08_2** | `0.6.25` | `2` | 2026-08-22 | Previous — breaking TLS config schema |
+| **26.08_1** | `0.6.24` | `2` | 2026-08-08 | Previous |
+| **26.07_4** | `0.6.23` | `2` | 2026-07-30 | Previous |
+| **26.06_3** | `0.6.18` | `2` | 2026-06-23 | Previous |
+| **26.05_4** | `0.6.15` | `2` | 2026-05-12 | Previous |
+| **26.04_1** | `0.6.4` | `0.2.0` | 2026-04-09 | Previous |
+| **26.03_1** | `0.5.12` | `0.2.0` | 2026-03-01 | Previous |
+| **26.02_5** | `0.5.11` | `0.2.0` | 2026-02-27 | Previous |
+| **26.02_4** | `0.4.10` | `0.2.0` | 2026-02-04 | Previous |
+| **26.01_0** | `0.2.0` | `0.2.0` | 2026-01-01 | Previous |
+| **25.12_0** | `0.1.0` | `0.1.0` | 2025-12-15 | Archive |
+| — | `0.1.0` | `0.1.0` | 2025-11-01 | Internal |
+
+### Finding Your Version
+
+**From the binary:**
+
+```bash
+zentinel --version
+# zentinel 0.6.55 (release 26.11_1, commit b3a8659)
+```
+
+The binary prints the crate SemVer, then the CalVer release and the commit.
+Up to and including 26.10_3, release binaries were built from the tagged tree
+and printed the SemVer one patch below the crate published for that release
+(26.10_3 prints `0.6.45`; crates.io has `0.6.46`). Since 26.10_4,
+the build applies the published version first
+([zentinel#513](https://github.com/zentinelproxy/zentinel/pull/513)), so the
+binary and crates.io agree. Applying it changes the tree, which is why release
+binaries show `-dirty` after the commit.
+
+**From Docker:**
+
+```bash
+docker inspect ghcr.io/zentinelproxy/zentinel:26.10_3 --format '{{ index .Config.Labels "org.opencontainers.image.version" }}'
+# 26.10_3
+```
+
+**From the documentation URL:**
+
+- `/` — Current release (26.10)
+- `/v/26.09/` — Previous month
+- `/v/25.12/` — Oldest archive
+
+---
+
+## Changelogs
+
+For the full changelog with all patch releases, see [Changelog](../changelog/).
+
+### Release 26.09
+
+**Crate version:** `0.6.38` -- `0.6.43`
+**Release date:** September 2026
+
+#### Security
+
+- Pingora 0.9.0 — request-target and authority hardening, hop-by-hop request headers stripped before the upstream, no HTTP/1 upstream reuse after an incomplete response, bounded HTTP/2 server limits, `daemonize` replaced by `daemonix`
+- `google.golang.org/grpc` 1.83.2 in the conformance suite (GHSA-2v4p-qf9q-27wj)
+
+#### Fixed
+
+- Health checks now probe upstreams; every `health-check` block was inert before 26.09_2
+- An agent unreachable at startup is recovered instead of lost until restart (26.09_4)
+- Agents in the container images can create their sockets (26.09_3); `zentinel bundle install` works for non-root users (26.09_5)
+
+#### Changed
+
+- Hop-by-hop request headers and non-WebSocket HTTP/1 upgrades are no longer forwarded to upstreams (Pingora 0.9.0)
+- MCP gateway: per-tool metrics and rate limiting, tool-list filtering, MCP-native health check, several MCP servers behind one route (26.09_2, 26.09_3)
+
+---
+
+### Release 26.08
+
+**Crate version:** `0.6.24`
+**Release date:** August 2026
+
+#### Security
+
+- `rustls` 0.23.43 — session-ticket age and PSK binder arithmetic hardening (defense in depth; no CVE assigned)
+
+#### Changed
+
+- Dependency maintenance: `pem` 4.0, `base64` 0.23.1, `jsonschema` 0.49.5, `validator` 0.21, `async-memcached` 0.7, `http` 1.5, `redis` 1.5
+
+---
+
+### Release 26.07
+
+**Crate version:** `0.6.20` -- `0.6.23`
+**Release date:** July 2026
+
+#### Security
+
+- `serde_with` 3.21 — fixes GHSA-7gcf-g7xr-8hxj, a serialization panic (DoS) in `KeyValueMap`
+
+#### Changed
+
+- Dependency maintenance across four patch releases: wasmtime 46 → 47, `quinn-proto` 0.11.16, `maxminddb` 0.30, `tokio-tungstenite` 0.30, `jsonschema` 0.48, `quick-xml` 0.41
+
+---
+
+### Release 26.06
+
+**Crate version:** `0.6.16` -- `0.6.18`
+**Release date:** June 2026
+
+#### Added
+
+- Standalone Prometheus metrics server on a dedicated listener
+- Per-listener route sets via a `namespace "<id>"` field
+- Route-level `retry-policy` parsing (`max-attempts` honored; remaining keys parsed but not yet applied)
+- Duplicate top-level KDL blocks now merge across `include`d files instead of last-file-wins
+- Agent body limits enforced and per-key limiter state bounded
+
+#### Fixed
+
+- Upstream circuit breaker now recovers from the open state
+- Default Docker image starts cleanly as a non-root user
+- Upstream `target` syntax unified across single-file and multi-file configs
+
+#### Security
+
+- Pingora 0.8.1 — bounded default HTTP/2 server limits; resolves RUSTSEC-2026-0098 / RUSTSEC-2026-0099
+
+---
+
+### Release 26.05
+
+**Crate version:** `0.6.12` -- `0.6.15`
+**Release date:** May 2026
+
+#### Added
+
+- Per-SNI ACME certificates for multi-tenant TLS
+- Systemd service bootstrap in the install script (unit, system user, starter config)
+
+#### Fixed
+
+- Embedded default configuration no longer emits a deprecation warning on first run
+- ACME DNS propagation checker restored against the `hickory-resolver` 0.26 API
+
+#### Changed
+
+- OpenTelemetry 0.32 coordinated stack bump; Rust toolchain 1.95.0
+
+---
+
+### Release 26.04
+
+**Crate version:** `0.6.4`
+**Release date:** April 2026
+
+#### Changed
+
+- Numeric route priorities (priority accepts integers and named aliases)
+- Route matcher host extraction fix (HTTP/2 and relative-URI support)
+- Docker image GLIBC fix (pinned to ubuntu-22.04)
+- Gateway API conformance CI restored (42/235 baseline)
+- Dependency updates (sha2 0.11, hmac 0.13, tokio 1.51, hyper 1.9, wasmtime 43)
+
+---
+
+### Release 26.03
+
+**Crate version:** `0.5.12`
+**Release date:** March 2026
+
+#### Changed
+
+- Image optimization agent v0.2.0 with Content-Type fix and improved defaults
+
+---
+
+### Release 26.02
+
+**Crate version:** `0.5.11`
+**Release date:** January -- February 2026
+
+#### Added
+
+- **`include` directive in single-file config** — `include "routes/*.kdl"` works directly in config files loaded via `zentinel --config`, with glob patterns, recursive expansion, and circular include detection
+- **Supply chain security for release pipeline**
+  - SBOM generation in CycloneDX 1.5 and SPDX 2.3 formats
+  - Binary signing with Sigstore cosign (keyless, GitHub Actions OIDC)
+  - Container image signing with cosign and SBOM attestation
+  - SLSA v1.0 provenance (Build Level 3)
+- Per-request allocation reduction in hot path
+- DNS-01 ACME challenge support for wildcard certificates
+- Agent Protocol v2 connection pooling, load balancing, reverse connections
+- Sticky load balancing algorithm
+- CI workflow (formatting, clippy, tests, docs checks)
+- Weekly `cargo audit` workflow with automatic issue creation
+- First-time user smoke tests (WAF, Lua)
+- `protocol-version` KDL config for agent blocks
+
+#### Changed
+
+- Major dependency updates (opentelemetry, prost, tonic, tungstenite, sysinfo, reqwest, jsonschema, and more)
+- Pingora switched to `raskell-io/pingora` fork to remove protobuf vulnerability (RUSTSEC-2024-0437)
+
+#### Fixed
+
+- Prevent single connection failure from permanently marking upstream target unhealthy
+- 16 rustdoc warnings across 10 files
+- Example configs now pass `zentinel test` validation
+
+---
+
+### Release 26.01
+
+**Crate version:** `0.2.0` -- `0.3.0`
+**Release date:** January 2026
+
+#### Added
+
+- **Traffic Mirroring / Shadow Traffic**
+  - Fire-and-forget async request duplication to shadow upstreams
+  - Percentage-based sampling (0-100%) for controlled traffic mirroring
+
+- **API Schema Validation**
+  - JSON Schema validation for API routes (requests and responses)
+  - OpenAPI 3.0 and Swagger 2.0 specification support
+
+- WebSocket frame inspection support in agent protocol
+- Graceful shutdown improvements
+- Connection draining during rolling updates
+
+#### Changed
+
+- Improved upstream health check reliability
+- Reduced memory usage for idle connections
+
+#### Security
+
+- Removed archived agents with unsafe FFI code (Lua, WAF, auth, denylist, ratelimit)
+- Replaced `unreachable!()` panics with proper error handling in agent-protocol
+
+---
+
+### Release 25.12
+
+**Crate version:** `0.2.0`
+**Protocol version:** `0.1.0`
+**Release date:** December 2025
+
+#### Added
+
+- **Core Proxy**
+  - HTTP/1.1 and HTTP/2 support
+  - HTTPS with TLS 1.2/1.3
+  - Configurable listeners (multiple ports, protocols)
+  - Request/response header manipulation
+
+- **Routing**
+  - Path-based routing with prefix, exact, and regex matching
+  - Host-based virtual hosting
+  - Method-based routing
+  - Header-based routing conditions
+
+- **Upstreams**
+  - Multiple backend targets with load balancing
+  - Round-robin and random load balancing strategies
+  - Active health checks (HTTP, TCP)
+  - Passive health monitoring with circuit breaker
+  - Connection pooling
+
+- **Agent System**
+  - Unix socket transport for local agents
+  - gRPC transport for remote agents
+  - Request/response lifecycle hooks
+  - WebSocket frame inspection hooks
+  - Fail-open mode for agent failures
+  - Agent timeout configuration
+
+- **Observability**
+  - Prometheus metrics endpoint
+  - Structured JSON logging
+  - Request tracing with correlation IDs
+  - OpenTelemetry integration
+
+- **Configuration**
+  - KDL configuration format
+  - Environment variable substitution
+  - Configuration validation
+  - Hot reload via SIGHUP
+
+---
+
+## Upgrade Guides
+
+### From 26.01 to 26.02
+
+No breaking changes. Direct upgrade supported.
+
+```bash
+# Stop current version
+systemctl stop zentinel
+
+# Install new version
+VERSION="26.04_1"
+curl -Lo /usr/local/bin/zentinel \
+    "https://github.com/zentinelproxy/zentinel/releases/download/${VERSION}/zentinel-${VERSION}-linux-amd64.tar.gz"
+tar -xzf "zentinel-${VERSION}-linux-amd64.tar.gz"
+chmod +x zentinel && sudo mv zentinel /usr/local/bin/
+
+# Validate configuration
+zentinel validate -c /etc/zentinel/zentinel.kdl
+
+# Start new version
+systemctl start zentinel
+```
+
+**New features to consider:**
+
+- [Supply Chain Security](/operations/supply-chain/) -- verify binary and container authenticity
+- DNS-01 ACME challenges for wildcard certificates
+- Agent Protocol v2 connection pooling
+
+### From 25.12 to 26.01
+
+No breaking changes. Direct upgrade supported.
+
+**New features to consider:**
+
+- [Traffic Mirroring](/configuration/routes/#traffic-mirroring-shadow-traffic) for canary deployments
+- [Schema Validation](/configuration/routes/#api-schema-validation) for API routes
+
+---
+
+## Compatibility Matrix
+
+### Agent Compatibility
+
+| Zentinel Release | Protocol | Compatible Agent Versions |
+|------------------|----------|---------------------------|
+| 26.04 | `0.2.0` | Agents built with protocol `0.2.x` |
+| 26.03 | `0.2.0` | Agents built with protocol `0.2.x` |
+| 26.02 | `0.2.0` | Agents built with protocol `0.2.x` |
+| 26.01 | `0.2.0` | Agents built with protocol `0.2.x` |
+| 25.12 | `0.1.0` | Agents built with protocol `0.1.x` |
+
+### Rust Toolchain
+
+| Zentinel Release | Minimum Rust Version | Recommended |
+|------------------|----------------------|-------------|
+| 26.04 | 1.85.0 | 1.92.0+ |
+| 26.03 | 1.85.0 | 1.92.0+ |
+| 26.02 | 1.85.0 | 1.85.0+ |
+| 26.01 | 1.75.0 | 1.83.0+ |
+| 25.12 | 1.70.0 | 1.75.0+ |
+
+---
+
+## Release Schedule
+
+Zentinel follows a monthly release cadence:
+
+- **Feature releases:** First week of each month (e.g., `26.02_0`)
+- **Patch releases:** As needed for security or critical bugs (e.g., `26.01_1`, `26.01_2`)
+
+### Community Support
+
+| Release | Status | Security Fixes Until |
+|---------|--------|----------------------|
+| 26.04 | Current | Active development |
+| 26.03 | Previous | 26.07 (3 months) |
+| 26.02 | Previous | 26.06 (3 months) |
+| 26.01 | Previous | 26.04 (3 months) |
+| 25.12 | EOL | No support |
+
+Community releases receive security patches for **3 months** after the next release series ships.
+
+### Enterprise LTS
+
+Enterprise customers receive long-term support branches designated by their CalVer series:
+
+| LTS Branch | Based On | Security Fixes Until | Config Stability |
+|------------|----------|----------------------|------------------|
+| 26.01 LTS | `26.01_0` | January 2027 (12 months) | Guaranteed |
+
+LTS branches receive:
+- **Security backports** for 12 months from the initial release
+- **Configuration compatibility** — no breaking config changes within the LTS window
+- **Patch releases** on the same CalVer series (e.g., `26.01_1`, `26.01_2`, ...)
+- **Early security advisories** before public disclosure
+
+LTS is available through the [Enterprise Builds](https://zentinelproxy.io/support/) offering. See [Supply Chain Security](/operations/supply-chain/) for verification procedures.
+
+---
+
+## See Also
+
+- [Release Process](/development/releases/) — How releases are made
+- [GitHub Releases](https://github.com/zentinelproxy/zentinel/releases) — Download binaries
+- [crates.io](https://crates.io/crates/zentinel-proxy) — Rust crate registry
