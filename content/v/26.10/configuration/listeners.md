@@ -1,7 +1,7 @@
 +++
 title = "Listeners"
 weight = 3
-updated = 2026-02-19
+updated = 2026-10-20
 +++
 
 The `listeners` block defines network endpoints where Zentinel accepts incoming connections. Each listener binds to an address, specifies a protocol, and optionally configures TLS.
@@ -46,11 +46,23 @@ Socket address in `host:port` format:
 | IPv6 localhost | `[::1]:8080` | IPv6 local only |
 | Specific interface | `10.0.1.5:8080` | Multi-homed servers |
 
+The address must be a literal `IP:PORT`; host names are not resolved and
+environment variables are not substituted. From 26.10_5, `zentinel test` and
+startup reject any other value, naming the listener, and point out a `${VAR}`
+in it. (Before 26.10_5, `address "${ZT_ADDR}"` passed `zentinel test` and the
+proxy then panicked at startup.) To template addresses, render the file before
+starting the proxy, for example with `envsubst`.
+
 ### Protocol
 
 ```kdl
 listener "secure" {
+    address "0.0.0.0:443"
     protocol "https"
+    tls {
+        cert-file "/etc/zentinel/certs/server.crt"
+        key-file "/etc/zentinel/certs/server.key"
+    }
 }
 ```
 
@@ -59,11 +71,40 @@ listener "secure" {
 | `http` | Plain HTTP/1.1 | No |
 | `https` | HTTP/1.1 over TLS | Yes |
 | `h2` | HTTP/2 (with TLS via ALPN) | Yes |
+| `h2c` | HTTP/2 over cleartext TCP, prior knowledge only (from 26.10_11) | No (a `tls` block is an error) |
 | `h3` | **Not implemented** — rejected at validation | — |
 
 `h2` and `https` produce the same listener: an `https` listener already
 advertises HTTP/2 through ALPN, so either spelling gets you HTTP/2 with an
-HTTP/1.1 fallback.
+HTTP/1.1 fallback. Both need a `tls` block: from 26.10_11 an `https` or `h2`
+listener without one is a configuration error (it used to load and then bind
+nothing).
+
+#### HTTP/2 over cleartext (h2c) {#h2c}
+
+`protocol "h2c"` serves HTTP/2 without TLS, for trusted internal hops where TLS
+ends in front of Zentinel (a load balancer, a service mesh sidecar):
+
+```kdl
+listeners {
+    listener "internal-h2c" {
+        address "127.0.0.1:8081"
+        protocol "h2c"
+    }
+}
+```
+
+- **Prior knowledge only.** There is no `Upgrade: h2c` negotiation. A client
+  must open with the HTTP/2 connection preface (for example
+  `curl --http2-prior-knowledge`) within 10 s. A client that sends HTTP/1.1
+  instead gets `505 HTTP Version Not Supported`.
+- h2c listeners run in a Pingora service of their own, so `http` listeners are
+  unchanged and do not start accepting HTTP/2. Their connections count
+  against the same connection limits.
+- A `tls` block on an h2c listener is a configuration error.
+
+For HTTP/2 over cleartext towards a backend, see
+[Upstreams: h2c](/configuration/upstreams/#h2c).
 
 `h3` is accepted by the parser but there is no QUIC support in the proxy, so a
 config naming it is rejected before startup rather than binding a socket that
@@ -115,14 +156,150 @@ listener "h2" {
 ### Default Route
 
 ```kdl
-listener "api" {
-    address "0.0.0.0:8080"
-    protocol "http"
-    default-route "fallback"
+listeners {
+    listener "api" {
+        address "0.0.0.0:8080"
+        protocol "http"
+        default-route "fallback"
+    }
+}
+
+routes {
+    route "fallback" {
+        priority "low"   // catch-all: no match conditions needed
+        upstream "backend"
+    }
 }
 ```
 
 Route to use when no other route matches. If not set and no route matches, Zentinel returns 404.
+
+### Namespace
+
+`namespace "<id>"` binds a top-level listener to a
+[namespace](/configuration/namespaces/): it serves that namespace's routes
+(and those of its services without a listener of their own), never the global
+routes. A listener declared inside a namespace's `listeners` block or a
+service's `listener` block is bound to that scope without this key.
+
+```kdl
+listeners {
+    listener "public" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+    listener "internal" {
+        address "127.0.0.1:8081"
+        protocol "http"
+        namespace "admin"
+    }
+}
+
+namespace "admin" {
+    upstreams {
+        upstream "backend" {
+            target "127.0.0.1:4000"
+        }
+    }
+    routes {
+        route "console" {
+            matches {
+                path-prefix "/"
+            }
+            upstream "backend"
+        }
+    }
+}
+```
+
+Here the `admin` routes are served only on `127.0.0.1:8081`. From 26.10_7 a
+namespace without a listener of its own is served on the global listeners; see
+[Which listener serves a route](/configuration/namespaces/#which-listener-serves-a-route).
+Before 26.10_7 such a namespace was not served at all, and a route of a bound
+namespace that used the namespace's own upstream got `500`.
+
+### Trusted Proxies and Forwarded Headers {#trusted-proxies}
+
+From 26.10_5, Zentinel sets `X-Forwarded-For`, `X-Forwarded-Proto` and
+`X-Forwarded-Host` on every request it proxies. Which incoming values it keeps
+depends on whether the TCP peer is listed in the listener's `trusted-proxies`:
+
+```kdl
+listeners {
+    listener "public" {
+        address "0.0.0.0:8080"
+        protocol "http"
+        // The load balancer's subnet and one fixed address
+        trusted-proxies "10.0.0.0/8" "192.0.2.7"
+    }
+}
+```
+
+`trusted-proxies` takes CIDR ranges or single IP addresses, IPv4 or IPv6
+(`"2001:db8::/32"`). Repeat the line to spread a long list over several lines;
+every entry counts. It is empty by default, so no peer is trusted.
+
+| Header | Peer not trusted (default) | Peer in `trusted-proxies` |
+|--------|----------------------------|---------------------------|
+| `X-Forwarded-For` | Replaced by the peer's address | Peer's address appended to the incoming list |
+| `X-Forwarded-Proto` | Replaced by `https` (TLS connection) or `http` | Incoming value kept; set as on the left if absent |
+| `X-Forwarded-Host` | Replaced by the request's host | Incoming value kept; set as on the left if absent |
+| `Forwarded`, `X-Real-IP` | Removed | Passed on unchanged |
+
+Zentinel never writes `Forwarded` or `X-Real-IP` itself. A backend that reads
+them falls back to `X-Forwarded-For` or the connection address, both set by
+Zentinel.
+
+**Client IP.** The address Zentinel uses for the client, in the `client-ip`
+rate-limit key, geo filters, `ip-hash` load balancing, the `client_ip` sent to
+agents and access logs, follows the same rule. For an untrusted peer it is the
+peer's address. For a trusted peer it is the right-most address in
+`X-Forwarded-For` that is not itself in `trusted-proxies`. With the listener
+above, a request from the load balancer `10.0.0.5` carrying
+`X-Forwarded-For: 198.51.100.7` is treated as coming from `198.51.100.7`, and
+the backend receives `X-Forwarded-For: 198.51.100.7, 10.0.0.5`.
+
+**A trusted peer is believed, not checked.** For a peer in `trusted-proxies`,
+Zentinel does not validate `X-Forwarded-Proto`, `X-Forwarded-Host`,
+`Forwarded` or `X-Real-IP`: whatever the peer sends reaches the backend as it
+arrived, and the entries already in its `X-Forwarded-For` are passed on as
+received, with the peer appended. A backend that builds absolute URLs
+(redirects, password-reset links, canonical URLs) from `X-Forwarded-Host` or
+`X-Forwarded-Proto` will use whatever value arrives. Anyone who can open a
+connection from an address inside a listed range, or reach Zentinel through a
+trusted peer that does not overwrite these headers, chooses those values.
+
+> **Note:** List only the addresses of load balancers or CDNs you operate, and
+> as narrowly as you can. A broad range, such as `0.0.0.0/0` or a whole private
+> network, makes every host in it a source of unchecked forwarded headers.
+> Block direct access to the Zentinel listener from anywhere but the trusted
+> proxies, with a firewall or security group. In the backend, read only the
+> headers your load balancer always overwrites, and take the client address
+> from `X-Forwarded-For` by walking from the right past your own proxies, as
+> Zentinel does, not from its left-most entry.
+
+**Why the default trusts nobody.** A client can send any `X-Forwarded-For` it
+likes. If Zentinel passed it on, or used it as the client IP, a client could
+pick the address that backends log, that rate limits count against and that
+IP-reputation agents check. List only the addresses of proxies you operate,
+or of a CDN whose ranges you control, and make sure clients cannot reach
+Zentinel around them. Walking the chain from the right and stopping at the
+first untrusted address means entries a client wrote to the left of it are
+never used.
+
+**Behind a load balancer.** If Zentinel runs behind a load balancer or CDN and
+your backends need the original client address, list the load balancer in
+`trusted-proxies`. Without it, backends see the load balancer's address in
+`X-Forwarded-For`, lose any `Forwarded` and `X-Real-IP` header it set, and
+rate limits keyed on `client-ip` count all traffic through the load balancer as
+one client.
+
+Route `policies { request-headers { ... } }` run after these headers are
+written, so a route can still `set` or `remove` any of them.
+
+Before 26.10_5, Zentinel sent none of these headers and passed whatever the
+client sent through unchanged. Older releases ignore `trusted-proxies`
+(`zentinel lint` reports it as an unknown key).
 
 ## TLS Configuration
 
@@ -201,7 +378,7 @@ upstreams {
 
 **Production recommendation:**
 
-```kdl
+```fragment,kdl
 tls {
     min-version "1.2"
     max-version "1.3"
@@ -297,16 +474,53 @@ upstreams {
 }
 ```
 
-Server fetches and staples OCSP responses, proving certificate validity without clients contacting the CA.
+The proxy fetches an OCSP response for every certificate it serves (the
+default certificate and each SNI certificate) and staples it into the
+handshake for TLS 1.2 and 1.3 clients that ask for certificate status. Clients
+then do not have to contact the CA themselves: handshakes are faster, the CA
+does not learn which sites a client visits, and a must-staple certificate is
+accepted by strict clients. Stapling was parsed but never applied before
+26.10_11.
 
-Benefits:
-- Faster TLS handshakes
-- Better client privacy
-- Reduced CA load
+How it works:
+
+- **Responder.** The responder URL comes from the certificate's Authority
+  Information Access extension, and the request is built from the issuer
+  certificate. **`cert-file` must therefore contain the chain**: the leaf,
+  then the intermediate. A leaf-only file is warned about at startup and
+  served without a staple.
+- **Checks.** A response is stapled only if the responder answered
+  successfully, the response is for this certificate's serial, the status is
+  `good`, and the current time is within `thisUpdate`/`nextUpdate`. The
+  responder's signature is checked by the client, not by the proxy.
+- **Refresh.** Responses are fetched in the background shortly after
+  startup and refreshed at half their validity window, at least hourly; a
+  failed fetch is retried every 5 minutes. Staples survive a certificate
+  reload for certificates that did not change.
+- **Never fatal.** An unreachable or misbehaving responder never fails a
+  handshake or startup: the certificate is served without a staple, a warning
+  is logged, and the failure is counted. An expired, revoked or unknown
+  response is dropped, never served.
+
+Stapling is **on by default**, so the proxy makes outbound HTTP requests to
+each certificate's OCSP responder. Where egress to the CA is blocked, set
+`ocsp-stapling #false`, or expect one warning per certificate and a rising
+failure count.
+
+| Metric | Labels | Meaning |
+|--------|--------|---------|
+| `zentinel_tls_ocsp_fetch_total` | `listener`, `result` | OCSP fetch attempts by outcome: `success`, `failure`, `invalid`, `revoked`, `no_issuer` |
+| `zentinel_tls_ocsp_stapled_certificates` | `listener` | Certificates currently carrying a staple |
+
+Check a listener with:
+
+```bash
+openssl s_client -connect example.com:443 -servername example.com -status </dev/null 2>/dev/null | grep -A3 'OCSP Response Status'
+```
 
 ### Custom Cipher Suites
 
-```kdl
+```fragment,kdl
 tls {
     cipher-suite "TLS_AES_256_GCM_SHA384"
     cipher-suite "TLS_CHACHA20_POLY1305_SHA256"
@@ -426,7 +640,7 @@ configuration whenever one is added or removed. An `sni-certs` block instead
 points at a folder, and every certificate/key pair found there is registered
 with the hostnames from its own CN and SANs.
 
-```kdl
+```fragment,kdl
 tls {
     cert-file "/etc/zentinel/certs/default.crt"
     key-file "/etc/zentinel/certs/default.key"
@@ -547,7 +761,7 @@ configuration is written.
 
 Two ways out:
 
-```kdl
+```fragment,kdl
 tls {
     // Accept overlaps: the first certificate in sorted path order wins.
     // Deterministic across machines and reloads, unlike directory order.
@@ -656,7 +870,7 @@ A `sni` block must specify exactly one cert source. The parser rejects both stat
 
 When an SNI block has an `acme` block but no explicit `hostnames`, the routing hostnames are derived from `acme.domains`. This avoids having to repeat the same domain list in two places:
 
-```kdl
+```fragment,kdl
 sni {
     // No hostnames — taken from acme.domains below.
     acme {
@@ -851,7 +1065,7 @@ listener "https" {
 
 #### Cloudflare DNS Provider
 
-```kdl
+```fragment,kdl
 dns-provider {
     type "cloudflare"
     credentials-file "/etc/zentinel/secrets/cloudflare-token.txt"
@@ -872,7 +1086,7 @@ Zone IDs are resolved and cached automatically from the domain name.
 
 #### Hetzner DNS Provider
 
-```kdl
+```fragment,kdl
 dns-provider {
     type "hetzner"
     credentials-file "/etc/zentinel/secrets/hetzner.json"
@@ -890,7 +1104,7 @@ Credential file format:
 
 For custom DNS integrations, use the webhook provider:
 
-```kdl
+```fragment,kdl
 dns-provider {
     type "webhook"
     url "https://dns-api.internal/v1"
@@ -947,7 +1161,7 @@ Security: Credential files should have mode `0600` or `0400`.
 
 By default, Zentinel uses Let's Encrypt. To use a different ACME-compatible CA (ZeroSSL, BuyPass, Step-ca), set `server-url` to the CA's directory URL. Some CAs also require External Account Binding (EAB) credentials.
 
-```kdl
+```fragment,kdl
 tls {
     acme {
         email "admin@example.com"
@@ -976,7 +1190,7 @@ When `server-url` is set, the `staging` option is ignored.
 
 Zentinel allows configuring the key algorithm for ACME certificates:
 
-```kdl
+```fragment,kdl
 tls {
     acme {
         email "admin@example.com"
@@ -997,7 +1211,7 @@ Invalid values produce a config parse error.
 
 Use Let's Encrypt's staging environment for testing to avoid rate limits:
 
-```kdl
+```fragment,kdl
 tls {
     acme {
         email "admin@example.com"
@@ -1043,6 +1257,17 @@ Certificates are automatically renewed when they're within `renew-before-days` o
 - Let's Encrypt certificates are valid for 90 days
 - After renewal, certificates are hot-reloaded without restart
 
+#### CA-suggested renewal windows (ARI)
+
+When the ACME server supports ACME Renewal Information ([RFC 9773](https://www.rfc-editor.org/rfc/rfc9773)), as Let's Encrypt does, Zentinel also asks the CA *when* each certificate should be renewed, and renews at a random point inside the window the CA suggests. Nothing needs configuring: support is detected from the CA's directory.
+
+- **`renew-before-days` is still a hard floor.** A certificate within `renew-before-days` of expiry is renewed whatever the CA's window says, so ARI can make a renewal earlier, never later.
+- **Early renewal on revocation.** If the CA moves the window forward (for example, to replace certificates ahead of a mass revocation), Zentinel picks a new time inside the new window. The CA's explanation URL, if it gives one, is logged.
+- **Spread out.** Picking a random time inside the window keeps a fleet of proxies from renewing at the same moment.
+- **Linked renewals.** Renewal orders name the certificate they replace, which Let's Encrypt exempts from rate limits. If the CA rejects that, the order is retried once without it.
+- **Cooldown.** A certificate is not renewed through ARI until it is 24 hours old. Expiry-based renewal is not subject to this.
+- **CAs without ARI** keep the behaviour above: renewal at `renew-before-days`, checked every 12 hours. While the CA's renewal-information endpoint is unreachable, Zentinel retries with backoff and falls back to `renew-before-days`.
+
 ### Combining ACME with Manual Certificates
 
 You can use ACME alongside manually managed certificates:
@@ -1078,7 +1303,7 @@ When both ACME and manual certificates are configured, manual certificates are u
 
 Request a single certificate covering multiple domains:
 
-```kdl
+```fragment,kdl
 tls {
     acme {
         email "admin@example.com"
@@ -1127,6 +1352,7 @@ Error: Permission denied writing to storage directory
 Check the Zentinel logs for renewal status. Renewals are attempted:
 - Every 12 hours (check interval)
 - When certificate is within `renew-before-days` of expiry
+- At the time selected inside the CA's suggested renewal window, if the CA supports ARI (see [CA-suggested renewal windows](#ca-suggested-renewal-windows-ari))
 
 Manually trigger a reload to force renewal check:
 ```bash
@@ -1151,7 +1377,7 @@ listeners {
         }
     }
 
-    // HTTP redirect to HTTPS
+    // HTTP redirect to HTTPS (route and filter below)
     listener "http-redirect" {
         address "0.0.0.0:80"
         protocol "http"
@@ -1160,7 +1386,7 @@ listeners {
 
     // Admin interface (localhost only)
     listener "admin" {
-        address "127.0.0.1:9090"
+        address "127.0.0.1:9901"  // 9090 is taken by the metrics server
         protocol "http"
     }
 
@@ -1174,6 +1400,21 @@ listeners {
             ca-file "/etc/zentinel/certs/internal-ca.crt"
             client-auth #true
         }
+    }
+}
+routes {
+    // Every request on the port-80 listener is redirected to HTTPS
+    route "https-redirect" {
+        priority "low"
+        filters "to-https"
+    }
+}
+
+filters {
+    filter "to-https" {
+        type "redirect"
+        scheme "https"
+        status-code 301
     }
 }
 ```
@@ -1202,7 +1443,7 @@ cat server.crt intermediate.crt > fullchain.crt
 
 Then reference the full chain:
 
-```kdl
+```fragment,kdl
 tls {
     cert-file "/etc/zentinel/certs/fullchain.crt"
     key-file "/etc/zentinel/certs/server.key"
@@ -1230,21 +1471,19 @@ system {
 listeners {
     // Production HTTPS with modern TLS
     listener "https" {
-
-                tls {
-                    cert-file "/etc/zentinel/certs/fullchain.crt"
-                    key-file "/etc/zentinel/certs/server.key"
-                    min-version "1.2"
-                    max-version "1.3"
-                    ocsp-stapling #true
-                    session-resumption #true
-                }
         address "0.0.0.0:443"
         protocol "https"
         request-timeout-secs 60
         keepalive-timeout-secs 120
         max-concurrent-streams 200
-
+        tls {
+            cert-file "/etc/zentinel/certs/fullchain.crt"
+            key-file "/etc/zentinel/certs/server.key"
+            min-version "1.2"
+            max-version "1.3"
+            ocsp-stapling #true
+            session-resumption #true
+        }
     }
 
     // HTTP to HTTPS redirect
@@ -1257,7 +1496,7 @@ listeners {
 
     // Admin and metrics (internal only)
     listener "admin" {
-        address "127.0.0.1:9090"
+        address "127.0.0.1:9901"  // 9090 is taken by the metrics server
         protocol "http"
         request-timeout-secs 10
     }
@@ -1267,6 +1506,19 @@ routes {
     route "default" {
         matches { path-prefix "/" }
         upstream "backend"
+    }
+
+    route "redirect-https" {
+        priority "low"
+        filters "to-https"
+    }
+}
+
+filters {
+    filter "to-https" {
+        type "redirect"
+        scheme "https"
+        status-code 301
     }
 }
 
@@ -1285,6 +1537,7 @@ upstreams {
 | `request-timeout-secs` | `60` |
 | `keepalive-timeout-secs` | `75` |
 | `max-concurrent-streams` | `100` |
+| `trusted-proxies` | none (no peer trusted) |
 | `tls.min-version` | `1.2` |
 | `tls.ocsp-stapling` | `true` |
 | `tls.session-resumption` | `true` |

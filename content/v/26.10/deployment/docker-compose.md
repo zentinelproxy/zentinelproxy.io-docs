@@ -1,7 +1,7 @@
 +++
 title = "Docker Compose"
 weight = 4
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 Docker Compose provides a straightforward way to deploy Zentinel with agents as containers. This guide covers local development and small production setups.
@@ -256,17 +256,30 @@ networks:
 
 ```kdl
 system {
-    listen "0.0.0.0:8080"
-    listen "0.0.0.0:8443" {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+    listener "https" {
+        address "0.0.0.0:8443"
+        protocol "https"
         tls {
-            cert "/etc/zentinel/tls/cert.pem"
-            key "/etc/zentinel/tls/key.pem"
+            cert-file "/etc/zentinel/tls/cert.pem"
+            key-file "/etc/zentinel/tls/key.pem"
         }
     }
 }
 
-admin {
-    listen "0.0.0.0:9090"
+// Prometheus metrics on 9090
+observability {
+    metrics {
+        enabled #true
+        address "0.0.0.0:9090"
+    }
 }
 
 agents {
@@ -274,13 +287,25 @@ agents {
         unix-socket "/var/run/zentinel/auth.sock"
         events "request_headers"
         timeout-ms 50
-        failure-mode "closed"
     }
 
     agent "echo" type="custom" {
         unix-socket "/var/run/zentinel/echo.sock"
         events "request_headers"
         timeout-ms 50
+    }
+}
+
+// Routes attach agents through filters
+filters {
+    filter "auth" {
+        type "agent"
+        agent "auth"
+        failure-mode "closed"
+    }
+    filter "echo" {
+        type "agent"
+        agent "echo"
         failure-mode "open"
     }
 }
@@ -295,13 +320,13 @@ routes {
     route "api" {
         matches { path-prefix "/api/" }
         upstream "backend"
-        agents "auth"
+        filters "auth"
     }
 
     route "default" {
         matches { path-prefix "/" }
         upstream "backend"
-        agents "echo"
+        filters "echo"
     }
 }
 ```

@@ -4,6 +4,10 @@ title = "Agents"
 weight = 8
 sort_by = "weight"
 template = "section.html"
+
+[extra]
+# The body already links every child page; skip the theme's auto-generated list.
+hide_children = true
 +++
 
 Agents are the primary extension mechanism for Zentinel. They allow you to add custom logic, security policies, and integrations without modifying the core proxy.
@@ -63,7 +67,7 @@ Zentinel's architecture keeps the dataplane minimal and predictable:
 | Benefit | Description |
 |---------|-------------|
 | **Isolation** | A buggy or crashing agent cannot take down the proxy |
-| **Independent Deployment** | Update agents without restarting Zentinel |
+| **Independent Deployment** | Agents are separate processes: restart or upgrade one and the proxy reconnects to it (since 26.10_4; see [#528](https://github.com/zentinelproxy/zentinel/issues/528)) |
 | **Language Flexibility** | Write agents in any language with gRPC or Unix socket support |
 | **Circuit Breakers** | Zentinel protects itself from slow or failing agents |
 | **Horizontal Scaling** | Run agents as separate services for high availability |
@@ -85,19 +89,15 @@ agents {
     // Unix socket agent with pooling
     agent "auth-agent" type="auth" {
         unix-socket "/var/run/zentinel/auth.sock"
-        connections 4
         events "request_headers"
         timeout-ms 100
-        failure-mode "closed"
     }
 
     // gRPC agent
     agent "waf-agent" type="waf" {
         grpc "http://localhost:50051"
-        connections 4
         events "request_headers" "request_body"
         timeout-ms 200
-        failure-mode "open"
         circuit-breaker {
             failure-threshold 5
             timeout-seconds 30
@@ -105,21 +105,33 @@ agents {
     }
 }
 
-// Reverse connection listener
-reverse-listener {
-    path "/var/run/zentinel/agents.sock"
-    max-connections-per-agent 4
-    handshake-timeout "10s"
+// Routes attach agents through filters
+filters {
+    filter "auth" {
+        type "agent"
+        agent "auth-agent"
+        failure-mode "closed"
+    }
+    filter "waf" {
+        type "agent"
+        agent "waf-agent"
+        failure-mode "open"
+    }
 }
 
 routes {
     route "api" {
         matches { path-prefix "/api/" }
         upstream "backend"
-        agents "auth-agent" "waf-agent"
+        filters "auth" "waf"
     }
 }
 ```
+
+Reverse connections (agents dialing in to Zentinel) exist in the agent
+protocol (`zentinel-agent-protocol`), but as of 26.10_3 no `reverse-listener`
+block is read from the KDL configuration. See
+[Reverse Connections](@/agents/v2/reverse-connections.md).
 
 ## Building Your Own Agent
 

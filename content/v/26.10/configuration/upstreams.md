@@ -1,7 +1,7 @@
 +++
 title = "Upstreams"
 weight = 5
-updated = 2026-09-02
+updated = 2026-10-20
 +++
 
 The `upstreams` block defines backend server pools. Each upstream contains one or more targets with load balancing, health checks, and connection pooling.
@@ -24,34 +24,61 @@ upstreams {
 ### Target Definition
 
 ```kdl
-target "10.0.1.1:8080" weight=3 max-requests=1000
-target "10.0.1.2:8080" weight=2
-target "10.0.1.3:8080" weight=1
+upstream "backend" {
+    target "10.0.1.1:8080" weight=3
+    target "10.0.1.2:8080" weight=2
+    target "10.0.1.3:8080" weight=1
+}
 ```
 
 | Option | Default | Description |
 |--------|---------|-------------|
 | `address` | Required | Target address (`host:port`) |
 | `weight` | `1` | Weight for weighted load balancing |
-| `max-requests` | None | Maximum concurrent requests to this target |
+
+The target parser reads only the address and `weight` (as a property,
+`weight=2`, or in the block form `target { address "10.0.1.1:8080"; weight 2 }`).
+A per-target `max-requests` limit is not configurable from KDL as of 26.10_3.
+
+### Host-name Targets
+
+A target can be a host name (`target "backend.internal:8080"`) instead of an IP
+address. From 26.10_7:
+
+- The name is resolved without blocking a worker thread, and the answer is
+  cached. An answer is reused for 5 seconds, then refreshed in the background
+  while requests keep using it. A request waits for DNS only on first use, or
+  once refreshes have failed for 60 seconds; the old answer is then dropped,
+  and the request fails if the new lookup fails too.
+- An address that fails to connect is skipped for 30 seconds, and the request
+  is retried on the name's other addresses. So `target "localhost:8080"`
+  reaches a backend that listens only on `127.0.0.1`, although `localhost`
+  usually resolves to `::1` first.
+
+The retry goes back through target selection, so with several targets it can
+land on another target. If the route has a
+[`retry-policy`](/configuration/routes/#retry-policy), it uses one of its
+attempts. Targets given as IP addresses are never retried this way. With a
+[health check](#health-check-behavior), addresses the check marks unhealthy are
+skipped first.
+
+Before 26.10_7 a host-name target was resolved with a blocking lookup on every
+request, and without a health check only its first resolved address was ever
+dialled.
 
 ### Target Metadata
 
-```kdl
-target "10.0.1.1:8080" {
-    metadata {
-        "zone" "us-east-1a"
-        "version" "v2.1.0"
-    }
-}
-```
-
-Metadata is available for custom load balancing decisions and observability.
+Per-target `metadata` is not configurable from KDL as of 26.10_3: the target
+parser reads only the address and weight, so a `metadata { }` block inside a
+`target` is ignored. (Zones for locality-aware balancing are written into the
+address instead; see [Locality-Aware](#locality-aware).)
 
 ## Load Balancing
 
 ```kdl
 upstream "backend" {
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
     load-balancing "round_robin"
 }
 ```
@@ -74,11 +101,14 @@ upstream "backend" {
 | `locality_aware` | Zone-aware routing with fallback strategies |
 | `deterministic_subset` | Subset of backends per proxy (large clusters) |
 | `least_tokens_queued` | Token-based selection for LLM workloads |
+| `sticky` | Cookie-based session affinity, see [Sticky Sessions](#sticky-sessions) |
 
 ### Round Robin
 
 ```kdl
 upstream "backend" {
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
     load-balancing "round_robin"
 }
 ```
@@ -126,6 +156,8 @@ Traffic distributed proportionally to weights. Use for:
 
 ```kdl
 upstream "backend" {
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
     load-balancing "least_connections"
 }
 ```
@@ -139,18 +171,56 @@ Routes to the target with the fewest active connections. Best for:
 
 ```kdl
 upstream "backend" {
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
     load-balancing "ip_hash"
 }
 ```
 
 Consistent routing based on client IP. Provides session affinity without cookies.
 
-**Note:** Clients behind shared NAT will route to the same target.
+**Note:** Clients behind shared NAT will route to the same target. Behind a load
+balancer, list it in the listener's
+[`trusted-proxies`](/configuration/listeners/#trusted-proxies) so the hash uses
+the client's address from `X-Forwarded-For` rather than the load balancer's.
+
+Before 26.10_5 no client address reached peer selection: `ip_hash` sent every
+client to the same target, and `consistent_hash` did not hash on the client.
+
+### Sticky Sessions
+
+```kdl
+upstreams {
+    upstream "backend" {
+        target "10.0.1.1:8080"
+        target "10.0.1.2:8080"
+        load-balancing "sticky" {
+            cookie-name "SERVERID"     // default "SERVERID"
+            cookie-ttl 3600            // seconds, or a duration such as "1h"
+            cookie-path "/"
+            cookie-secure #true        // default #true
+            cookie-same-site "lax"     // "strict", "lax" or "none"
+            fallback "round_robin"     // algorithm for requests without a valid cookie
+        }
+    }
+}
+```
+
+The proxy sets a signed affinity cookie and sends later requests
+with that cookie to the same target. A request without a valid cookie is
+balanced with `fallback` (default `round_robin`).
+
+An unknown `fallback` or `cookie-same-site` value keeps the default (round
+robin, `lax`). From 26.10_6 it is logged at load and reported by
+`zentinel test` and `zentinel lint` as "is being ignored", with a suggestion
+for a misspelled algorithm; before, it was used silently.
 
 ### Consistent Hash
 
 ```kdl
 upstream "backend" {
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
     load-balancing "consistent_hash"
 }
 ```
@@ -164,6 +234,8 @@ Consistent hashing minimizes redistribution when targets are added/removed. Idea
 
 ```kdl
 upstream "backend" {
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
     load-balancing "power_of_two_choices"
 }
 ```
@@ -177,6 +249,8 @@ Randomly selects two targets, routes to the one with fewer connections. Provides
 
 ```kdl
 upstream "backend" {
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
     load-balancing "adaptive"
 }
 ```
@@ -252,6 +326,8 @@ If `api-2` starts responding slowly, traffic automatically shifts to `api-1` and
 
 ```kdl
 upstream "cache-cluster" {
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
     load-balancing "maglev"
 }
 ```
@@ -281,6 +357,8 @@ Google's Maglev consistent hashing algorithm provides O(1) lookup with minimal d
 
 ```kdl
 upstream "api" {
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
     load-balancing "peak_ewma"
 }
 ```
@@ -317,6 +395,8 @@ For each request, Peak EWMA:
 
 ```kdl
 upstream "global-api" {
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
     load-balancing "locality_aware"
 }
 ```
@@ -325,29 +405,25 @@ Prefers targets in the same zone or region as the proxy, falling back to other z
 
 #### Zone Configuration
 
-Zones can be specified in target metadata or parsed from addresses:
+A target's zone is taken from a prefix on its address, `zone/host:port` (or
+`zone=zone,host:port`); targets without a prefix are in zone `unknown`. The
+proxy's own zone comes from the `ZENTINEL_ZONE` environment variable (then
+`ZONE`, then `REGION`; `default` if none is set).
 
 ```kdl
-target "10.0.1.1:8080" {
-    metadata { "zone" "us-east-1a" }
-}
-target "10.0.1.2:8080" {
-    metadata { "zone" "us-east-1b" }
-}
-target "10.0.2.1:8080" {
-    metadata { "zone" "us-west-2a" }
+upstream "global-api" {
+    load-balancing "locality_aware"
+    target "us-east-1a/10.0.1.1:8080"
+    target "us-east-1b/10.0.1.2:8080"
+    target "us-west-2a/10.0.2.1:8080"
 }
 ```
 
-#### Fallback Strategies
+#### Fallback
 
-When no local targets are healthy:
-
-| Strategy | Behavior |
-|----------|----------|
-| `round_robin` | Round-robin across all healthy targets (default) |
-| `random` | Random selection from all healthy targets |
-| `fail_local` | Return error if no local targets available |
+When no local targets are healthy, requests are spread round-robin across the
+healthy targets in other zones. The fallback strategy is not configurable from
+KDL as of 26.10_3.
 
 #### When to Use Locality-Aware
 
@@ -361,6 +437,8 @@ When no local targets are healthy:
 
 ```kdl
 upstream "large-cluster" {
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
     load-balancing "deterministic_subset"
 }
 ```
@@ -391,6 +469,8 @@ For very large clusters (1000+ backends), limits each proxy instance to a determ
 
 ```kdl
 upstream "mixed-capacity" {
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
     load-balancing "weighted_least_conn"
 }
 ```
@@ -453,6 +533,8 @@ upstreams {
 
 ```kdl
 upstream "llm-backend" {
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
     load-balancing "least_tokens_queued"
 }
 ```
@@ -480,6 +562,8 @@ Specialized algorithm for LLM/inference workloads. Selects the backend with the 
 
 ```kdl
 upstream "backend" {
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
     health-check {
         type "http" {
             path "/health"
@@ -502,10 +586,18 @@ upstream "backend" {
 | `healthy-threshold` | `2` | Successes to mark healthy |
 | `unhealthy-threshold` | `3` | Failures to mark unhealthy |
 
+The HTTP check sends a `GET` for `path` with a `Host` header (`host`, or `localhost` if unset),
+and counts the target healthy when the status equals `expected-status` and the
+answer arrives within `timeout-secs`. Before 26.10_5 only `200` counted, the
+timeout was a fixed second, and probes for a `path` other than `/` were sent
+without a `Host` header.
+
 ### TCP Health Check
 
 ```kdl
 upstream "database" {
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
     health-check {
         type "tcp"
         interval-secs 5
@@ -520,6 +612,8 @@ Simple TCP connection check. Use for non-HTTP services.
 
 ```kdl
 upstream "grpc-service" {
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
     health-check {
         type "grpc" {
             service "my.service.Name"
@@ -649,7 +743,7 @@ selection until it satisfies it again, subject to `healthy-threshold` and
 Written on one line, `expected-tools` is swallowed as an argument to `path` and
 the check silently degrades to liveness only:
 
-```kdl
+```fragment,kdl
 // Wrong — expected-tools is read as an argument to path
 type "mcp" { path "/mcp" expected-tools "search_docs" }
 
@@ -666,11 +760,50 @@ type "mcp" {
 
 When a target fails health checks:
 
-1. Target marked **unhealthy** after `unhealthy-threshold` failures
-2. Traffic stops routing to unhealthy target
+1. Target marked **unhealthy** after `unhealthy-threshold` consecutive failures
+2. Traffic stops routing to the unhealthy target, under every load-balancing algorithm
 3. Health checks continue at `interval-secs`
-4. Target marked **healthy** after `healthy-threshold` successes
-5. Traffic resumes to recovered target
+4. Target marked **healthy** after `healthy-threshold` consecutive successes
+5. Traffic resumes to the recovered target
+
+If every target of an upstream is unhealthy, requests routed to it get
+**`503 Service Unavailable`**; Zentinel does not fall back to sending traffic
+to failing targets. A successful proxied request does not put a target back
+into rotation while its check is failing.
+
+Each target is probed once per `interval-secs`, and each upstream on its own
+interval. Upstreams that get their targets from [`discovery`](#service-discovery)
+are probed at the discovered addresses.
+
+Health checks follow configuration reloads. On `SIGHUP`, a `health-check`
+added to an upstream starts probing, a changed one restarts with the new
+settings and a clean slate, and a removed one stops and returns every target to
+rotation. Upstreams whose check did not change keep their health state.
+
+From 26.10_6, targets given as a host name (`target "backend.internal:80"`)
+are health-checked:
+
+- The name is resolved at the start of every probe cycle, and **every**
+  resolved address is probed, with the same `Host` as for an IP target.
+- The target is healthy while any of its addresses is. If the name fails to
+  resolve for `unhealthy-threshold` cycles, the target is marked unhealthy.
+- When a request is sent to the target, the proxy dials the first resolved
+  address the checker has not marked unhealthy. For `localhost`, which
+  often resolves to `::1` first, an IPv4-only backend is therefore reached reliably.
+
+From 26.10_7 a host-name target without a health check also falls back across
+its addresses: one that refuses a connection is skipped for 30 seconds, and
+the request is retried on the others. See
+[Host-name Targets](#host-name-targets).
+
+Before 26.10_6 host-name targets were never probed and stayed in rotation
+whatever their state, and the proxy always dialled the first resolved address.
+
+**Before 26.10_5:** probe results were not used for routing (a failing target
+kept its share of traffic, and with all targets failing requests still went to
+them), a reload did not start, change or stop checks, every target was probed
+twice per interval, and discovery-backed upstreams were not probed. Restart
+the proxy after changing a health check on those releases.
 
 ## Connection Pool
 
@@ -808,6 +941,32 @@ Circuit breaker states:
 - **Closed**: Normal operation, requests flow through
 - **Open**: Requests fail immediately (circuit tripped)
 - **Half-Open**: Limited requests to test recovery
+
+## HTTP/2 over Cleartext (h2c) {#h2c}
+
+An upstream without `tls` is spoken to over HTTP/1.1. For a trusted internal
+backend that speaks HTTP/2 without TLS, set `h2c #true` (from 26.10_11):
+
+```kdl
+upstreams {
+    upstream "grpc-internal" {
+        target "10.0.2.1:50051"
+        h2c #true
+    }
+}
+```
+
+- HTTP/2 is used with prior knowledge. There is no negotiation and no
+  fallback: a backend that does not speak HTTP/2 fails the request.
+- `zentinel test` rejects `h2c` together with a `tls` block, `max-version 1`
+  or `min-version 1`.
+- `http-version { min-version 2 }` on an upstream without `tls` is a
+  configuration error that points to `h2c` (it used to be served over HTTP/1.1
+  without a word).
+- Gateway API GRPCRoute backends use h2c automatically.
+
+See [Performance Tuning: HTTP/2 to upstreams](/operations/performance-tuning/#http-2-to-upstreams)
+for `max-h2-streams` and the other `http-version` settings.
 
 ## Upstream TLS
 
@@ -1446,7 +1605,7 @@ upstream "backend" {
 
 ### Discovery with Health Checks
 
-Discovery works with health checks. Unhealthy discovered backends are temporarily removed:
+Discovery works with health checks. From 26.10_5, discovered backends are probed and unhealthy ones are taken out of rotation until they pass again (before, discovery-backed upstreams were not probed):
 
 ```kdl
 upstream "api" {

@@ -1,7 +1,7 @@
 +++
 title = "Agentic Protocols"
 weight = 12
-updated = 2026-09-03
+updated = 2026-10-19
 +++
 
 Zentinel understands the Model Context Protocol (MCP) and Agent2Agent (A2A)
@@ -95,20 +95,24 @@ downstream makes decisions from them.
 ### Settings
 
 ```kdl
-mcp {
-    require-validated-version #true       // default
-    validate-param-headers #true          // default
-    filter-tool-list #true                // default
-    on-uninspectable-body "deny"          // default
+route "mcp" {
+    matches { path-prefix "/mcp" }
+    upstream "mcp-server"
+    mcp {
+        require-validated-version #true       // default
+        validate-param-headers #true          // default
+        filter-tool-list #true                // default
+        on-uninspectable-body "deny"          // default
 
-    methods {
-        allow "tools/call" "tools/list"
-        deny "resources/read"
-    }
+        methods {
+            allow "tools/call" "tools/list"
+            deny "resources/read"
+        }
 
-    tools {
-        allow "get_weather" "search_docs"
-        deny "execute_sql"
+        tools {
+            allow "get_weather" "search_docs"
+            deny "execute_sql"
+        }
     }
 }
 ```
@@ -144,9 +148,13 @@ responses exactly the entries it would refuse a call to. What is advertised and
 what is permitted become the same set.
 
 ```kdl
-mcp {
-    tools {
-        allow "search_docs" "get_weather"
+route "mcp" {
+    matches { path-prefix "/mcp" }
+    upstream "mcp-server"
+    mcp {
+        tools {
+            allow "search_docs" "get_weather"
+        }
     }
 }
 ```
@@ -305,6 +313,11 @@ A **tool call** is proxied. It goes to exactly one upstream, so it takes the
 normal path and gets the connection pool, the route's retry policy and the
 upstream's TLS settings.
 
+The call's body is read to resolve the tool, then forwarded; from 26.10_5 that
+works for any body up to the 1 MiB inspection limit. Before 26.10_5 a call
+body over 64 KiB was read but could not be forwarded, so the request could
+stall until the upstream timed out.
+
 A **listing** is not, and cannot be: merging means asking several servers and
 composing one answer, which is not proxying. Zentinel makes those requests
 itself. The same is true of the one `initialize` handshake per upstream, which
@@ -412,9 +425,13 @@ A common shape is a read-only route — task state may be queried, but nothing m
 ask the agent to begin work:
 
 ```kdl
-a2a {
-    methods {
-        deny "SendMessage" "SendStreamingMessage"
+route "a2a" {
+    matches { path-prefix "/a2a" }
+    upstream "agent"
+    a2a {
+        methods {
+            deny "SendMessage" "SendStreamingMessage"
+        }
     }
 }
 ```

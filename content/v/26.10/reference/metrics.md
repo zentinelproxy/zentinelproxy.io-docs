@@ -1,25 +1,40 @@
 +++
 title = "Metrics Reference"
 weight = 4
-updated = 2026-02-19
+updated = 2026-10-20
 +++
 
 Prometheus metrics exposed by Zentinel for monitoring and alerting.
 
 ## Metrics Endpoint
 
-Metrics are available at the `/metrics` endpoint on the admin listener:
+Metrics are served by a dedicated metrics server, enabled by default on
+`0.0.0.0:9090` at `/metrics`:
 
 ```bash
 curl http://localhost:9090/metrics
 ```
 
-Configure the admin listener:
+Configure it in the `observability` block:
+
+```kdl
+observability {
+    metrics {
+        enabled #true
+        address "127.0.0.1:9090"
+        path "/metrics"
+    }
+}
+```
+
+Alternatively, serve metrics from a route with the built-in handler, on a
+listener whose port differs from the metrics server's (the two cannot share a
+port):
 
 ```kdl
 listeners {
     listener "admin" {
-        address "127.0.0.1:9090"
+        address "127.0.0.1:9091"
         protocol "http"
     }
 }
@@ -121,111 +136,22 @@ Response body size histogram.
 
 ## Scoped Metrics
 
-When using [namespaces and services](../../configuration/namespaces/), additional metrics with scope labels are available.
+The `zentinel_scoped_*` metrics (`zentinel_scoped_requests_total`,
+`zentinel_scoped_request_duration_seconds`, `zentinel_scoped_active_requests`,
+`zentinel_scoped_upstream_attempts_total`,
+`zentinel_scoped_upstream_failures_total`,
+`zentinel_scoped_rate_limit_hits_total` and
+`zentinel_scoped_circuit_breaker_state`, with `namespace` and `service`
+labels) are not emitted.
 
-### zentinel_scoped_request_duration_seconds
+Routes and upstreams of [namespaces and services](../../configuration/namespaces/)
+appear in the metrics on this page under their qualified ids, from 26.10_7:
+`route="ns:route"` or `route="ns:svc:route"`, and `upstream="ns:name"`. Select
+a scope by prefix:
 
-Request latency with namespace/service labels.
-
-| Type | Labels | Description |
-|------|--------|-------------|
-| Histogram | `namespace`, `service`, `route`, `method` | Request duration in seconds |
-
-**Example queries:**
 ```promql
-# P99 latency by namespace
-histogram_quantile(0.99,
-  sum(rate(zentinel_scoped_request_duration_seconds_bucket[5m])) by (le, namespace))
-
-# Compare latency across services
-histogram_quantile(0.95,
-  sum(rate(zentinel_scoped_request_duration_seconds_bucket[5m])) by (le, namespace, service))
-```
-
-### zentinel_scoped_requests_total
-
-Request counter with namespace/service labels.
-
-| Type | Labels | Description |
-|------|--------|-------------|
-| Counter | `namespace`, `service`, `route`, `method`, `status` | Total requests |
-
-**Example queries:**
-```promql
-# Request rate by namespace
-sum(rate(zentinel_scoped_requests_total[5m])) by (namespace)
-
-# Error rate by service
-sum(rate(zentinel_scoped_requests_total{status=~"5.."}[5m])) by (namespace, service)
-  / sum(rate(zentinel_scoped_requests_total[5m])) by (namespace, service)
-
-# Top 10 busiest services
-topk(10, sum(rate(zentinel_scoped_requests_total[5m])) by (namespace, service))
-```
-
-### zentinel_scoped_active_requests
-
-Active requests gauge with namespace/service labels.
-
-| Type | Labels | Description |
-|------|--------|-------------|
-| Gauge | `namespace`, `service` | In-flight requests per scope |
-
-### zentinel_scoped_upstream_attempts_total
-
-Upstream attempts with scope labels.
-
-| Type | Labels | Description |
-|------|--------|-------------|
-| Counter | `namespace`, `service`, `upstream`, `route` | Connection attempts |
-
-### zentinel_scoped_upstream_failures_total
-
-Upstream failures with scope labels.
-
-| Type | Labels | Description |
-|------|--------|-------------|
-| Counter | `namespace`, `service`, `upstream`, `route`, `reason` | Connection failures |
-
-**Example queries:**
-```promql
-# Failure rate by namespace
-sum(rate(zentinel_scoped_upstream_failures_total[5m])) by (namespace)
-  / sum(rate(zentinel_scoped_upstream_attempts_total[5m])) by (namespace)
-```
-
-### zentinel_scoped_rate_limit_hits_total
-
-Rate limit hits with scope labels.
-
-| Type | Labels | Description |
-|------|--------|-------------|
-| Counter | `namespace`, `service`, `route`, `policy` | Rate limit violations |
-
-**Example queries:**
-```promql
-# Rate limit hits by namespace
-sum(rate(zentinel_scoped_rate_limit_hits_total[5m])) by (namespace)
-
-# Services hitting rate limits
-sum(rate(zentinel_scoped_rate_limit_hits_total[5m])) by (namespace, service) > 0
-```
-
-### zentinel_scoped_circuit_breaker_state
-
-Circuit breaker state with scope labels.
-
-| Type | Labels | Description |
-|------|--------|-------------|
-| Gauge | `namespace`, `service`, `upstream` | State: 0=closed, 1=open |
-
-**Example queries:**
-```promql
-# Open circuit breakers by namespace
-zentinel_scoped_circuit_breaker_state == 1
-
-# Count of open circuit breakers per namespace
-count(zentinel_scoped_circuit_breaker_state == 1) by (namespace)
+# Request rate per route of namespace "api"
+sum(rate(zentinel_requests_total{route=~"api:.*"}[5m])) by (route)
 ```
 
 ## Upstream Metrics
@@ -386,6 +312,28 @@ TLS handshake duration.
 | Histogram | `version` | Handshake duration |
 
 **Version values:** `TLS1.2`, `TLS1.3`
+
+### zentinel_tls_ocsp_fetch_total
+
+OCSP response fetches for stapling, by outcome (from 26.10_11). See
+[Listeners: OCSP Stapling](/configuration/listeners/#ocsp-stapling).
+
+| Type | Labels | Description |
+|------|--------|-------------|
+| Counter | `listener`, `result` | OCSP fetch attempts |
+
+**Result values:** `success`, `failure` (responder unreachable or HTTP error),
+`invalid` (unusable response), `revoked` (status not `good`), `no_issuer`
+(`cert-file` has no issuer certificate)
+
+### zentinel_tls_ocsp_stapled_certificates
+
+Certificates on a listener currently served with a valid OCSP staple (from
+26.10_11).
+
+| Type | Labels | Description |
+|------|--------|-------------|
+| Gauge | `listener` | Stapled certificates |
 
 ## System Metrics
 

@@ -1,7 +1,7 @@
 +++
 title = "FAQ"
 weight = 2
-updated = 2026-02-19
+updated = 2026-10-20
 +++
 
 Frequently asked questions about Zentinel.
@@ -37,23 +37,24 @@ Zentinel is under active development. Check the [changelog](../changelog/) for t
 
 ### Where should I put the configuration file?
 
-The default location is `/etc/zentinel/zentinel.kdl`. You can specify a different path with `--config`:
+Anywhere, as long as you tell Zentinel where it is. `/etc/zentinel/zentinel.kdl` is the conventional location. Pass the path with `--config`:
 
 ```bash
 zentinel --config /path/to/zentinel.kdl
 ```
 
-Or set the `ZENTINEL_CONFIG` environment variable.
+Or set the `ZENTINEL_CONFIG` environment variable. With neither, Zentinel does not look for a file: it starts with its embedded default configuration, even if `./zentinel.kdl` or `/etc/zentinel/zentinel.kdl` exists.
 
 ### How do I validate my configuration?
 
-Use the `--test` flag to validate without starting the server:
+Run both checks:
 
 ```bash
-zentinel --test --config zentinel.kdl
+zentinel test --config zentinel.kdl   # anything that would stop the proxy starting, plus ignored settings
+zentinel lint --config zentinel.kdl   # ignored settings and best-practice advice
 ```
 
-Add `--verbose` for detailed validation output.
+A misspelled or misplaced optional setting is not an error: the proxy uses the default. From 26.10_5 `test` prints it as a warning ("… is not a setting in the '…' block and is being ignored") and still exits `0`; `zentinel test --strict` exits `1`. Before 26.10_5 only `lint` reported it. Add `--verbose` for detailed output.
 
 ### How do I reload configuration without downtime?
 
@@ -67,9 +68,15 @@ systemctl reload zentinel
 
 Zentinel validates the new configuration before applying it. If validation fails, the old configuration remains active.
 
+From 26.10_5 a reload also starts, changes and stops health checks. On earlier releases it did not ([#516](https://github.com/zentinelproxy/zentinel/issues/516)): restart after adding or changing a `health-check`. Rate limiters are not rebuilt on reload; restart after changing a rate limit ([#543](https://github.com/zentinelproxy/zentinel/issues/543)).
+
 ### Can I use environment variables in configuration?
 
-Currently, environment variables are not interpolated in KDL configuration files. Use separate configuration files for different environments or generate configuration programmatically.
+No. Environment variables are not interpolated in KDL configuration files: `${VAR}` is kept as literal text. From 26.10_5, `zentinel test` rejects a `${` in a listener address, upstream target or metrics address; before, a listener address passed `test` and then crashed the proxy at startup ([#520](https://github.com/zentinelproxy/zentinel/issues/520)). Use separate configuration files for different environments or generate configuration programmatically (for example with `envsubst`) before starting the proxy.
+
+### Why does a setting have no effect?
+
+Run `zentinel lint` first: a misspelled or misplaced setting is ignored without an error. If `lint` is silent, check [Known Limitations](@/reference/known-limitations.md), which lists settings that are accepted but not applied in the current release.
 
 ## Networking
 
@@ -115,7 +122,11 @@ Zentinel supports TLS 1.2 and TLS 1.3. Configure minimum version in the listener
 ```kdl
 listeners {
     listener "https" {
+        address "0.0.0.0:443"
+        protocol "https"
         tls {
+            cert-file "/path/to/server.crt"
+            key-file "/path/to/server.key"
             min-version "1.2"  // or "1.3"
         }
     }
@@ -129,6 +140,8 @@ Enable client authentication in the TLS block:
 ```kdl
 listeners {
     listener "https" {
+        address "0.0.0.0:443"
+        protocol "https"
         tls {
             cert-file "/path/to/server.crt"
             key-file "/path/to/server.key"
@@ -181,10 +194,15 @@ upstreams {
 Set its weight to 0 or remove it from the configuration and reload:
 
 ```kdl
-// Before
-target "10.0.1.1:8080" weight=1
-// Draining
-target "10.0.1.1:8080" weight=0```
+upstreams {
+    upstream "backend" {
+        // Before: target "10.0.1.1:8080" weight=1
+        // Draining:
+        target "10.0.1.1:8080" weight=0
+        target "10.0.1.2:8080" weight=1
+    }
+}
+```
 
 Existing connections will complete; new requests go to other servers.
 
@@ -199,8 +217,9 @@ curl http://localhost:9090/admin/upstreams
 ```
 
 Common causes:
-- Health endpoint returning non-200 status
-- Health check timeout too short
+- Health endpoint returning a status other than `expected-status` (default `200`)
+- The backend rejecting the probe's `Host` header: the HTTP check sends the check's `host`, or `localhost` when it is not set
+- Health check timeout (`timeout-secs`) too short
 - Network/firewall blocking health checks
 - Upstream server overloaded
 
@@ -220,20 +239,7 @@ Set `worker-threads 0` (the default) to auto-detect based on CPU cores. For most
 
 ### How do I increase connection limits?
 
-Adjust limits in the configuration:
-
-```kdl
-system {
-    max-connections 50000
-}
-
-limits {
-    max-connections-per-client 200
-    max-total-connections 50000
-}
-```
-
-Also increase OS limits:
+From 26.10_6, `limits { max-total-connections max-connections-per-client max-in-flight-requests }` are enforced when set, and unlimited when not (see [Limits](@/configuration/limits.md#concurrency-limits)); raise or remove them. Before 26.10_6 they were accepted and not enforced. `system { max-connections }` is not applied, and `zentinel test` and `lint` report it. Beyond those, the limit you are likely to hit is the operating system's open-file limit. Raise it for the proxy process:
 ```bash
 ulimit -n 65535
 ```

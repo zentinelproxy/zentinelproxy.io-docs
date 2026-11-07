@@ -41,8 +41,8 @@ Each example follows this structure:
 All examples assume Zentinel is installed:
 
 ```bash
-# Install Zentinel
-cargo install zentinel-proxy
+# Install Zentinel (--locked builds with the tested dependency versions)
+cargo install --locked zentinel-proxy
 
 # Run with a configuration
 zentinel -c zentinel.kdl

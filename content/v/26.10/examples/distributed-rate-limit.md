@@ -1,10 +1,25 @@
 +++
 title = "Distributed Rate Limiting"
 weight = 15
-updated = 2026-02-19
+updated = 2026-10-20
 +++
 
 Configure distributed rate limiting across multiple Zentinel instances using Redis or Memcached backends. This example shows how to implement consistent rate limiting in multi-instance deployments.
+
+{% callout(type="warning", title="Build with the distributed feature") %}
+The Redis and memcached backends are used from 26.10_6, and only in a binary
+built with the `distributed-rate-limit` feature. The official release binaries
+and images are built without it: they enforce these filters **per instance**
+and log a warning that the feature is missing. Build from source:
+
+```bash
+cargo build --release -p zentinel-proxy --features distributed-rate-limit
+```
+
+Before 26.10_6 the backends were not used in any build, so every limit on this
+page was enforced per instance. See
+[Filters: Distributed Rate Limiting](/configuration/filters/#distributed-rate-limiting).
+{% end %}
 
 ## Use Case
 
@@ -32,8 +47,8 @@ Configure distributed rate limiting across multiple Zentinel instances using Red
          └──────────────────┼──────────────────┘
                             │
                     ┌───────▼───────┐
-                    │ Redis Cluster │
-                    │   (counters)  │
+                    │     Redis     │
+                    │   (buckets)   │
                     └───────────────┘
 ```
 
@@ -47,7 +62,6 @@ Create `zentinel.kdl`:
 
 system {
     worker-threads 4
-    max-connections 10000
 }
 
 listeners {
@@ -64,7 +78,7 @@ upstreams {
         target "10.0.1.11:8080" weight=1
         target "10.0.1.12:8080" weight=1
 
-        load-balancing "round-robin"
+        load-balancing "round_robin"
 
         health-check {
             type "http" {
@@ -79,7 +93,7 @@ upstreams {
         target "10.0.2.10:8080" weight=1
         target "10.0.2.11:8080" weight=1
 
-        load-balancing "least-connections"
+        load-balancing "least_connections"
     }
 }
 
@@ -296,11 +310,8 @@ observability {
         enabled #true
         address "0.0.0.0:9090"
         path "/metrics"
-        // Rate limit metrics:
-        // - zentinel_rate_limit_requests_total
-        // - zentinel_rate_limit_limited_total
-        // - zentinel_rate_limit_backend_latency_seconds
-        // - zentinel_rate_limit_fallback_total
+        // Refused requests: zentinel_rate_limited_total{route=...}
+        // and zentinel_blocked_requests_total{reason="rate_limited"}
     }
 
     logging {
@@ -315,9 +326,9 @@ observability {
 }
 
 limits {
-    max-header-size-bytes 8192
+    max-header-size 8192
     max-header-count 100
-    max-body-size-bytes 10485760
+    max-body-size 10485760
 }
 ```
 
@@ -330,16 +341,21 @@ limits {
 docker run -d --name redis \
   -p 6379:6379 \
   redis:7-alpine
-
-# Or using Redis Cluster for HA
-docker-compose up -d redis-cluster
 ```
 
+Every instance points `redis-url` at the same server.
+
 ### 2. Start Zentinel
+
+Use a binary built with `--features distributed-rate-limit` (see above):
 
 ```bash
 zentinel -c zentinel.kdl
 ```
+
+A release binary starts too, but logs `Rate limit backend "redis" needs the
+distributed-rate-limit-redis feature, which this build lacks; limiting locally
+(per instance) instead` and limits each instance separately.
 
 ### 3. Start Backend Services
 
@@ -353,18 +369,24 @@ node api/server.js --port 8080 &
 ### Basic Rate Limiting
 
 ```bash
-# Send 150 requests rapidly
-for i in {1..150}; do
+# Send 300 requests rapidly
+for i in {1..300}; do
   curl -s -o /dev/null -w "%{http_code}\n" \
     http://localhost:8080/api/public/test
 done | sort | uniq -c
 ```
 
-Expected output shows 429 responses after limit exceeded:
+`redis-rate-limit` is a token bucket of `burst 200` refilled at `max-rps 100`.
+The first 200 requests empty the bucket, and after that about 100 a second are
+admitted, so a burst of 300 sent faster than a second gets roughly:
 ```
-100 200
- 50 429
+~220 200
+ ~80 429
 ```
+
+Run the same loop against two instances at once: with the Redis backend they
+share one bucket per client, so the total admitted stays the same. On a binary
+without the feature each instance admits its own 200.
 
 ### API Key Rate Limiting
 
@@ -411,6 +433,10 @@ curl http://localhost:9090/metrics | grep rate_limit
 ## Customizations
 
 ### Memcached Backend
+
+memcached 1.6 or later is needed (the meta protocol). From 26.10_6 a URL with
+an IP address (`memcache://10.0.0.5:11211`) connects; before, only a host name
+did.
 
 ```kdl
 filter "memcached-rate-limit" {

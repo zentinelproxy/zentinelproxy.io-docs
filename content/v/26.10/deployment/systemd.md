@@ -1,7 +1,7 @@
 +++
 title = "systemd Deployment"
 weight = 3
-updated = 2026-05-03
+updated = 2026-10-18
 +++
 
 systemd is the recommended deployment method for production Zentinel installations on Linux. It provides robust process supervision, socket activation, resource limits, and integration with system logging.
@@ -103,7 +103,7 @@ sudo cp target/release/zentinel-auth-agent /usr/local/bin/
 # /etc/systemd/system/zentinel.service
 [Unit]
 Description=Zentinel Reverse Proxy
-Documentation=https://zentinelproxy.io/docs/
+Documentation=https://docs.zentinelproxy.io/
 After=network-online.target zentinel-agents.target
 Wants=network-online.target zentinel-agents.target
 
@@ -164,7 +164,7 @@ WantedBy=sockets.target
 # /etc/systemd/system/zentinel-agent@.service
 [Unit]
 Description=Zentinel Agent (%i)
-Documentation=https://zentinelproxy.io/docs/agents/
+Documentation=https://docs.zentinelproxy.io/agents/
 Requires=zentinel-agent@%i.socket
 After=zentinel-agent@%i.socket
 PartOf=zentinel-agents.target
@@ -196,7 +196,7 @@ WantedBy=multi-user.target
 # /etc/systemd/system/zentinel-agents.target
 [Unit]
 Description=Zentinel Agents
-Documentation=https://zentinelproxy.io/docs/agents/
+Documentation=https://docs.zentinelproxy.io/agents/
 
 [Install]
 WantedBy=multi-user.target
@@ -281,17 +281,30 @@ WantedBy=zentinel-agents.target
 // /etc/zentinel/zentinel.kdl
 
 system {
-    listen "0.0.0.0:80"
-    listen "0.0.0.0:443" {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:80"
+        protocol "http"
+    }
+    listener "https" {
+        address "0.0.0.0:443"
+        protocol "https"
         tls {
-            cert "/etc/zentinel/tls/cert.pem"
-            key "/etc/zentinel/tls/key.pem"
+            cert-file "/etc/zentinel/tls/cert.pem"
+            key-file "/etc/zentinel/tls/key.pem"
         }
     }
 }
 
-admin {
-    listen "127.0.0.1:9090"
+// Prometheus metrics, local only
+observability {
+    metrics {
+        enabled #true
+        address "127.0.0.1:9090"
+    }
 }
 
 agents {
@@ -299,24 +312,38 @@ agents {
         unix-socket "/var/run/zentinel/auth.sock"
         events "request_headers"
         timeout-ms 50
-        failure-mode "closed"
     }
 
     agent "waf" type="waf" {
         grpc "http://127.0.0.1:50051"
         events "request_headers" "request_body"
         timeout-ms 100
-        failure-mode "open"
         max-request-body-bytes 1048576
+    }
+}
+
+filters {
+    filter "auth" {
+        type "agent"
+        agent "auth"
+        failure-mode "closed"
+    }
+    filter "waf" {
+        type "agent"
+        agent "waf"
+        failure-mode "open"
     }
 }
 
 upstreams {
     upstream "api" {
-        targets "10.0.1.10:8080" "10.0.1.11:8080"
+        target "10.0.1.10:8080"
+        target "10.0.1.11:8080"
         health-check {
-            path "/health"
-            interval-ms 5000
+            type "http" {
+                path "/health"
+            }
+            interval-secs 5
         }
     }
 }
@@ -325,7 +352,7 @@ routes {
     route "api" {
         matches { path-prefix "/api/" }
         upstream "api"
-        agents "auth" "waf"
+        filters "auth" "waf"
     }
 }
 ```

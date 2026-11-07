@@ -1,7 +1,7 @@
 +++
 title = "Configuration Management"
 weight = 1
-updated = 2026-02-19
+updated = 2026-10-20
 +++
 
 Managing Zentinel configurations across environments.
@@ -49,6 +49,12 @@ listeners {
     }
 }
 ```
+
+From 26.10_6 you can also pass the directory itself, `zentinel -c /etc/zentinel/`.
+Every `*.kdl` file below it is read; the files under `includes/` are read once,
+through the `include` lines, and non-KDL files such as `agents/*.conf` are
+ignored. See [Multi-File Configuration](/configuration/file-format/#multi-file-configuration)
+for the rules.
 
 ## Environment-Specific Configuration
 
@@ -178,8 +184,10 @@ agents {
     agent "auth" type="custom" {
         unix-socket "/tmp/auth.sock"
         config {
-            jwt-secret "placeholder"
-            api-key "placeholder"
+            // Placeholder values: never commit real secrets. Inject them at
+            // deploy time (templating or a secrets manager, below).
+            jwt-secret "REPLACE_ME_jwt_secret"
+            api-key "REPLACE_ME_api_key"
         }
     }
 }
@@ -300,7 +308,7 @@ metadata:
   name: zentinel-config
 data:
   zentinel.kdl: |
-    server {
+    system {
         worker-threads {{ .Values.workers }}
     }
     listeners {

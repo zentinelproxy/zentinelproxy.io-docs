@@ -4,6 +4,10 @@ title = "Configuration"
 weight = 3
 sort_by = "weight"
 template = "section.html"
+
+[extra]
+# The body already links every child page; skip the theme's auto-generated list.
+hide_children = true
 +++
 
 Zentinel uses KDL (a human-friendly document language) for configuration. This section covers all configuration options organized by component.
@@ -21,6 +25,7 @@ Zentinel uses KDL (a human-friendly document language) for configuration. This s
 | [Filters](filters/) | Rate limiting, CORS, compression, geo-blocking |
 | [Caching](cache/) | HTTP response caching configuration |
 | [Observability](observability/) | Logging, metrics, and distributed tracing |
+| [Security Headers](security-headers/) | HSTS, CSP, and other headers via response-header policies |
 | [Agents](agents/) | External processing agent configuration |
 | [WAF](waf/) | Web Application Firewall configuration |
 | [Namespaces & Services](namespaces/) | Hierarchical organization and runtime isolation |
@@ -31,7 +36,6 @@ Zentinel uses KDL (a human-friendly document language) for configuration. This s
 ```kdl
 system {
     worker-threads 0
-    max-connections 10000
     trace-id-format "tinyflake"
 }
 
@@ -110,7 +114,7 @@ observability {
 }
 
 limits {
-    max-body-size-bytes 10485760
+    max-body-size 10485760
 }
 ```
 

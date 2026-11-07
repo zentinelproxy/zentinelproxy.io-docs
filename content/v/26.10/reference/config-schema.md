@@ -1,21 +1,28 @@
 +++
 title = "Configuration Schema"
 weight = 5
-updated = 2026-02-19
+updated = 2026-10-20
 +++
 
 Quick reference for all Zentinel configuration options.
 
 ## Top-Level Blocks
 
-```kdl
-system { }
-listeners { }
+```fragment,kdl
+schema-version "1.0"
+system { }          // required
+listeners { }       // required
 routes { }
 upstreams { }
+filters { }
 agents { }
 limits { }
-
+cache { }
+observability { }
+rate-limits { }
+namespace "id" { }  // one per namespace
+include "other.kdl"
+waf { }             // parsed, not wired: any mode but "off" is rejected
 ```
 
 ## Server Block
@@ -30,7 +37,6 @@ listeners {
 
 system {
     worker-threads 0                      // 0 = auto (CPU cores)
-    max-connections 10000
     graceful-shutdown-timeout-secs 30
     trace-id-format "tinyflake"           // or "uuid"
     auto-reload #false
@@ -60,11 +66,11 @@ upstreams {
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `worker-threads` | int | `0` | Worker threads (0=auto) |
-| `max-connections` | int | `10000` | Maximum connections |
+| `max-connections` | int | `10000` | Not applied; reported by `test` and `lint` from 26.10_5 |
 | `graceful-shutdown-timeout-secs` | int | `30` | Shutdown timeout |
 | `trace-id-format` | string | `tinyflake` | Trace ID format |
 | `auto-reload` | bool | `false` | Watch config for changes |
-| `daemon` | bool | `false` | Run as daemon |
+| `daemon` | bool | `false` | Run as daemon (read from the file from 26.10_5) |
 | `pid-file` | path | - | PID file path |
 | `user` | string | - | Drop privileges to user |
 | `group` | string | - | Drop privileges to group |
@@ -84,18 +90,18 @@ listeners {
         request-timeout-secs 60
         keepalive-timeout-secs 75
         max-concurrent-streams 100
-        default-route "fallback"
+        default-route "default"            // id of a route below
 
         tls {
             cert-file "/path/to/cert.pem"
             key-file "/path/to/key.pem"
             ca-file "/path/to/ca.pem"
-            min-version "1.2"
-            max-version "1.3"
+            min-version "TLS1.2"
+            max-version "TLS1.3"
             client-auth #false
             ocsp-stapling #true
             session-resumption #true
-            cipher-suite "..."
+            cipher-suite "TLS_AES_256_GCM_SHA384"
         }
     }
 }
@@ -180,7 +186,11 @@ upstreams {
 
 ## Routes Block
 
-```kdl
+Every route setting in one place. This is a reference listing, not a loadable
+route: a route serves from `upstream`, `static-files` **or** a
+`builtin-handler`, never several at once.
+
+```fragment,kdl
 system {
     worker-threads 0
 }
@@ -200,9 +210,9 @@ routes {
             path-prefix "/api/"
             path-regex "^/user/[0-9]+$"
             host "api.example.com"
-            method "GET" "POST"
-            header name="X-Key" value="..."
-            query-param name="format" value="json"
+            method "GET" "HEAD"            // any of these (26.10_5+; first only before)
+            header "X-Key" "value"         // name, optional value
+            query-param "format" "json"    // name, optional value
         }
         upstream "backend"
         service-type "web"                 // web, api, static, builtin
@@ -214,8 +224,6 @@ routes {
             timeout-secs 30
             max-body-size "10MB"
             failure-mode "closed"          // closed, open
-            buffer-requests #false
-            buffer-responses #false
 
             request-headers {
                 set { "X-Header" "value" }
@@ -229,7 +237,7 @@ routes {
             rate-limit {
                 requests-per-second 100
                 burst 500
-                key "client_ip"
+                key "client-ip"            // client-ip, path, route, client-ip-and-path, header:<name>
             }
         }
 
@@ -237,12 +245,12 @@ routes {
             max-attempts 3
         }
 
-        circuit-breaker {
-            failure-threshold 5
-            success-threshold 2
-            timeout-seconds 30
-            half-open-max-requests 1
+        cache {
+            enabled #true
+            default-ttl-secs 3600
         }
+
+        // circuit-breaker belongs to an upstream or an agent, not a route
 
         static-files {
             root "/var/www"
@@ -253,13 +261,17 @@ routes {
             fallback "index.html"
         }
 
+        // Custom pages for chosen statuses (from 26.10_6)
         error-pages {
-            default-format "json"
             pages {
-                "404" { format "json" message "Not found" }
-                "500" { format "html" template "/path/to/500.html" }
+                "404" {
+                    message "Not found"
+                }
             }
         }
+
+        websocket #true
+        websocket-inspection #false
     }
 }
 
@@ -295,12 +307,9 @@ listeners {
 }
 
 upstreams {
-    upstream "id" {
-        target "10.0.1.1:8080" {
-            weight 1
-            max-requests 1000
-            metadata { "zone" "us-east-1" }
-        }
+    upstream "backend" {
+        target "10.0.1.1:8080" weight=1   // address and weight only
+        // Or: target { address "10.0.1.1:8080"; weight 1 }
         load-balancing "round_robin"
 
         health-check {
@@ -364,47 +373,19 @@ routes {
 
 ## Limits Block
 
+A configuration file's `limits` block reads these six keys. Other keys, including
+the `-bytes` spellings, are ignored, and from 26.10_5 `zentinel test` and
+`zentinel lint` report them. See [Limits](/configuration/limits/) and the
+[Directive Index](../directives/#limits-directives).
+
 ```kdl
 limits {
-    // Headers
-    max-header-size-bytes 8192
+    max-header-size 8192              // bytes, all request headers
     max-header-count 100
-    max-header-name-bytes 256
-    max-header-value-bytes 4096
-
-    // Body
-    max-body-size-bytes 10485760
-    max-body-buffer-bytes 1048576
-    max-body-inspection-bytes 1048576
-
-    // Decompression
-    max-decompression-ratio 100.0
-    max-decompressed-size-bytes 104857600
-
-    // Connections
-    max-connections-per-client 100
-    max-connections-per-route 1000
-    max-total-connections 10000
-    max-idle-connections-per-upstream 100
-
-    // Requests
-    max-in-flight-requests 10000
-    max-in-flight-requests-per-worker 1000
-    max-queued-requests 1000
-
-    // Agents
-    max-agent-queue-depth 100
-    max-agent-body-bytes 1048576
-    max-agent-response-bytes 10240
-
-    // Rate limits
-    max-requests-per-second-global 10000
-    max-requests-per-second-per-client 100
-    max-requests-per-second-per-route 1000
-
-    // Memory
-    max-memory-bytes 2147483648
-    max-memory-percent 80.0
+    max-body-size 10485760            // bytes; routes can lower it
+    max-in-flight-requests 10000      // enforced from 26.10_6; unset = unlimited
+    max-total-connections 10000       // enforced from 26.10_6; unset = unlimited
+    max-connections-per-client 100    // enforced from 26.10_6; trusted-proxies exempt
 }
 ```
 
@@ -419,8 +400,7 @@ agents {
         // Or: grpc "http://127.0.0.1:50051"
 
         timeout-ms 100
-        failure-mode "closed"              // closed, open
-        max-body-bytes 1048576
+        max-request-body-bytes 1048576
         events "request_headers" "response_headers"
 
         circuit-breaker {
@@ -436,7 +416,6 @@ agents {
 ```kdl
 system {
     worker-threads 0
-    max-connections 10000
 }
 
 listeners {
@@ -467,7 +446,6 @@ upstreams {
 ```kdl
 system {
     worker-threads 0
-    max-connections 50000
     graceful-shutdown-timeout-secs 60
     auto-reload #true
     daemon #true
@@ -478,18 +456,18 @@ system {
 
 listeners {
     listener "https" {
-                tls {
-                    cert-file "/etc/zentinel/certs/server.crt"
-                    key-file "/etc/zentinel/certs/server.key"
-                    min-version "1.2"
-                }
         address "0.0.0.0:443"
         protocol "https"
-
+        tls {
+            cert-file "/etc/zentinel/certs/server.crt"
+            key-file "/etc/zentinel/certs/server.key"
+            min-version "1.2"
+        }
     }
 
+    // 9090 is taken by the metrics server (observability.metrics.address)
     listener "admin" {
-        address "127.0.0.1:9090"
+        address "127.0.0.1:9091"
         protocol "http"
     }
 }
@@ -518,15 +496,14 @@ upstreams {
         target "10.0.1.2:8080"
         load-balancing "least_connections"
         health-check {
-            type "http" { path "/health" expected-status 200 }
+            type "http" { path "/health"; expected-status 200; }
             interval-secs 10
         }
     }
 }
 
 limits {
-    max-body-size-bytes 10485760
-    max-requests-per-second-per-client 100
+    max-body-size 10485760   // single-file key (see Limits Block above)
 }
 
 ```

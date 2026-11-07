@@ -1,7 +1,7 @@
 +++
 title = "AI Gateway"
 weight = 9
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 Secure proxy for AI/LLM APIs with prompt injection detection, PII filtering, rate limiting, and cost management.
@@ -77,7 +77,7 @@ routes {
             host "api.openai.local"
         }
         upstream "openai"
-        agents "ai-gateway" "auth" "ratelimit"
+        filters "ai-gateway" "auth" "ratelimit"
         policies {
             timeout-secs 120
             max-body-size "10MB"
@@ -92,7 +92,7 @@ routes {
             host "api.anthropic.local"
         }
         upstream "anthropic"
-        agents "ai-gateway" "auth" "ratelimit"
+        filters "ai-gateway" "auth" "ratelimit"
         policies {
             timeout-secs 120
             max-body-size "10MB"
@@ -107,7 +107,7 @@ routes {
             host "azure.openai.local"
         }
         upstream "azure-openai"
-        agents "ai-gateway" "auth" "ratelimit"
+        filters "ai-gateway" "auth" "ratelimit"
         policies {
             timeout-secs 120
             max-body-size "10MB"
@@ -143,20 +143,36 @@ agents {
         unix-socket "/var/run/zentinel/ai-gateway.sock"
         events "request_headers" "request_body"
         timeout-ms 100
-        failure-mode "closed"
     }
 
     agent "auth" type="auth" {
         unix-socket "/var/run/zentinel/auth.sock"
         events "request_headers"
         timeout-ms 50
-        failure-mode "closed"
     }
 
     agent "ratelimit" type="rate_limit" {
         unix-socket "/var/run/zentinel/ratelimit.sock"
         events "request_headers"
         timeout-ms 20
+    }
+}
+
+// Routes attach agents through filters
+filters {
+    filter "ai-gateway" {
+        type "agent"
+        agent "ai-gateway"
+        failure-mode "closed"
+    }
+    filter "auth" {
+        type "agent"
+        agent "auth"
+        failure-mode "closed"
+    }
+    filter "ratelimit" {
+        type "agent"
+        agent "ratelimit"
         failure-mode "open"
     }
 }

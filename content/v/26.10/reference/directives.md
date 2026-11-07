@@ -2,7 +2,7 @@
 title = "Directive Index"
 weight = 1
 description = "Complete reference for all Zentinel configuration directives"
-updated = 2026-02-19
+updated = 2026-10-26
 +++
 
 Complete reference for all Zentinel configuration directives, verified against the source code. Each entry includes syntax, context, default values, and usage examples.
@@ -35,7 +35,6 @@ Top-level block for server-wide configuration including worker threads, connecti
 ```kdl
 system {
     worker-threads 4
-    max-connections 10000
     graceful-shutdown-timeout-secs 30
     auto-reload #true
 }
@@ -102,10 +101,7 @@ Top-level block containing all agent definitions. Agents are external services t
 agents {
     agent "auth" {
         type "auth"
-        transport {
-            type "unix_socket"
-            path "/var/run/auth.sock"
-        }
+        unix-socket "/var/run/auth.sock"
     }
 }
 ```
@@ -136,7 +132,16 @@ Top-level block for Web Application Firewall configuration.
 
 **Context:** root
 
-```kdl
+{% callout(type="warning", title="Not wired into the runtime") %}
+As of 26.10_3 the top-level `waf` block is parsed but the WAF engine is not
+connected to the proxy: configuration validation **rejects** any `mode` other
+than `"off"` (`crates/config/src/validation.rs`), so the examples in this
+section and under [WAF Directives](#waf-directives) do not load as written.
+Inspect traffic with a WAF agent attached to routes through
+[filters](#filter) instead.
+{% end %}
+
+```fragment,kdl
 waf {
     engine "coraza"
     mode "prevention"
@@ -158,10 +163,9 @@ Top-level block for global resource limits. Protects against resource exhaustion
 
 ```kdl
 limits {
-    max-body-size-bytes 10485760
-    max-header-size-bytes 8192
+    max-body-size 10485760    // bytes
+    max-header-size 8192      // bytes
     max-header-count 100
-    max-connections-per-client 100
 }
 ```
 
@@ -177,7 +181,7 @@ Top-level block for global HTTP response caching configuration.
 cache {
     enabled #true
     backend "memory"
-    max-size-bytes 104857600
+    max-size 104857600  // bytes
 }
 ```
 
@@ -221,18 +225,17 @@ rate-limits {
 
 ---
 
-### `namespaces`
+### `namespace`
 
-Top-level block for namespace-based configuration isolation.
+Top-level block for namespace-based configuration isolation. Each namespace is
+its own top-level `namespace "<id>"` node; there is no `namespaces` wrapper.
 
 **Context:** root
 
 ```kdl
-namespaces {
-    namespace "api" {
-        routes { }
-        upstreams { }
-    }
+namespace "api" {
+    routes { }
+    upstreams { }
 }
 ```
 
@@ -259,16 +262,12 @@ system {
 
 ### `max-connections`
 
-Maximum number of simultaneous connections server-wide.
+Accepted but **not applied**. From 26.10_5, `zentinel test` and `zentinel lint`
+report it as not applied. To cap client connections, use
+[`limits { max-total-connections }`](#max-total-connections) (enforced from
+26.10_6).
 
 **Context:** `system`
-**Default:** `10000`
-
-```kdl
-system {
-    max-connections 50000
-}
-```
 
 ---
 
@@ -289,7 +288,9 @@ system {
 
 ### `daemon`
 
-When enabled, Zentinel forks to the background after startup.
+When enabled, Zentinel forks to the background after startup, like the
+`-d` / `--daemon` flag. Read from the configuration from 26.10_5; before, only
+the flag worked.
 
 **Context:** `system`
 **Default:** `#false`
@@ -379,6 +380,10 @@ system {
 ### `auto-reload`
 
 When enabled, Zentinel watches the configuration file for changes and automatically reloads.
+Once a second it also checks every file the configuration reads (included files
+too). From 26.10_7 one edit gives one reload, and saving a file without
+changing its content does not reload. See
+[Hot Reload](/configuration/file-format/#hot-reload).
 
 **Context:** `system`
 **Default:** `#false`
@@ -429,7 +434,11 @@ listener "http" {
 
 ### `protocol`
 
-Network protocol for the listener. Options: `"http"`, `"https"`, `"h2"` (HTTP/2), `"h3"` (HTTP/3/QUIC).
+Network protocol for the listener. Options: `"http"`, `"https"`, `"h2"`
+(HTTP/2 over TLS), `"h2c"` (HTTP/2 over cleartext, prior knowledge, from
+26.10_11). `"h3"` is rejected (not implemented). `"https"` and `"h2"` need a
+`tls` block; from 26.10_11 a listener without one is a configuration error.
+See [Listeners: Protocol](/configuration/listeners/#protocol).
 
 **Context:** `listener`
 **Default:** `"http"`
@@ -438,6 +447,10 @@ Network protocol for the listener. Options: `"http"`, `"https"`, `"h2"` (HTTP/2)
 listener "secure" {
     address "0.0.0.0:443"
     protocol "https"
+    tls {
+        cert-file "/etc/zentinel/certs/server.crt"
+        key-file "/etc/zentinel/certs/server.key"
+    }
 }
 ```
 
@@ -452,6 +465,7 @@ Maximum time in seconds to wait for a complete request from the client.
 
 ```kdl
 listener "http" {
+    address "0.0.0.0:8080"
     request-timeout-secs 30
 }
 ```
@@ -467,6 +481,7 @@ Maximum time in seconds to keep an idle client connection open.
 
 ```kdl
 listener "http" {
+    address "0.0.0.0:8080"
     keepalive-timeout-secs 120
 }
 ```
@@ -482,8 +497,13 @@ Maximum number of concurrent HTTP/2 streams per connection.
 
 ```kdl
 listener "h2" {
+    address "0.0.0.0:8443"
     protocol "h2"
     max-concurrent-streams 250
+    tls {
+        cert-file "/etc/zentinel/certs/server.crt"
+        key-file "/etc/zentinel/certs/server.key"
+    }
 }
 ```
 
@@ -495,11 +515,33 @@ Fallback route ID when no other routes match the request.
 
 **Context:** `listener`
 
-```kdl
+```fragment,kdl
 listener "http" {
-    default-route "not-found"
+    address "0.0.0.0:8080"
+    default-route "not-found"  // id of a route defined under routes
 }
 ```
+
+---
+
+### `namespace` (listener)
+
+Binds a top-level listener to a namespace. It then serves only that
+namespace's routes (and those of its services without a listener of their
+own), never the global routes. A listener inside a namespace or service block
+is bound to that scope without it.
+
+**Context:** `listener`
+
+```fragment,kdl
+listener "internal" {
+    address "127.0.0.1:8081"
+    protocol "http"
+    namespace "admin"
+}
+```
+
+See [Which listener serves a route](/configuration/namespaces/#which-listener-serves-a-route).
 
 ---
 
@@ -515,6 +557,8 @@ Configures TLS settings for secure connections.
 
 ```kdl
 listener "https" {
+    address "0.0.0.0:8443"
+    protocol "https"
     tls {
         cert-file "/etc/zentinel/server.crt"
         key-file "/etc/zentinel/server.key"
@@ -531,7 +575,7 @@ Path to the TLS certificate file in PEM format.
 **Context:** `tls` (listener)
 **Required for HTTPS**
 
-```kdl
+```fragment,kdl
 tls {
     cert-file "/etc/zentinel/server.crt"
     key-file "/etc/zentinel/server.key"
@@ -547,7 +591,7 @@ Path to the TLS private key file in PEM format.
 **Context:** `tls` (listener)
 **Required for HTTPS**
 
-```kdl
+```fragment,kdl
 tls {
     cert-file "/etc/zentinel/server.crt"
     key-file "/etc/zentinel/server.key"
@@ -562,7 +606,7 @@ Path to CA certificate file for verifying client certificates (mTLS).
 
 **Context:** `tls` (listener)
 
-```kdl
+```fragment,kdl
 tls {
     ca-file "/etc/zentinel/client-ca.pem"
     client-auth #true
@@ -578,7 +622,7 @@ Minimum TLS version to accept. Options: `"TLS1.2"`, `"TLS1.3"`.
 **Context:** `tls` (listener)
 **Default:** `"TLS1.2"`
 
-```kdl
+```fragment,kdl
 tls {
     min-version "TLS1.2"
 }
@@ -592,7 +636,7 @@ Maximum TLS version to accept.
 
 **Context:** `tls` (listener)
 
-```kdl
+```fragment,kdl
 tls {
     min-version "TLS1.2"
     max-version "TLS1.3"
@@ -608,7 +652,7 @@ Enables mutual TLS (mTLS) requiring client certificates.
 **Context:** `tls` (listener)
 **Default:** `#false`
 
-```kdl
+```fragment,kdl
 tls {
     ca-file "/etc/zentinel/client-ca.pem"
     client-auth #true
@@ -619,12 +663,16 @@ tls {
 
 ### `ocsp-stapling`
 
-Enables OCSP stapling for certificate validation.
+Staples an OCSP response into the TLS handshake for every served certificate.
+Applied from 26.10_11 (before, it was parsed and nothing was stapled). The
+proxy fetches responses from each certificate's OCSP responder, so `cert-file`
+must contain the issuer (leaf, then intermediate). A failing responder never
+fails a handshake. See [Listeners: OCSP Stapling](/configuration/listeners/#ocsp-stapling).
 
 **Context:** `tls` (listener)
 **Default:** `#true`
 
-```kdl
+```fragment,kdl
 tls {
     ocsp-stapling #true
 }
@@ -639,7 +687,7 @@ Enables TLS session tickets for faster subsequent connections.
 **Context:** `tls` (listener)
 **Default:** `#true`
 
-```kdl
+```fragment,kdl
 tls {
     session-resumption #true
 }
@@ -653,7 +701,7 @@ Restricts allowed TLS cipher suites. Empty uses secure defaults.
 
 **Context:** `tls` (listener)
 
-```kdl
+```fragment,kdl
 tls {
     cipher-suite "TLS_AES_256_GCM_SHA384"
     cipher-suite "TLS_CHACHA20_POLY1305_SHA256"
@@ -668,7 +716,7 @@ SNI-based certificate selection block within TLS configuration.
 
 **Context:** `tls` (listener)
 
-```kdl
+```fragment,kdl
 tls {
     cert-file "/etc/certs/default.crt"
     key-file "/etc/certs/default.key"
@@ -726,7 +774,7 @@ Categorizes the route for specialized handling. Options: `"web"`, `"api"`, `"sta
 **Context:** `route`
 **Default:** `"web"`
 
-```kdl
+```fragment,kdl
 route "files" {
     service-type "static"
     static-files { root "/var/www" }
@@ -746,7 +794,7 @@ Target upstream pool ID for proxied requests.
 
 **Context:** `route`
 
-```kdl
+```fragment,kdl
 route "api" {
     upstream "backend"
 }
@@ -777,7 +825,7 @@ Enables WAF processing for this route.
 **Context:** `route`
 **Default:** `#false`
 
-```kdl
+```fragment,kdl
 route "api" {
     waf-enabled #true
 }
@@ -792,7 +840,7 @@ Enables WebSocket upgrade support.
 **Context:** `route`
 **Default:** `#false`
 
-```kdl
+```fragment,kdl
 route "ws" {
     websocket #true
 }
@@ -807,7 +855,7 @@ Enables WebSocket frame inspection.
 **Context:** `route`
 **Default:** `#false`
 
-```kdl
+```fragment,kdl
 route "ws" {
     websocket #true
     websocket-inspection #true
@@ -822,7 +870,7 @@ List of filter IDs to apply to the route in order.
 
 **Context:** `route`
 
-```kdl
+```fragment,kdl
 route "api" {
     filters "rate-limit" "cors" "logging"
 }
@@ -857,7 +905,7 @@ Matches requests where the path starts with the specified prefix.
 
 **Context:** `matches`
 
-```kdl
+```fragment,kdl
 matches {
     path-prefix "/api/v1/"
 }
@@ -871,7 +919,7 @@ Matches requests with an exact path.
 
 **Context:** `matches`
 
-```kdl
+```fragment,kdl
 matches {
     path "/api/v1/status"
 }
@@ -885,7 +933,7 @@ Matches requests with a specific Host header. Supports wildcards.
 
 **Context:** `matches`
 
-```kdl
+```fragment,kdl
 matches {
     host "api.example.com"
 }
@@ -899,15 +947,18 @@ matches {
 
 ### `method`
 
-Matches requests using specific HTTP methods.
+Matches requests using an HTTP method.
 
 **Context:** `matches`
 
-```kdl
+```fragment,kdl
 matches {
-    method "GET" "POST"
+    method "GET"
 }
 ```
+
+From 26.10_5, `method "GET" "POST"` matches either method. Before 26.10_5 only
+the first argument was read (`GET` only); use one route per method there.
 
 ---
 
@@ -917,7 +968,7 @@ Matches requests containing a specific header with optional value.
 
 **Context:** `matches`
 
-```kdl
+```fragment,kdl
 matches {
     header "X-API-Version" "v2"
     header "Authorization"
@@ -932,7 +983,7 @@ Matches requests containing a specific query parameter with optional value.
 
 **Context:** `matches`
 
-```kdl
+```fragment,kdl
 matches {
     query-param "format" "json"
     query-param "debug"
@@ -951,7 +1002,7 @@ Container for route-level policies including timeouts, headers, and rate limitin
 
 **Context:** `route`
 
-```kdl
+```fragment,kdl
 route "api" {
     policies {
         timeout-secs 30
@@ -968,7 +1019,7 @@ Request timeout in seconds.
 
 **Context:** `policies`, `health-check`
 
-```kdl
+```fragment,kdl
 policies {
     timeout-secs 30
 }
@@ -982,7 +1033,7 @@ Maximum allowed request body size for this route.
 
 **Context:** `policies`
 
-```kdl
+```fragment,kdl
 policies {
     max-body-size "10MB"
 }
@@ -994,42 +1045,18 @@ policies {
 
 Behavior when agent/upstream fails. Options: `"open"` (allow), `"closed"` (reject).
 
-**Context:** `policies`, `agent`
+**Context:** `policies`, `filter` (agent); deprecated on `agent`
 **Default:** `"closed"`
 
-```kdl
+What decides a request whose agent fails is the agent **filter's**
+`failure-mode`, then the route's `policies { failure-mode }`, then `"closed"`,
+on every path: headers, bodies, responses (from 26.10_8) and WebSocket frames
+(from 26.10_11). On an `agent` block the setting is deprecated and has no
+effect from 26.10_11; `zentinel test` reports it.
+
+```fragment,kdl
 policies {
     failure-mode "open"
-}
-```
-
----
-
-### `buffer-requests`
-
-When enabled, reads entire request body into memory before forwarding.
-
-**Context:** `policies`
-**Default:** `#false`
-
-```kdl
-policies {
-    buffer-requests #true
-}
-```
-
----
-
-### `buffer-responses`
-
-When enabled, reads entire response body into memory before sending to client.
-
-**Context:** `policies`
-**Default:** `#false`
-
-```kdl
-policies {
-    buffer-responses #true
 }
 ```
 
@@ -1041,7 +1068,7 @@ Container for request header manipulation rules.
 
 **Context:** `policies`
 
-```kdl
+```fragment,kdl
 policies {
     request-headers {
         set { "X-Forwarded-Proto" "https" }
@@ -1059,7 +1086,7 @@ Container for response header manipulation rules.
 
 **Context:** `policies`
 
-```kdl
+```fragment,kdl
 policies {
     response-headers {
         set { "X-Frame-Options" "DENY" }
@@ -1076,7 +1103,7 @@ Sets a header value, replacing any existing value.
 
 **Context:** `request-headers`, `response-headers`
 
-```kdl
+```fragment,kdl
 request-headers {
     set { "Host" "backend.internal" }
 }
@@ -1090,7 +1117,7 @@ Adds a header value without removing existing values.
 
 **Context:** `request-headers`, `response-headers`
 
-```kdl
+```fragment,kdl
 response-headers {
     add { "X-Served-By" "zentinel" }
 }
@@ -1104,7 +1131,7 @@ Removes a header.
 
 **Context:** `request-headers`, `response-headers`
 
-```kdl
+```fragment,kdl
 request-headers {
     remove "X-Internal-Token"
 }
@@ -1118,7 +1145,7 @@ Configures rate limiting for the route.
 
 **Context:** `policies`
 
-```kdl
+```fragment,kdl
 policies {
     rate-limit {
         requests-per-second 100
@@ -1136,7 +1163,7 @@ Number of requests allowed per second.
 
 **Context:** `rate-limit`
 
-```kdl
+```fragment,kdl
 rate-limit {
     requests-per-second 100
 }
@@ -1149,9 +1176,9 @@ rate-limit {
 Maximum requests allowed to exceed the rate limit temporarily.
 
 **Context:** `rate-limit`
-**Default:** `10`
+**Default:** equal to `requests-per-second`
 
-```kdl
+```fragment,kdl
 rate-limit {
     requests-per-second 100
     burst 500
@@ -1162,12 +1189,12 @@ rate-limit {
 
 ### `key`
 
-Determines how rate limits are applied. Options: `"client_ip"`, `"header:name"`, `"path"`, `"route"`.
+Determines how rate limits are applied. Options: `"client-ip"` (or `"client_ip"`), `"path"`, `"route"`, `"client-ip-and-path"`, `"header:<name>"`.
 
 **Context:** `rate-limit`
-**Default:** `"client_ip"`
+**Default:** `"client-ip"`
 
-```kdl
+```fragment,kdl
 rate-limit {
     key "header:X-API-Key"
 }
@@ -1181,12 +1208,17 @@ rate-limit {
 
 ### `cache`
 
-Configures response caching for the route.
+Configures response caching for the route. It is a direct child of the
+route, not of `policies`; the storage backend is the separate top-level
+[`cache`](#cache) block. The other entries in this section go inside the
+route's `cache` block.
 
-**Context:** `policies`
+**Context:** `route`
 
 ```kdl
-policies {
+route "api" {
+    matches { path-prefix "/api/" }
+    upstream "backend"
     cache {
         enabled #true
         default-ttl-secs 3600
@@ -1218,7 +1250,7 @@ Default cache TTL in seconds when not specified by response headers.
 **Context:** `cache`
 **Default:** `3600`
 
-```kdl
+```fragment,kdl
 cache {
     default-ttl-secs 7200
 }
@@ -1232,7 +1264,7 @@ Maximum size of a cached response.
 
 **Context:** `cache`
 
-```kdl
+```fragment,kdl
 cache {
     max-size-bytes 10485760
 }
@@ -1247,7 +1279,7 @@ Whether to cache responses with Cache-Control: private.
 **Context:** `cache`
 **Default:** `#false`
 
-```kdl
+```fragment,kdl
 cache {
     cache-private #true
 }
@@ -1261,7 +1293,7 @@ Serve stale content while revalidating in background.
 
 **Context:** `cache`
 
-```kdl
+```fragment,kdl
 cache {
     stale-while-revalidate-secs 60
 }
@@ -1275,7 +1307,7 @@ Serve stale content if upstream returns error.
 
 **Context:** `cache`
 
-```kdl
+```fragment,kdl
 cache {
     stale-if-error-secs 300
 }
@@ -1289,7 +1321,7 @@ HTTP methods eligible for caching.
 
 **Context:** `cache`
 
-```kdl
+```fragment,kdl
 cache {
     cacheable-methods "GET" "HEAD"
 }
@@ -1303,7 +1335,7 @@ HTTP status codes eligible for caching.
 
 **Context:** `cache`
 
-```kdl
+```fragment,kdl
 cache {
     cacheable-status-codes 200 203 204 206 300 301 308 404 410
 }
@@ -1317,7 +1349,7 @@ Headers to include in cache key.
 
 **Context:** `cache`
 
-```kdl
+```fragment,kdl
 cache {
     vary-headers "Accept" "Accept-Encoding"
 }
@@ -1331,7 +1363,7 @@ Query parameters to exclude from cache key.
 
 **Context:** `cache`
 
-```kdl
+```fragment,kdl
 cache {
     ignore-query-params "utm_source" "utm_medium"
 }
@@ -1345,12 +1377,14 @@ cache {
 
 ### `static-files`
 
-Configures static file serving for the route.
+Configures static file serving for the route. A static route has no
+`upstream`.
 
 **Context:** `route`
 
 ```kdl
 route "assets" {
+    matches { path-prefix "/assets/" }
     service-type "static"
     static-files {
         root "/var/www/public"
@@ -1368,7 +1402,7 @@ Filesystem path to the static files directory.
 **Context:** `static-files`
 **Required**
 
-```kdl
+```fragment,kdl
 static-files {
     root "/var/www/public"
 }
@@ -1383,7 +1417,7 @@ Filename to serve for directory requests.
 **Context:** `static-files`
 **Default:** `"index.html"`
 
-```kdl
+```fragment,kdl
 static-files {
     index "index.html"
 }
@@ -1398,7 +1432,7 @@ Enable HTML directory listing.
 **Context:** `static-files`
 **Default:** `#false`
 
-```kdl
+```fragment,kdl
 static-files {
     directory-listing #true
 }
@@ -1412,7 +1446,7 @@ Cache-Control header for static responses.
 
 **Context:** `static-files`
 
-```kdl
+```fragment,kdl
 static-files {
     cache-control "public, max-age=86400"
 }
@@ -1427,7 +1461,7 @@ Enable automatic compression (gzip, brotli).
 **Context:** `static-files`
 **Default:** `#true`
 
-```kdl
+```fragment,kdl
 static-files {
     compress #true
 }
@@ -1441,7 +1475,7 @@ File to serve when requested file doesn't exist (SPA support).
 
 **Context:** `static-files`
 
-```kdl
+```fragment,kdl
 static-files {
     root "/var/www/app"
     fallback "index.html"
@@ -1452,35 +1486,30 @@ static-files {
 
 ### `mime-types`
 
-Custom MIME type mappings.
-
-**Context:** `static-files`
-
-```kdl
-static-files {
-    mime-types {
-        ".wasm" "application/wasm"
-    }
-}
-```
+Not configurable: no KDL parser reads `mime-types` as of 26.10_3 (the static
+files parser always uses the built-in MIME table).
 
 ---
 
 ## Circuit Breaker Directives
 <small class="docs-ref">[Upstreams](/configuration/upstreams/)</small>
-<small class="source-ref">[`crates/config/src/routes.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/routes.rs)</small>
+<small class="source-ref">[`crates/config/src/kdl/circuitbreaker_helper.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/kdl/circuitbreaker_helper.rs)</small>
 
 ### `circuit-breaker`
 
-Configures circuit breaker to prevent cascading failures.
+Configures circuit breaker to prevent cascading failures. Valid inside an
+`upstream` or an `agent`; a route has no `circuit-breaker`.
 
-**Context:** `route`, `agent`
+**Context:** `upstream`, `agent`
 
 ```kdl
-circuit-breaker {
-    failure-threshold 5
-    success-threshold 2
-    timeout-seconds 30
+upstream "backend" {
+    target "127.0.0.1:3000"
+    circuit-breaker {
+        failure-threshold 5
+        success-threshold 2
+        timeout-seconds 30
+    }
 }
 ```
 
@@ -1493,7 +1522,7 @@ Consecutive failures before circuit opens.
 **Context:** `circuit-breaker`
 **Default:** `5`
 
-```kdl
+```fragment,kdl
 circuit-breaker {
     failure-threshold 10
 }
@@ -1508,7 +1537,7 @@ Consecutive successes to close circuit.
 **Context:** `circuit-breaker`
 **Default:** `2`
 
-```kdl
+```fragment,kdl
 circuit-breaker {
     success-threshold 3
 }
@@ -1523,7 +1552,7 @@ Time circuit remains open before half-open test.
 **Context:** `circuit-breaker`
 **Default:** `30`
 
-```kdl
+```fragment,kdl
 circuit-breaker {
     timeout-seconds 60
 }
@@ -1538,7 +1567,7 @@ Requests allowed in half-open state.
 **Context:** `circuit-breaker`
 **Default:** `3`
 
-```kdl
+```fragment,kdl
 circuit-breaker {
     half-open-max-requests 5
 }
@@ -1561,7 +1590,7 @@ implemented, and any other key is rejected at parse time. Tracked in
 
 **Context:** `route`
 
-```kdl
+```fragment,kdl
 retry-policy {
     max-attempts 3
 }
@@ -1576,7 +1605,7 @@ Maximum retry attempts including initial try.
 **Context:** `retry-policy`
 **Default:** `3`
 
-```kdl
+```fragment,kdl
 retry-policy {
     max-attempts 5
 }
@@ -1595,9 +1624,13 @@ Configures traffic mirroring to a shadow upstream.
 **Context:** `route`
 
 ```kdl
-shadow {
-    upstream "shadow-backend"
-    percentage 10.0
+route "api" {
+    matches { path-prefix "/api/" }
+    upstream "backend"
+    shadow {
+        upstream "shadow-backend"
+        percentage 10.0
+    }
 }
 ```
 
@@ -1610,7 +1643,7 @@ Percentage of traffic to mirror (0.0 to 100.0).
 **Context:** `shadow`
 **Default:** `100.0`
 
-```kdl
+```fragment,kdl
 shadow {
     percentage 50.0
 }
@@ -1624,7 +1657,7 @@ Only mirror requests with this header/value.
 
 **Context:** `shadow`
 
-```kdl
+```fragment,kdl
 shadow {
     sample-header "X-Canary" "true"
 }
@@ -1634,12 +1667,12 @@ shadow {
 
 ### `buffer-body`
 
-Buffer request body for mirroring.
+Buffer request body for mirroring, up to `max-body-bytes` (default `1048576`).
 
 **Context:** `shadow`
-**Default:** `#true`
+**Default:** `#false`
 
-```kdl
+```fragment,kdl
 shadow {
     buffer-body #true
     max-body-bytes 1048576
@@ -1650,87 +1683,52 @@ shadow {
 
 ## Error Pages Directives
 <small class="docs-ref">[Routes](/configuration/routes/)</small>
-<small class="source-ref">[`crates/config/src/routes.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/routes.rs)</small>
+<small class="source-ref">[`crates/config/src/kdl/routes.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/kdl/routes.rs)</small>
 
 ### `error-pages`
 
-Configures custom error responses.
+Custom pages for chosen error statuses on a route. Read from 26.10_6; before
+that no parser read the block and it was reported as ignored.
 
 **Context:** `route`
 
-```kdl
+```fragment,kdl
 error-pages {
     default-format "json"
+    template-dir "/etc/zentinel/errors"
     pages {
-        "404" { format "json" message "Not found" }
+        "404" {
+            message "Resource not found"
+        }
+        "503" {
+            format "html"
+            template "503.html"
+            message "Back in a minute"
+            headers {
+                Retry-After "30"
+            }
+        }
     }
 }
 ```
 
----
+| Key | Description |
+|-----|-------------|
+| `default-format` | `html`, `json`, `text` or `xml`. Default: `json` for `api`, `builtin` and `inference` routes, `html` for `web` and `static` |
+| `template-dir` | Base directory for relative `template` paths |
+| `pages` | One child per status (`"400"` to `"599"`) with `format`, `message`, `template` and `headers` |
 
-### `default-format`
-
-Default response format. Options: `"html"`, `"json"`, `"text"`, `"xml"`.
-
-**Context:** `error-pages`
-**Default:** `"json"`
-
-```kdl
-error-pages {
-    default-format "html"
-}
-```
-
----
-
-### `include-stack-trace`
-
-Include stack traces in error responses.
-
-**Context:** `error-pages`
-**Default:** `#false`
-
-```kdl
-error-pages {
-    include-stack-trace #true
-}
-```
-
----
-
-### `template-dir`
-
-Directory containing error page templates.
-
-**Context:** `error-pages`
-
-```kdl
-error-pages {
-    template-dir "/etc/zentinel/templates"
-}
-```
-
----
-
-### `pages`
-
-Individual error page configurations by status code.
-
-**Context:** `error-pages`
-
-```kdl
-pages {
-    "404" {
-        format "html"
-        template "/templates/404.html"
-    }
-    "500" {
-        format "json"
-        message "Internal server error"
-    }
-}
-```
+A page replaces an upstream error and the proxy's own error for its status,
+and from 26.10_7 the proxy's own refusals on the route too (rate limits,
+`max-in-flight-requests`, geo, prompt injection, WebSocket not enabled, no
+usable upstream, agent blocks without a body of their own). A refusal's
+`Retry-After` and `X-RateLimit-*` headers are kept and override a page header
+of the same name; a page without `message` shows the refusal's message. An
+agent block with its own body is sent as `text/plain` and never replaced.
+Templates take `{{status}}`, `{{title}}`, `{{message}}`, `{{request_id}}` and
+`{{timestamp}}`. Invalid values are reported as ignored and the generated page
+is used; `include-stack-trace` is reported as ignored. See
+[Error Pages](/configuration/routes/#error-pages).
 
 ---
 
@@ -1783,6 +1781,8 @@ Algorithm for distributing requests across upstream targets.
 
 ```kdl
 upstream "backend" {
+    target "10.0.1.1:8080"
+    target "10.0.1.2:8080"
     load-balancing "least_connections"
 }
 ```
@@ -1793,7 +1793,8 @@ See [Upstreams - Load Balancing](/configuration/upstreams/#load-balancing) for d
 
 ### `targets`
 
-Container for upstream target definitions.
+Optional container for upstream target definitions; `target` nodes may also be
+written directly in the `upstream` block, as below.
 
 **Context:** `upstream`
 
@@ -1808,11 +1809,12 @@ upstream "backend" {
 
 ### `target`
 
-Defines an individual backend server.
+Defines an individual backend server. The address is the first argument (or
+an `address` property/child); `weight` is the only other setting.
 
-**Context:** `targets`
+**Context:** `upstream`, `targets`
 
-```kdl
+```fragment,kdl
 target "10.0.1.1:8080" weight=1
 ```
 
@@ -1825,35 +1827,17 @@ Relative weight for load balancing.
 **Context:** `target`
 **Default:** `1`
 
-```kdl
+```fragment,kdl
 target "10.0.1.1:8080" weight=3
 ```
 
 ---
 
-### `max-requests`
+### `max-requests`, `metadata`
 
-Maximum requests through this target before rotation.
-
-**Context:** `target`
-
-```kdl
-target "10.0.1.1:8080" max-requests=10000
-```
-
----
-
-### `metadata`
-
-Key-value pairs for load balancing decisions.
-
-**Context:** `target`
-
-```kdl
-target "10.0.1.1:8080" {
-    metadata { "zone" "us-east-1a" }
-}
-```
+Not configurable from KDL: the target parser reads only the address and
+`weight` (`RECOGNIZED_TARGET_KEYS` in `crates/config/src/kdl/upstreams.rs`), so
+`max-requests` and `metadata` on a target are ignored.
 
 ---
 
@@ -1863,15 +1847,20 @@ target "10.0.1.1:8080" {
 
 ### `health-check`
 
-Configures active health checking for upstream targets.
+Configures active health checking for upstream targets. Check-specific
+settings (`path`, `expected-status`, `host`) go in a block on the `type` node.
 
 **Context:** `upstream`
 
 ```kdl
-health-check {
-    type "http"
-    path "/health"
-    interval-secs 10
+upstream "backend" {
+    target "10.0.1.1:8080"
+    health-check {
+        type "http" {
+            path "/health"
+        }
+        interval-secs 10
+    }
 }
 ```
 
@@ -1879,12 +1868,12 @@ health-check {
 
 ### `type`
 
-Health check protocol. Options: `"http"`, `"tcp"`.
+Health check protocol. Options: `"http"`, `"tcp"`, `"grpc"`, `"inference"`, `"mcp"`.
 
 **Context:** `health-check`
-**Default:** `"http"`
+**Default:** `"tcp"` (when no `type` is given)
 
-```kdl
+```fragment,kdl
 health-check {
     type "tcp"
 }
@@ -1899,7 +1888,7 @@ Time between health check probes.
 **Context:** `health-check`
 **Default:** `10`
 
-```kdl
+```fragment,kdl
 health-check {
     interval-secs 5
 }
@@ -1914,7 +1903,7 @@ Successful checks to mark target healthy.
 **Context:** `health-check`
 **Default:** `2`
 
-```kdl
+```fragment,kdl
 health-check {
     healthy-threshold 3
 }
@@ -1929,7 +1918,7 @@ Failed checks to mark target unhealthy.
 **Context:** `health-check`
 **Default:** `3`
 
-```kdl
+```fragment,kdl
 health-check {
     unhealthy-threshold 2
 }
@@ -1941,14 +1930,15 @@ health-check {
 
 HTTP status indicating healthy (for HTTP checks).
 
-**Context:** `health-check`
+**Context:** `type "http"` (inside `health-check`)
 **Default:** `200`
 
-```kdl
+```fragment,kdl
 health-check {
-    type "http"
-    path "/health"
-    expected-status 200
+    type "http" {
+        path "/health"
+        expected-status 200
+    }
 }
 ```
 
@@ -1964,7 +1954,7 @@ Configures connection pooling to upstream targets.
 
 **Context:** `upstream`
 
-```kdl
+```fragment,kdl
 connection-pool {
     max-connections 100
     max-idle 20
@@ -1981,7 +1971,7 @@ Maximum idle connections to keep in pool.
 **Context:** `connection-pool`
 **Default:** `20`
 
-```kdl
+```fragment,kdl
 connection-pool {
     max-idle 30
 }
@@ -1996,7 +1986,7 @@ Time before idle connection is closed.
 **Context:** `connection-pool`
 **Default:** `60`
 
-```kdl
+```fragment,kdl
 connection-pool {
     idle-timeout-secs 120
 }
@@ -2011,7 +2001,7 @@ Maximum connection lifetime.
 **Context:** `connection-pool`
 **Default:** `300`
 
-```kdl
+```fragment,kdl
 connection-pool {
     max-lifetime-secs 3600
 }
@@ -2029,7 +2019,7 @@ Container for upstream timeout configuration.
 
 **Context:** `upstream`
 
-```kdl
+```fragment,kdl
 timeouts {
     connect-secs 10
     request-secs 60
@@ -2047,7 +2037,7 @@ Maximum time to establish connection.
 **Context:** `timeouts`
 **Default:** `10`
 
-```kdl
+```fragment,kdl
 timeouts {
     connect-secs 5
 }
@@ -2062,7 +2052,7 @@ Maximum time for complete request-response cycle.
 **Context:** `timeouts`
 **Default:** `60`
 
-```kdl
+```fragment,kdl
 timeouts {
     request-secs 120
 }
@@ -2077,7 +2067,7 @@ Maximum time waiting for response data.
 **Context:** `timeouts`
 **Default:** `30`
 
-```kdl
+```fragment,kdl
 timeouts {
     read-secs 60
 }
@@ -2092,7 +2082,7 @@ Maximum time writing request data.
 **Context:** `timeouts`
 **Default:** `30`
 
-```kdl
+```fragment,kdl
 timeouts {
     write-secs 60
 }
@@ -2112,6 +2102,7 @@ SNI hostname for upstream TLS connections.
 
 ```kdl
 upstream "backend" {
+    target "10.0.1.1:443"
     tls {
         sni "api.backend.internal"
     }
@@ -2127,7 +2118,7 @@ Disables TLS certificate verification. **Security risk**.
 **Context:** `tls` (upstream)
 **Default:** `#false`
 
-```kdl
+```fragment,kdl
 tls {
     insecure-skip-verify #true
 }
@@ -2141,7 +2132,7 @@ Path to client certificate for mTLS to upstream.
 
 **Context:** `tls` (upstream)
 
-```kdl
+```fragment,kdl
 tls {
     client-cert "/etc/zentinel/client.crt"
     client-key "/etc/zentinel/client.key"
@@ -2156,7 +2147,7 @@ Path to client private key for mTLS.
 
 **Context:** `tls` (upstream)
 
-```kdl
+```fragment,kdl
 tls {
     client-cert "/etc/zentinel/client.crt"
     client-key "/etc/zentinel/client.key"
@@ -2171,7 +2162,7 @@ Path to CA certificate for upstream verification.
 
 **Context:** `tls` (upstream)
 
-```kdl
+```fragment,kdl
 tls {
     ca-cert "/etc/zentinel/ca.pem"
 }
@@ -2189,7 +2180,7 @@ Configures HTTP version settings for upstream connections.
 
 **Context:** `upstream`
 
-```kdl
+```fragment,kdl
 http-version {
     min-version 1
     max-version 2
@@ -2205,7 +2196,7 @@ Minimum HTTP version (1 or 2).
 **Context:** `http-version`
 **Default:** `1`
 
-```kdl
+```fragment,kdl
 http-version {
     min-version 2
 }
@@ -2220,7 +2211,7 @@ Maximum HTTP version.
 **Context:** `http-version`
 **Default:** `2`
 
-```kdl
+```fragment,kdl
 http-version {
     max-version 2
 }
@@ -2228,16 +2219,16 @@ http-version {
 
 ---
 
-### `h2-ping-interval-secs`
+### `h2-ping-interval`
 
-HTTP/2 ping interval (0 to disable).
+HTTP/2 ping interval in seconds (0 to disable). The key has no `-secs` suffix.
 
 **Context:** `http-version`
 **Default:** `0`
 
-```kdl
+```fragment,kdl
 http-version {
-    h2-ping-interval-secs 30
+    h2-ping-interval 30
 }
 ```
 
@@ -2250,7 +2241,7 @@ Maximum HTTP/2 streams per connection.
 **Context:** `http-version`
 **Default:** `100`
 
-```kdl
+```fragment,kdl
 http-version {
     max-h2-streams 200
 }
@@ -2272,11 +2263,15 @@ Defines an external processing agent.
 agents {
     agent "auth" {
         type "auth"
+        unix-socket "/var/run/zentinel/auth.sock"
         timeout-ms 1000
-        failure-mode "closed"
     }
 }
 ```
+
+Every agent needs exactly one transport: `unix-socket`, `grpc` or `http` (see
+[Transport Directives](#transport-directives)). The single-setting examples
+below omit it.
 
 ---
 
@@ -2287,7 +2282,7 @@ Agent type. Common: `"waf"`, `"auth"`, `"rate_limit"`, or custom string.
 **Context:** `agent`
 **Required**
 
-```kdl
+```fragment,kdl
 agent "auth" {
     type "auth"
 }
@@ -2299,12 +2294,36 @@ agent "auth" {
 
 Maximum time to wait for agent response.
 
-**Context:** `agent`
+**Context:** `agent`, `filter` (agent)
 **Default:** `1000`
 
-```kdl
+On an agent filter it sets the timeout of the filter's `request_headers` call
+and can only shorten the agent's value; the shorter applies (from 26.10_6).
+
+```fragment,kdl
 agent "auth" {
     timeout-ms 50
+}
+```
+
+---
+
+### `connect-timeout-ms`
+
+Time allowed for connecting to the agent and completing the handshake
+(including the delivery of its `config { }` block), per connection. From
+26.10_8.
+
+**Context:** `agent`
+**Default:** `5000`
+
+Startup waits at most the longest `connect-timeout-ms` plus 5 seconds for
+the agents; one that has not answered by then is not used until it does, and
+its filters follow their `failure-mode`.
+
+```fragment,kdl
+agent "auth" {
+    connect-timeout-ms 2000
 }
 ```
 
@@ -2316,7 +2335,7 @@ Maximum request body to send to agent.
 
 **Context:** `agent`
 
-```kdl
+```fragment,kdl
 agent "waf" {
     max-request-body-bytes 1048576
 }
@@ -2330,7 +2349,7 @@ Maximum response body to send to agent.
 
 **Context:** `agent`
 
-```kdl
+```fragment,kdl
 agent "logger" {
     max-response-body-bytes 4096
 }
@@ -2340,12 +2359,17 @@ agent "logger" {
 
 ### `request-body-mode`
 
-How to handle request body. Options: `"buffer"`, `"stream"`, `"hybrid"`.
+How to handle request body. Options: `"buffer"`, `"stream"`, `"hybrid:<bytes>"`.
 
 **Context:** `agent`
 **Default:** `"buffer"`
 
-```kdl
+Applied from 26.10_8; before, every request body was buffered whole. When a
+route's body agents disagree, the most conservative mode applies: `buffer`
+over `hybrid` (largest threshold) over `stream`. See
+[Body Streaming Modes](/configuration/agents/#body-streaming-modes).
+
+```fragment,kdl
 agent "waf" {
     request-body-mode "buffer"
 }
@@ -2360,7 +2384,7 @@ How to handle response body. Options: `"buffer"`, `"stream"`, `"hybrid"`.
 **Context:** `agent`
 **Default:** `"buffer"`
 
-```kdl
+```fragment,kdl
 agent "logger" {
     response-body-mode "stream"
 }
@@ -2375,7 +2399,7 @@ Timeout per body chunk when streaming.
 **Context:** `agent`
 **Default:** `5000`
 
-```kdl
+```fragment,kdl
 agent "waf" {
     chunk-timeout-ms 2000
 }
@@ -2390,26 +2414,9 @@ Maximum concurrent calls to agent.
 **Context:** `agent`
 **Default:** `100`
 
-```kdl
+```fragment,kdl
 agent "auth" {
     max-concurrent-calls 200
-}
-```
-
----
-
-### `transport`
-
-Communication mechanism for agent connections.
-
-**Context:** `agent`
-
-```kdl
-agent "auth" {
-    transport {
-        type "unix_socket"
-        path "/var/run/auth.sock"
-    }
 }
 ```
 
@@ -2423,7 +2430,7 @@ Request lifecycle events the agent receives.
 
 Available: `"request_headers"`, `"request_body"`, `"response_headers"`, `"response_body"`, `"log"`, `"websocket_frame"`
 
-```kdl
+```fragment,kdl
 agent "logger" {
     events "request_headers" "response_headers"
 }
@@ -2437,7 +2444,7 @@ Agent-specific configuration passed as JSON.
 
 **Context:** `agent`
 
-```kdl
+```fragment,kdl
 agent "custom" {
     config {
         custom-field "value"
@@ -2449,49 +2456,48 @@ agent "custom" {
 
 ## Transport Directives
 <small class="docs-ref">[Agents](/configuration/agents/)</small>
-<small class="source-ref">[`crates/config/src/agents.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/agents.rs)</small>
+<small class="source-ref">[`crates/config/src/kdl/mod.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/kdl/mod.rs)</small>
 
-### `type` (transport)
+An agent's transport is one of three child nodes. Each takes its address as
+the first argument or as a property. There is no `transport` block.
 
-Transport type. Options: `"unix_socket"`, `"grpc"`, `"http"`.
+### `unix-socket`
 
-**Context:** `transport`
-**Required**
+Unix domain socket path (argument or `path=`).
+
+**Context:** `agent`
 
 ```kdl
-transport {
-    type "unix_socket"
-    path "/var/run/agent.sock"
+agent "auth" {
+    unix-socket "/var/run/zentinel/auth.sock"
 }
 ```
 
 ---
 
-### `path`
+### `grpc`
 
-Unix socket path.
+gRPC endpoint (argument or `address=`). May contain a `tls` block.
 
-**Context:** `transport` (unix_socket)
+**Context:** `agent`
 
 ```kdl
-transport {
-    type "unix_socket"
-    path "/var/run/auth.sock"
+agent "waf" {
+    grpc "http://127.0.0.1:50051"
 }
 ```
 
 ---
 
-### `url`
+### `http`
 
-HTTP endpoint URL.
+HTTP endpoint (argument or `url=`). May contain a `tls` block.
 
-**Context:** `transport` (http)
+**Context:** `agent`
 
 ```kdl
-transport {
-    type "http"
-    url "http://127.0.0.1:8888"
+agent "policy" {
+    http "http://127.0.0.1:8888"
 }
 ```
 
@@ -2520,7 +2526,7 @@ filters {
 
 ### `type` (filter)
 
-Filter type. Options: `"rate-limit"`, `"headers"`, `"compress"`, `"cors"`, `"timeout"`, `"log"`, `"geo"`, `"agent"`.
+Filter type. Options: `"rate-limit"`, `"agent"`, `"headers"`, `"compress"`, `"cors"`, `"timeout"`, `"log"`, `"geo"`, `"redirect"`, `"url-rewrite"`.
 
 **Context:** `filter`
 **Required**
@@ -2585,6 +2591,9 @@ filter "rate-limit" {
 ### `backend`
 
 Rate limit storage backend. Options: `"local"`, `"redis"`, `"memcached"`.
+Backend settings are flat keys on the filter (`redis-url`, `redis-prefix`,
+`redis-pool-size`, `redis-timeout-ms`, `redis-fallback-local`, and the
+`memcached-*` equivalents), not a nested block.
 
 **Context:** `filter` (rate-limit)
 **Default:** `"local"`
@@ -2592,10 +2601,9 @@ Rate limit storage backend. Options: `"local"`, `"redis"`, `"memcached"`.
 ```kdl
 filter "rate-limit" {
     type "rate-limit"
-    backend {
-        type "redis"
-        url "redis://127.0.0.1:6379"
-    }
+    max-rps 100
+    backend "redis"
+    redis-url "redis://127.0.0.1:6379"
 }
 ```
 
@@ -2607,6 +2615,9 @@ When filter runs. Options: `"request"`, `"response"`, `"both"`.
 
 **Context:** `filter` (headers)
 
+On an agent filter `phase` is not read and is reported as ignored; the agent's
+`events` decide which calls it receives.
+
 ```kdl
 filter "headers" {
     type "headers"
@@ -2616,16 +2627,51 @@ filter "headers" {
 
 ---
 
+### `inspect-body`, `max-body-bytes` (agent filter)
+
+Narrow the request body an agent filter's agent receives on the routes that use
+the filter. Applied from 26.10_7; before that both were parsed and not read.
+
+**Context:** `filter` (agent)
+
+```fragment,kdl
+filter "waf-api" {
+    type "agent"
+    agent "waf-agent"
+    max-body-bytes 65536    // lowers the agent's max-request-body-bytes
+}
+filter "waf-headers-only" {
+    type "agent"
+    agent "waf-agent"
+    inspect-body #false     // no request body to this agent on these routes
+}
+```
+
+`inspect-body #false` withholds the request body; left out or `#true`, the
+agent's `events` decide. `max-body-bytes` can only lower the agent's
+`max-request-body-bytes`; a larger body is skipped if the agent fails open and
+refused with `413` if it fails closed. Neither affects response bodies, and
+request bodies reach agents only with a top-level `waf` block. Values that
+cannot apply are reported as ignored. See
+[Agent Filter](/configuration/filters/#request-bodies-per-route).
+
+---
+
 ### `algorithms`
 
-Compression algorithms. Options: `"gzip"`, `"br"`, `"deflate"`, `"zstd"`.
+Compression algorithms the filter may produce, in order of preference: the
+first one the client accepts is used. Produced: `gzip`, `zstd`. `br` (or
+`brotli`) is accepted but skipped with a warning (Pingora's Brotli output
+cannot be decoded); `deflate` and unknown names are configuration errors.
+Several arguments or one comma-separated string. Applied from 26.10_11.
 
 **Context:** `filter` (compress)
+**Default:** `"gzip"`
 
 ```kdl
 filter "compress" {
     type "compress"
-    algorithms "gzip" "br"
+    algorithms "zstd" "gzip"
 }
 ```
 
@@ -2649,14 +2695,16 @@ filter "compress" {
 
 ### `content-types`
 
-Content types to compress.
+MIME type prefixes the compress filter compresses. Applied from 26.10_11
+(before, a fixed list was used).
 
 **Context:** `filter` (compress)
+**Default:** `"text/html" "text/css" "application/json" "application/javascript"`
 
 ```kdl
 filter "compress" {
     type "compress"
-    content-types "text/html" "application/json"
+    content-types "text/html" "application/json" "image/svg+xml"
 }
 ```
 
@@ -2664,7 +2712,8 @@ filter "compress" {
 
 ### `level`
 
-Compression level (1-9).
+Compression level, 1-9; anything else is a configuration error. Applied
+from 26.10_11 (before, the level was fixed at 6).
 
 **Context:** `filter` (compress)
 **Default:** `6`
@@ -2678,80 +2727,12 @@ filter "compress" {
 
 ---
 
-### `allowed-origins`
+### CORS settings (`allowed-origins`, `allowed-methods`, `allowed-headers`, `allow-credentials`, `max-age-secs`)
 
-CORS allowed origins.
-
-**Context:** `filter` (cors)
-
-```kdl
-filter "cors" {
-    type "cors"
-    allowed-origins "*"
-}
-```
-
----
-
-### `allowed-methods`
-
-CORS allowed methods.
-
-**Context:** `filter` (cors)
-
-```kdl
-filter "cors" {
-    type "cors"
-    allowed-methods "GET" "POST" "PUT"
-}
-```
-
----
-
-### `allowed-headers`
-
-CORS allowed headers.
-
-**Context:** `filter` (cors)
-
-```kdl
-filter "cors" {
-    type "cors"
-    allowed-headers "Content-Type" "Authorization"
-}
-```
-
----
-
-### `allow-credentials`
-
-CORS allow credentials.
-
-**Context:** `filter` (cors)
-**Default:** `#false`
-
-```kdl
-filter "cors" {
-    type "cors"
-    allow-credentials #true
-}
-```
-
----
-
-### `max-age-secs`
-
-CORS preflight cache duration.
-
-**Context:** `filter` (cors)
-**Default:** `86400`
-
-```kdl
-filter "cors" {
-    type "cors"
-    max-age-secs 3600
-}
-```
+Not configurable from KDL as of 26.10_3: a `type "cors"` filter is built with
+default settings and the parser reads none of these keys
+(`crates/config/src/kdl/filters.rs`). Set CORS headers with a `headers`
+filter or the route's `policies { response-headers { ... } }` instead.
 
 ---
 
@@ -2780,6 +2761,7 @@ GeoIP database type. Options: `"maxmind"`, `"ip2location"`.
 ```kdl
 filter "geo" {
     type "geo"
+    database-path "/etc/zentinel/GeoLite2-Country.mmdb"
     database-type "maxmind"
 }
 ```
@@ -2795,8 +2777,9 @@ Geo filter action. Options: `"block"`, `"allow"`, `"log-only"`.
 ```kdl
 filter "geo" {
     type "geo"
+    database-path "/etc/zentinel/GeoLite2-Country.mmdb"
     action "block"
-    countries "RU" "CN"
+    countries "RU,CN"
 }
 ```
 
@@ -2804,14 +2787,17 @@ filter "geo" {
 
 ### `countries`
 
-Country codes for geo filter (ISO 3166-1 alpha-2).
+Country codes for geo filter (ISO 3166-1 alpha-2), as one comma-separated
+string.
 
 **Context:** `filter` (geo)
 
 ```kdl
 filter "geo" {
     type "geo"
-    countries "US" "CA" "GB"
+    database-path "/etc/zentinel/GeoLite2-Country.mmdb"
+    action "allow"
+    countries "US,CA,GB"
 }
 ```
 
@@ -2820,6 +2806,15 @@ filter "geo" {
 ## WAF Directives
 <small class="source-ref">[`crates/config/src/waf.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/config/src/waf.rs)</small>
 
+{% callout(type="warning", title="Not wired into the runtime") %}
+The top-level `waf` block is parsed but not connected to the proxy as of
+26.10_3. Validation rejects every `mode` except `"off"`, and the mode defaults
+to `"prevention"`, so a `waf` block without `mode "off"` stops the
+configuration from loading. The settings below are listed for reference only;
+the examples are fragments. Use a WAF agent attached to routes through
+[filters](#filter) to inspect traffic.
+{% end %}
+
 ### `engine`
 
 WAF engine. Options: `"modsecurity"`, `"coraza"`, or custom.
@@ -2827,7 +2822,7 @@ WAF engine. Options: `"modsecurity"`, `"coraza"`, or custom.
 **Context:** `waf`
 **Required**
 
-```kdl
+```fragment,kdl
 waf {
     engine "coraza"
 }
@@ -2840,9 +2835,9 @@ waf {
 WAF mode. Options: `"off"`, `"detection"`, `"prevention"`.
 
 **Context:** `waf`
-**Default:** `"prevention"`
+**Default:** `"prevention"` — which validation rejects (see below)
 
-```kdl
+```fragment,kdl
 waf {
     mode "detection"
 }
@@ -2857,7 +2852,7 @@ Enable WAF audit logging.
 **Context:** `waf`
 **Default:** `#true`
 
-```kdl
+```fragment,kdl
 waf {
     audit-log #true
 }
@@ -2871,7 +2866,7 @@ WAF ruleset configuration.
 
 **Context:** `waf`
 
-```kdl
+```fragment,kdl
 waf {
     ruleset {
         crs-version "3.3.4"
@@ -2889,7 +2884,7 @@ OWASP Core Rule Set version.
 
 **Context:** `ruleset`
 
-```kdl
+```fragment,kdl
 ruleset {
     crs-version "3.3.4"
 }
@@ -2904,7 +2899,7 @@ CRS paranoia level (1-4).
 **Context:** `ruleset`
 **Default:** `1`
 
-```kdl
+```fragment,kdl
 ruleset {
     paranoia-level 2
 }
@@ -2919,7 +2914,7 @@ Anomaly score threshold for blocking.
 **Context:** `ruleset`
 **Default:** `5`
 
-```kdl
+```fragment,kdl
 ruleset {
     anomaly-threshold 10
 }
@@ -2929,16 +2924,19 @@ ruleset {
 
 ### `exclusions`
 
-WAF rule exclusions.
+WAF rule exclusions. They belong to the `ruleset` block (an `exclusions`
+wrapper or `exclusion` nodes listed directly).
 
-**Context:** `waf`
+**Context:** `ruleset`
 
-```kdl
+```fragment,kdl
 waf {
-    exclusions {
-        exclusion {
-            rule-ids "920350" "920420"
-            scope "global"
+    ruleset {
+        exclusions {
+            exclusion {
+                rule-ids "920350" "920420"
+                scope "global"
+            }
         }
     }
 }
@@ -2952,7 +2950,7 @@ WAF body inspection policy.
 
 **Context:** `waf`
 
-```kdl
+```fragment,kdl
 waf {
     body-inspection {
         inspect-request-body #true
@@ -2976,6 +2974,8 @@ Configures inference/LLM-specific settings for a route, including token-based ra
 
 ```kdl
 route "openai-proxy" {
+    matches { path-prefix "/v1/" }
+    upstream "openai"
     inference {
         provider "openai"
         rate-limit {
@@ -2992,9 +2992,9 @@ route "openai-proxy" {
 LLM provider type for token counting and API parsing. Options: `"openai"`, `"anthropic"`, `"generic"`.
 
 **Context:** `inference`
-**Required**
+**Default:** `"generic"`
 
-```kdl
+```fragment,kdl
 inference {
     provider "openai"
 }
@@ -3004,16 +3004,19 @@ inference {
 
 ### `rate-limit` (inference)
 
-Token-based rate limiting for inference routes.
+Token-based rate limiting for inference routes. Settings: `tokens-per-minute`
+(required), `requests-per-minute`, `burst-tokens` (default `10000`) and
+`estimation-method` (`"chars"` (default), `"words"`, `"tiktoken"`). There is no
+`key` setting here.
 
 **Context:** `inference`
 
-```kdl
+```fragment,kdl
 inference {
     rate-limit {
         tokens-per-minute 100000
         requests-per-minute 1000
-        key "header:X-API-Key"
+        burst-tokens 20000
     }
 }
 ```
@@ -3026,7 +3029,7 @@ Maximum tokens per minute for inference rate limiting.
 
 **Context:** `rate-limit` (inference)
 
-```kdl
+```fragment,kdl
 rate-limit {
     tokens-per-minute 50000
 }
@@ -3040,8 +3043,9 @@ Maximum requests per minute (in addition to token limits).
 
 **Context:** `rate-limit` (inference)
 
-```kdl
+```fragment,kdl
 rate-limit {
+    tokens-per-minute 50000
     requests-per-minute 500
 }
 ```
@@ -3050,96 +3054,81 @@ rate-limit {
 
 ### `budget`
 
-Token budget tracking with cumulative limits and alerts.
+Token budget tracking over one period, with alert thresholds. One `budget`
+block per route sets one `limit` for one `period`.
 
 **Context:** `inference`
 
-```kdl
+```fragment,kdl
 inference {
+    provider "openai"
     budget {
-        hourly-limit 1000000
-        daily-limit 10000000
-        monthly-limit 100000000
-        alert-threshold 0.8
+        period "monthly"          // hourly, daily (default), monthly, or seconds
+        limit 100000000           // tokens per period (required)
+        alert-thresholds 0.8 0.9  // default 0.80 0.90 0.95
+        enforce #true             // reject when exhausted (default #true)
+        rollover #false
     }
 }
 ```
 
----
-
-### `hourly-limit`
-
-Maximum tokens allowed per hour.
-
-**Context:** `budget`
-
-```kdl
-budget {
-    hourly-limit 500000
-}
-```
+The `hourly-limit`, `daily-limit`, `monthly-limit` and `alert-threshold` keys
+listed here before are not read by any parser; use `period` plus `limit`, and
+`alert-thresholds`.
 
 ---
 
-### `daily-limit`
+### `period`
 
-Maximum tokens allowed per day.
+Budget period. Options: `"hourly"`, `"daily"`, `"monthly"`, or a number of seconds.
 
 **Context:** `budget`
-
-```kdl
-budget {
-    daily-limit 5000000
-}
-```
+**Default:** `"daily"`
 
 ---
 
-### `monthly-limit`
+### `limit`
 
-Maximum tokens allowed per month.
+Tokens allowed per period.
 
 **Context:** `budget`
-
-```kdl
-budget {
-    monthly-limit 50000000
-}
-```
+**Required**
 
 ---
 
-### `alert-threshold`
+### `alert-thresholds`
 
-Percentage of budget (0.0-1.0) at which to emit alerts.
+Fractions of the budget (0.0–1.0) at which alerts are emitted.
 
 **Context:** `budget`
-**Default:** `0.8`
-
-```kdl
-budget {
-    alert-threshold 0.9
-}
-```
+**Default:** `0.80 0.90 0.95`
 
 ---
 
 ### `cost-attribution`
 
-Per-model pricing for cost tracking and metrics.
+Per-model pricing for cost tracking and metrics. Prices are per **million**
+tokens, in a `pricing` block.
 
 **Context:** `inference`
 
-```kdl
+```fragment,kdl
 inference {
+    provider "openai"
     cost-attribution {
-        model "gpt-4" {
-            input-cost-per-1k 0.03
-            output-cost-per-1k 0.06
-        }
-        model "gpt-3.5-turbo" {
-            input-cost-per-1k 0.0015
-            output-cost-per-1k 0.002
+        enabled #true
+        currency "USD"
+        default-input-cost 1.0     // per million tokens, for unmatched models
+        default-output-cost 2.0
+        pricing {
+            model "gpt-4*" {
+                input-cost-per-million 30.0
+                output-cost-per-million 60.0
+            }
+            model "gpt-3.5*" {
+                input-cost-per-million 1.5
+                output-cost-per-million 2.0
+            }
         }
     }
 }
@@ -3147,45 +3136,30 @@ inference {
 
 ---
 
-### `input-cost-per-1k`
+### `input-cost-per-million`, `output-cost-per-million`
 
-Cost per 1,000 input tokens in USD.
+Cost per million input/output tokens for a `model` pattern in
+`cost-attribution { pricing { ... } }`. Both are required on each `model`
+entry; an optional `currency` overrides the block's currency. (There is no
+`input-cost-per-1k` / `output-cost-per-1k`.)
 
-**Context:** `model` (cost-attribution)
-
-```kdl
-model "gpt-4" {
-    input-cost-per-1k 0.03
-}
-```
-
----
-
-### `output-cost-per-1k`
-
-Cost per 1,000 output tokens in USD.
-
-**Context:** `model` (cost-attribution)
-
-```kdl
-model "gpt-4" {
-    output-cost-per-1k 0.06
-}
-```
+**Context:** `model` (`pricing`)
 
 ---
 
 ### `model-routing`
 
-Route requests to different upstreams based on model name.
+Route requests to different upstreams based on model name, with `model`
+entries (glob pattern, `upstream=`, optional `provider=`).
 
 **Context:** `inference`
 
-```kdl
+```fragment,kdl
 inference {
+    provider "openai"
     model-routing {
-        route "gpt-4*" upstream="openai-primary"
-        route "claude*" upstream="anthropic"
+        model "gpt-4*" upstream="openai-primary"
+        model "claude*" upstream="anthropic" provider="anthropic"
         default-upstream "openai-fallback"
     }
 }
@@ -3199,7 +3173,7 @@ Fallback upstream when no model route matches.
 
 **Context:** `model-routing`
 
-```kdl
+```fragment,kdl
 model-routing {
     default-upstream "generic-backend"
 }
@@ -3209,15 +3183,22 @@ model-routing {
 
 ### `fallback`
 
-Automatic failover configuration with model mapping.
+Automatic failover to other upstreams. A route-level block (a direct child of
+the route, not of `inference`).
 
-**Context:** `inference`
+**Context:** `route`
 
-```kdl
-inference {
-    fallback {
-        enabled #true
-        upstreams "openai-primary" "openai-secondary" "anthropic"
+```fragment,kdl
+fallback {
+    max-attempts 2
+    triggers {
+        on-health-failure #true
+        on-budget-exhausted #true
+        on-error-codes 429 500 502 503 504
+        on-connection-error #true
+    }
+    fallback-upstream "anthropic" {
+        skip-if-unhealthy #true
         model-mapping {
             "gpt-4" "claude-3-opus-20240229"
             "gpt-3.5-turbo" "claude-3-haiku-20240307"
@@ -3232,10 +3213,10 @@ inference {
 
 Maps models between providers for cross-provider failover.
 
-**Context:** `fallback`
+**Context:** `fallback-upstream`
 
-```kdl
-fallback {
+```fragment,kdl
+fallback-upstream "anthropic" {
     model-mapping {
         "gpt-4" "claude-3-opus-20240229"
     }
@@ -3250,7 +3231,7 @@ Semantic guardrails for prompt injection detection and PII scanning.
 
 **Context:** `inference`
 
-```kdl
+```fragment,kdl
 inference {
     guardrails {
         prompt-injection {
@@ -3275,7 +3256,7 @@ Prompt injection detection configuration for request-phase inspection.
 
 **Context:** `guardrails`
 
-```kdl
+```fragment,kdl
 prompt-injection {
     enabled #true
     agent "prompt-guard"
@@ -3294,9 +3275,9 @@ prompt-injection {
 Action when prompt injection is detected. Options: `"block"`, `"log"`, `"warn"`.
 
 **Context:** `prompt-injection`
-**Default:** `"block"`
+**Default:** `"log"`
 
-```kdl
+```fragment,kdl
 prompt-injection {
     action "warn"
 }
@@ -3311,7 +3292,7 @@ HTTP status code returned when blocking.
 **Context:** `prompt-injection`
 **Default:** `400`
 
-```kdl
+```fragment,kdl
 prompt-injection {
     action "block"
     block-status 403
@@ -3326,7 +3307,7 @@ Message returned in response body when blocking.
 
 **Context:** `prompt-injection`
 
-```kdl
+```fragment,kdl
 prompt-injection {
     block-message "Your request was blocked for security reasons"
 }
@@ -3340,7 +3321,7 @@ PII detection configuration for response-phase inspection.
 
 **Context:** `guardrails`
 
-```kdl
+```fragment,kdl
 pii-detection {
     enabled #true
     agent "pii-scanner"
@@ -3360,7 +3341,7 @@ Action when PII is detected. Options: `"log"`, `"redact"`, `"block"`.
 **Context:** `pii-detection`
 **Default:** `"log"`
 
-```kdl
+```fragment,kdl
 pii-detection {
     action "redact"
 }
@@ -3374,7 +3355,7 @@ PII categories to detect. Options: `"ssn"`, `"credit-card"`, `"email"`, `"phone"
 
 **Context:** `pii-detection`
 
-```kdl
+```fragment,kdl
 pii-detection {
     categories "ssn" "credit-card" "email"
 }
@@ -3386,16 +3367,25 @@ pii-detection {
 <small class="docs-ref">[Limits](/configuration/limits/)</small>
 <small class="source-ref">[`crates/common/src/limits.rs`](https://github.com/zentinelproxy/zentinel/blob/main/crates/common/src/limits.rs)</small>
 
-### `max-header-size-bytes`
+A `limits` block reads exactly the six keys below, in a single file and in a
+directory configuration alike. The `-bytes` spellings
+(`max-header-size-bytes`, `max-body-size-bytes`) and the other keys earlier
+versions of this index listed (`max-connections-per-route`,
+`max-queued-requests`, `max-requests-per-second-*`, `max-memory-bytes`, ...)
+are not read anywhere. From 26.10_5, `zentinel test` and `zentinel lint`
+report them as ignored. Before 26.10_6 a separate directory loader read some of
+them, but the `zentinel` command could not load a directory.
 
-Maximum size per header.
+### `max-header-size`
+
+Maximum total size of the request headers (names and values), in bytes. `1048576` or more disables the check.
 
 **Context:** `limits`
 **Default:** `8192`
 
 ```kdl
 limits {
-    max-header-size-bytes 16384
+    max-header-size 16384
 }
 ```
 
@@ -3403,7 +3393,7 @@ limits {
 
 ### `max-header-count`
 
-Maximum number of headers.
+Maximum number of request headers. `1048576` or more disables the check.
 
 **Context:** `limits`
 **Default:** `100`
@@ -3416,16 +3406,16 @@ limits {
 
 ---
 
-### `max-body-size-bytes`
+### `max-body-size`
 
-Maximum request body size.
+Maximum request body size, in bytes. A route's `policies { max-body-size }` can lower it for that route; the smaller of the two applies. A body over it gets `413` (from 26.10_5; `500` before).
 
 **Context:** `limits`
-**Default:** `1048576`
+**Default:** `10485760`
 
 ```kdl
 limits {
-    max-body-size-bytes 10485760
+    max-body-size 10485760
 }
 ```
 
@@ -3433,10 +3423,13 @@ limits {
 
 ### `max-connections-per-client`
 
-Maximum connections from single client.
+Maximum open connections from one client address (the TCP peer). A connection
+over it is closed before anything is read. Peers in the listener's
+`trusted-proxies` are exempt. Enforced from 26.10_6; parsed and not applied
+before. `0` means unlimited and is reported as ignored.
 
-**Context:** `limits`
-**Default:** `100`
+**Context:** `limits`, namespace `limits`
+**Default:** unlimited
 
 ```kdl
 limits {
@@ -3446,31 +3439,18 @@ limits {
 
 ---
 
-### `max-connections-per-route`
-
-Maximum connections per route.
-
-**Context:** `limits`
-**Default:** `1000`
-
-```kdl
-limits {
-    max-connections-per-route 500
-}
-```
-
----
-
 ### `max-total-connections`
 
-Global maximum connections.
+Maximum open client connections. A connection over it is closed before
+anything is read. Enforced from 26.10_6; parsed and not applied before. `0`
+means unlimited and is reported as ignored.
 
-**Context:** `limits`
-**Default:** `10000`
+**Context:** `limits`, namespace `limits`
+**Default:** unlimited
 
 ```kdl
 limits {
-    max-total-connections 50000
+    max-total-connections 10000
 }
 ```
 
@@ -3478,29 +3458,16 @@ limits {
 
 ### `max-in-flight-requests`
 
-Maximum in-flight requests globally.
+Maximum requests being processed at once. A request over it gets `503` with
+`Retry-After: 1`; builtin handlers are never refused. Enforced from 26.10_6;
+parsed and not applied before. `0` means unlimited and is reported as ignored.
 
-**Context:** `limits`
-**Default:** `10000`
-
-```kdl
-limits {
-    max-in-flight-requests 20000
-}
-```
-
----
-
-### `max-queued-requests`
-
-Queue length before rejection.
-
-**Context:** `limits`
-**Default:** `1000`
+**Context:** `limits`, namespace `limits`
+**Default:** unlimited
 
 ```kdl
 limits {
-    max-queued-requests 5000
+    max-in-flight-requests 10000
 }
 ```
 
@@ -3535,7 +3502,7 @@ Enable high-cardinality metrics labels.
 **Context:** `metrics`
 **Default:** `#false`
 
-```kdl
+```fragment,kdl
 metrics {
     high-cardinality #true
 }
@@ -3545,7 +3512,9 @@ metrics {
 
 ### `logging`
 
-Logging configuration.
+Logging configuration. As of 26.10_3 `level` and `format` are parsed, but the
+log subscriber takes its level from `RUST_LOG` / `--verbose`; validation warns
+when they are set to anything but `info` / `json`.
 
 **Context:** `observability`
 
@@ -3567,7 +3536,7 @@ Log format. Options: `"json"`, `"pretty"`.
 **Context:** `logging`
 **Default:** `"json"`
 
-```kdl
+```fragment,kdl
 logging {
     format "pretty"
 }
@@ -3582,7 +3551,7 @@ Include timestamps in logs.
 **Context:** `logging`
 **Default:** `#true`
 
-```kdl
+```fragment,kdl
 logging {
     timestamps #true
 }
@@ -3592,15 +3561,9 @@ logging {
 
 ### `file`
 
-Log output file path.
-
-**Context:** `logging`
-
-```kdl
-logging {
-    file "/var/log/zentinel/app.log"
-}
-```
+Not a `logging` setting: application logs always go to stdout/stderr (redirect
+them with the service manager). `file` is a setting of `access-log`,
+`error-log` and `audit-log`, below.
 
 ---
 
@@ -3610,7 +3573,7 @@ Access log configuration.
 
 **Context:** `logging`
 
-```kdl
+```fragment,kdl
 logging {
     access-log {
         enabled #true
@@ -3628,7 +3591,7 @@ Error log configuration. **Enabled by default** — writes to `/var/log/zentinel
 
 **Context:** `logging`
 
-```kdl
+```fragment,kdl
 logging {
     error-log {
         enabled #true
@@ -3646,7 +3609,7 @@ Audit log configuration.
 
 **Context:** `logging`
 
-```kdl
+```fragment,kdl
 logging {
     audit-log {
         enabled #true
@@ -3685,7 +3648,7 @@ Tracing sampling rate (0.0 to 1.0).
 **Context:** `tracing`
 **Default:** `0.01`
 
-```kdl
+```fragment,kdl
 tracing {
     sampling-rate 0.1
 }
@@ -3700,7 +3663,7 @@ Service name for tracing spans.
 **Context:** `tracing`
 **Default:** `"zentinel"`
 
-```kdl
+```fragment,kdl
 tracing {
     service-name "api-gateway"
 }

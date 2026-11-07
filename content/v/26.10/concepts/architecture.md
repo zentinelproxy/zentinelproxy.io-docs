@@ -10,9 +10,9 @@ Zentinel is a security-first reverse proxy built on [Cloudflare's Pingora](https
 
 Zentinel follows four core principles:
 
-### Sleepable Operations
+### Predictable Operation
 
-No operational surprises at 3 AM:
+Nothing in the proxy should surprise the person running it:
 
 - **Bounded resources** - Hard limits on memory, queues, connections
 - **Deterministic timeouts** - Every operation has an explicit timeout

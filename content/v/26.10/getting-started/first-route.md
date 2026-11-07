@@ -1,7 +1,7 @@
 +++
 title = "First Route"
 weight = 3
-updated = 2026-02-19
+updated = 2026-10-19
 +++
 
 Routes are the core of Zentinel's traffic management. They match incoming requests and direct them to the appropriate backend.
@@ -42,7 +42,6 @@ routes {
     route "api-v1" {
         matches {
             path-prefix "/api/v1/"
-            method "GET" "POST" "PUT" "DELETE"
         }
         upstream "api-backend"
         service-type "api"
@@ -65,7 +64,7 @@ Routes support multiple match conditions. All conditions must match for the rout
 
 ### Path Matching
 
-```kdl
+```fragment,kdl
 matches {
     // Prefix match - matches /api/, /api/users, /api/v1/items
     path-prefix "/api/"
@@ -82,7 +81,7 @@ matches {
 
 Route based on the `Host` header:
 
-```kdl
+```fragment,kdl
 matches {
     host "api.example.com"
     path-prefix "/"
@@ -93,18 +92,27 @@ matches {
 
 Restrict to specific HTTP methods:
 
-```kdl
+```fragment,kdl
 matches {
     path-prefix "/api/"
-    method "GET" "POST"     // Only GET and POST requests
+    method "GET"
 }
 ```
+
+To accept several methods, list them on one line: `method "GET" "POST"`
+matches either.
+
+{% callout(type="note") %}
+Before 26.10_5 the configuration parser kept only the **first** method, so
+`method "GET" "POST"` matched `GET` only. On those releases, give each method
+its own route, or leave the condition out.
+{% end %}
 
 ### Header Matching
 
 Match on request headers:
 
-```kdl
+```fragment,kdl
 matches {
     path-prefix "/api/"
     header "Authorization"              // Header must exist
@@ -116,7 +124,7 @@ matches {
 
 Match on query parameters:
 
-```kdl
+```fragment,kdl
 matches {
     path-prefix "/search"
     query-param "q"                     // Parameter must exist
@@ -137,6 +145,7 @@ routes {
             path "/api/health"
         }
         service-type "builtin"
+        builtin-handler "health"
     }
 
     // Normal priority (default)
@@ -212,19 +221,23 @@ route "static" {
 
 ### Built-in Handlers
 
-For health checks and metrics:
+For health checks and metrics, Zentinel answers the request itself. `builtin-handler` picks the handler; `service-type "builtin"` on its own does nothing, and is optional once a handler is set:
 
 ```kdl
 route "health" {
     matches { path "/health" }
     service-type "builtin"
+    builtin-handler "health"
 }
 
 route "metrics" {
     matches { path "/metrics" }
     service-type "builtin"
+    builtin-handler "metrics"
 }
 ```
+
+See [Built-in Handlers](/configuration/routes/#built-in-handlers) for the full list.
 
 ## Route Policies
 
@@ -307,6 +320,7 @@ routes {
         priority "high"
         matches { path "/health" }
         service-type "builtin"
+        builtin-handler "health"
     }
 
     // API routes
@@ -314,7 +328,6 @@ routes {
         priority "normal"
         matches {
             path-prefix "/api/v1/"
-            method "GET" "POST" "PUT" "DELETE"
         }
         upstream "api-backend"
         service-type "api"

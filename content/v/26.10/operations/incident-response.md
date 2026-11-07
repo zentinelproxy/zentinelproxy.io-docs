@@ -1,7 +1,7 @@
 +++
 title = "Incident Response"
-weight = 4
-updated = 2026-02-19
+weight = 6
+updated = 2026-10-20
 +++
 
 Procedures for responding to production incidents affecting Zentinel.
@@ -186,16 +186,23 @@ curl -s localhost:9090/metrics | grep open_connections
 curl -s localhost:9090/metrics | grep pending_requests
 ```
 
-**Mitigation**:
+**Mitigation**: bound concurrent work with `limits { max-in-flight-requests
+max-total-connections }` (enforced from 26.10_6; see
+[Limits](/configuration/limits/#concurrency-limits)), shed load in front of the
+proxy (the load balancer), or tighten rate limits. From 26.10_6 a changed rate
+limit takes effect on reload (`kill -HUP $(pgrep -x zentinel)`); on earlier
+releases it needs a restart:
+
 ```kdl
-// Reduce connection limits immediately
-limits {
-    max-connections 5000
-    max-connections-per-client 50
+filters {
+    filter "emergency-limit" {
+        type "rate-limit"
+        max-rps 20
+        burst 20
+        key "client-ip"
+    }
 }
 ```
-
-Then reload with `kill -HUP $(cat /var/run/zentinel.pid)`.
 
 ### TLS/Certificate Issues
 

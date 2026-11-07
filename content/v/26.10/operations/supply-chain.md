@@ -1,6 +1,6 @@
 +++
 title = "Supply Chain Security"
-weight = 8
+weight = 11
 updated = 2026-02-19
 +++
 
