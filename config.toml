@@ -49,7 +49,7 @@ edit_url = "https://github.com/zentinelproxy/zentinelproxy.io-docs/edit/main/con
 show_theme_toggle = true
 # The current zentinel release (GitHub release tag), shown in the footer as on
 # zentinelproxy.io. Bump it with ZENTINEL_RELEASE in .github/workflows/build.yml.
-software_version = "26.10_11"
+software_version = "26.11_1"
 
 # Home site link (back to main landing page)
 [extra.home_site]
@@ -59,9 +59,10 @@ logo = "img/zentinel-lockup-dark.svg"
 
 # Version picker
 [extra.versions]
-current = "26.10"
+current = "26.11"
 list = [
-    { version = "26.10", url = "/", label = "latest" },
+    { version = "26.11", url = "/", label = "latest" },
+    { version = "26.10", url = "/v/26.10/", label = "" },
     { version = "26.09", url = "/v/26.09/", label = "" },
     { version = "26.08", url = "/v/26.08/", label = "" },
     { version = "26.07", url = "/v/26.07/", label = "" },
