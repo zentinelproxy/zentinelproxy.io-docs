@@ -1,7 +1,7 @@
 +++
 title = "API Gateway"
 weight = 2
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 A complete API gateway configuration with versioned APIs, authentication, rate limiting, and proper error handling. This example shows how to build a production-ready API gateway.
@@ -75,10 +75,9 @@ routes {
         priority 200
         matches {
             path-prefix "/api/v2/"
-            method "GET" "POST" "PUT" "DELETE" "PATCH"
         }
         upstream "api-v2"
-        agents "auth" "ratelimit"
+        filters "auth" "ratelimit"
         service-type "api"
         retry-policy {
             max-attempts 3
@@ -100,9 +99,7 @@ routes {
                 remove "Server" "X-Powered-By"
             }
         }
-        error-pages {
-            default-format "json"
-        }
+        // service-type "api" returns errors as JSON
     }
 
     // API v1 - legacy, deprecated
@@ -112,7 +109,7 @@ routes {
             path-prefix "/api/v1/"
         }
         upstream "api-v1"
-        agents "auth"
+        filters "auth"
         service-type "api"
         policies {
             timeout-secs 60
@@ -123,9 +120,7 @@ routes {
                 }
             }
         }
-        error-pages {
-            default-format "json"
-        }
+        // service-type "api" returns errors as JSON
     }
 
     // OpenAPI documentation - public
@@ -147,7 +142,7 @@ upstreams {
         target "127.0.0.1:3000" weight=100
         target "127.0.0.1:3001" weight=100
 
-        load-balancing "round-robin"
+        load-balancing "round_robin"
         health-check {
             type "http" {
                 path "/health"
@@ -175,13 +170,25 @@ agents {
         unix-socket path="/var/run/zentinel/auth.sock"
         events "request_headers"
         timeout-ms 100
-        failure-mode "closed"
     }
 
     agent "ratelimit" {
         unix-socket path="/var/run/zentinel/ratelimit.sock"
         events "request_headers"
         timeout-ms 50
+    }
+}
+
+// Routes attach agents through filters
+filters {
+    filter "auth" {
+        type "agent"
+        agent "auth"
+        failure-mode "closed"
+    }
+    filter "ratelimit" {
+        type "agent"
+        agent "ratelimit"
         failure-mode "open"
     }
 }
@@ -336,10 +343,27 @@ agents {
     }
 }
 
+filters {
+    filter "ratelimit-standard" {
+        type "agent"
+        agent "ratelimit-standard"
+    }
+    filter "ratelimit-premium" {
+        type "agent"
+        agent "ratelimit-premium"
+    }
+}
+
 routes {
+    route "premium" {
+        matches { path-prefix "/api/premium/" }
+        upstream "backend"
+        filters "ratelimit-premium"
+    }
     route "default" {
         matches { path-prefix "/" }
         upstream "backend"
+        filters "ratelimit-standard"
     }
 }
 
@@ -355,6 +379,8 @@ upstreams {
 
 ```kdl
 route "api-v2" {
+    matches { path-prefix "/api/v2/" }
+    upstream "api-v2"
     policies {
         response-headers {
             set {

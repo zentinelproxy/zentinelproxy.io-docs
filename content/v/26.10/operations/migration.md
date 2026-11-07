@@ -4,7 +4,10 @@ weight = 3
 updated = 2026-02-19
 +++
 
-Guides for migrating to Zentinel from other reverse proxies.
+Guides for migrating to Zentinel from other reverse proxies. This page covers the general process and nginx, HAProxy and Traefik. Envoy and Caddy have their own pages:
+
+- [Migrating from Envoy](../migrate-from-envoy/)
+- [Migrating from Caddy](../migrate-from-caddy/)
 
 ## Migration Overview
 
@@ -350,6 +353,7 @@ backend http_back
 ```kdl
 upstreams {
     upstream "backend" {
+        target "10.0.1.1:8080"
         health-check {
             type "http" {
                 path "/health"

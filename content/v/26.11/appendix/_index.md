@@ -1,0 +1,24 @@
++++
+in_search_index = false
+title = "Appendices"
+weight = 11
+sort_by = "weight"
+template = "section.html"
+
+[extra]
+# The body already links every child page; skip the theme's auto-generated list.
+hide_children = true
++++
+
+Supplementary reference material for Zentinel.
+
+## Contents
+
+| Page | Description |
+|------|-------------|
+| [Changelog](changelog/) | Version history and changes |
+| [Versioning](versioning/) | Release versions, crate versions, and upgrade guides |
+| [FAQ](faq/) | Frequently asked questions |
+| [Glossary](glossary/) | Term definitions |
+| [License](license/) | Apache 2.0 license |
+

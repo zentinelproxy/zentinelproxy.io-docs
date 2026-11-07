@@ -80,7 +80,7 @@ If you changed the configuration for the new release (for example the 26.08_2 TL
 
 ### Building from source
 
-Source builds need the Rust version pinned in the repository's `rust-toolchain.toml`: **Rust 1.96** since 26.10_3 (1.95 before). Prebuilt binaries and container images are not affected. See [Building from Source](/development/building/).
+Source builds need the Rust version pinned in the repository's `rust-toolchain.toml`: **Rust 1.99** since 26.11_1 (1.96 from 26.10_3, 1.95 before). Prebuilt binaries and container images are not affected. See [Building from Source](/development/building/).
 
 ## Breaking and behaviour-changing releases
 
@@ -88,6 +88,7 @@ Releases not listed here are dependency, security or documentation updates with 
 
 | Release | Type | What changes | What to do |
 |---------|------|--------------|------------|
+| **26.11_1** | Build | Building from source needs Rust 1.99 | Update the toolchain for source builds |
 | **26.10_11** | **Breaking** | Configurations that used to load and silently do nothing now fail: an `https` or `h2` listener without `tls` (it bound nothing); an upstream without `tls` with `http-version { min-version 2 }` (it was served over HTTP/1.1); a `compress` filter listing `deflate` or an unknown algorithm, or with a `level` outside 1-9 | Run `zentinel test --strict` before upgrading. Add `tls`, or use `protocol "h2c"` / `h2c #true` for cleartext HTTP/2; replace `deflate` with `gzip` |
 | **26.10_11** | Behaviour | **OCSP stapling happens, and it is on by default**: the proxy contacts each certificate's OCSP responder over HTTP from startup and at least hourly. `cert-file` must contain the issuer for a staple. A failing responder never fails a handshake | Allow egress to your CA's OCSP responder, or set `ocsp-stapling #false`. Watch `zentinel_tls_ocsp_fetch_total{result="failure"}` |
 | **26.10_11** | Behaviour | **The `compress` filter works**: before, it broke every response it applied to. `algorithms` (in order of preference), `content-types` and `level` are applied; Brotli is not produced, and the default is `gzip` alone (was gzip, br) | Check `algorithms` and `content-types` against what you want compressed; add `zstd` for a stronger coding |

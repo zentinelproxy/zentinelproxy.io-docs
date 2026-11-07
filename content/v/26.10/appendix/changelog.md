@@ -1,7 +1,7 @@
 +++
 title = "Changelog"
 weight = 1
-updated = 2026-10-10
+updated = 2026-10-20
 +++
 
 All notable changes to Zentinel are documented here.
@@ -15,6 +15,16 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 
 | CalVer | Crate Version | Date | Highlights |
 |--------|---------------|------|------------|
+| [26.10_11](#26-10-11) | 0.6.54 | 2026-10-31 | **OCSP stapling works** (on by default, so the proxy now contacts each certificate's OCSP responder); **the `compress` filter no longer breaks every response it applies to**, applies its `algorithms`, and produces gzip/zstd only; **WebSocket frames reach the route's agents** and the agent-level `failure-mode` is deprecated; a body an agent refuses no longer trips the upstream's circuit breaker; response-phase Redirect/Challenge, filter `timeout-ms` on every path; reloads rebuild route error pages, schemas and static files; `request-body-mode "inspect-first"`; h2c on listeners and upstreams (**read the upgrade notes**) |
+| [26.10_10](#26-10-10) | 0.6.53 | 2026-10-30 | **A `graceful-shutdown-timeout-secs` above 300 s is no longer cut short** by Pingora's 300 s grace period; the shipped systemd unit has `TimeoutStopSec=40` (**read the upgrade notes**); `bundle install` no longer writes a `failure-mode` on the generated agents that `--strict` rejects; TLS accepts no longer scan every pending handshake |
+| [26.10_9](#26-10-9) | 0.6.52 | 2026-10-28 | **A reload loads added, renamed and reconfigured agents** (their filters used to call nothing); **SIGTERM/SIGINT drain open connections** before exiting; **SIGUSR1 reopens the log files** and SIGUSR2 no longer kills the proxy (**read the upgrade notes**); `cargo install` builds work with tokio 1.54; bundle `26.10_03` pins zentinelsec 0.4.1 |
+| [26.10_8](#26-10-8) | 0.6.51 | 2026-10-22 | **Agents get their `config { }` block and are acted on in every phase** (config delivered on every connection, response-phase blocks enforced, Challenge fails closed, request bodies reach subscribed agents and are held back until allowed; **read the upgrade notes**); a silent agent no longer holds up startup; daemon mode works; **every bundled agent is rebuilt from its tag and smoke-tested** (most published agents could not complete a v2 handshake over a socket) |
+| [26.10_7](#26-10-7) | 0.6.50 | 2026-10-20 | **Namespaces and services served end to end** (namespace routes without a listener of their own are now live on the global listeners; **read the upgrade notes**); error pages replace the proxy's own refusals; agent filter body settings apply; host-name targets fall back across addresses without blocking DNS |
+| [26.10_6](#26-10-6) | 0.6.49 | 2026-10-20 | Concurrency and connection limits enforced (**`max-connections-per-client` from old starter configs now applies; read the upgrade notes**); custom error pages work; directory configs load from the CLI; Redis/memcached rate limiting actually used; hostname targets health-checked |
+| [26.10_5](#26-10-5) | 0.6.48 | 2026-10-19 | **Failing health checks take targets out of rotation**; rate limits count each client separately and `default-rps`/`burst` apply; Zentinel sends `X-Forwarded-*` and trusts incoming ones only from `trusted-proxies`; upstream error responses pass through unchanged; body limits answer 413; **read the upgrade notes** |
+| [26.10_4](#26-10-4) | 0.6.47 | 2026-10-19 | **An agent that restarts while the proxy runs is reconnected** (with `failure-mode "closed"` its routes returned 503 until the proxy restarted); **API schema validation works**: a schema that does not compile is a configuration error instead of silently disabling validation, and requests that pass validation reach the upstream instead of timing out; `service-type` is applied |
+| [26.10_3](#26-10-3) | 0.6.46 | 2026-10-18 | Security and dependency maintenance: `wasmtime` 49 for the WASM agent runtime (23 advisories, one critical), `rustls` 0.23.46 (4 advisories), OpenTelemetry 0.33; Cloudflare DNS-01 finds zones registered at a parent domain; building from source needs **Rust 1.96** |
+| [26.10_2](#26-10-2) | 0.6.45 | 2026-10-11 | ACME certificates renew in the window the CA suggests (ACME Renewal Information, RFC 9773), with `renew-before-days` kept as a hard floor |
 | [26.10_1](#26-10-1) | 0.6.44 | 2026-10-10 | Dependency maintenance: `rustls` 0.23.45 (stricter HelloRetryRequest handling), `maxminddb` 0.32 (bounded decoding of crafted GeoIP databases), `jsonschema` 0.56, rust-minor batch |
 | [26.09_6](#26-09-6) | 0.6.43 | 2026-09-15 | **Pingora 0.9.0**: request-target and authority hardening, hop-by-hop request headers stripped before the upstream, no HTTP/1 upstream reuse after an incomplete response; gRPC-Go advisory in the conformance suite; dependency maintenance |
 | [26.09_5](#26-09-5) | 0.6.42 | 2026-09-04 | **`zentinel bundle install` failed for every non-root user**, so no agent could be installed by following the documented instructions |
@@ -43,6 +53,7 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 | [26.06_3](#26-06-3) | 0.6.18 | 2026-06-23 | Multi-file KDL block merging, circuit-breaker recovery fix, counter underflow guard |
 | [26.06_2](#26-06-2) | 0.6.17 | 2026-06-16 | Agent body limits and bounded limiter state, route-level retry-policy parsing, Pingora 0.8.1 |
 | [26.06_1](#26-06-1) | 0.6.16 | 2026-06-07 | Standalone Prometheus metrics server, per-listener route sets, non-root Docker fix |
+| [26.05_5](#26-05-5) | — (no crate published) | 2026-05-25 | Tagged release; the crates.io publish collided with an already-published version. Changes are documented under 26.06_1 |
 | [26.05_4](#26-05-4) | 0.6.15 | 2026-05-12 | OpenTelemetry 0.32 stack, sysinfo 0.39, Rust toolchain 1.95 |
 | [26.05_3](#26-05-3) | — (not released) | 2026-05-05 | Embedded config uses `system` block, ACME hickory-resolver 0.26 fix |
 | [26.05_2](#26-05-2) | 0.6.13 | 2026-05-03 | Install script provisions systemd unit, system user, and starter config |
@@ -70,6 +81,1038 @@ primary, operator-facing version. See [Versioning](../versioning/) for details.
 | [26.01_3](#26-01-3) | 0.2.3 | 2026-01-05 | Bug fixes |
 | [26.01_0](#26-01-0) | 0.2.0 | 2026-01-01 | First CalVer release |
 | [25.12](#25-12) | 0.1.x | 2025-12 | Initial public releases |
+
+---
+
+## 26.10_11
+
+**Date:** 2026-10-31
+**Crate version:** 0.6.54
+
+A batch of "parses but does nothing" fixes. OCSP stapling, the `compress` filter's settings and agent inspection of WebSocket frames were configurable and documented but never happened; they now do. The `compress` filter itself broke every response it applied to and is fixed. A request body an agent refuses no longer counts against a healthy upstream, and a reload now rebuilds each route's error pages, schema validator and static file server. HTTP/2 over cleartext (h2c) is supported on listeners and upstreams. **Read the upgrade notes:** several configurations that used to load silently now fail, warn or behave differently.
+
+### Upgrade notes
+- **A plain upstream with an HTTP/2-only `http-version` no longer loads.**
+  `http-version { min-version 2 }` on an upstream without `tls` used to be
+  served over HTTP/1.1 without a word (there is no ALPN without TLS). It is
+  now a configuration error that points to `h2c #true`. Add `h2c #true` if the
+  backend speaks cleartext HTTP/2, or remove `min-version 2` to keep
+  HTTP/1.1. (#614)
+- **An `https` or `h2` listener without a `tls` block no longer loads.** It
+  used to pass validation and then bind nothing at startup (an error in the
+  log, no socket). The error says to add `tls`, or to use `protocol "h2c"`
+  for HTTP/2 without TLS. (#614)
+- **OCSP stapling now actually happens, and it is on by default**
+  (`ocsp-stapling` defaults to `#true`). For each certificate whose AIA names
+  an OCSP responder, the proxy now contacts that responder over HTTP from
+  shortly after startup, and again at least hourly. If egress to your CA's
+  responder is blocked, you will see one warning per certificate and
+  `zentinel_tls_ocsp_fetch_total{result="failure"}` rising; handshakes are
+  unaffected. Set `ocsp-stapling #false` to keep the old behaviour. The
+  responder is found through the issuer certificate, so `cert-file` must
+  contain the chain (leaf, then intermediate); a leaf-only file is warned
+  about and served unstapled. (#590)
+- **A `compress` filter that lists `deflate`, or sets a `level` outside 1-9,
+  no longer loads.** The proxy cannot produce deflate; the entry used to be
+  skipped without a word. Use `gzip` (the same DEFLATE compression; every
+  client that accepts deflate accepts gzip). An unknown algorithm name is now
+  an error too, where it was dropped. (#591)
+- **`algorithms` and `content-types` on a `compress` filter now take effect,
+  so responses may be encoded differently.** `algorithms "br" "gzip" "zstd"`,
+  the documented form, used to keep only its first entry, and
+  `content-types` was replaced by a fixed list of four types. Check both
+  against what you want compressed. (#591)
+- **The `compress` filter does not produce Brotli, and its default is now
+  `gzip` alone** (was gzip, br). Pingora's Brotli encoder flushes at the end
+  of the body instead of finishing the stream, so its output cannot be
+  decoded. `br`/`brotli` in `algorithms` is still accepted, skipped in favour
+  of the next listed algorithm the client accepts, and reported by
+  `zentinel test`/`lint` as a warning. Use `zstd` alongside `gzip` for a
+  stronger coding. (#591)
+- **The agent-level `failure-mode` is deprecated and has no effect.**
+  WebSocket frames were the last path it decided; they now follow the same
+  rule as every other path: the agent filter's `failure-mode`, else the
+  route's `policies { failure-mode }`, else closed. A fail-closed failure
+  closes the connection with 1011. **If you relied on an agent's
+  `failure-mode "open"` for WebSocket frames, set `failure-mode "open"` on
+  its filter.** `zentinel test` and the startup log report the key wherever
+  it is set, naming the filters and routes where the value belongs. The key
+  still parses; it will be removed in a later release. (#586)
+- **WebSocket frames never reached an agent.** The proxy had no dispatch
+  for them: every frame was a failed call ("Unsupported event type"), so
+  with the agent's default `failure-mode "open"` frames passed uninspected,
+  and with `"closed"` every inspected WebSocket was closed on its first
+  frame. Frames are now sent to agents over UDS and reverse connections. gRPC
+  agents still cannot answer frames (the gRPC response has no WebSocket
+  decision) and get an explicit error, answered by the filter's failure
+  mode. (#586)
+- **WebSocket frames go only to the route's agents.** Every loaded agent
+  subscribed to `websocket_frame` used to see every route's frames, whether
+  or not the route listed it in its `filters`, and the 100 ms per-frame
+  timeout was hard-coded and failed open. Each frame now goes to the agents
+  of the route's filter chain, in order, under the filter's `timeout-ms`
+  (shortening the agent's) and failure mode. (#586)
+
+### Added
+- **`request-body-mode "inspect-first"` on an agent: decide on the whole
+  request body before the upstream is contacted** (#608). In the other
+  modes the upstream already has the request headers when the body is
+  inspected, so a refused request reaches it as an aborted request, and
+  request-header changes an agent asks for on the body are dropped. With
+  `inspect-first` the body is read in full and decided on first: a refused
+  request never reaches the upstream, and the body-phase request-header
+  changes are applied. It is bounded by the route's body-size limit (413
+  above it), holds the body in memory, and adds the upload time to the
+  upstream's start, so it is opt-in. One agent asking for it sets the
+  route's mode. Not a response mode: `response-body-mode "inspect-first"`
+  is a configuration error.
+- **`h2c #true` on an upstream: HTTP/2 over cleartext TCP** with prior
+  knowledge, for trusted internal hops where TLS ends elsewhere (#614). There
+  is no negotiation and no fallback: a backend that does not speak HTTP/2
+  fails the request. `zentinel test` rejects `h2c` together with `tls`,
+  `max-version 1` or `min-version 1`.
+- **`protocol "h2c"` on a listener: HTTP/2 over cleartext TCP** with prior
+  knowledge, for trusted internal hops (#614). A client that does not open
+  with the HTTP/2 connection preface within 10 s is refused: one that sent
+  something else (HTTP/1.1) gets `505 HTTP Version Not Supported`. h2c
+  listeners run in a Pingora service of their own, so `http` listeners are
+  unchanged and do not start accepting HTTP/2; their connections count
+  against the same connection limits. A `tls` block on an h2c listener is a
+  configuration error.
+
+### Fixed
+- **A route added or changed by a reload kept no error pages, API schema
+  validator or static file server.** They were built once at startup: a
+  static route added by a reload served without its files, a changed
+  `error-pages` or `api-schema` stayed the old one, and a removed route's
+  stayed loaded. They are now rebuilt with the routes on every reload
+  (`Route components reloaded added=… replaced=… removed=… unchanged=…`).
+  (#572)
+- **A reload that changes `observability` or `cache` now says a restart is
+  needed**, as it already did for `listeners` and `system`. Both are set up
+  at startup, and changes to them were ignored without a word. Every
+  top-level block now declares what a reload does with it, so a new block
+  cannot ship without choosing. (#572)
+- **OCSP stapling was parsed and never applied** (#590): no handshake ever
+  carried a staple, so clients made their own OCSP lookups (slower, and a
+  privacy leak to the CA) and a must-staple certificate was rejected by
+  strict clients. Each listener now fetches the response for every served
+  certificate (default and SNI) from the certificate's own responder,
+  checks it (successful, for this serial, status `good`, within
+  `thisUpdate`/`nextUpdate`), and staples it for TLS 1.2 and 1.3 clients
+  that request status. Responses are refreshed in the background at half
+  their validity (at least hourly) and survive certificate reloads; an
+  expired or revoked response is dropped, never served. An unreachable or
+  misbehaving responder never fails a handshake: it is logged and counted
+  in the new `zentinel_tls_ocsp_fetch_total{listener,result}`;
+  `zentinel_tls_ocsp_stapled_certificates{listener}` shows how many
+  certificates currently carry a staple.
+- **A `compress` filter broke every response it applied to** (since
+  26.02_10): compression was switched on after Pingora's compression module
+  had already passed over the response header, and the module panicked on the
+  first body chunk, so clients got an empty reply or a truncated body. The
+  filter now configures the module before the response header reaches it.
+  (#591)
+- **The `compress` filter's `algorithms` list is applied**: only the listed
+  algorithms are produced (gzip and zstd), in the listed order of preference
+  among those the client accepts (q=0 refusals respected), and the filter's
+  `level` is used instead of a fixed 6. A response the upstream already encoded in a coding
+  the client accepts is passed through as before. `zentinel lint` now checks
+  a compress filter's keys. (#591)
+- **`max-h2-streams` was never applied** to upstream HTTP/2 connections, so
+  every one carried a single stream (Pingora's default) and concurrent
+  requests each opened a connection of their own. It now reaches the
+  connection (default 100). (#614)
+- **Gateway API: GRPCRoute upstreams now use `h2c`.** They asked for HTTP/2
+  only, on plain cluster Services, which without TLS could not take effect.
+  (#614)
+- **An agent filter's `timeout-ms` now applies on every event path.** It
+  was honoured on request headers only; the request body, response headers
+  and response body calls waited for the agent's own `timeout-ms` instead.
+  A filter that tightened its route's latency budget, say to 100 ms for an
+  agent with 1000 ms, waited the full 1000 ms there. The filter's value can
+  still only shorten the agent's, never extend it. (#589)
+- **A request an agent refuses on its body no longer counts against the
+  upstream.** Pingora has already connected and sent the headers when the
+  body is inspected, so the refusal abandons the upstream request, and that
+  abort was reported as a connection failure (`Connection failure reported
+  for target`) to the target's circuit breaker. A stream of refused uploads
+  could take a healthy backend out of rotation, on purpose or not. Refused
+  requests are now left out of the target's circuit breaker and
+  load-balancer accounting entirely; genuine upstream failures still count.
+  (#610)
+- **An agent's `Redirect` or `Challenge` in a response phase is acted on.**
+  Since 26.10_9 a `Block` on response headers or the response body was
+  enforced (#584), but a `Redirect` or `Challenge` there was dropped and the
+  upstream response sent. Both are now answered as in the request phases (a
+  redirect with its `Location`, a challenge as 403, or 401 with
+  `WWW-Authenticate`), replacing the upstream response while its header is
+  unsent and aborting it after, as a block does. Logged and audited with the
+  decision type as `action`. (#588)
+
+---
+
+## 26.10_10
+
+**Date:** 2026-10-30
+**Crate version:** 0.6.53
+
+A shutdown drain configured for more than 300 s now gets its full time:
+Pingora's own 300 s grace period used to end the process first, with status
+0 and requests still in flight. `zentinel bundle install` writes an
+`agents.kdl` that `zentinel test --strict` accepts. **Read the upgrade
+notes:** the shipped systemd unit's stop timeout changed.
+
+### Upgrade notes
+- **`deploy/zentinel.service` now has `TimeoutStopSec=40`** (was 35). The
+  proxy forces its own exit 5 s after `graceful-shutdown-timeout-secs`, so a
+  stop timeout equal to that let systemd's SIGKILL race the proxy's logged
+  exit. **If you copied the unit, keep `TimeoutStopSec` at least 10 s above
+  `graceful-shutdown-timeout-secs`.** (#632, #634)
+
+### Fixed
+- **A `graceful-shutdown-timeout-secs` above 300 was cut short at 300 s**
+  (#632). Pingora's own grace period (300 s unless set) ended the process
+  with status 0 while the drain was still waiting, closing requests in flight
+  with no response and nothing logged. For timeouts above 290 s the grace
+  period is now set to the timeout plus 10 s, so the drain, and the watchdog
+  after it, always end first. Shorter timeouts, including the default 30 s,
+  are unchanged. This also lengthens the old process's wait in a `-u`
+  upgrade for those timeouts. (#634)
+- **`bundle install` no longer writes `failure-mode "open"` on the agents in
+  `agents.kdl`** (#623). On an `agent` block that setting covers only
+  WebSocket frames: requests follow the agent filter's `failure-mode` (then
+  the route's) and are refused when neither is set, so the generated line
+  said the opposite of what happened, and `zentinel test --strict` rejected
+  the file as soon as a filter named the agent. The file's header now shows
+  the filter with a `failure-mode` and says what each value does. Nothing
+  behaves differently: the generated agents do not subscribe to WebSocket
+  frames, so the line never took effect. Rerun `zentinel bundle install` to
+  regenerate the file.
+
+### Changed
+- **TLS accepts no longer scan every pending handshake.** The shutdown
+  drain's handshake tracker is now a map, so each accept costs the same
+  however many handshakes are in progress. (#634)
+
+---
+
+## 26.10_9
+
+**Date:** 2026-10-28
+**Crate version:** 0.6.52
+
+A configuration reload now loads the agents it adds, renames or reconfigures,
+instead of leaving their filters calling nothing. Stopping the proxy with
+SIGTERM or SIGINT lets the requests in flight finish, and logrotate's
+`kill -USR1` reopens the log files instead of killing the proxy. A fresh
+`cargo install zentinel-proxy` works again on tokio 1.54. **Read the upgrade
+notes:** the shipped systemd unit and the log file mode changed.
+
+### Upgrade notes
+- **SIGTERM and SIGINT drain before exiting.** The proxy stops accepting,
+  waits up to `graceful-shutdown-timeout-secs` (default 30) for open
+  connections and TLS handshakes to finish, then exits 0. A **second**
+  SIGTERM or SIGINT while draining exits at once with status **1**. A signal
+  that arrives while the proxy is still starting stops it without ever
+  accepting a connection. Before, the proxy logged "draining connections" and
+  exited at once, cutting off requests in flight. (#565, #568)
+- **`deploy/zentinel.service` no longer has `ExecStop=`** and its
+  `TimeoutStopSec` is 35. systemd then sends SIGTERM once; with the old
+  `ExecStop=/bin/kill -TERM $MAINPID` it sent two, and the second would now
+  end the drain at once. **If you copied the unit, remove `ExecStop` and keep
+  `TimeoutStopSec` above `graceful-shutdown-timeout-secs`.** (#568)
+- **SIGUSR1 reopens the access, error and audit log files;** SIGUSR2 is
+  ignored. Both used to terminate the proxy, so the documented logrotate
+  `postrotate` `kill -USR1` stopped it. (#566, #569)
+- **Log files the proxy creates are mode `0640`** (before: `0666` minus the
+  umask, usually `0644`). Existing files keep their mode. With logrotate,
+  `create 0640 zentinel zentinel` matches. (#569)
+- **A reload now rebuilds an agent whose settings or `config { }` block
+  changed**, so its connections are reopened and the new block delivered;
+  unchanged agents keep their connections. See Fixed. (#567)
+
+### Fixed
+- **A reload did not load added, renamed or reconfigured agents** (#564).
+  Their filters called nothing and requests passed uninspected, with the
+  reload logged as successful. A reload now loads or rebuilds every agent the
+  new configuration adds or changes (including its `config { }` block) before
+  the new routes go live, and retires agents it no longer lists once their
+  routes are gone. Unchanged agents keep their connections. A rollback loads
+  the agents of the configuration it restores. Waiting for new agents is
+  bounded by their `connect-timeout-ms` plus 5 s, as at startup. (#567)
+- **SIGTERM and SIGINT cut off requests in flight** (#565): see the upgrade
+  notes. Buffered access, error and audit lines are written out before the
+  graceful exit. (#568, #569)
+- **SIGUSR1 and SIGUSR2 terminated the proxy** (#566): see the upgrade
+  notes. (#569)
+- **`cargo install zentinel-proxy` built a proxy that panicked on every
+  connection** once tokio 1.54 (released 2026-10-19) was resolved: tokio now
+  rejects the zero-capacity buffered stream `zentinel-pingora-core` 0.9.1
+  created for every socket. `zentinel-pingora-core` **0.9.2** carries the
+  upstream Pingora fix (cloudflare/pingora@5b30d71). Release binaries and
+  images were not affected (they build from `Cargo.lock`). To install an
+  older version from crates.io, use `cargo install --locked`. (#624, #627)
+
+### Changed
+- The bundle lock is at `26.10_03` and pins **zentinelsec 0.4.1**, which is
+  built on agent protocol 0.6.51 so it receives its `config { }` block, and
+  configures idempotently. (#622)
+- Dependencies: tokio 1.54, jsonschema 0.60, html-escape 0.3,
+  async-memcached 0.9, parking_lot 0.13, uuid 1.29, redis 1.8 and the
+  rust-minor groups. (#627, #629)
+
+---
+
+## 26.10_8
+
+**Date:** 2026-10-22
+**Crate version:** 0.6.51
+
+Agents now get what they were configured with and are acted on in every phase.
+An agent's `config { }` block reaches it, response-phase blocks and Challenge
+decisions are enforced, request bodies reach the agents that subscribe to them
+and are held back from the upstream until they allow it, and an agent that
+never answers can no longer hold up startup. Daemon mode works, reload
+rollbacks are applied, and the bundle installs agents that speak the current
+protocol. **Read the upgrade notes:** agents that used to be passed by now
+decide.
+
+### Upgrade notes
+- **An agent's `config { }` block is delivered, on every connection.** Before,
+  it never reached the agent. It is now sent on the first connection, each
+  pooled connection and every reconnect.
+  - **Agents that ignored their config start receiving it.** Check that each
+    agent's `config { }` block says what you mean: fields it leaves out can
+    replace the agent's command-line flags with defaults (ai-gateway, waf,
+    modsec, graphql-security, denylist), and agents that reset state on
+    configure now do so per connection (ratelimit, ai-gateway,
+    websocket-inspector, mqtt-gateway, waf, image-optimization).
+  - **An agent that rejects its config, or does not answer it, is not used.**
+    The connection fails with an ERROR log and is retried; meanwhile its
+    filters' `failure-mode` applies (`closed` answers 503).
+  - **Recommended:** waf and modsec **0.4.1**, which configure idempotently
+    and merge a partial block instead of replacing everything (modsec 0.4.0
+    loaded zero rules from a partial config and reported success). The bundle
+    now pins them.
+  - **The auth agent refuses configs that enable SAML, mTLS or token exchange**
+    (zentinelproxy/zentinel-agent-auth#7), which it cannot verify yet. Such an
+    auth agent is not used, and its routes follow their `failure-mode`.
+  - **Transports:** UDS agents built on any released Rust SDK get their config
+    as soon as the proxy is upgraded. gRPC agents need a rebuild against this
+    release's `zentinel-agent-protocol`.
+
+  (#593, #603)
+- **Agent Challenge decisions fail closed.** The request is never proxied: a
+  `www-authenticate` parameter gives `401` with that `WWW-Authenticate`,
+  otherwise `403`. Before, a headers-phase Challenge was proxied as if allowed.
+  **Redirect decisions now redirect** with the agent's `Location` (301, 302,
+  303, 307 and 308 keep their status, any other becomes 302); they used to
+  answer 500. (#594, #595, #601)
+- **Agent blocks in the response phase are enforced.** A block on the response
+  headers sends the block response and no upstream byte; a block on a body
+  chunk after the status has gone out aborts the connection. Responses
+  inspected by body agents are now chunked, with no `Content-Length`.
+  - **Stricter by default:** the filter's `failure-mode` (else the route's,
+    default `closed`) now decides on every path. An agent with no filter
+    `failure-mode`, on a route at the default, now refuses on body and response
+    failures where it used to pass them when the agent itself was `open`.
+
+  (#584, #587)
+- **Request bodies go to agents subscribed to `request_body` without a `waf`
+  block.** Before, request bodies reached agents only with `waf {
+  body-inspection { inspect-request-body } }`. Set `inspect-request-body
+  #false` to keep bodies from agents. (#609)
+- **In buffer and hybrid mode the request body is held back from the upstream
+  until the agents allow it.** Before, a refused body could reach the upstream
+  whole. The upstream still sees the request line and headers before the body
+  decision (#608 tracks an opt-in mode that avoids it). (#602, #609)
+- **`request-body-mode "stream"` / `"hybrid:N"` are honored.** Every body used
+  to be buffered whole. When a route's body agents disagree, the most
+  conservative mode applies. (#602, #609)
+- **A request body that cannot be decompressed follows the filters'
+  `failure-mode`:** any closed body agent's filter (else the route) answers
+  `400`. A request-headers dispatch failure now answers `503` instead of
+  `500`. (#597, #609)
+- **New agent setting `connect-timeout-ms`** (default 5000) bounds the connect
+  and handshake. Startup no longer waits on silent agents: it waits at most the
+  longest connect timeout plus 5 s; an agent that has not answered is not used,
+  its filters follow their `failure-mode`, and it is used once it answers.
+  (#599, #606)
+- **Daemon mode works.** With `-d` or `system { daemon #true }`, `SIGHUP`,
+  `SIGTERM`, agents, health checks and the metrics server now work in the
+  daemon. A `user` without a `group` now also switches to that user's primary
+  group, and a broken config exits 1 in the foreground. (#573, #582)
+- **Logging:**
+  - **A configured audit log that cannot be opened stops startup**
+    (`Failed to open audit log "<path>"`).
+  - Each log file is opened on its own: an access or error log that cannot be
+    opened is reported at ERROR and only that log is off. Before, one failure
+    turned off all file logging.
+  - **A config without an `error-log` block no longer writes
+    `/var/log/zentinel/error.log`.** The same entries still go to stdout;
+    `error-log {}` keeps the documented path. The shipped configs set it
+    explicitly.
+
+  (#574, #579)
+- **A reload with an invalid `path-regex` is rejected**, and the running config
+  stays as it was; before, it was half applied. A rollback now re-applies the
+  previous config to every subsystem. A listener scope whose routes do not
+  compile now fails startup. (#577, #583)
+- **A filter that references an agent that is not loaded fails** on every
+  event path (ERROR log, counted in `calls_failed`, then its `failure-mode`).
+  Before, it was silently allowed. A removed agent is closed when its last
+  in-flight call finishes. (#570, #571, #585)
+- **License metadata is `Apache-2.0`,** matching `LICENSE`. It said `MIT OR
+  Apache-2.0`; already-published versions keep theirs. (#605)
+
+### Fixed
+- **An agent's `config { }` block never reached the agent** (#593). The UDS
+  handshake hardcoded no config and `GrpcAgentServerV2` dropped Configure.
+  Config is now sent in the handshake and followed by a Configure (UDS) or a
+  `ConfigureEvent` and Ping (gRPC), whose reply confirms it was handled.
+  `AgentV2::send_configure` and `send_configuration`, which ignored their
+  payload, are removed, along with their false "sent on next connection" log.
+  Reverse connections are not wired into the proxy and get no config. (#603)
+- **Request-phase Challenge decisions were proxied** (headers phase) or turned
+  into a bare 403 (body phase), and **Redirects answered 500 with no
+  `Location`** (#594, #595). A Challenge's `body` parameter is sent as the
+  response body (with `content-type` if given); otherwise the route's error
+  page is used, as for Block. Other parameters stay server-side and are logged
+  by name only. A redirect URL that is not a valid header value gets 500.
+  Body-phase refusals are now audited. (#601)
+- **Response-phase agent decisions were ignored** (#584): CRS outbound rules in
+  the WAF agents never blocked anything. Also fixed: a response body an agent
+  left unchanged was dropped except for its last chunk; the response-body
+  buffer had no size limit (it now stops at the route agents' largest
+  `max-response-body-bytes`); an error was written into an interrupted body
+  after its header had gone out. Audited as `AgentDecision` with a `phase`;
+  new blocked-request reasons `agent_response_blocked` and
+  `agent_response_body_blocked`. (#587)
+- **A filter referencing an agent that is not loaded was silently allowed** on
+  the request headers, request body and response paths (#571). (#585)
+- **A removed agent's pool was never closed** (#570). It now closes when the
+  last call holding it finishes, bounded by max(`timeout-ms`,
+  `chunk-timeout-ms`) + 1 s, logged as `Retired agent closed`. (#585)
+- **Daemon mode lost its signal handling and background tasks** (#573). The
+  runtime, agent pools, health checks, reload task and signal thread were
+  started before Pingora forked, and a fork keeps only the calling thread. The
+  proxy now forks first, while it has one thread; the config is still read and
+  validated before the fork, and privileges are dropped just before serving,
+  as before. (#582)
+- **One log file that could not be opened turned off all file logging**
+  (#574), including configured access and audit logs, because the default
+  config brought in an error log under `/var/log/zentinel/`. (#579)
+- **With stdout and stderr on a broken pipe, `SIGTERM` did not stop the
+  proxy** (#576): every log call panicked its thread, including the signal
+  thread, and Pingora waited out its 300 s grace period. A failed log write is
+  now dropped instead. (#580)
+- **Reload rollbacks were never applied, and a reload whose routes could not
+  compile was stored and half applied** (#577). Every route set is compiled
+  before the config is stored, and the error names the scope and pattern.
+  (#583)
+- **An agent that accepted the connection but never answered the handshake
+  kept the proxy from starting** (#599): the listener never opened, whatever
+  the agent's `failure-mode`. The connect and handshake of every agent
+  connection are now bounded by `connect-timeout-ms`, the pool opens an
+  agent's connections at once rather than one after another, and agents are
+  initialised in parallel. The pool keeps reconnecting in the background.
+  (#606)
+- **Agent response-header changes made in the request phases never reached
+  the client** (#596). An allowed request's `response_headers` from the
+  request-headers or request-body phase were discarded, so e.g. the
+  api-deprecation agent's `Deprecation` / `Sunset` headers were never sent.
+  They are now applied to the client's response, before the response-headers
+  phase's own changes. Request-header changes made on the request body cannot
+  be applied (the upstream request's header is already sent by then); they
+  are dropped with a warning logged once per agent, and documented. (#609)
+- **A request body that could not be decompressed for agent inspection was
+  decided by the route's `failure-mode` alone** (#597), ignoring the agent
+  filters'. It now follows the same rule as every other failure on the body:
+  any body agent whose filter (else route) is `closed` refuses it with 400;
+  otherwise it is inspected as sent. The unreachable route-policy fallbacks
+  on agent dispatch errors use the same rule (the request-headers one now
+  answers 503 instead of 500). (#609)
+- **`request-body-mode "stream"` / `"hybrid:N"` were parsed and then ignored**
+  (#602): every request body was buffered whole before any agent saw it. The
+  mode is now taken from the route's body agents. When they disagree, the
+  most conservative applies: `buffer` over `hybrid` (largest threshold) over
+  `stream`, so no agent gets less of the body at once than it asked for.
+  Decisions on streamed chunks (Block, Challenge, Redirect) are answered as on
+  a buffered body. (#609)
+- **A request body the agents refused could still reach the upstream whole**
+  (found while fixing #602). In buffer mode the body was forwarded chunk by
+  chunk while it was being buffered for inspection, and the agents were asked
+  only at its end; a chunked body's end arrives apart from its last bytes, so
+  the client got the agent's 403 / 429 and the upstream got the complete
+  request. The body is now held back until the agents have decided, in buffer
+  mode and for hybrid mode's buffered part. The upstream still sees the
+  request's headers (they are sent before the body is read); see the agent
+  protocol docs. Also fixed: a hybrid-mode body under the threshold whose end
+  arrived on its own was never inspected, and a streamed chunk an agent
+  dropped ended the upstream body instead of being left out. (#609)
+- **Agents subscribed to `request_body` never got a body without a `waf`
+  block.** Request-body inspection was enabled only by `waf { body-inspection
+  { inspect-request-body } }`, so with no `waf` block such an agent could not
+  see or block any body, while response bodies went to their agents
+  regardless. Request bodies now go to every route agent that subscribes to
+  them unless `inspect-request-body #false` is set. Without a `waf` block,
+  every content type is sent. (#609)
+- **`zentinel bundle install` installed agents that could not protect anything**
+  (#598). The bundle pinned waf, modsec and zentinelsec 0.3.0: waf and modsec
+  0.3.0 speak the v1 agent protocol, so the v2 handshake failed and every
+  request got a 503 (or skipped the agent under `failure-mode "open"`), and
+  zentinelsec 0.3.0 exits at startup on current CRS. A survey of every pinned
+  release found the same for nearly all of them: only waf, modsec and
+  zentinelsec worked over a Unix socket, most others spoke the v1 framing or
+  never listened, and 17 of 23 were not built from their tag. Every agent now
+  releases through one shared workflow (`zentinelproxy/.github`
+  `agent-release.yml`) that builds from the tag with `--locked` and smoke-tests
+  the binary behind a real Zentinel on every platform before publishing it
+  with a `.sha256`. The bundle (now `26.10_02`) pins only such releases: waf
+  and modsec 0.4.1; denylist, lua, js, wasm, spiffe and zentinelsec 0.4.0;
+  ip-reputation, bot-management, content-scanner, graphql-security,
+  grpc-inspector, soap, api-deprecation, websocket-inspector, mqtt-gateway,
+  transform, audit-logger, mock-server and chaos 0.5.0; image-optimization
+  and, new to the bundle, **ai-gateway** and **auth** 0.3.0. `policy` and `data-masking`
+  stay out (no release). Binaries up to 0.6.50 keep their compiled-in lock
+  and still install the old releases. (#604, #611)
+- On a platform an agent is not published for (no agent is built for
+  `darwin-x86_64`), `bundle install` says so instead of reporting a 404.
+  (#604)
+- **An agent installed with `zentinel bundle install` did not listen where
+  the proxy looked for it.** The install wrote a YAML file per agent with a
+  `socket:` block and a systemd unit running `<agent> --config <that file>`,
+  but agents take their socket on the command line and none reads that file,
+  so each listened on its built-in default (`/tmp/...`) while the documented
+  KDL pointed at `/var/run/zentinel/...`. The install now starts every agent
+  with `--socket <path>`, or `--grpc-address 127.0.0.1:<port>` for agents
+  whose release only serves gRPC (zentinelsec), and writes `agents.kdl` next to it: the `agents { }` block for
+  every installed agent, on the same socket or address, ready for
+  `include` from `zentinel.kdl`. The per-agent YAML files are no longer
+  written (the install points out old ones; delete them). Agents whose
+  release needs a file of its own (`--script` for lua and js, `--module` for
+  wasm) are started with that flag and a path in the config
+  directory, and the install says to create it.
+- **`bundle install --systemd` units could not start for a non-root
+  install** (`User=zentinel` in a user unit, `ProtectHome=` hiding
+  `~/.local/bin`), and as root they were bound to a `zentinel.target` nothing
+  installs and started after the proxy that connects to them. Root installs
+  now get system units running as `zentinel` with a shared, preserved
+  `/run/zentinel-agents` socket directory (not the proxy's own
+  `RuntimeDirectory`, which systemd deletes whenever the proxy stops),
+  ordered before `zentinel.service`; other installs get user units. User and
+  prefix installs keep sockets in a `0700` directory they create
+  (`~/.local/state/zentinel/run`, `<prefix>/run/zentinel`). (#611)
+
+### Changed
+- **The `ratelimit` agent is no longer in the bundle**: rate limiting is
+  built into Zentinel (`policies { rate-limit { ... } }`). `zentinel bundle
+  install ratelimit` says so instead of installing it; `zentinel bundle
+  uninstall ratelimit` still removes a copy installed earlier.
+- `bundle-versions.lock` has three optional per-agent tables, so older lock
+  files still parse: `[transports]` (`"uds"`, the default, or `"grpc"`),
+  `[grpc_ports]` and `[required_files]`. The binary and
+  `scripts/check-bundle-lock.py` reject inconsistent entries.
+  `ZENTINEL_BUNDLE_DOWNLOAD_URL` replaces `https://github.com` in asset URLs,
+  for a mirror of the releases. `bundle list --verbose` shows each agent's
+  transport and required file.
+- `bundle-versions.lock` lists the platforms each agent is released for
+  (`[bundle] platforms`, per-agent `[platforms]`), and the two copies in the
+  repository must be identical. CI (`Bundle lock`) requests every asset the
+  lock points at and fails if one is missing, so the lock can no longer name a
+  release that does not exist. api.zentinelproxy.io serves `/v1/bundle/` from a
+  vendored copy of the same file. The lock is now at bundle version
+  `26.10_02`. (#604)
+- **CI runs the integration tests a PR adds or changes** (#575). They used to
+  run only after merge, so the test proving a fix never ran before it was
+  merged. A new `PR Integration Tests` job maps the changed files to test
+  targets with `cargo metadata`. (#578)
+- The P2C load-balancer distribution tests are seeded, so they can no longer
+  fail by chance. (#581)
+- The README follows the shared Zentinel format; claims that did not match the
+  code (WAF throughput, ML scoring, agent status, OpenTelemetry in release
+  binaries) are corrected. (#592)
+
+### Added
+- **Agent SDK conformance harness** (`sdk-conformance/`): one
+  language-neutral test that runs a real `zentinel`, a fixture upstream and an
+  agent, and checks the handshake, Configure, header mutations, Block, request
+  body inspection and reconnect, over UDS and gRPC. SDK CI uses it as the
+  `zentinelproxy/zentinel/sdk-conformance` action; a reference agent built on
+  the protocol crate runs it on PRs here. (#600, #607)
+
+Still open: the upstream sees a request's headers before agents decide on its
+body (#608); response-phase Redirect and Challenge decisions are ignored (#588);
+WebSocket frames still use the agent's own `failure-mode` (#586); reload does
+not rebuild agents, so a changed `config { }` block needs a restart (#564).
+
+---
+
+## 26.10_7
+
+**Date:** 2026-10-20
+**Crate version:** 0.6.50
+
+Namespaces and services are served end to end. Custom error pages also replace
+the proxy's own refusals. Agent filter body settings apply, and host-name
+targets fall back across their addresses. **Read the upgrade notes:**
+namespace routes that were never served are now live.
+
+### Upgrade notes
+- **Namespaces without a listener of their own are now served on the global
+  listeners.** Before, their routes were never matched.
+  - **What to do:** if a namespace must not be public, give it a listener of
+    its own (in its `listeners` block, or a top-level listener with
+    `namespace "..."`). A scope with its own listener is served only there.
+
+  (#548, #561)
+- **Listeners declared inside namespaces and services are bound.** They are
+  bound under the ids `ns:id` and `ns:svc:id`.
+  - **Can stop startup:** a privileged port, or a failing first ACME issuance
+    on such a listener, now stops startup.
+  - **Still loads:** a listener with an invalid or duplicate address, or a
+    colliding id, is reported as "is being ignored", and `test --strict`
+    fails. Its scope's routes are then not served.
+
+  (#548, #561)
+- **Scoped route and upstream ids are qualified** in logs and metrics
+  (`ns:route`, `ns:svc:route`). Update dashboards and alerts that match them.
+  (#548, #561)
+- **Service `limits` apply,** within the namespace's limits; the smallest
+  value wins. (#548, #561)
+- **Route `error-pages` also replace the proxy's own refusals** on that
+  route:
+  - rate limits (`429`, including inference token limits and budgets)
+  - `max-in-flight-requests` (`503`)
+  - geo and prompt-injection blocks
+  - a WebSocket upgrade on a route without `websocket` (`403`)
+  - a route without a usable upstream (`500`)
+  - agent blocks that carry no body
+
+  `Retry-After` and `X-RateLimit-*` are kept. Clients that parsed the old
+  refusal bodies get the page instead. (#557, #559)
+- **An agent block that carries its own body** is sent as `text/plain` in the
+  request-body phase too, instead of the generic JSON. (#557, #559)
+- **Agent filter `inspect-body #false` and `max-body-bytes` apply.** A body over
+  `max-body-bytes` gets `413` from a fail-closed agent. (#553, #560)
+- **The top-level `cache` block reads `max-size-bytes` and `lock-timeout-secs`.**
+  Before, these spellings were dropped and the defaults applied. (#553, #560)
+
+### Fixed
+- **Namespaces and services are served end to end.**
+  - Service routes are served.
+  - Routes that use a namespace's or service's own upstream work; they got
+    `500 "Upstream pool not found"`.
+  - Scoped filters and agents are registered.
+  - Rate-limit filters in different scopes count separately.
+  - `ScopedRouteMatcher`, `ScopedRateLimitManager` and the duplicate scoped
+    pool registry, which no request used, are removed.
+
+  (#548, #561)
+- **Host-name targets fall back across their addresses.**
+  - **Fallback:** without a health check, an address that refuses a connection
+    is skipped for 30 s and the request is retried on the name's other
+    addresses. `target "localhost:8080"` now reaches a backend that listens
+    only on `127.0.0.1`.
+  - **No blocking DNS:** names are resolved without blocking a worker thread
+    and cached, refreshed in the background every 5 s.
+
+  (#554, #558)
+- **Response-body and WebSocket agent calls can no longer panic** on a
+  current-thread runtime. (#554, #558)
+- **A pool's active-request count no longer drifts upwards** on retries.
+  (#554, #558)
+- **An include "diamond" loads.** Two files that both include a third used to
+  be rejected as circular; each file is now read once. A real cycle is still an
+  error, and the message names the chain. (#553, #560)
+- **Auto-reload reloads once per edit.** It also notices included files outside
+  the watched directory, and no longer reloads on a save without changes.
+  (#553, #560)
+
+### Changed
+- **Lint reports agent filter body settings that can't apply.** (#553, #560)
+
+Still open: release binaries are built without the Redis/memcached
+rate-limit backends; the `zentinel_scoped_*` metrics are not emitted.
+
+---
+
+## 26.10_6
+
+**Date:** 2026-10-20
+**Crate version:** 0.6.49
+
+Concurrency and connection limits are enforced, custom error pages work,
+directory configurations load from the command line, and the Redis and
+memcached rate-limit backends are actually used. **Read the upgrade notes:**
+limits that used to be ignored now apply.
+
+### Upgrade notes
+- **`max-connections-per-client` is enforced.** It used to be ignored, together
+  with `max-total-connections` and `max-in-flight-requests`. The starter
+  configuration installed by earlier releases sets `max-connections-per-client
+  100`, and existing installs keep that file. The client is the TCP peer, so
+  behind a load balancer or NAT the balancer counts as one client.
+  - **Exemption:** peers listed in the listener's `trusted-proxies` are exempt
+    from the per-client limit.
+  - **Startup note:** a listener with a per-client limit and no
+    `trusted-proxies` logs an INFO note at startup.
+  - **What to do:** list your load balancer, or remove the line.
+
+  ([#542](https://github.com/zentinelproxy/zentinel/issues/542), [#552](https://github.com/zentinelproxy/zentinel/issues/552))
+- **`max-in-flight-requests` and `max-total-connections` are enforced.** Only
+  values you wrote apply; unset means unlimited. A request over the in-flight
+  limit gets `503` with `Retry-After: 1`. Built-in handlers such as the health
+  endpoint are never refused. ([#542](https://github.com/zentinelproxy/zentinel/issues/542), [#552](https://github.com/zentinelproxy/zentinel/issues/552))
+- **Namespace `limits` apply** to the namespace's routes. The smallest of
+  global, namespace and route wins. Service `limits` are reported as ignored,
+  because services are not served yet ([#548](https://github.com/zentinelproxy/zentinel/issues/548)). ([#542](https://github.com/zentinelproxy/zentinel/issues/542), [#552](https://github.com/zentinelproxy/zentinel/issues/552))
+- **`error-pages` on a route now takes effect.** A configured page replaces both
+  the upstream's error and the proxy's own for that status; statuses without a
+  page behave as before. ([#542](https://github.com/zentinelproxy/zentinel/issues/542), [#550](https://github.com/zentinelproxy/zentinel/issues/550))
+- **An agent filter's `timeout-ms` applies.** It can only shorten the agent's
+  own timeout. ([#542](https://github.com/zentinelproxy/zentinel/issues/542), [#550](https://github.com/zentinelproxy/zentinel/issues/550))
+
+### Fixed
+- **Directory configurations load from the CLI.**
+  - **Entry points:** `zentinel -c <dir>` and `ZENTINEL_CONFIG=<dir>` work for
+    `run`, `test`, `lint`, `validate` and reload; this used to fail with "Is a
+    directory".
+  - **Parser:** the directory loader had its own parser for an older format,
+    which silently dropped listener TLS, route policies, filters and most
+    matches. Directories now use the same parser as single files.
+  - **Includes:** `zentinel test --strict` and `lint` check every file read,
+    including included files, and name the file.
+  - **Auto-reload** watches the directory.
+
+  ([#541](https://github.com/zentinelproxy/zentinel/issues/541), [#547](https://github.com/zentinelproxy/zentinel/issues/547))
+- **Redis and memcached rate limiting are used.** Before, every rate-limit pool
+  was in memory, so a "shared" limit was enforced separately on each instance.
+  - **Token buckets everywhere:** the distributed backends use the same token
+    bucket as the local limiter, with `burst`. Redis runs it as an atomic
+    script; memcached uses compare-and-swap.
+  - **IP addresses:** a memcached URL with an IP address
+    (`memcache://127.0.0.1:11211`) now connects; it used to fail and fall back.
+  - **Feature flags:** they compiled one backend out each; both now build.
+  - **Release binaries:** the official binaries are built without these
+    features and keep enforcing per instance, logging a warning. Build from
+    source with `--features distributed-rate-limit` for shared limits.
+
+  ([#543](https://github.com/zentinelproxy/zentinel/issues/543), [#549](https://github.com/zentinelproxy/zentinel/issues/549))
+- **Rate limiters are rebuilt on reload.** A changed `default-rps`, route limit
+  or `global` limit takes effect on `SIGHUP`; unchanged limiters keep their
+  counts. ([#543](https://github.com/zentinelproxy/zentinel/issues/543), [#549](https://github.com/zentinelproxy/zentinel/issues/549))
+- **Hostname targets are health-checked.**
+  - **Probing:** targets such as `localhost:8080` are resolved on every probe
+    cycle and each address is probed, so a failing hostname target leaves
+    rotation like an IP target.
+  - **Connecting:** with a health check configured, the proxy now dials the
+    first healthy address. Before, it always dialled the first resolved one
+    (`::1` for `localhost`).
+
+  ([#544](https://github.com/zentinelproxy/zentinel/issues/544), [#551](https://github.com/zentinelproxy/zentinel/issues/551))
+- **An early `SIGHUP` no longer kills a starting proxy.** It is queued, and the
+  reload runs once the proxy is ready. ([#544](https://github.com/zentinelproxy/zentinel/issues/544), [#551](https://github.com/zentinelproxy/zentinel/issues/551))
+- **Consistent hashing could panic** when its pool was rebuilt on a reload or
+  a discovery refresh. ([#544](https://github.com/zentinelproxy/zentinel/issues/544), [#551](https://github.com/zentinelproxy/zentinel/issues/551))
+- **Generated HTML and XML error pages are escaped.** A static route's error
+  message includes the request path, which was inserted unescaped. ([#550](https://github.com/zentinelproxy/zentinel/issues/550))
+
+### Changed
+- **More values are reported when ignored:** an agent filter's `phase` (the
+  agent's `events` decide), unknown sticky-session `fallback` and
+  `cookie-same-site` values, invalid `error-pages` values, and a limit of `0`.
+  ([#550](https://github.com/zentinelproxy/zentinel/issues/550), [#552](https://github.com/zentinelproxy/zentinel/issues/552))
+- **A file reached by two entry files, or a circular include, is an error** in
+  a directory configuration. ([#547](https://github.com/zentinelproxy/zentinel/issues/547))
+- **CI runs the Redis and memcached tests against real servers.** They used to
+  skip, and pass, when no server answered; that is how the unused backends went
+  unnoticed. ([#549](https://github.com/zentinelproxy/zentinel/issues/549))
+
+Still open: namespace and service routing is largely not wired ([#548](https://github.com/zentinelproxy/zentinel/issues/548)); a few
+settings are still parsed and not applied ([#553](https://github.com/zentinelproxy/zentinel/issues/553)); hostname targets without a
+health check use only their first address, and DNS is resolved with a blocking
+call on the request path ([#554](https://github.com/zentinelproxy/zentinel/issues/554)).
+
+---
+
+## 26.10_5
+
+**Date:** 2026-10-19
+**Crate version:** 0.6.48
+
+Health checks steer routing, rate limits count each client separately, and
+Zentinel sends and protects forwarded headers. Several settings that were
+parsed and ignored now take effect. **Read the upgrade notes before deploying:**
+some of these change what your backends and clients see.
+
+### Upgrade notes
+- **Behind a load balancer? List it in `trusted-proxies`.** Zentinel now sends
+  `X-Forwarded-For`, `X-Forwarded-Proto` and `X-Forwarded-Host`.
+  - **From an untrusted peer:** client-sent `X-Forwarded-*` headers are
+    replaced, and `Forwarded` and `X-Real-IP` are dropped.
+  - **From a listed peer:** they are kept.
+  - **Without the setting:** if your backends read the headers your load
+    balancer sets, they now see the load balancer's address instead.
+
+  ```kdl
+  listener "public" {
+      address "0.0.0.0:8080"
+      protocol "http"
+      trusted-proxies "10.0.0.0/8"
+  }
+  ```
+
+  ([#515](https://github.com/zentinelproxy/zentinel/issues/515), [#539](https://github.com/zentinelproxy/zentinel/issues/539))
+- **Failing health checks now take targets out of rotation.** Until now probe
+  results were never consulted: a target failing its checks kept receiving
+  traffic. When every target of an upstream fails, requests get `503`. Check
+  that your `health-check` paths answer `expected-status` (default 200), and
+  that the `Host` header they now send is accepted. ([#540](https://github.com/zentinelproxy/zentinel/issues/540))
+- **Rate limits apply as configured.** Three changes can produce `429`s that
+  were not produced before:
+  - **`default-rps`:** `rate-limits { default-rps default-burst }` now limits
+    every route without a limit of its own.
+  - **`burst`:** now enforced as the token-bucket size. Its default is 10, so
+    `max-rps 100` without `burst` admits 10 at once, then 100 per second.
+  - **Per-client counting:** `client-ip` limits count each client separately.
+    Before, all clients shared one bucket.
+
+  ([#518](https://github.com/zentinelproxy/zentinel/issues/518), [#540](https://github.com/zentinelproxy/zentinel/issues/540), [#539](https://github.com/zentinelproxy/zentinel/issues/539))
+- **Body limits apply as configured.**
+  - A route's `policies { max-body-size }` is now enforced.
+  - Exceeding a body limit answers `413` (was `500`).
+  - In a single-file configuration only `max-body-size`, `max-header-size` and
+    `max-header-count` are read: the `-bytes` spellings were silently ignored
+    and are now reported by `zentinel lint` and `zentinel test`.
+  - The shipped example configurations used the `-bytes` names; their limits
+    now take effect.
+
+  ([#517](https://github.com/zentinelproxy/zentinel/issues/517), [#537](https://github.com/zentinelproxy/zentinel/issues/537))
+- **Upstream error responses pass through unchanged.** A backend's own
+  4xx/5xx now reaches the client with its own `Content-Type`. Zentinel used to
+  relabel it `text/html`, or `application/json` on API routes. ([#522](https://github.com/zentinelproxy/zentinel/issues/522), [#537](https://github.com/zentinelproxy/zentinel/issues/537))
+- **An agent `failure-mode` typo in a multi-file configuration is a load
+  error.** Any value other than `"closed"` used to mean open, so a typo ran a
+  security agent fail-open. ([#529](https://github.com/zentinelproxy/zentinel/issues/529), [#538](https://github.com/zentinelproxy/zentinel/issues/538))
+
+### Fixed
+- **Health checks follow reloads, and each target is probed once per
+  interval.**
+  - **Reloads:** a `SIGHUP` reload now starts, restarts and stops health checks
+    for the upstreams it changes. Before, a check added by reload never probed,
+    and a removed one kept probing.
+  - **Double probing:** every target was probed twice per interval.
+  - **Discovery:** discovery-backed upstreams are now probed at their
+    discovered addresses.
+  - **HTTP check:** it sends `Host`, and honours `expected-status` and
+    `timeout-secs`.
+
+  ([#516](https://github.com/zentinelproxy/zentinel/issues/516), [#540](https://github.com/zentinelproxy/zentinel/issues/540))
+- **Rate limiting:**
+  - **Client IP:** the client IP was read before it was set, so every client
+    shared one bucket.
+  - **`global { key }`:** now honoured; it was hardcoded to the client IP.
+  - **`header:<name>` keys:** they received no headers and all shared one
+    bucket.
+
+  ([#539](https://github.com/zentinelproxy/zentinel/issues/539), [#540](https://github.com/zentinelproxy/zentinel/issues/540))
+- **`ip-hash` and consistent hashing spread clients; sticky sessions work.**
+  Peer selection received no client address and no headers, so every client
+  hashed to the same target and sticky-session cookies were never read.
+  ([#539](https://github.com/zentinelproxy/zentinel/issues/539))
+- **Proxy-generated errors carry the right reason.** A no-route request
+  answered `404` with body `"404 Internal Server Error"` and an empty trace id.
+  It now reads `"404 Not Found"`, with a trace id. ([#525](https://github.com/zentinelproxy/zentinel/issues/525), [#537](https://github.com/zentinelproxy/zentinel/issues/537))
+- **A chunked request body over a route's limit reached the backend empty.**
+  It is now refused with `413`. A client sending oversized bodies could also
+  open the circuit breaker of a healthy upstream; client-caused errors no
+  longer count against the upstream. ([#537](https://github.com/zentinelproxy/zentinel/issues/537))
+- **Request bodies over 64 KiB are forwarded on API-schema-validated routes
+  and MCP multiplexing.** 26.10_4 refused them with `413`; before that they
+  hung. Requires `zentinel-pingora-core` 0.9.1. ([#531](https://github.com/zentinelproxy/zentinel/issues/531), [#536](https://github.com/zentinelproxy/zentinel/issues/536))
+- **A listener address that is not `IP:PORT` fails `zentinel test`.**
+  `address "${PORT}"` passed the test, then panicked at start; the message now
+  says environment variables are not substituted. ([#520](https://github.com/zentinelproxy/zentinel/issues/520), [#539](https://github.com/zentinelproxy/zentinel/issues/539))
+- **`method "GET" "POST"` matches every listed method;** it kept only the
+  first. Hyphenated `load-balancing` names (`"least-connections"`) are
+  accepted. ([#521](https://github.com/zentinelproxy/zentinel/issues/521), [#538](https://github.com/zentinelproxy/zentinel/issues/538))
+- **`system { daemon #true }` daemonizes;** only the `-d` flag did. ([#527](https://github.com/zentinelproxy/zentinel/issues/527),
+  [#538](https://github.com/zentinelproxy/zentinel/issues/538))
+
+### Changed
+- **`zentinel test` reports settings that are being ignored**, as `zentinel
+  lint` does, without changing its exit code. **`zentinel test --strict`**
+  fails on them, for CI. ([#523](https://github.com/zentinelproxy/zentinel/issues/523), [#538](https://github.com/zentinelproxy/zentinel/issues/538))
+- **More values are reported when ignored:** an unknown `priority`,
+  `builtin-handler`, health-check `type` or `load-balancing` algorithm, a
+  condition run into another on one line inside `matches`, an agent block's
+  `failure-mode` that does not decide request headers, an unknown filter
+  `failure-mode`, and `system { max-connections }` (Zentinel has no client
+  connection limit). Each keeps its previous behaviour. ([#521](https://github.com/zentinelproxy/zentinel/issues/521), [#527](https://github.com/zentinelproxy/zentinel/issues/527), [#529](https://github.com/zentinelproxy/zentinel/issues/529),
+  [#538](https://github.com/zentinelproxy/zentinel/issues/538))
+- **Stale "Unwired feature" warnings removed** for listener TLS
+  `cipher-suite`, `min-version` and `max-version`, which have worked since
+  26.08_3. ([#526](https://github.com/zentinelproxy/zentinel/issues/526), [#538](https://github.com/zentinelproxy/zentinel/issues/538))
+- **New listener setting `trusted-proxies`** (addresses or CIDR networks). ([#539](https://github.com/zentinelproxy/zentinel/issues/539))
+- **Agent circuit breakers log their name and the failure count** that opened
+  them. ([#539](https://github.com/zentinelproxy/zentinel/issues/539))
+- **`zentinel-pingora-core` 0.9.1.** ([#536](https://github.com/zentinelproxy/zentinel/issues/536))
+
+Still open: directory (multi-file) configurations cannot be loaded from the
+CLI ([#541](https://github.com/zentinelproxy/zentinel/issues/541)); several settings are still parsed and not applied ([#542](https://github.com/zentinelproxy/zentinel/issues/542)); Redis
+and memcached rate limiting ignore `burst`, and limiters are not rebuilt on
+reload ([#543](https://github.com/zentinelproxy/zentinel/issues/543)); hostname targets are not health-checked ([#544](https://github.com/zentinelproxy/zentinel/issues/544)).
+
+---
+
+## 26.10_4
+
+**Date:** 2026-10-19
+**Crate version:** 0.6.47
+
+Agents that restart are reconnected, and API schema validation works. Both were
+broken in ways that looked fine from the outside. **If you run agents, or use
+`api-schema`, upgrade.** One configuration change may be needed: an inline
+schema that does not compile is now a configuration error (see below).
+
+### Fixed
+- **An agent that restarts while the proxy keeps running is reconnected.** An
+  agent restarted under a running proxy (a deploy, a crash, an OOM kill) was
+  never reconnected. With `failure-mode "closed"`, its routes returned 503 until
+  the proxy was restarted. With `"open"`, traffic passed uninspected. 26.09_4
+  fixed agents that were down when the proxy *started*; its entry also claimed
+  restarts, which was not true.
+  - **Cause:** a connection never learned that its agent had gone. The gRPC and
+    Unix-socket clients cleared their "connected" state only when the proxy
+    closed them, so pool maintenance found nothing to repair. The pool's other
+    signal, three consecutive errors, never fired either, because the proxy's
+    circuit breaker stops calling an agent after its first failure.
+  - **Fix:** both clients now notice the stream ending and fail pending calls at
+    once. Maintenance replaces the dead connection, and requests recover within
+    one maintenance interval (5 s by default), over gRPC and Unix sockets.
+  - **Also fixed:** a race in the pool's correlation-affinity cleanup could
+    underflow. In debug builds that panicked and stopped maintenance; in release
+    builds the `affinity evictions` metric jumped by about 2^64. ([#528](https://github.com/zentinelproxy/zentinel/issues/528), [#530](https://github.com/zentinelproxy/zentinel/issues/530))
+- **An API schema that does not compile is a configuration error.** It used to
+  cost only a startup warning, after which the route ran with **no request
+  validation at all**, while `zentinel test` reported the file as valid.
+  `test`, startup and reload now refuse it and name the route. ([#524](https://github.com/zentinelproxy/zentinel/issues/524), [#532](https://github.com/zentinelproxy/zentinel/issues/532))
+- **`required` with a single name works in inline schemas.**
+  `required "email"` was converted to a string rather than a list, which JSON
+  Schema rejects. That was the most common way to hit the problem above.
+  `required`, `enum` and `examples` are now always lists. ([#524](https://github.com/zentinelproxy/zentinel/issues/524), [#532](https://github.com/zentinelproxy/zentinel/issues/532))
+- **Requests that pass API schema validation reach the upstream.** On a
+  validated route, every request whose body *passed* validation hung for 30 s
+  and returned 504: the body was consumed for validation and never forwarded.
+  - It is now forwarded unchanged.
+  - The whole body is validated, not only its first chunk.
+  - Bodies larger than 64 KiB on a validated route get `413` until the
+    underlying limit is lifted ([#531](https://github.com/zentinelproxy/zentinel/issues/531)).
+
+  ([#532](https://github.com/zentinelproxy/zentinel/issues/532))
+- **`service-type` is applied.** It was accepted, and lint passed it, but the
+  parser never read it: a route's type came only from its blocks, so
+  `service-type "api"` alone left the route `web`.
+  - An explicit value now applies where the route's blocks allow it.
+  - A value that is not a service type, or that contradicts the route's blocks,
+    keeps the inferred type as before and is reported by `zentinel lint` as
+    being ignored. Configurations that loaded before still load.
+
+  ([#514](https://github.com/zentinelproxy/zentinel/issues/514))
+- **Release archives contain executable binaries.** `zentinel`,
+  `zentinel-gateway` and `zentinel-echo-agent` were archived with mode `0644`,
+  so a manual install from an archive failed with "permission denied". ([#519](https://github.com/zentinelproxy/zentinel/issues/519),
+  [#533](https://github.com/zentinelproxy/zentinel/issues/533))
+- **`zentinel --version` reports the published crate version.** 26.10_3's
+  binaries printed `0.6.45`. ([#513](https://github.com/zentinelproxy/zentinel/issues/513))
+
+### Changed
+- **The browser playground runs the proxy's own validation.** It only parsed
+  the configuration before, so a route pointing at an upstream, filter or agent
+  that does not exist, duplicate IDs and the other checks the proxy runs before
+  starting all showed as valid. The playground on zentinelproxy.io picks this
+  up once its payload is rebuilt for this release. ([#514](https://github.com/zentinelproxy/zentinel/issues/514))
+
+---
+
+## 26.10_3
+
+**Date:** 2026-10-18
+**Crate version:** 0.6.46
+
+Security fixes in dependencies and one bug fix. Nothing in this release changes
+how Zentinel routes, inspects or blocks traffic, and no configuration change is
+needed. Building from source now needs Rust 1.96.
+
+### Security
+- **`wasmtime` 48.0.0 → 49.0.3** in `zentinel-wasm-runtime`, the runtime for WASM
+  agents. Fixes 23 advisories (RUSTSEC-2026-0314 to -0364), among them a critical
+  native stack buffer overflow from an unvalidated async-lifted callback result
+  count (RUSTSEC-2026-0327), a WASI filesystem sandbox escape when renaming
+  symlinks with trailing slashes (RUSTSEC-2026-0352), fuel accounting that guests
+  could bypass, and several ways for a guest to panic the host. Only relevant if
+  you run WASM agents.
+- **`rustls` 0.23.45 → 0.23.46.** Fixes RUSTSEC-2026-0346 to -0349, which mostly
+  concern rustls as a TLS client, the role Zentinel has toward upstreams, agents
+  and the ACME server: an unauthenticated ServerHello could downgrade later
+  connections, `Debug` output of client session values exposed TLS secrets,
+  buffered data could reach the outer server after an ECH rejection, and Brotli
+  certificate decompression could allocate up to 1 GiB before authentication.
+- **`h2` 0.3.27 is gone** from the dependency tree (RUSTSEC-2026-0258, unbounded
+  empty DATA frames): `async-memcached` 0.8 no longer pulls in `toxiproxy_rust`,
+  and with it reqwest 0.11 and hyper 0.14.
+- **`crossbeam-epoch` 0.9.18 → 0.9.21** (RUSTSEC-2026-0204).
+- `quinn-proto` 0.11.19 is updated in the lockfile as well; it is not built into
+  Zentinel. `cargo audit` is clean.
+
+### Fixed
+- **Cloudflare DNS-01 challenges for subdomains.** The Cloudflare provider looked
+  up only a zone named exactly like the certificate's domain, so a certificate
+  for `app.example.com` could not be issued when the zone is `example.com`. It
+  now tries the domain and then each parent domain and uses the most specific
+  zone that exists; API and authentication errors are still reported as errors
+  rather than as a missing zone.
+
+### Changed
+- **Minimum Rust version 1.96** (was 1.95), required by `wasmtime` 49. Prebuilt
+  binaries and container images are not affected. See
+  [Installation](../../getting-started/installation/).
+- **OpenTelemetry 0.33** (`opentelemetry`, `opentelemetry_sdk`,
+  `opentelemetry-otlp`, `opentelemetry-semantic-conventions`); no code changes.
+- **Dependency updates:** `jsonschema` 0.58, `async-memcached` 0.8, rust-minor
+  batch (`tokio` 1.53.3, `hyper` 1.12.0, `uuid` 1.28.0, `toml` 1.1.8, `time`
+  0.3.55, `libc` 0.2.191, `signal-hook` 0.4.5, `insta` 1.49.0).
+
+`kube` 4 is not included: the matching `gateway-api` crate uses TLSRoute and
+ReferenceGrant `v1`, which Gateway API only serves from v1.5, while the Zentinel
+gateway controller targets v1.4.1.
+
+---
+
+## 26.10_2
+
+**Date:** 2026-10-11
+**Crate version:** 0.6.45
+
+ACME Renewal Information (RFC 9773). When the ACME server supports ARI (Let's
+Encrypt does), certificates are renewed inside the window the CA suggests rather
+than only a fixed number of days before expiry. No configuration change is needed.
+See [CA-suggested renewal windows](../../configuration/listeners/#ca-suggested-renewal-windows-ari).
+
+### Added
+- **ARI-guided renewal** at a random point inside the CA's `suggestedWindow`,
+  re-checked on the CA's schedule; an earlier window (for example ahead of a
+  revocation) is followed.
+- **Renewal orders name the certificate they replace**, which Let's Encrypt exempts
+  from rate limits; retried once without it if the CA refuses.
+
+### Changed
+- **`renew-before-days` stays a hard floor**: ARI can make a renewal earlier, never later.
+- CAs without ARI behave as before (renewal at `renew-before-days`, checked every 12 hours).
+- A certificate is not renewed through ARI until it is 24 hours old; expiry-based
+  renewal is exempt.
 
 ---
 
@@ -628,6 +1671,19 @@ Dependency-only release. No proxy behavior, configuration schema, or agent proto
 
 ### Changed
 - **Dependency updates:** `tikv-jemallocator` 0.7, `openssl` 0.10.80, `quick-xml` 0.40.1, wasmtime group, `busybox` Docker base 1.38, rust-minor batches
+
+---
+
+## 26.05_5
+
+**Date:** 2026-05-25
+**Crate version:** — no crate was published for this release
+
+Tagged and released on GitHub (binaries and signatures were produced), but the
+crates.io publish produced nothing: the tag sat at workspace version `0.6.14`,
+the same version 26.05_4 was tagged at, so the release pipeline's "tag + 1"
+computation resolved to `0.6.15`, already published by 26.05_4. The dependency
+and CI changes it carried are documented under [26.06_1](#26-06-1).
 
 ---
 

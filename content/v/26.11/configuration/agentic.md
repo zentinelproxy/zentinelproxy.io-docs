@@ -1,0 +1,483 @@
++++
+title = "Agentic Protocols"
+weight = 12
+updated = 2026-10-19
++++
+
+Zentinel understands the Model Context Protocol (MCP) and Agent2Agent (A2A)
+natively. A route carrying either can declare which methods and tools are
+permitted, and the proxy enforces that by reading the JSON-RPC envelope.
+
+Both protocols are JSON-RPC 2.0 over HTTP POST, with Server-Sent Events for
+streaming responses. What differs is how much a proxy can safely believe
+without opening the body — and for MCP the answer is less than it first
+appears.
+
+## MCP
+
+```kdl
+routes {
+    route "mcp" {
+        matches {
+            path-prefix "/mcp"
+        }
+        upstream "mcp-server"
+
+        mcp {
+            tools {
+                allow "get_weather" "search_docs"
+                deny "execute_sql"
+            }
+        }
+    }
+}
+```
+
+A route with an `mcp` block has its request bodies inspected. Without one, MCP
+traffic is forwarded as ordinary HTTP.
+
+### Why policy is resolved from the body
+
+MCP's Streamable HTTP transport mirrors parts of the request into headers, so
+that intermediaries can route without parsing JSON:
+
+| Header | Mirrors |
+|--------|---------|
+| `MCP-Protocol-Version` | the protocol revision |
+| `Mcp-Method` | `method` |
+| `Mcp-Name` | `params.name` or `params.uri` |
+| `Mcp-Param-{Name}` | an individual tool argument |
+
+Reading those headers is cheaper than parsing a body, and it is tempting to
+build an allowlist on them. Doing so builds an allowlist that allows
+everything:
+
+```http
+POST /mcp HTTP/1.1
+Mcp-Name: read_file                    ← what a header-based allowlist checks
+
+{"method":"tools/call","params":{"name":"delete_everything"}}
+                                ↑ what the server actually executes
+```
+
+**Zentinel resolves policy from the body.** Headers are read only to confirm
+they agree with it, and a request whose header and body disagree is refused:
+
+```
+mcp-name header says "read_file" but the request body says "delete_everything";
+policy is resolved against the body, and a request that disagrees with itself
+is refused
+```
+
+This is treated as hostile rather than as a client bug. From the proxy the two
+are indistinguishable — a broken client and an attacker send byte-identical
+requests — and only one of them is dangerous. A broken client gets an error
+message; the alternative is losing the allowlist.
+
+### Protocol version
+
+Revisions before `2026-07-28` did not require mirrored headers to match the
+body. A request claiming one of those is refused by default, because its
+headers carry no guarantee:
+
+```
+protocol version "2025-06-18" predates 2026-07-28, which is the first revision
+requiring mirrored headers to match the body; header values from older
+revisions cannot be trusted for policy
+```
+
+Without this check, header/body validation is optional at the caller's
+discretion: claim an old revision and skip it. If you need to accept older
+clients, `require-validated-version #false` disables the check — and means
+mirrored headers on this route may be unvalidated, which matters if anything
+downstream makes decisions from them.
+
+### Settings
+
+```kdl
+route "mcp" {
+    matches { path-prefix "/mcp" }
+    upstream "mcp-server"
+    mcp {
+        require-validated-version #true       // default
+        validate-param-headers #true          // default
+        filter-tool-list #true                // default
+        on-uninspectable-body "deny"          // default
+
+        methods {
+            allow "tools/call" "tools/list"
+            deny "resources/read"
+        }
+
+        tools {
+            allow "get_weather" "search_docs"
+            deny "execute_sql"
+        }
+    }
+}
+```
+
+| Setting | Default | Meaning |
+|---------|---------|---------|
+| `require-validated-version` | `#true` | Refuse revisions older than `2026-07-28` |
+| `validate-param-headers` | `#true` | Check `Mcp-Param-*` against tool arguments |
+| `filter-tool-list` | `#true` | Hide tools this route forbids from listing responses |
+| `upstreams` | *(unset)* | MCP servers to present as one endpoint |
+| `session-key` | *(unset)* | 32-byte hex key for the session token; required with 2+ upstreams |
+| `on-uninspectable-body` | `"deny"` | What to do with a body that cannot be read |
+| `methods` | *(unset)* | `allow` / `deny` lists for JSON-RPC methods |
+| `tools` | *(unset)* | `allow` / `deny` lists for tools and resources |
+
+`methods` and `tools` each take `allow` and `deny`. An absent `allow` list means
+no allowlist — everything is permitted except what `deny` names. `deny` is
+applied after `allow`, so a name in both is refused.
+
+Writing `allow` with no entries is rejected at parse time rather than read as an
+empty allowlist, because "allow nothing listed" and "no restriction" are
+opposite meanings for the same line.
+
+### What the client is shown
+
+Refusing a call to a forbidden tool leaves a gap: the upstream still advertises
+it. A client asks `tools/list`, receives all eighty tools the server offers,
+picks one of the seventy-five this route forbids, and is refused. The policy
+held, but everything about the exchange was avoidable.
+
+So Zentinel also removes from `tools/list`, `resources/list` and `prompts/list`
+responses exactly the entries it would refuse a call to. What is advertised and
+what is permitted become the same set.
+
+```kdl
+route "mcp" {
+    matches { path-prefix "/mcp" }
+    upstream "mcp-server"
+    mcp {
+        tools {
+            allow "search_docs" "get_weather"
+        }
+    }
+}
+```
+
+An upstream offering `search_docs`, `get_weather` and `execute_sql` now
+advertises the first two. The third is neither listed nor callable.
+
+This matters beyond tidiness:
+
+- **Tool descriptions are spent from the model's context window.** MCP clients
+  degrade well before a hundred tools. A route permitting five of eighty should
+  be advertising five.
+- **A tool list is an inventory.** Names and descriptions routinely disclose
+  which internal systems exist and what they can be made to do. A client
+  permitted to call none of them could still read all of it.
+
+Filtering does nothing unless the route sets a tool `allow` or `deny` list, so
+routes without one are untouched and pay nothing. Set `filter-tool-list #false`
+to keep enforcement while forwarding listings whole.
+
+Entries are matched by the same identity the request path uses — a tool by its
+`name`, a resource by its `uri` — so what is hidden is precisely what would be
+refused, and never more. `resources/templates/list` is left alone: a template
+names a family of URIs rather than one, and hiding by exact match would remove
+entries the proxy would happily permit a call to. Calls to the URIs a template
+expands to are still checked.
+
+Pagination survives — `nextCursor` is preserved, so a filtered page still leads
+to the next one.
+
+#### When a listing cannot be filtered
+
+A listing that arrives compressed, exceeds 1 MiB, or is not parseable as
+JSON-RPC is **refused with a 502** rather than forwarded. Forwarding it would
+advertise what the route forbids, which is the one thing this exists to
+prevent, and the reason for the refusal says which of the three it was.
+
+In practice the case worth knowing about is compression: if an upstream gzips
+its listing responses, either serve them uncompressed on this route or set
+`filter-tool-list #false`.
+
+### Several servers behind one endpoint
+
+A route can front several MCP servers and present them to a client as one. The
+merged endpoint answers `tools/list` with everything the upstreams offer, and
+routes each call to the server the tool belongs to.
+
+```kdl
+route "mcp" {
+    matches { path-prefix "/mcp" }
+    upstream "docs"
+
+    mcp {
+        upstreams {
+            upstream "docs" prefix="docs"
+            upstream "warehouse" prefix="warehouse" path="/mcp"
+        }
+        session-key "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+        tools {
+            deny "warehouse.execute_sql"
+        }
+    }
+}
+```
+
+A client asking `tools/list` sees `docs.search`, `docs.get_weather`,
+`warehouse.query` — one list, from two servers. Calling `warehouse.query` sends
+the call to the `warehouse` upstream as `query`; the prefix never reaches it.
+
+#### Prefixes are declared, not derived
+
+Every upstream needs a `prefix`, and it is required rather than inferred. Two
+servers will eventually both offer `search`, and the prefix is what keeps them
+apart — but a tool's name is also what the model reasons about and remembers, so
+it must not change because someone added an unrelated upstream that happened to
+collide, or renamed an existing one.
+
+Two upstreams sharing a prefix, or a prefix containing `.`, is refused at load
+rather than accepted into something ambiguous.
+
+#### Policy applies to the name the client sees
+
+`methods`, `tools` and everything else in the `mcp` block apply to the **merged,
+namespaced** view. Write `deny "warehouse.execute_sql"`, not `deny "execute_sql"`
+— the second would be a rule about a tool no client can name, and if two
+upstreams both offered `execute_sql` there would be no way to write a rule about
+only one of them.
+
+Denied tools are both hidden from the merged listing and refused when called,
+the same as on a single-upstream route.
+
+#### Sessions
+
+MCP gives each server its own session, so a client talking to a merged endpoint
+is holding several without knowing it. Zentinel keeps that mapping in the
+session token itself — the `Mcp-Session-Id` it hands the client is an encrypted
+envelope containing the upstream session IDs — rather than in the proxy.
+
+That is why `session-key` is required once there is more than one upstream. It
+must be **32 bytes, hex-encoded** (64 characters), and it must be *configured*
+rather than generated:
+
+- A key generated at startup would rotate on every configuration reload and drop
+  every live session.
+- Two Zentinel instances need the same key to read each other's tokens. Without
+  that, a merged endpoint would only work behind a load balancer pinned to one
+  instance.
+
+Generate one with `openssl rand -hex 32`, and treat it like any other secret.
+
+A client presenting a token this Zentinel cannot decrypt — from a rotated key,
+or another deployment — is treated as not having a session yet, and initialises
+again. Rotating the key costs a wave of re-initialisation, not a wall of errors.
+
+Upstream sessions are opened **lazily**, the first time a call actually routes to
+that upstream. A client that lists twenty tools and calls one holds one upstream
+session, not twenty.
+
+#### What this does not do yet
+
+- **No failover for a call.** A tool lives on one upstream, so there is nowhere
+  else to send it: a call to a server that is down fails, and fails fast rather
+  than hanging. A listing degrades instead — an upstream that cannot be reached
+  during `tools/list` has its tools omitted rather than the listing failing, so
+  one bad server costs its own tools and no others.
+
+  Measured with one of two upstreams stopped: the merged listing came back in
+  58 ms and the call was refused in 17 ms. Configuring an
+  [MCP health check](@/configuration/upstreams.md) improves this further, since
+  an upstream already known to be unhealthy is skipped rather than tried — which
+  matters most for a server that accepts connections but never answers.
+
+### Resources are not served here
+
+`resources/list` and `resources/read` are **refused** on a multiplexing route,
+with a reason:
+
+```
+resources/list is not available on a route that fronts several MCP servers:
+resources are identified by URI and cannot be attributed to an upstream
+```
+
+A tool is namespaced by prefixing its name. A resource is identified by a URI,
+and a URI cannot carry a prefix — `docs.file:///a.txt` is not a URI. Merging
+them anyway would show the same URI from two servers with no way to tell them
+apart, and no way to read either.
+
+Refusing is deliberate rather than returning an empty list: empty would claim
+there are none, which is false. **A route with a single upstream is unaffected**
+and serves resources normally.
+
+### How requests reach the upstreams
+
+A **tool call** is proxied. It goes to exactly one upstream, so it takes the
+normal path and gets the connection pool, the route's retry policy and the
+upstream's TLS settings.
+
+The call's body is read to resolve the tool, then forwarded; from 26.10_5 that
+works for any body up to the 1 MiB inspection limit. Before 26.10_5 a call
+body over 64 KiB was read but could not be forwarded, so the request could
+stall until the upstream timed out.
+
+A **listing** is not, and cannot be: merging means asking several servers and
+composing one answer, which is not proxying. Zentinel makes those requests
+itself. The same is true of the one `initialize` handshake per upstream, which
+happens before the client's own request and so has nowhere to be forwarded.
+
+Both paths go through the upstream's own load balancing, service discovery and
+health checking, so a fan-out reaches the same targets a proxied request would.
+
+### `Mcp-Param-*` headers
+
+A tool schema can mirror individual arguments into headers using an
+`x-mcp-header` annotation, and the specification's own example routes by
+region:
+
+```http
+Mcp-Param-Region: us-west1
+
+{"params":{"name":"execute_sql",
+ "arguments":{"region":"us-west1","query":"SELECT 1"}}}
+```
+
+These get the same treatment as `Mcp-Name`: a header that disagrees with the
+argument it mirrors is refused.
+
+> **One limitation worth knowing.** The header's name comes from the
+> `x-mcp-header` label in the tool's schema, and that label is not required to
+> equal the property name — `x-mcp-header: "Region"` on a property called
+> `region` is the specification's example, but `"Reg"` would be equally valid.
+> Zentinel has never seen that schema, so it checks headers whose suffix matches
+> an argument name and leaves the rest alone. Denying an unmatched header would
+> refuse legitimate traffic over a naming convention the proxy cannot see.
+>
+> **If you route or rate-limit on `Mcp-Param-*` headers, keep the label equal to
+> the property name**, or the proxy cannot confirm the two still agree.
+>
+> To rate limit by *tool* rather than by argument, prefer the
+> [`mcp-tool` rate-limit key](@/configuration/filters.md#rate-limiting-mcp-calls-per-tool),
+> which reads the tool from the body and so cannot be misdirected by a header at
+> all.
+
+### Bodies that cannot be inspected
+
+A body is uninspectable if it exceeds 1 MiB, is not valid JSON, or is a
+JSON-RPC batch array (which Zentinel does not decompose).
+
+`on-uninspectable-body` defaults to `"deny"`, because a body that cannot be read
+cannot be checked against an allowlist — failing open would make an oversized or
+malformed body a way around policy. Set it to `"allow"` where the `mcp` block is
+for observability and enforcement lives elsewhere.
+
+### What this does not do
+
+This is about whether a request is coherent and permitted. It does not inspect
+tool *arguments* for prompt injection, secrets, or PII — that is
+[agent](../agents/) work, and stays there. The division: Zentinel decides
+whether a call may be made, agents decide whether its contents are safe.
+
+## A2A
+
+```kdl
+routes {
+    route "a2a" {
+        matches {
+            path-prefix "/a2a"
+        }
+        upstream "agent"
+
+        a2a {
+            methods {
+                allow "GetTask" "ListTasks"
+                deny "CancelTask"
+            }
+        }
+    }
+}
+```
+
+A2A defines no mirrored headers — the method exists only in the body. There is
+nothing to desynchronise and correspondingly nothing to spoof, so policy reads
+the body directly and there is no equivalent of the MCP header checks.
+
+### Settings
+
+| Setting | Default | Meaning |
+|---------|---------|---------|
+| `unknown-methods` | `"allow"` | What to do with methods Zentinel does not recognise |
+| `deny-uninspectable-body` | `#true` | Refuse bodies that cannot be read |
+| `methods` | *(unset)* | `allow` / `deny` lists for methods |
+
+`unknown-methods` defaults to `"allow"` deliberately. A2A is young, and a proxy
+that refuses every method added after it was built becomes an obstacle to
+upgrading the agents behind it. Set `"deny"` where you would rather fail than
+forward something the proxy cannot classify.
+
+### Recognised methods
+
+As of A2A v1.0:
+
+`SendMessage` · `SendStreamingMessage` · `GetTask` · `ListTasks` · `CancelTask` ·
+`SubscribeToTask` · `CreateTaskPushNotificationConfig` ·
+`GetTaskPushNotificationConfig` · `ListTaskPushNotificationConfigs` ·
+`DeleteTaskPushNotificationConfig` · `GetExtendedAgentCard`
+
+A common shape is a read-only route — task state may be queried, but nothing may
+ask the agent to begin work:
+
+```kdl
+route "a2a" {
+    matches { path-prefix "/a2a" }
+    upstream "agent"
+    a2a {
+        methods {
+            deny "SendMessage" "SendStreamingMessage"
+        }
+    }
+}
+```
+
+### Agent cards
+
+An agent publishes its capability manifest at `/.well-known/agent-card.json`,
+listing skills, endpoints and accepted authentication. That is a discovery
+document: exposing it decides who can enumerate what an agent can do. If that
+matters for your deployment, route it explicitly rather than letting it fall
+through a catch-all.
+
+## Observability
+
+Allowed requests record the method and tool resolved **from the body**, so
+metrics and audit logs describe what the upstream actually executed rather than
+what a header claimed. Denials record the reason, which is written to be read by
+an operator rather than parsed:
+
+```
+"execute_sql" is not permitted for tools/call on this route
+```
+
+Entries removed from a listing are counted separately, by route and by listing
+method:
+
+```
+zentinel_mcp_listing_entries_hidden_total{route="mcp",method="tools/list"}
+```
+
+It counts entries rather than responses, because the useful question is how much
+of an upstream's surface a route hides. A route where it is persistently zero
+while a tool policy is set is worth a look — either the upstream advertises
+nothing extra, or listings are not reaching the filter.
+
+## Checking your configuration
+
+`zentinel lint` reports keys inside an `mcp` or `a2a` block that no parser
+reads, so a misspelling in a security policy is not silently discarded. A
+misspelled setting is refused outright at load time:
+
+```
+Unknown setting 'allowed_tools' in mcp block. Valid settings:
+require-validated-version, validate-param-headers, on-uninspectable-body,
+methods, tools
+```
+
+See [Limits](../limits/#checking-bounds-with-zentinel-lint) for what else the
+linter checks.

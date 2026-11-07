@@ -1,7 +1,7 @@
 +++
 title = "Filters"
 weight = 6
-updated = 2026-09-02
+updated = 2026-10-20
 +++
 
 Filters provide a flexible pipeline for request and response processing. They can be built-in (rate-limit, headers, CORS, compression) or external agents. Filters are defined centrally in the `filters` block with unique IDs, then referenced by name in route configurations.
@@ -52,9 +52,20 @@ filter "rate-limiter" {
     key "client-ip"          // Rate limit key
     on-limit "reject"        // Action when exceeded
     status-code 429          // Response status
-    limit-message "Too many requests"
+    message "Too many requests"  // Response body when limited
 }
 ```
+
+The bucket holds up to `burst` tokens (default `10`) and refills at `max-rps`
+tokens per second; each request takes one. A client that has been idle can
+send `burst` requests at once, then `max-rps` per second. A filter with
+`max-rps 100` and no `burst` therefore admits 10 requests at once, then 100 per
+second; set `burst` at least as high as `max-rps` if clients send in bursts.
+When a request is limited, `Retry-After` and `X-RateLimit-Reset` point at the
+next token, and `delay` waits exactly that long.
+
+Before 26.10_5, `burst` was not applied: the local limiter counted up to
+`max-rps` requests per one-second window.
 
 #### Rate Limit Keys
 
@@ -67,6 +78,14 @@ filter "rate-limiter" {
 | `header:X-API-Key` | Rate limit by specific header value |
 | `mcp-tool` | Rate limit per MCP tool or resource named in the request body |
 | `client-ip-and-mcp-tool` | Combined client IP and MCP tool |
+
+`client-ip` is the address of the TCP peer, or, when the peer is in the
+listener's [`trusted-proxies`](/configuration/listeners/#trusted-proxies), the
+client address taken from `X-Forwarded-For`. Behind a load balancer that is not
+listed there, every request counts against the load balancer's address. Before
+26.10_5, all clients shared one bucket for the `client-ip` keys, and
+`header:<name>` keys did not see the request headers, so they too shared one
+bucket.
 
 ##### Rate limiting MCP calls per tool
 
@@ -125,26 +144,83 @@ only as a total.
 | `delay` | Queue request until tokens available (up to max-delay-ms) |
 | `log-only` | Log but allow request through |
 
-#### Distributed Rate Limiting with Redis
+#### Distributed Rate Limiting
+
+A `rate-limit` filter can keep its buckets in Redis or memcached, so that every
+Zentinel instance draws from the same bucket:
 
 ```kdl
 filter "distributed-limiter" {
     type "rate-limit"
     max-rps 1000
     burst 100
-    backend "redis" {
-        url "redis://127.0.0.1:6379"
-        key-prefix "zentinel:ratelimit:"
-        pool-size 10
-        timeout-ms 50
-        fallback-local #true
-    }
+    key "client-ip"
+
+    backend "redis"
+    redis-url "redis://127.0.0.1:6379"
+    redis-prefix "zentinel:ratelimit:"
+    redis-timeout-ms 50
+    redis-fallback-local #true
 }
 ```
 
+The backend settings are keys of the filter, not a nested block:
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `backend` | `"local"` | `"local"`, `"redis"` or `"memcached"` |
+| `redis-url` | `redis://127.0.0.1:6379` | Redis server |
+| `redis-prefix` | `zentinel:ratelimit:` | Prefix of the stored keys |
+| `redis-timeout-ms` | `50` | Timeout of one check |
+| `redis-fallback-local` | `#true` | When Redis cannot be reached, limit locally (per instance) instead of allowing the request |
+| `memcached-url` | `memcache://127.0.0.1:11211` | memcached server (1.6 or later); `memcache://`, `memcached://`, `tcp://` or `unix://` |
+| `memcached-prefix` | `zentinel:ratelimit:` | Prefix of the stored keys |
+| `memcached-timeout-ms` | `50` | Timeout of one check |
+| `memcached-fallback-local` | `#true` | As `redis-fallback-local` |
+
+Every backend runs the same token bucket as the local limiter: `burst` is the
+bucket size and `max-rps` the refill rate, so the same configuration admits the
+same sequence of requests and sends the same `X-RateLimit-*` and `Retry-After`
+headers on every backend. Stored keys include the route ID, so two routes
+limiting the same client do not share a bucket.
+
+- **Redis** advances the bucket with one Lua script per check, using the Redis
+  server's clock. A key expires once its bucket would be full again.
+- **memcached** uses compare-and-swap over the meta protocol, so it needs
+  memcached 1.6 or later. Each proxy uses its own clock; clock skew between
+  instances can only make the limit stricter. After 16 lost races in a row the
+  check counts as a backend failure.
+
+When the backend cannot be reached, the check falls back to a local bucket with
+`*-fallback-local #true` (the default), or lets the request through with
+`#false`.
+
+{% callout(type="warning", title="Release binaries limit per instance") %}
+The official release binaries and container images are built **without** the
+distributed rate-limit features. With them, `backend "redis"` and
+`backend "memcached"` are enforced per instance, like `backend "local"`, and
+the proxy logs a warning saying so when it builds the limiter. To share limits
+across instances, build from source with the feature enabled:
+
+```bash
+cargo build --release -p zentinel-proxy --features distributed-rate-limit
+```
+
+`distributed-rate-limit` enables both backends;
+`distributed-rate-limit-redis` and `distributed-rate-limit-memcached` enable
+one each. See [Building from Source](/development/building/).
+{% end %}
+
+**Before 26.10_6** the Redis and memcached backends were never used, in any
+build: every limiter was built in memory, so a "shared" limit was enforced
+separately on each instance. The backend implementations counted requests per
+fixed one-second window and ignored `burst`, and a memcached URL with an IP
+address (`memcache://127.0.0.1:11211`) could not connect.
+
 ### Global Rate Limits
 
-Apply rate limits at the server level before route-specific limits:
+Set a default limit for routes that have none, and a server-wide limit checked
+before route-specific limits:
 
 ```kdl
 rate-limits {
@@ -159,6 +235,28 @@ rate-limits {
     }
 }
 ```
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `default-rps` | none | Limit for every route without a limit of its own (no `rate-limit` filter, no route policy limit). Each route gets its own buckets |
+| `default-burst` | `default-rps` | Bucket size for the default limit |
+| `key` | `client-ip` | Key for the default limit |
+| `global { max-rps }` | required | Server-wide limit |
+| `global { burst }` | `10` | Bucket size for the server-wide limit |
+| `global { key }` | `client-ip` | Key for the server-wide limit: `client-ip`, `path`, `route`, `client-ip-and-path` or `header:<name>` |
+
+A route's own limit replaces the default; the two do not stack. Limited
+requests get the same `429`, `X-RateLimit-*` and `Retry-After` headers as a
+route filter.
+
+Before 26.10_5, `default-rps` and `default-burst` were not applied, and
+`global` always keyed on the client IP whatever `key` said.
+
+From 26.10_6 rate limiters are rebuilt on reload (`SIGHUP` or auto-reload): a
+changed, added or removed `rate-limit` filter, `rate-limits { default-rps }` or
+`global` limit takes effect on the next request. Limiters whose settings did
+not change keep their buckets. Before 26.10_6 a reload did not rebuild them,
+and a changed limit needed a restart.
 
 ### Headers Filter
 
@@ -219,19 +317,34 @@ Compress response bodies:
 ```kdl
 filter "compress" {
     type "compress"
-    algorithms "brotli" "gzip" "zstd"
-    min-size 1024          // Minimum size to compress (bytes)
-    level 6                // Compression level (1-9)
+    algorithms "zstd" "gzip"   // In order of preference
+    min-size 1024              // Minimum size to compress (bytes)
+    level 6                    // Compression level (1-9)
     content-types "text/html" "text/css" "application/json" "application/javascript"
 }
 ```
 
-| Algorithm | Description |
-|-----------|-------------|
-| `gzip` | Widely supported, good compression |
-| `brotli` | Better compression, modern browsers |
-| `deflate` | Legacy, wide support |
-| `zstd` | Fast compression/decompression |
+| Algorithm | Produced | Notes |
+|-----------|----------|-------|
+| `gzip` | Yes | Universal client support. The default |
+| `zstd` | Yes | Stronger and faster than gzip; supported by current browsers |
+| `br` / `brotli` | **No** | Accepted, but skipped with a warning from `zentinel test` and `lint`: Pingora's Brotli encoder does not finish its stream, so its output cannot be decoded |
+| `deflate` | **No** | A configuration error. Use `gzip`: it is the same DEFLATE compression, and every client that accepts deflate accepts gzip |
+
+| Key | Default | Meaning |
+|-----|---------|---------|
+| `algorithms` | `"gzip"` | The codings the filter may produce, in order of preference. The first one listed that the client accepts (`q` above 0) is used; a client that accepts none of them gets the response uncompressed. Also accepted comma-separated in one string. An unknown name is an error |
+| `content-types` | `text/html`, `text/css`, `application/json`, `application/javascript` | MIME type prefixes to compress |
+| `min-size` | `1024` | Responses smaller than this are sent uncompressed |
+| `level` | `6` | Compression level, 1-9. Anything else is an error |
+
+A response the upstream already encoded in a coding the client accepts is
+passed through unchanged; the filter does not transcode.
+
+Before 26.10_11 the compress filter broke every response it applied to
+(clients got an empty reply or a truncated body, since 26.02_10), only the
+first entry of `algorithms` was kept and not applied, and `content-types` and
+`level` were not read.
 
 ### GeoIP Filter
 
@@ -323,17 +436,115 @@ filter "waf" {
 }
 ```
 
+| Key | Meaning |
+|-----|---------|
+| `agent` | ID of an agent in the `agents` block |
+| `timeout-ms` | Timeout of each call to the agent on the routes that use this filter, in milliseconds: request headers, request body, response headers, response body and WebSocket frames. It can only shorten the agent's own `timeout-ms`: the shorter of the two applies |
+| `failure-mode` | What happens when a call fails or times out: `"open"` lets the request (or frame) through, `"closed"` refuses it. Unset, the route's `policies { failure-mode }` applies, and without that, `"closed"` |
+| `inspect-body` | From 26.10_7. `#false` sends no request body to the agent on the routes that use this filter. Left out or `#true`, the agent's `events` decide |
+| `max-body-bytes` | From 26.10_7. Largest request body sent to the agent on these routes, in bytes. It can only lower the agent's `max-request-body-bytes`: the smaller of the two applies |
+
+From 26.10_6, an agent filter's `timeout-ms` is applied to the
+`request_headers` call; from 26.10_11 it applies to every event path,
+including request and response bodies and WebSocket frames (before 26.10_11
+those waited for the agent's own `timeout-ms`). The agent's
+`timeout-ms` (default `1000`) is also the request timeout of the agent's
+connection pool, so a larger filter value cannot take effect: `zentinel lint`
+reports it as ignored beyond the agent's value. A value of `0` or less is
+reported and ignored. Before 26.10_6 the filter's `timeout-ms` was not read,
+and every call used the agent's.
+
+`phase` is not read on an agent filter and is reported as ignored. Which events
+an agent receives is decided by the agent's `events`; applying
+`phase "response"` would stop a security agent from seeing request headers.
+
 Agent filters automatically process both request-phase and response-phase events based on the agent's `events` subscription. An agent subscribed to `response_headers` and `response_body` will be called during the response phase to inspect and modify the upstream response:
 
 ```kdl
-// Agent that transforms response content (e.g. image optimization)
+// Agent that transforms response content (e.g. image optimization).
+// The agent block sets timeout-ms 5000; the filter does not need its own.
 filter "image-optimization" {
     type "agent"
     agent "image-optimizer"
-    timeout-ms 5000
     failure-mode "open"
 }
 ```
+
+#### Request bodies per route
+
+From 26.10_7 an agent filter can narrow what request body its agent gets on
+the routes that use it. It cannot widen it: the agent receives request bodies
+only if its `events` include `"request_body"`, and only up to its own
+`max-request-body-bytes`. Request bodies are buffered for agents only when the
+configuration has a top-level `waf` block (with `mode "off"`); its
+[`body-inspection`](/configuration/waf/#body-inspection) settings decide
+whether and for which content types.
+
+```kdl
+waf {
+    mode "off"
+    body-inspection {
+        inspect-request-body #true
+    }
+}
+
+agents {
+    agent "waf-agent" type="waf" {
+        unix-socket "/var/run/zentinel/waf.sock"
+        events "request_headers" "request_body"
+        max-request-body-bytes 1048576
+    }
+}
+
+filters {
+    // Bodies up to 64 KiB on /api/; larger ones are refused with 413,
+    // because the agent fails closed.
+    filter "waf-api" {
+        type "agent"
+        agent "waf-agent"
+        failure-mode "closed"
+        max-body-bytes 65536
+    }
+    // Headers only on uploads.
+    filter "waf-headers-only" {
+        type "agent"
+        agent "waf-agent"
+        failure-mode "closed"
+        inspect-body #false
+    }
+}
+
+routes {
+    route "api" {
+        matches { path-prefix "/api/" }
+        upstream "backend"
+        filters "waf-api"
+    }
+    route "uploads" {
+        matches { path-prefix "/upload/" }
+        upstream "backend"
+        filters "waf-headers-only"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        target "127.0.0.1:3000"
+    }
+}
+```
+
+A body over the effective limit is handled as one over the agent's own limit:
+it is not sent and the request goes on if the agent fails open, and the request
+is refused with `413` if the agent fails closed. Neither setting affects
+response bodies.
+
+`zentinel test` and `lint` report a value that cannot apply as "is being
+ignored": `inspect-body #true` or `max-body-bytes` for an agent without
+`request_body` events, `max-body-bytes` together with `inspect-body #false`, a
+`max-body-bytes` above the agent's limit (ignored beyond it), and a value that
+is not a boolean or a positive number of bytes. Before 26.10_7 both settings
+were parsed and not read.
 
 ## Filter Phases
 
@@ -356,7 +567,7 @@ Filter phase mapping:
 | `geo` | Request |
 | `timeout` | Request |
 | `log` | Configurable |
-| `agent` | Configurable |
+| `agent` | Set by the agent's `events`; `phase` is ignored |
 
 ## Filter Ordering
 
@@ -364,6 +575,8 @@ Filters execute in the order specified in the route:
 
 ```kdl
 route "api" {
+    matches { path-prefix "/api/" }
+    upstream "backend"
     filters "rate-limit" "auth" "cors" "logging"
     //       ^^^^^^^^^    ^^^^   ^^^^   ^^^^^^^
     //       1st          2nd    3rd    4th
@@ -431,7 +644,7 @@ filters {
     // Response compression
     filter "compress" {
         type "compress"
-        algorithms "brotli" "gzip"
+        algorithms "gzip" "zstd"
         min-size 1024
     }
 
@@ -473,7 +686,7 @@ routes {
 | Rate Limit | `status-code` | `429` |
 | Rate Limit | `max-delay-ms` | `5000` |
 | Headers | `phase` | `request` |
-| Compress | `algorithms` | `gzip`, `brotli` |
+| Compress | `algorithms` | `gzip` |
 | Compress | `min-size` | `1024` |
 | Compress | `level` | `6` |
 | CORS | `allowed-origins` | `*` |

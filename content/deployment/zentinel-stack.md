@@ -22,7 +22,7 @@ zentinel-stack
 `zentinel-stack` lives in the Zentinel repository (`crates/stack`) but is not
 published to crates.io and is not part of the release archives, which ship
 `zentinel`, `zentinel-gateway` and `zentinel-echo-agent`. Build it from source
-(Rust 1.96 or later):
+(Rust 1.99 or later):
 
 ```bash
 # Install straight from the repository

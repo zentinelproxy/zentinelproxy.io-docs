@@ -122,7 +122,7 @@ matters if you pin an old version by hand.
 
 ## Build from Source
 
-Building from source requires Rust 1.96 or later.
+Building from source requires Rust 1.99 or later.
 
 ### Prerequisites
 
@@ -130,7 +130,7 @@ Building from source requires Rust 1.96 or later.
 # Install Rust via rustup
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
-# Ensure you have Rust 1.96+
+# Ensure you have Rust 1.99+
 rustup update stable
 ```
 

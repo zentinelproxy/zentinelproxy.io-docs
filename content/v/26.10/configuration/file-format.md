@@ -1,7 +1,7 @@
 +++
 title = "File Format"
 weight = 1
-updated = 2026-02-27
+updated = 2026-10-20
 +++
 
 Zentinel uses [KDL](https://kdl.dev/) as its primary configuration format. KDL is a human-friendly document language that's easy to read, write, and diff.
@@ -42,15 +42,15 @@ my-config {
 ### Values and Properties
 
 **Values** are positional arguments:
-```kdl
+```fragment,kdl
 node-name "api"           // "api" is a value
 multi-value "10.0.0.1" "10.0.0.2"  // Multiple values
 ```
 
 **Properties** are named with `=`:
-```kdl
-target address="10.0.0.1" weight=5
-health-check type="http" interval-secs=10
+```fragment,kdl
+target "10.0.0.1:8080" weight=5
+agent "waf" type="waf" { /* ... */ }
 ```
 
 ### Data Types
@@ -61,7 +61,6 @@ health-check type="http" interval-secs=10
 system {
     // Numbers (integer)
     worker-threads 4
-    max-connections 1000
     graceful-shutdown-timeout-secs 30
 }
 
@@ -76,7 +75,7 @@ listeners {
 routes {
     route "default" {
         // Booleans (#true, #false)
-        enabled #true
+        websocket #false
 
         matches { path-prefix "/" }
         upstream "backend"
@@ -223,7 +222,6 @@ schema-version "1.0"
 
 system {
     worker-threads 0          // 0 = auto-detect CPU cores
-    max-connections 10000
     graceful-shutdown-timeout-secs 30
 }
 
@@ -239,7 +237,7 @@ listeners {
     }
 
     listener "admin" {
-        address "127.0.0.1:9090"
+        address "127.0.0.1:9901"  // 9090 is the metrics server's default port
         protocol "http"
     }
 }
@@ -249,10 +247,9 @@ routes {
         priority 100
         matches {
             path-prefix "/api/"
-            method "GET" "POST" "PUT" "DELETE"
         }
         upstream "backend"
-        agents "auth" "ratelimit"
+        filters "auth" "ratelimit"  // agents attach through filters
     }
 
     route "health" {
@@ -272,11 +269,25 @@ upstreams {
         target "10.0.1.3:8080" weight=1
         load-balancing "weighted_round_robin"
         health-check {
-            type "http"
-            path "/health"
+            type "http" {
+                path "/health"
+            }
             interval-secs 10
             timeout-secs 5
         }
+    }
+}
+
+filters {
+    filter "auth" {
+        type "agent"
+        agent "auth"
+        failure-mode "closed"
+    }
+    filter "ratelimit" {
+        type "agent"
+        agent "ratelimit"
+        failure-mode "open"
     }
 }
 
@@ -285,21 +296,19 @@ agents {
         type "auth"
         unix-socket "/tmp/zentinel/auth.sock"
         timeout-ms 100
-        failure-mode "closed"
     }
 
     agent "ratelimit" {
         type "rate_limit"
         unix-socket "/tmp/zentinel/ratelimit.sock"
         timeout-ms 50
-        failure-mode "open"
     }
 }
 
 limits {
-    max-header-size-bytes 8192
+    max-header-size 8192
     max-header-count 100
-    max-body-size-bytes 10485760  // 10MB
+    max-body-size 10485760  // 10MB
 }
 ```
 
@@ -345,40 +354,83 @@ File format is auto-detected by extension:
 
 ## Multi-File Configuration
 
-For complex deployments, split configuration across multiple files:
+A configuration can be split across several KDL files in two ways: an entry
+file that pulls in the others with `include`, or a directory passed to `-c`.
+Both are read as one document by the same parser, so a block means the same
+thing whichever file it is in.
 
 ```
 /etc/zentinel/
-├── zentinel.kdl        # Main config (includes others)
+├── zentinel.kdl        # system, limits, include "..."
+├── listeners/
+│   └── http.kdl
 ├── routes/
 │   ├── api.kdl
-│   ├── static.kdl
-│   └── admin.kdl
-├── upstreams/
-│   ├── backend.kdl
-│   └── cache.kdl
-└── agents/
-    └── security.kdl
+│   └── static.kdl
+└── upstreams/
+    └── backends.kdl
 ```
 
-Use directory loading:
+Each file holds ordinary top-level blocks (`listeners { }`, `routes { }`,
+`upstreams { }`, ...). A complete example is in the repository under
+[`config/example-multi-file`](https://github.com/zentinelproxy/zentinel/tree/main/config/example-multi-file).
+
+### Loading a Directory
+
+From 26.10_6, every command that takes `-c` accepts a directory, and so does
+`ZENTINEL_CONFIG`:
 
 ```bash
-zentinel --config-dir /etc/zentinel/
+zentinel test --strict -c /etc/zentinel/
+zentinel lint -c /etc/zentinel/
+zentinel validate -c /etc/zentinel/
+zentinel -c /etc/zentinel/
+ZENTINEL_CONFIG=/etc/zentinel/ zentinel run
 ```
 
-Or use `include` directives in your main config:
+There is no separate `--config-dir` flag. Before 26.10_6, `-c <dir>` failed
+with "Is a directory"; use the entry file (`-c /etc/zentinel/zentinel.kdl`)
+on those releases.
 
-```kdl
-// zentinel.kdl
-include "routes/*.kdl"
-include "upstreams/*.kdl"
-include "agents/*.kdl"
+How a directory is read:
+
+- Every `*.kdl` file below the directory is found, recursively, and read in
+  path order.
+- A file that another file in the directory includes is read once, through
+  that `include`, not a second time on its own. So the layout above (an entry
+  file with `include "routes/*.kdl"`) and a `conf.d`-style folder of
+  standalone files both load.
+- A file reached from two entry files, or a circular include, is an error.
+  From 26.10_7 a "diamond" below one entry file (two files that both include
+  a third) loads, and the shared file is read once; see
+  [Include Behavior](#include-behavior).
+- Hidden files and folders are skipped: editor lock files such as
+  `.#zentinel.kdl`, `.git`, and the `..data` folder of a Kubernetes ConfigMap
+  mount, whose files would otherwise be read twice. So are files whose name
+  contains `.example.` or `.bak`, or ends in `~`.
+- The `environments/` folder is skipped. Its files are alternatives to one
+  another (`staging.kdl`, `production.kdl`), and the command line has no way
+  to choose one.
+- A singleton block written in two files (`system`, `limits`, ...) is taken
+  from the file read last, with a warning. A listener, route, upstream, filter
+  or agent ID defined in two files is an error.
+
+`zentinel test --strict` and `zentinel lint` check every file that is read,
+included ones too, and name the file in each finding:
+
 ```
+/etc/zentinel/routes/api.kdl: 'timeout-sec' is not a setting in the 'policies'
+block and is being ignored. Did you mean 'timeout-secs'?
+```
+
+Before 26.10_6 only the file named with `-c` was checked, so a misspelled key
+in an included file passed `--strict`, even for a single-file configuration.
 
 ### Include Behavior
 
-The `include` directive is processed as a pre-processing step when loading configuration with `Config::from_file()` or `zentinel --config`. Include directives are resolved before the configuration is parsed, so included files can contain any top-level blocks (`routes`, `upstreams`, `agents`, etc.).
+The `include` directive is expanded before the configuration is parsed, so
+included files can contain any top-level blocks (`routes`, `upstreams`,
+`agents`, etc.).
 
 **Glob patterns** — Include paths support glob patterns (`*`, `**`, `?`). Matched files are sorted alphabetically for deterministic ordering.
 
@@ -386,7 +438,9 @@ The `include` directive is processed as a pre-processing step when loading confi
 
 **Recursive includes** — Included files can contain their own `include` directives, which are expanded recursively.
 
-**Circular include detection** — Zentinel tracks which files have already been included (using canonical paths) and returns an error if a circular include is detected.
+**Each file is read once** — From 26.10_7 a file reached a second time through includes (a "diamond": two included files that both include a third) is read only the first time, so its routes and upstreams are defined once. Before 26.10_7 a diamond was rejected as a circular include.
+
+**Circular include detection** — Only a file that includes itself, directly or through other files, is an error. The error names the chain of files that leads back to it (`Circular include detected: '/etc/zentinel/b.kdl' includes itself ('zentinel.kdl' -> '/etc/zentinel/b.kdl' -> '/etc/zentinel/c.kdl' -> '/etc/zentinel/b.kdl')`). In a [configuration directory](#loading-a-directory), a file reached from two entry files is still an error.
 
 **No-match behavior** — If a glob pattern matches no files, Zentinel logs a warning but continues loading. This allows optional includes like `include "overrides/*.kdl"` where the directory may be empty.
 
@@ -394,7 +448,7 @@ The `include` directive is processed as a pre-processing step when loading confi
 // routes/api.kdl — included file contains a top-level block
 routes {
     route "api" {
-        match {
+        matches {
             path-prefix "/api"
         }
         upstream "backend"
@@ -407,12 +461,17 @@ routes {
 Validate configuration before applying:
 
 ```bash
-# Check syntax and semantics
-zentinel --config zentinel.kdl --validate
+# Parse and validate; --strict also fails on settings that are ignored
+zentinel test --strict -c zentinel.kdl
 
-# Dry-run mode
-zentinel --config zentinel.kdl --dry-run
+# Also check that upstreams, agents and certificates are reachable
+zentinel validate -c zentinel.kdl
+
+# Best-practice warnings
+zentinel lint -c zentinel.kdl
 ```
+
+Each command takes a file or a directory.
 
 Common validation errors:
 
@@ -425,21 +484,63 @@ Common validation errors:
 
 ## Hot Reload
 
-Zentinel supports configuration reload without restart:
+Zentinel reloads its configuration without a restart on `SIGHUP`:
 
 ```bash
-# Send SIGHUP to reload
-kill -HUP $(cat /var/run/zentinel.pid)
-
-# Or use the admin endpoint
-curl -X POST http://localhost:9090/admin/reload
+kill -HUP $(pgrep -x zentinel)
 ```
+
+From 26.10_6 a `SIGHUP` that arrives while the proxy is still starting is
+queued, and the reload runs once the proxy is ready. Before, an early `SIGHUP`
+could terminate a starting proxy (for example a configuration-management run
+that reloads right after starting the service). `SIGTERM` and `SIGINT` still
+stop a starting proxy at once.
+
+With `system { auto-reload #true }` it also reloads when the configuration
+changes on disk. For a directory configuration it watches the whole directory,
+recursively. Once a second it also compares the content of every file the
+configuration reads, includes too, with what the last reload read, which
+catches filesystems that do not deliver change events and included files
+outside the watched directory.
+
+From 26.10_7 one edit gives one reload, and saving a file without changing its
+content (a `touch`) does not reload. Before 26.10_7 one edit could trigger two
+reloads, and for a single-file configuration the poll looked only at the entry
+file, so a change to an included file outside its directory could be missed.
 
 Reload behavior:
 1. Parse new configuration
 2. Validate syntax and semantics
 3. If valid, atomically swap configuration
 4. If invalid, keep old configuration and log error
+
+### What a reload applies {#what-a-reload-applies}
+
+Every top-level block either takes effect on reload or is reported as needing
+a restart. A change to a restart-only block logs a warning naming the block
+(`'cache' changed in the new configuration, but it is NOT applied by hot
+reload (...); restart zentinel to apply it`) and the rest of the reload goes
+ahead.
+
+| Block | On reload |
+|-------|-----------|
+| `routes` | Applied: route matchers, rate limiters and each route's error pages, API schema validator and static file server are rebuilt (`Route components reloaded added=… replaced=… removed=… unchanged=…`) |
+| `upstreams` | Applied: pools rebuilt, health checks reconciled |
+| `filters` | Applied: read per request; rate limiters rebuilt |
+| `agents` | Applied: agents loaded, replaced and removed |
+| `waf` | Applied: read per request |
+| `namespaces` | Applied, through the blocks they expand into |
+| `limits` | Applied: read per request and per connection |
+| `rate-limits` | Applied: limiters rebuilt; unchanged ones keep their buckets |
+| `listeners` | **Restart required**: listeners are bound at startup (certificates are reloaded on `SIGHUP`) |
+| `system` | **Restart required**: worker threads and process-level settings are fixed at startup |
+| `observability` | **Restart required**: logging, access/error/audit logs, metrics and tracing are set up at startup |
+| `cache` | **Restart required**: cache storage (backend, size, disk path) is configured once at startup |
+
+Before 26.10_11 a route added or changed by a reload kept no error pages, API
+schema validator or static file server (a static route added by a reload
+served without its files), and changes to `observability` and `cache` were
+ignored without a warning.
 
 ## Next Steps
 

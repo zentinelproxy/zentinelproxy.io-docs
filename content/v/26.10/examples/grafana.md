@@ -1,7 +1,7 @@
 +++
 title = "Security"
 weight = 7
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 Complete security configuration with WAF, authentication, rate limiting, and security headers.
@@ -73,7 +73,7 @@ routes {
         matches {
             path-prefix "/public/"
         }
-        agents "waf" "ratelimit"
+        filters "waf" "ratelimit"
         upstream "backend"
         policies {
             response-headers {
@@ -97,7 +97,7 @@ routes {
         matches {
             path-prefix "/api/"
         }
-        agents "waf" "auth" "ratelimit"
+        filters "waf" "auth" "ratelimit"
         upstream "backend"
         service-type "api"
         policies {
@@ -112,9 +112,6 @@ routes {
                 remove "Server" "X-Powered-By"
             }
         }
-        error-pages {
-            default-format "json"
-        }
     }
 
     // Admin endpoints - strict security
@@ -123,7 +120,7 @@ routes {
         matches {
             path-prefix "/admin/"
         }
-        agents "waf" "auth" "ratelimit-strict"
+        filters "waf" "auth" "ratelimit-strict"
         upstream "backend"
         policies {
             failure-mode "closed"
@@ -154,7 +151,6 @@ agents {
         unix-socket "/var/run/zentinel/waf.sock"
         events "request_headers" "request_body"
         timeout-ms 100
-        failure-mode "closed"
     }
 
     // Authentication
@@ -162,7 +158,6 @@ agents {
         unix-socket "/var/run/zentinel/auth.sock"
         events "request_headers"
         timeout-ms 50
-        failure-mode "closed"
     }
 
     // Standard rate limiting
@@ -170,7 +165,6 @@ agents {
         unix-socket "/var/run/zentinel/ratelimit.sock"
         events "request_headers"
         timeout-ms 20
-        failure-mode "open"
     }
 
     // Strict rate limiting for admin
@@ -178,6 +172,29 @@ agents {
         unix-socket "/var/run/zentinel/ratelimit-strict.sock"
         events "request_headers"
         timeout-ms 20
+    }
+}
+
+// Routes attach agents through filters
+filters {
+    filter "waf" {
+        type "agent"
+        agent "waf"
+        failure-mode "closed"
+    }
+    filter "ratelimit" {
+        type "agent"
+        agent "ratelimit"
+        failure-mode "open"
+    }
+    filter "auth" {
+        type "agent"
+        agent "auth"
+        failure-mode "closed"
+    }
+    filter "ratelimit-strict" {
+        type "agent"
+        agent "ratelimit-strict"
         failure-mode "closed"
     }
 }

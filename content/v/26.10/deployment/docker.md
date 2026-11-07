@@ -54,12 +54,15 @@ docker run -d \
 docker run -d \
     --name zentinel \
     -e RUST_LOG=zentinel=info \
-    -e ZENTINEL_WORKERS=4 \
-    -e BACKEND_ADDR=api.example.com:443 \
+    -e ZENTINEL_LOG_FORMAT=json \
     -p 8080:8080 \
     -v $(pwd)/zentinel.kdl:/etc/zentinel/zentinel.kdl:ro \
     ghcr.io/zentinelproxy/zentinel:latest
 ```
+
+Settings such as worker threads are read from the configuration file only, and
+KDL values are not expanded from environment variables; see
+[Environment Variables](@/reference/env-vars.md) for what the proxy reads.
 
 > **Note:** If your backend serves HTTPS (port 443), your `zentinel.kdl` must include a `tls` block in the upstream configuration. Without it, Zentinel connects with plaintext HTTP, causing 502 errors or redirect loops. See [Upstream TLS](/configuration/upstreams/#upstream-tls) for details.
 

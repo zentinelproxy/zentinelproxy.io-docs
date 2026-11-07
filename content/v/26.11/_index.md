@@ -1,0 +1,158 @@
++++
+in_search_index = false
+title = "Introduction"
+weight = 0
+sort_by = "weight"
+template = "section.html"
++++
+**Zentinel** is a security-first **reverse proxy** built to guard the free web. It is written in Rust on [Cloudflare's Pingora](https://github.com/cloudflare/pingora), with explicit configuration, bounded resources, and WAF, authentication and other policy in isolated agents.
+
+## What is Zentinel?
+
+Zentinel sits in front of your services. It terminates TLS, routes requests by host and path, balances load across upstreams with active health checks, serves static files and validates API requests against a JSON schema. Policy that needs more than configuration, such as WAF inspection or authentication, runs in [agents](@/agents/_index.md): separate processes the proxy talks to over a Unix domain socket or gRPC, each with its own timeout and failure mode, so a slow or crashed agent does not take the proxy down.
+
+## Key Features
+
+### High Performance
+- Built on Pingora's async Rust foundation
+- Memory-safe architecture with zero-copy operations
+- Efficient connection pooling and keep-alive management
+- Optimized for both throughput and latency
+
+### Service-Type Awareness
+Zentinel understands different service types and optimizes behavior accordingly:
+
+- **Web Applications**: session affinity, SPA fallback for static sites
+- **REST APIs**: JSON schema validation, OpenAPI integration
+- **Static Files**: Direct file serving, automatic MIME types, caching headers
+
+### Advanced Routing
+- Flexible path-based and host-based routing
+- Route priorities and groups
+- Path variables and pattern matching
+- Per-route configuration overrides
+
+### Error Handling
+- Errors the proxy generates (unreachable upstream, timeouts, no route) are JSON with a trace ID, also sent as `X-Correlation-Id`
+- Retries and circuit breakers for failing upstreams
+- Per-route [error pages](@/configuration/routes.md#error-pages) for chosen statuses, generated or from a template (from 26.10_6)
+
+### Observability
+- Access, error and audit logs
+- Prometheus-compatible metrics
+- Distributed tracing support
+- Health check endpoints
+
+### Security Features
+- Path traversal protection for static files
+- Request validation and sanitization
+- Rate limiting capabilities
+- TLS/SSL with modern cipher suites
+- HTTP/1.1 and HTTP/2, downstream and upstream (HTTP/3 is not implemented)
+
+### Configuration
+- Human-friendly KDL configuration format
+- Hot reload without downtime
+- Validation on startup (`zentinel test`), plus `zentinel lint` for settings that are being ignored
+- No environment variable substitution: `${VAR}` in the file is taken literally; render the file with a tool such as `envsubst` first
+
+## Why Zentinel?
+
+### Production-Ready
+Zentinel is designed for production use from the ground up. Every feature is implemented with reliability, performance, and operational excellence in mind.
+
+### Type-Safe and Memory-Safe
+Written in Rust, Zentinel eliminates entire classes of bugs common in traditional proxies, including buffer overflows, use-after-free errors, and data races.
+
+### Cloud-Native
+Built for modern cloud environments with support for:
+- Container deployments (Docker, Kubernetes)
+- Horizontal scaling
+- Service mesh integration
+- Dynamic configuration
+
+### Developer-Friendly
+- Clear, expressive configuration
+- Comprehensive error messages
+- Extensive documentation
+- Example configurations for common use cases
+
+## Use Cases
+
+Zentinel excels in various deployment scenarios:
+
+- **API Gateway**: Validate requests, transform responses, implement rate limiting
+- **Static Content Delivery**: Serve files directly with optimal caching headers
+- **Load Balancer**: Distribute traffic across multiple upstream servers
+- **Web Application Proxy**: Sticky sessions, SPA fallback, security headers
+- **Microservices Router**: Route requests to different services based on paths
+- **Edge Proxy**: Terminate SSL, implement security policies, cache responses
+
+## Architecture Highlights
+
+Zentinel leverages Pingora's battle-tested architecture while adding its own innovations:
+
+```text
+Client Request
+     ↓
+[TLS Termination]
+     ↓
+[Route Matching] ← Service Type Detection
+     ↓
+[Request Processing]
+     ├─→ Static File Serving (no upstream)
+     ├─→ API Validation → Upstream
+     └─→ Web App Processing → Upstream
+     ↓
+[Response Processing]
+     ├─→ Error Responses
+     ├─→ Header Manipulation
+     └─→ Caching Headers
+     ↓
+Client Response
+```
+
+## Getting Started
+
+This documentation will guide you through:
+
+1. **[Installation](@/getting-started/installation.md)** — Get Zentinel up and running
+2. **[Quick Start](@/getting-started/quick-start.md)** — Your first proxy configuration
+3. **[Core Concepts](@/concepts/architecture.md)** — Understand how Zentinel works
+4. **[Configuration](@/configuration/file-format.md)** — Master the configuration system
+5. **[Features](@/features/_index.md)** — Explore all capabilities
+6. **[Deployment](@/deployment/docker.md)** — Deploy to production
+
+## Documentation Structure
+
+- **[Getting Started](@/getting-started/_index.md)** — Installation and basic setup
+- **[Core Concepts](@/concepts/_index.md)** — Fundamental architecture and design principles
+- **[Configuration](@/configuration/_index.md)** — Detailed configuration reference
+- **[Features](@/features/_index.md)** — Complete feature list with code references
+- **[Agents](@/agents/_index.md)** — External agent system for extensibility
+- **[Operations](@/operations/_index.md)** — Production management and troubleshooting
+- **[Deployment](@/deployment/_index.md)** — Container and cloud deployment guides
+- **[Control Plane](@/control-plane/_index.md)** — Fleet management, rollouts, and observability
+- **[Examples](@/examples/_index.md)** — Real-world configuration examples
+- **[Reference](@/reference/_index.md)** — Metrics, CLI, and API documentation
+- **[Development](@/development/_index.md)** — Contributing to Zentinel
+
+## Community
+
+- 💬 **[Discussions](https://github.com/zentinelproxy/zentinel/discussions)** — Questions, ideas, show & tell
+- 🐛 **[Issues](https://github.com/zentinelproxy/zentinel/issues)** — Bug reports and feature requests
+- 📦 **[GitHub](https://github.com/zentinelproxy/zentinel)** — Source code and releases
+
+Contributions are welcome! See our [Contributing Guide](@/development/contributing.md) to get started.
+
+## Version Information
+
+This documentation covers the latest Zentinel release; settings that are accepted but not applied in it are listed in [Known Limitations](@/reference/known-limitations.md). Documentation for earlier release series is in the [Version Archive](@/v/_index.md). For the latest updates and changes, see the [Changelog](@/appendix/changelog.md). For details on the versioning scheme, see [Versioning](@/appendix/versioning.md).
+
+## License
+
+Zentinel is open-source software licensed under the Apache License, Version 2.0. See the [License](@/appendix/license.md) page for details.
+
+---
+
+Ready to get started? Head to the [Installation Guide](@/getting-started/installation.md) to begin your journey with Zentinel!

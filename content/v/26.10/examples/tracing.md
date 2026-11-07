@@ -1,7 +1,7 @@
 +++
 title = "Distributed Tracing"
 weight = 8
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 Complete distributed tracing setup with Jaeger or Grafana Tempo for end-to-end request visibility.
@@ -247,7 +247,7 @@ routes {
             path-prefix "/api/"
         }
         upstream "api-backend"
-        agents "auth" "ratelimit"
+        filters "auth" "ratelimit"
     }
 
     route "health" {
@@ -279,6 +279,18 @@ agents {
         unix-socket path="/var/run/zentinel/ratelimit.sock"
         events "request_headers"
         timeout-ms 20
+    }
+}
+
+// Routes attach agents through filters
+filters {
+    filter "auth" {
+        type "agent"
+        agent "auth"
+    }
+    filter "ratelimit" {
+        type "agent"
+        agent "ratelimit"
     }
 }
 
@@ -365,10 +377,12 @@ fn process_request(metadata: &RequestMetadata) -> AgentResponse {
 Trace everything for debugging:
 
 ```kdl
-tracing {
-    backend "otlp" { endpoint "http://jaeger:4317" }
-    sampling-rate 1.0
-    service-name "zentinel-dev"
+observability {
+    tracing {
+        backend "otlp" { endpoint "http://jaeger:4317" }
+        sampling-rate 1.0
+        service-name "zentinel-dev"
+    }
 }
 ```
 
@@ -377,10 +391,12 @@ tracing {
 Balance visibility with overhead:
 
 ```kdl
-tracing {
-    backend "otlp" { endpoint "http://tempo:4317" }
-    sampling-rate 0.05   // 5% of requests
-    service-name "zentinel-prod"
+observability {
+    tracing {
+        backend "otlp" { endpoint "http://tempo:4317" }
+        sampling-rate 0.05   // 5% of requests
+        service-name "zentinel-prod"
+    }
 }
 ```
 

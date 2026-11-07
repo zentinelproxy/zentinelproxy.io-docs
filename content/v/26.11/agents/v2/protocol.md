@@ -1,0 +1,484 @@
++++
+title = "Protocol Specification"
+weight = 1
+updated = 2026-10-26
++++
+
+This document describes the v2 wire protocol for communication between the Zentinel proxy dataplane and external processing agents.
+
+## Protocol Constants
+
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `PROTOCOL_VERSION` | `2` | Current protocol version |
+| `MAX_MESSAGE_SIZE_GRPC` | `10,485,760` (10 MB) | Maximum message size for gRPC |
+| `MAX_MESSAGE_SIZE_UDS` | `16,777,216` (16 MB) | Maximum message size for UDS binary |
+
+## Transport Options
+
+Protocol v2 supports three transport mechanisms:
+
+| Transport | Use Case | Latency | Features |
+|-----------|----------|---------|----------|
+| **gRPC over HTTP/2** | Remote agents, cross-network | ~1.2ms | TLS, flow control, streaming |
+| **Binary over UDS** | Co-located agents | ~0.4ms | Lowest latency, simple format |
+| **Reverse Connections** | NAT traversal, dynamic scaling | Varies | Agent-initiated connections |
+
+---
+
+## gRPC Transport
+
+### Service Definition
+
+```protobuf
+syntax = "proto3";
+
+package zentinel.agent.v2;
+
+service AgentProcessorV2 {
+    // Bidirectional streaming for request/response lifecycle
+    rpc ProcessStream(stream AgentMessage) returns (stream AgentMessage);
+
+    // Health check
+    rpc HealthCheck(HealthRequest) returns (HealthResponse);
+
+    // Capability query
+    rpc GetCapabilities(CapabilityRequest) returns (CapabilityResponse);
+}
+
+message AgentMessage {
+    uint64 request_id = 1;
+    oneof payload {
+        RequestHeaders request_headers = 2;
+        RequestBodyChunk request_body_chunk = 3;
+        ResponseHeaders response_headers = 4;
+        ResponseBodyChunk response_body_chunk = 5;
+        AgentDecision decision = 6;
+        CancelRequest cancel = 7;
+    }
+}
+```
+
+### Streaming Semantics
+
+Unlike v1's request-response model, v2 uses bidirectional streaming:
+
+```
+Proxy                                    Agent
+  │                                        │
+  │ ──── RequestHeaders (id=1) ──────────► │
+  │ ──── RequestBodyChunk (id=1) ────────► │
+  │                                        │
+  │ ◄──── Decision (id=1) ──────────────── │
+  │                                        │
+  │ ──── RequestHeaders (id=2) ──────────► │  (pipelined)
+  │ ──── CancelRequest (id=1) ───────────► │  (cancellation)
+  │                                        │
+```
+
+### Message Ordering
+
+- Messages for a single `request_id` are ordered
+- Messages for different `request_id`s may be interleaved
+- `CancelRequest` terminates processing for a `request_id`
+
+---
+
+## Binary UDS Transport
+
+### Wire Format
+
+```
+┌──────────────────┬──────────────────┬─────────────────────────────────┐
+│ Length (4 bytes) │ Type (1 byte)    │ JSON Payload (variable length)  │
+│ Big-endian u32   │ Message type ID  │ UTF-8 encoded                   │
+└──────────────────┴──────────────────┴─────────────────────────────────┘
+```
+
+- **Length prefix**: 4-byte unsigned integer in big-endian byte order (includes type byte)
+- **Type byte**: Message type identifier (see table below)
+- **Payload**: JSON-encoded message body
+- **Maximum size**: 16 MB total
+
+### Message Types
+
+| Type ID | Name | Direction | Description |
+|---------|------|-----------|-------------|
+| `0x01` | `HandshakeRequest` | Proxy → Agent | Initial capability negotiation |
+| `0x02` | `HandshakeResponse` | Agent → Proxy | Capability confirmation |
+| `0x10` | `RequestHeaders` | Proxy → Agent | HTTP request headers |
+| `0x11` | `RequestBodyChunk` | Proxy → Agent | Request body chunk |
+| `0x12` | `ResponseHeaders` | Proxy → Agent | HTTP response headers |
+| `0x13` | `ResponseBodyChunk` | Proxy → Agent | Response body chunk |
+| `0x20` | `Decision` | Agent → Proxy | Processing decision |
+| `0x21` | `BodyMutation` | Agent → Proxy | Body chunk mutation |
+| `0x30` | `CancelRequest` | Proxy → Agent | Cancel in-flight request |
+| `0x31` | `CancelAll` | Proxy → Agent | Cancel all requests |
+| `0xF0` | `Ping` | Either | Keep-alive ping |
+| `0xF1` | `Pong` | Either | Keep-alive response |
+
+### Example Frame
+
+```
+00 00 00 4A 10 {"request_id":1,"method":"GET","uri":"/api/users"...}
+└────┬────┘└┬┘ └─────────────────────────┬─────────────────────────┘
+     │      │                            │
+ 74 bytes   │              JSON payload (RequestHeaders)
+            │
+  Type: RequestHeaders (0x10)
+```
+
+### Handshake Protocol
+
+Connection establishment requires a handshake:
+
+```rust
+pub struct UdsHandshakeRequest {
+    pub protocol_version: u32,        // Must be 2
+    pub client_name: String,          // Proxy identifier
+    pub supported_features: Vec<String>,
+}
+
+pub struct UdsHandshakeResponse {
+    pub protocol_version: u32,
+    pub agent_name: String,
+    pub capabilities: UdsCapabilities,
+}
+
+pub struct UdsCapabilities {
+    pub handles_request_headers: bool,
+    pub handles_request_body: bool,
+    pub handles_response_headers: bool,
+    pub handles_response_body: bool,
+    pub supports_streaming: bool,
+    pub supports_cancellation: bool,
+    pub max_concurrent_requests: Option<u32>,
+}
+```
+
+### Configuration Delivery
+
+From Zentinel 26.10_8 the proxy delivers the agent block's `config { }` on
+**every** connection it opens to the agent: the first one, each pooled
+connection and every reconnect. Over the Unix socket the configuration is
+carried in the handshake and followed by a Configure message; over gRPC it is
+sent as a `ConfigureEvent` followed by a Ping. The agent's reply to that
+message confirms that it handled the configuration. A reply that reports an
+error, or none within the agent's `connect-timeout-ms`, takes the connection
+out of use: the proxy logs an `ERROR`, retries, and meanwhile the agent's
+filters follow their `failure-mode`.
+
+Because the same block arrives again on every reconnect, the configure handler
+**must be idempotent**: applying it twice has to leave the agent in the state
+that applying it once does, and a partial block should merge with the agent's
+defaults rather than reset everything. Reverse connections receive no
+configuration. Releases before 26.10_8 never sent the block; gRPC agents built
+against `zentinel-agent-protocol` older than 0.6.51 drop the event.
+
+---
+
+## Reverse Connections
+
+Reverse connections allow agents to connect to the proxy instead of the proxy connecting to agents. This enables:
+
+- Agents behind NAT/firewalls
+- Dynamic agent scaling
+- Load-based connection management
+
+### Registration Protocol
+
+When an agent connects via reverse connection:
+
+```
+Agent                                    Proxy
+  │                                        │
+  │ ──── Connect to listener socket ─────► │
+  │                                        │
+  │ ──── RegistrationRequest ────────────► │
+  │                                        │
+  │ ◄──── RegistrationResponse ─────────── │
+  │                                        │
+  │        (normal v2 protocol)            │
+  │                                        │
+```
+
+### Registration Messages
+
+```rust
+pub struct RegistrationRequest {
+    pub protocol_version: u32,       // Must be 2
+    pub agent_id: String,            // Unique agent identifier
+    pub capabilities: UdsCapabilities,
+    pub auth_token: Option<String>,  // Optional authentication
+    pub metadata: Option<Value>,     // Additional agent metadata
+}
+
+pub struct RegistrationResponse {
+    pub accepted: bool,
+    pub error: Option<String>,
+    pub assigned_id: Option<String>, // Proxy-assigned connection ID
+    pub config: Option<Value>,       // Optional pushed configuration
+}
+```
+
+---
+
+## Message Types (Detailed)
+
+### RequestHeaders
+
+Sent when HTTP request headers are received.
+
+```rust
+pub struct RequestHeadersMessage {
+    pub request_id: u64,              // Unique ID for this request
+    pub metadata: RequestMetadata,
+    pub method: String,
+    pub uri: String,
+    pub headers: Vec<(String, String)>,
+    pub has_body: bool,               // Whether body chunks will follow
+}
+```
+
+### RequestBodyChunk
+
+Sent for each chunk of the request body.
+
+```rust
+pub struct RequestBodyChunkMessage {
+    pub request_id: u64,
+    pub chunk_index: u32,
+    pub data: String,                 // Base64-encoded bytes
+    pub is_last: bool,
+}
+```
+
+### Decision
+
+Agent's processing decision for a request.
+
+```rust
+pub struct DecisionMessage {
+    pub request_id: u64,
+    pub decision: Decision,
+    pub request_headers: Vec<HeaderOp>,
+    pub response_headers: Vec<HeaderOp>,
+    pub response_body_mutation: Option<BodyMutation>,
+    pub needs_more: bool,              // Agent needs more events (e.g. body chunks)
+    pub audit: Option<AuditMetadata>,
+}
+
+pub struct BodyMutation {
+    pub data: Option<String>,          // None = pass through, Some("") = drop, Some(base64) = replace
+}
+
+pub enum Decision {
+    Allow,
+    Block { status: u16, body: Option<String>, headers: HashMap<String, String> },
+    Redirect { url: String, status: u16 },
+}
+```
+
+### ResponseHeaders
+
+Sent when upstream response headers are received. The agent can inspect the status code and headers, and return a Decision with `response_headers` operations to modify them before they are sent to the client.
+
+```rust
+pub struct ResponseHeadersMessage {
+    pub request_id: u64,
+    pub metadata: RequestMetadata,
+    pub status: u16,                   // HTTP status code
+    pub headers: Vec<(String, String)>,
+}
+```
+
+### ResponseBodyChunk
+
+Sent for each chunk of the upstream response body. The agent can accumulate chunks and return a `BodyMutation` in its Decision to replace the body content.
+
+```rust
+pub struct ResponseBodyChunkMessage {
+    pub request_id: u64,
+    pub chunk_index: u32,
+    pub data: String,                 // Base64-encoded bytes
+    pub is_last: bool,
+    pub total_size: Option<usize>,    // Total body size if known
+}
+```
+
+### CancelRequest
+
+Cancels processing for a specific request.
+
+```rust
+pub struct CancelRequestMessage {
+    pub request_id: u64,
+    pub reason: Option<String>,
+}
+```
+
+---
+
+## Request Lifecycle
+
+### Request-Phase Flow
+
+```
+┌─────────┐    RequestHeaders     ┌─────────┐
+│  Proxy  │ ────────────────────► │  Agent  │
+│         │                       │         │
+│         │    RequestBodyChunk   │         │
+│         │ ────────────────────► │         │
+│         │    (repeat)           │         │
+│         │                       │         │
+│         │    Decision           │         │
+│         │ ◄──────────────────── │         │
+└─────────┘                       └─────────┘
+```
+
+The upstream request is started once the request headers are allowed, so the
+upstream sees the request line and headers before the agents decide on the
+body. From 26.10_8, in buffer mode and for the buffered part of hybrid mode,
+the body itself is held back until the agents' decision, so a refused body
+never reaches the upstream. Request-header operations returned from the body
+phase cannot be applied and are dropped; `response_headers` operations from
+either request phase are applied to the client's response.
+
+With `request-body-mode "inspect-first"` (from 26.10_11) the order changes:
+the body is read in full and decided on **before** an upstream is selected,
+so a refused request never reaches the upstream at all, and request-header
+operations from the body phase are applied. See
+[Agents: inspect-first](/configuration/agents/#inspect-first).
+
+### Response-Phase Flow
+
+Agents that subscribe to `response_headers` and `response_body` events can inspect and modify upstream responses. This enables use cases like image optimization, content transformation, and response body inspection.
+
+```
+┌─────────┐    RequestHeaders       ┌─────────┐
+│  Proxy  │ ──────────────────────► │  Agent  │
+│         │    Decision (allow)     │         │
+│         │ ◄────────────────────── │         │
+│         │                         │         │
+│         │    (proxy forwards to   │         │
+│         │     upstream, receives  │         │
+│         │     response)           │         │
+│         │                         │         │
+│         │    ResponseHeaders      │         │
+│         │ ──────────────────────► │         │
+│         │    Decision             │         │
+│         │    (+ header mods)      │         │
+│         │ ◄────────────────────── │         │
+│         │                         │         │
+│         │    ResponseBodyChunk    │         │
+│         │ ──────────────────────► │         │
+│         │    Decision             │         │
+│         │    (+ body mutation)    │         │
+│         │ ◄────────────────────── │         │
+└─────────┘                         └─────────┘
+```
+
+**Response header modifications** are applied before headers are sent to the client. The agent can set, add, or remove headers using `HeaderOp` operations in the Decision message.
+
+**Response body mutations** replace the original body. The agent receives body chunks (base64-encoded), processes them, and returns a `BodyMutation` in the Decision:
+
+| `BodyMutation.data` | Behavior |
+|----------------------|----------|
+| `None` | Pass through original body unchanged |
+| `Some("")` | Drop the body chunk |
+| `Some("<base64>")` | Replace body with decoded base64 data |
+
+When response body processing is active, the proxy sets `Connection: close` and removes `Content-Length` since the body size may change.
+
+### Decisions in each phase
+
+Every decision type has the same meaning in every phase; only `Allow` lets
+the request, or the upstream's response, through.
+
+| Decision | Request headers / body | Response headers | Response body |
+|----------|------------------------|------------------|---------------|
+| `Allow` | Proxied | Upstream response sent | Body sent |
+| `Block` | Agent's status, body, headers | Replaces the upstream response | Aborts the response¹ |
+| `Redirect` | Agent's 301/302/303/307/308 (else 302) with `Location` | Replaces the upstream response | Aborts the response¹ |
+| `Challenge` | 403, or 401 with `WWW-Authenticate` | Replaces the upstream response | Aborts the response¹ |
+
+¹ Once the status line has gone out it cannot be replaced: the body is
+withheld and the connection closed without ending it, so the client sees an
+incomplete response. If the header has not gone out yet (a body that arrived
+with it), the decision's response replaces the upstream's instead.
+
+Response-phase `Block` is enforced from 26.10_9; response-phase `Redirect` and
+`Challenge` were ignored (the upstream response was sent) before 26.10_11.
+They are logged and audited with the decision type as `action`.
+
+### WebSocket frames
+
+An agent subscribed to `websocket_frame` receives the frames of WebSocket
+connections on the routes whose `filters` list it, in filter order, under
+each filter's `timeout-ms` and `failure-mode` (from 26.10_11; before, every
+frame-subscribed agent saw every route's frames, under a hard-coded 100 ms
+timeout that failed open). A fail-closed failure closes the connection with
+1011.
+
+Frames are delivered over Unix sockets and reverse connections. **gRPC agents
+cannot inspect frames**: the gRPC response has no WebSocket decision, so a
+frame call to a gRPC agent fails and is answered by the filter's failure
+mode. Before 26.10_11 no transport delivered frames: every frame was a failed
+call, decided by the agent-level `failure-mode`.
+
+### Cancellation Flow
+
+```
+┌─────────┐    RequestHeaders     ┌─────────┐
+│  Proxy  │ ────────────────────► │  Agent  │
+│         │                       │         │
+│         │    CancelRequest      │         │
+│         │ ────────────────────► │         │
+│         │                       │         │
+│         │    (agent cleans up)  │         │
+└─────────┘                       └─────────┘
+```
+
+---
+
+## Protocol Guarantees
+
+### Ordering
+
+1. Messages for a single `request_id` are delivered in order
+2. Messages for different requests may be interleaved
+3. `CancelRequest` is processed immediately, discarding pending messages
+
+### Reliability
+
+1. Each message must be acknowledged (Decision for requests)
+2. Timeouts are enforced per-message and per-request
+3. Connection failures trigger reconnection with backoff
+
+### Concurrency
+
+1. Multiple requests can be in-flight simultaneously
+2. `max_concurrent_requests` in capabilities limits concurrency
+3. Backpressure via flow control (gRPC) or queue bounds (UDS)
+
+---
+
+## Compatibility
+
+### v1 to v2 Migration
+
+| v1 Feature | v2 Equivalent |
+|------------|---------------|
+| Length-prefixed JSON | Binary UDS (type byte added) |
+| Unary gRPC calls | Bidirectional streaming |
+| Per-request connections | Multiplexed connections |
+| N/A | Request cancellation |
+| N/A | Reverse connections |
+
+### Version Negotiation
+
+- gRPC: Service name includes version (`AgentProcessorV2`)
+- UDS: `protocol_version` field in handshake
+- Reverse: `protocol_version` field in registration
+
+Agents should reject connections with incompatible versions.

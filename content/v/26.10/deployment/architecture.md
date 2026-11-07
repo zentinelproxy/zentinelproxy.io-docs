@@ -1,7 +1,7 @@
 +++
 title = "Deployment Architecture"
 weight = 1
-updated = 2026-02-19
+updated = 2026-10-26
 +++
 
 This page explains Zentinel's deployment philosophy and why agents are managed externally.
@@ -87,19 +87,13 @@ When Zentinel starts:
 
 ### Health Checking
 
-Zentinel monitors agent health for circuit breaking (not supervision):
+Zentinel tracks agent failures for circuit breaking (not supervision). There
+is no separate agent health-check block; the circuit breaker opens on call
+failures:
 
 ```kdl
 agent "auth" type="auth" {
     unix-socket "/run/zentinel/auth.sock"
-
-    health-check {
-        enabled #true
-        interval-ms 5000
-        timeout-ms 100
-        healthy-threshold 2
-        unhealthy-threshold 3
-    }
 
     circuit-breaker {
         failure-threshold 5
@@ -185,14 +179,12 @@ agents {
     agent "auth" type="auth" {
         unix-socket "/run/zentinel/auth.sock"
         timeout-ms 100
-        failure-mode "closed"
     }
 
     // gRPC (local or remote)
     agent "waf" type="waf" {
         grpc "http://waf-service:50051"
         timeout-ms 200
-        failure-mode "open"
     }
 }
 ```
@@ -213,16 +205,18 @@ agent "auth" type="auth" {
     // Per-request timeout
     timeout-ms 100
 
-    // Connection settings
-    connect-timeout-ms 1000
+    // Per-chunk timeout for streamed bodies
+    chunk-timeout-ms 5000
 
-    // Retry on transient failures
-    retry {
-        attempts 2
-        backoff-ms 10
-    }
+    // Connect + handshake, per connection (from 26.10_8)
+    connect-timeout-ms 5000
 }
 ```
+
+`connect-timeout-ms` (default 5000, from 26.10_8) bounds the connect and
+handshake of each connection to the agent; startup waits at most the longest
+one plus 5 seconds, and an agent that has not answered by then is used once it
+does. Reconnect retries and their backoff are not configurable.
 
 ## Best Practices
 
@@ -232,12 +226,10 @@ agent "auth" type="auth" {
 // Good: Explicit failure handling
 agent "auth" type="auth" {
     unix-socket "/run/zentinel/auth.sock"
-    failure-mode "closed"  // Security: fail closed
 }
 
 agent "metrics" type="custom" {
     grpc "http://localhost:50052"
-    failure-mode "open"  // Observability: fail open
 }
 ```
 

@@ -1,7 +1,7 @@
 +++
 title = "Routes"
 weight = 4
-updated = 2026-02-19
+updated = 2026-10-20
 +++
 
 The `routes` block defines how incoming requests are matched and forwarded to upstreams or handlers. Routes are evaluated by priority, with higher priority routes checked first.
@@ -38,6 +38,8 @@ routes {
 ```kdl
 route "api" {
     priority 100
+    matches { path-prefix "/api/" }
+    upstream "backend"
 }
 ```
 
@@ -54,9 +56,11 @@ Higher priority routes are evaluated first. When multiple routes could match, th
 
 Routes support multiple match conditions. All conditions within a route must match (AND logic).
 
+Every `matches` example below goes inside a `route` block.
+
 #### Path Matching
 
-```kdl
+```fragment,kdl
 matches {
     // Exact path match
     path "/api/v1/users"
@@ -77,7 +81,7 @@ matches {
 
 #### Host Matching
 
-```kdl
+```fragment,kdl
 matches {
     host "api.example.com"
 }
@@ -87,35 +91,40 @@ Match by the `Host` header. Useful for virtual hosting.
 
 #### Method Matching
 
-```kdl
+```fragment,kdl
 matches {
-    method "GET" "POST" "PUT" "DELETE"
+    method "GET"
 }
 ```
 
-Match specific HTTP methods. Multiple methods are OR'd together.
+Match an HTTP method. From 26.10_5 `method` takes one or more values and
+matches any of them: `method "GET" "POST"` matches `GET` and `POST`. Write them
+on one line; two `method` lines are two conditions that must both match, so
+nothing matches them. Before 26.10_5 only the first value was read
+(`method "GET" "POST"` matched `GET` only); on those releases use one route per
+method.
 
 #### Header Matching
 
-```kdl
+```fragment,kdl
 matches {
     // Match if header exists
-    header name="X-Api-Key"
+    header "X-Api-Key"
 
     // Match header with specific value
-    header name="X-Api-Version" value="2"
+    header "X-Api-Version" "2"
 }
 ```
 
 #### Query Parameter Matching
 
-```kdl
+```fragment,kdl
 matches {
     // Match if parameter exists
-    query-param name="debug"
+    query-param "debug"
 
     // Match parameter with value
-    query-param name="format" value="json"
+    query-param "format" "json"
 }
 ```
 
@@ -123,6 +132,8 @@ matches {
 
 ```kdl
 route "api" {
+    matches { path-prefix "/" }
+    upstream "backend"
     service-type "web"  // Default
 }
 ```
@@ -130,9 +141,19 @@ route "api" {
 | Type | Description |
 |------|-------------|
 | `web` | Standard HTTP proxy (default) |
-| `api` | API service with JSON error responses |
+| `api` | API service with request schema validation (`api-schema`) |
 | `static` | Static file serving |
 | `builtin` | Built-in handlers |
+| `inference` | LLM inference routing |
+
+> **How the type is decided.** It is implied by the route's blocks:
+> `static-files` makes it `static`, a recognised `builtin-handler` makes it
+> `builtin`, `api-schema` makes it `api`, `inference` makes it `inference`, and
+> anything else is `web`. An explicit `service-type` is applied where the
+> blocks allow it (`api` needs no block). A value that is not a type, or that
+> the blocks contradict, keeps the implied type and is reported by
+> `zentinel lint` as being ignored. Before 26.10_4, `service-type` was accepted
+> but never read.
 
 #### Static File Serving
 
@@ -477,27 +498,34 @@ route "create-order" {
 
 ##### Validation Error Responses
 
-When validation fails, Zentinel returns a structured JSON error response:
+When request validation fails, Zentinel answers `400 Bad Request` with
+`Content-Type: application/json; charset=utf-8` and an `x-request-id` header.
+This is the body 26.10_3 returns for a POST of `{"x":1}` to a route whose schema
+requires `email` and `name`:
 
 ```json
 {
-  "error": "Validation failed",
   "status": 400,
-  "request_id": "req-123",
-  "validation_errors": [
-    {
-      "field": "$.email",
-      "message": "'not-an-email' is not a valid email",
-      "value": "not-an-email"
-    },
-    {
-      "field": "$.password",
-      "message": "String is too short (expected minimum 8 characters)",
-      "value": "short"
-    }
-  ]
+  "title": "Bad Request",
+  "message": "Request validation failed",
+  "request_id": "VBr4jwTp1GS",
+  "timestamp": 1792393653,
+  "details": {
+    "validation_error": "{\"error\":\"Validation failed\",\"status\":400,\"validation_errors\":[{\"field\":\"$\",\"message\":\"\\\"email\\\" is a required property\",\"value\":{\"x\":1}},{\"field\":\"$\",\"message\":\"\\\"name\\\" is a required property\",\"value\":{\"x\":1}}],\"request_id\":\"VBr4jwTp1GS\"}"
+  }
 }
 ```
+
+The list of validation errors is inside `details.validation_error` as a JSON
+**string**, not as an object: parse it a second time to read the individual
+errors. Only `POST`, `PUT` and `PATCH` bodies are validated.
+
+> **A schema that does not compile disables validation for the route.** The
+> proxy logs `Failed to initialize schema validator for route <id>` at startup
+> and forwards every request unchecked. One known cause: `required` with a
+> single name (`required "email"`) is converted to a string instead of a list,
+> and the schema is rejected with `"email" is not of type "array"`. Check the
+> startup log for that line after changing a schema.
 
 ##### JSON Schema Support
 
@@ -527,6 +555,11 @@ The schema file is monitored for changes and automatically reloaded (if hot-relo
 
 - Schemas are compiled once at startup for maximum performance
 - Request validation adds minimal latency (typically <1ms)
+- Request validation reads the whole request body before forwarding it; bodies
+  up to the route's effective `max-body-size` are validated and then forwarded,
+  and larger ones get `413`. Before 26.10_5 a body over 64 KiB could not be
+  forwarded after validation: 26.10_4 answered `413`, earlier releases let the
+  upstream time out
 - Response validation requires buffering the full response body
 - Use `validate-responses` only in development/testing environments
 - For high-throughput APIs, consider validating only critical endpoints
@@ -548,7 +581,6 @@ route "user-api" {
     priority 200
     matches {
         path-prefix "/api/v2/users"
-        method "GET" "POST" "PUT" "DELETE"
     }
     upstream "user-service"
     service-type "api"
@@ -564,17 +596,15 @@ route "user-api" {
     // Authentication and rate limiting
     filters "jwt-auth" "rate-limit"
 
-    // Error handling
+    // Custom error pages (see Error Pages below)
     error-pages {
-        default-format "json"
         pages {
-            "400" {
+            "503" {
                 format "json"
-                message "Invalid request"
-            }
-            "401" {
-                format "json"
-                message "Authentication required"
+                message "The user service is unavailable, retry shortly"
+                headers {
+                    Retry-After "30"
+                }
             }
         }
     }
@@ -583,8 +613,6 @@ route "user-api" {
     policies {
         timeout-secs 30
         max-body-size "10MB"
-        // buffer-requests is not implemented and has no effect (#366).
-        // Request validation does not require it.
     }
 
     // Resilience
@@ -598,6 +626,7 @@ route "user-api" {
 
 ```kdl
 route "api" {
+    matches { path-prefix "/api/" }
     upstream "backend"
 }
 ```
@@ -624,6 +653,8 @@ Enable WAF shorthand:
 
 ```kdl
 route "api" {
+    matches { path-prefix "/api/" }
+    upstream "backend"
     waf-enabled #true
 }
 ```
@@ -634,6 +665,7 @@ route "api" {
 
 ```kdl
 route "api" {
+    matches { path-prefix "/api/" }
     upstream "backend"
     policies {
         request-headers {
@@ -677,6 +709,8 @@ route "upload" {
 
 ```kdl
 route "upload" {
+    matches { path-prefix "/upload/" }
+    upstream "backend"
     policies {
         max-body-size "100MB"
     }
@@ -689,12 +723,16 @@ Supports units: `B`, `KB`, `MB`, `GB`
 
 ```kdl
 route "api" {
+    matches { path-prefix "/api/" }
+    upstream "backend"
     policies {
         failure-mode "closed"  // Block on failure (default)
     }
 }
 
 route "metrics" {
+    matches { path-prefix "/telemetry/" }
+    upstream "backend"
     policies {
         failure-mode "open"    // Allow through on failure
     }
@@ -708,47 +746,12 @@ route "metrics" {
 
 ### Request/Response Buffering
 
-```kdl
-system {
-    worker-threads 0
-}
 
-listeners {
-    listener "http" {
-        address "0.0.0.0:8080"
-        protocol "http"
-    }
-}
-
-routes {
-    route "api" {
-        matches { path-prefix "/api/" }
-        upstream "backend"
-        policies {
-            buffer-requests #true   // Buffer full request before forwarding
-            buffer-responses #true  // Buffer full response before sending
-        }
-    }
-
-    route "default" {
-        matches { path-prefix "/" }
-        upstream "backend"
-    }
-}
-
-upstreams {
-    upstream "backend" {
-        target "127.0.0.1:3000"
-    }
-}
-
-```
-
-> **`buffer-requests` and `buffer-responses` are not implemented.** They appear
-> in the configuration schema but have no KDL parser and are read by nothing in
-> the proxy, so writing them has no effect — the keys are discarded silently.
-> Tracked in [zentinelproxy/zentinel#366](https://github.com/zentinelproxy/zentinel/issues/366),
-> where the decision is whether to implement them or remove them.
+> **`buffer-requests` and `buffer-responses` were removed in 26.08_5**
+> ([zentinelproxy/zentinel#366](https://github.com/zentinelproxy/zentinel/issues/366)).
+> They never had a KDL parser and were read by nothing in the proxy; writing
+> them in `policies` has no effect and `zentinel lint` reports them as ignored
+> keys. Delete them from existing configurations.
 >
 > Body inspection by agents does not depend on these settings and works without
 > them.
@@ -765,6 +768,7 @@ Re-sends a request when the upstream fails to answer usefully.
 
 ```kdl
 route "api" {
+    matches { path-prefix "/api/" }
     upstream "backend"
     retry-policy {
         max-attempts 3
@@ -793,7 +797,7 @@ route "api" {
 
 Idempotent methods — `GET`, `HEAD`, `PUT`, `DELETE`, `OPTIONS`, `TRACE` — are safe to replay by definition. Anything else is not retried unless you set `retry-non-idempotent`, because replaying it can duplicate a side effect the origin already performed and the proxy cannot tell whether it did.
 
-```kdl
+```fragment,kdl
 retry-policy {
     max-attempts 3
     retryable-status-codes 503
@@ -833,11 +837,11 @@ Before this was implemented, `max-attempts` bounded upstream *peer-selection* at
 
 ## Circuit Breaker
 
-> **Not supported at route scope.** The route-level `circuit-breaker` block is dropped by the KDL parser (the proxy logs `Unrecognized directive in route block (will be ignored)` for it). Configure circuit breaking at the **upstream** level instead — the `circuit-breaker` block inside `upstream { ... }` is parsed and configurable as of [zentinelproxy/zentinel#267](https://github.com/zentinelproxy/zentinel/pull/267). The block below describes the intended route-scope configuration only. (Note: recovery from the open state has a known bug — see [zentinelproxy/zentinel#261](https://github.com/zentinelproxy/zentinel/issues/261).)
+> **Not supported at route scope.** The route-level `circuit-breaker` block is dropped by the KDL parser (the proxy logs `Unrecognized directive in route block (will be ignored)` for it). Configure circuit breaking at the **upstream** level instead — the `circuit-breaker` block inside `upstream { ... }` is parsed and configurable as of [zentinelproxy/zentinel#267](https://github.com/zentinelproxy/zentinel/pull/267). The block below shows the parsed keys inside an upstream. (Note: recovery from the open state has a known bug — see [zentinelproxy/zentinel#261](https://github.com/zentinelproxy/zentinel/issues/261).)
 
 ```kdl
-route "api" {
-    upstream "backend"
+upstream "backend" {
+    target "10.0.1.1:8080"
     circuit-breaker {
         failure-threshold 5
         success-threshold 2
@@ -865,6 +869,7 @@ Traffic mirroring (also called shadow traffic or dark traffic) duplicates live r
 
 ```kdl
 route "api" {
+    matches { path-prefix "/api/" }
     upstream "production"
 
     shadow {
@@ -964,7 +969,7 @@ route "api-debug-shadow" {
 
 By default, shadow requests **do not** include request bodies to avoid buffering overhead. For POST/PUT/PATCH requests that need body inspection in the shadow:
 
-```kdl
+```fragment,kdl
 shadow {
     upstream "canary"
     buffer-body #true        // Enable body buffering
@@ -1031,7 +1036,6 @@ routes {
         priority 200
         matches {
             path-prefix "/api/v2/"
-            method "GET" "POST" "PUT" "DELETE"
         }
         upstream "production"
 
@@ -1055,7 +1059,7 @@ routes {
         priority 250
         matches {
             path-prefix "/api/v2/"
-            header name="X-User-Tier" value="beta"
+            header "X-User-Tier" "beta"
         }
         upstream "production"
 
@@ -1073,34 +1077,158 @@ For a complete traffic mirroring example with Docker Compose and test scripts, s
 
 ## Error Pages
 
-```kdl
-route "api" {
-    error-pages {
-        default-format "json"
-        pages {
-            "404" {
-                format "json"
-                message "Resource not found"
-            }
-            "500" {
-                format "json"
-                message "Internal server error"
-            }
-            "503" {
-                format "html"
-                template "/etc/zentinel/errors/503.html"
+From 26.10_6 a route can replace the response for chosen error statuses with
+its own page, in an `error-pages` block:
+
+```fragment,kdl
+routes {
+    route "shop" {
+        matches {
+            path-prefix "/"
+        }
+        upstream "web"
+        service-type "web"
+
+        error-pages {
+            default-format "html"                // html, json, text or xml
+            template-dir "/etc/zentinel/errors"  // base for relative templates
+            pages {
+                "404" {
+                    message "We could not find that page."
+                }
+                "503" {
+                    template "503.html"
+                    message "We are back in a minute."
+                    headers {
+                        Retry-After "30"
+                    }
+                }
             }
         }
     }
 }
 ```
 
-| Format | Content-Type |
-|--------|--------------|
-| `json` | `application/json` |
-| `html` | `text/html` |
-| `text` | `text/plain` |
-| `xml` | `application/xml` |
+| Key | Where | Meaning |
+|-----|-------|---------|
+| `default-format` | `error-pages` | Format of pages that set no `format`, and of the errors the proxy generates on this route. Default: `json` on `api`, `builtin` and `inference` routes, `html` on `web` and `static` routes |
+| `template-dir` | `error-pages` | Directory a relative `template` is resolved against. Without it, a relative path is relative to the proxy's working directory |
+| `pages` | `error-pages` | One child per status, named by the status code in quotes (`"503" { }`), `400` to `599` |
+| `format` | page | `html`, `json`, `text` (or `plain`) or `xml` |
+| `message` | page | Text shown on the page, in place of the proxy's generic message |
+| `template` | page | File used as the page body, in the page's format |
+| `headers` | page | Extra response headers, one `Name "value"` per line |
+
+Without a `template`, the page is generated in its format and carries the
+status, the status's reason phrase, the `message` and the request ID. A
+template is read when the configuration is loaded (and on reload), and these
+placeholders are filled in:
+
+| Placeholder | Value |
+|-------------|-------|
+| `{{status}}` | Status code, for example `503` |
+| `{{title}}` | Reason phrase, for example `Service Unavailable` |
+| `{{message}}` | The page's `message`, or the proxy's message for the error |
+| `{{request_id}}` | The request's trace ID |
+| `{{timestamp}}` | Unix time in seconds |
+
+In `html` and `xml` pages the values are HTML-escaped, and in `json` pages
+they are escaped as JSON string content, so a message that contains request
+data (a static route's error names the requested path) cannot inject markup.
+Every page response also has `Content-Type` for its format and `X-Request-Id`.
+
+### Which errors a page replaces
+
+A page for a status replaces, on its route:
+
+- an **upstream** response with that status: status, headers and body are
+  replaced by the page (the upstream's `Content-Type`, `Content-Length` and
+  encoding headers go with them);
+- an error the **proxy** raises itself with that status: upstream unreachable
+  or timed out (`502`/`503`/`504`), every target failing its health check
+  (`503`), a body over the limit (`413`), a header over the limit (`500`);
+- from 26.10_7, a request the **proxy refuses** on the route: a rate limit
+  (`429`, including the inference token limit and token budget), a request over
+  `max-in-flight-requests` (`503`), a geo block, a prompt-injection block, a
+  WebSocket upgrade on a route without `websocket #true` (`403`), a route
+  without a usable upstream (`500`), and an agent block that carries no body of
+  its own.
+
+The refusal's own headers are kept with the page: `Retry-After` and the
+`X-RateLimit-*` headers are always sent, and they override a page header of the
+same name. A page without a `message` shows the refusal's message (for example
+`Rate limit exceeded` or `WebSocket not enabled for this route`).
+
+An agent block that carries its own body is not replaced: the agent's body is
+sent as `text/plain`, with the agent's status. This holds in the request-body
+phase too; before 26.10_7 a body-phase block was answered with the proxy's
+generic JSON body instead of the agent's.
+
+Statuses without a page behave as described in the next section: upstream
+errors pass through unchanged, and the proxy's own errors and refusals get
+their default body. A request that matches no route has no route pages, so its
+`404` is always the JSON body.
+
+**Before 26.10_7** rate-limit, in-flight, geo, prompt-injection, WebSocket,
+no-upstream and header-phase agent refusals were written directly and never
+replaced by a page.
+
+Invalid values do not stop the configuration from loading. A missing or
+unreadable template, an unknown format, a page name that is not a status from
+400 to 599, or a header with an invalid name or value is reported by
+`zentinel test` and `zentinel lint` as "is being ignored" (and fails
+`test --strict`); the page is then generated in its format, or the header is
+left out. `include-stack-trace` is reported as ignored: the proxy produces no
+stack traces.
+
+**Before 26.10_6** no parser read `error-pages`: the whole block was reported
+as ignored and every error used the default responses below. Generated HTML
+error pages also inserted the message unescaped.
+
+### Default error responses
+
+What a client receives on an error when the route has no page for its status.
+From 26.10_5:
+
+| Situation | Status | Body | `Content-Type` |
+|-----------|--------|------|----------------|
+| Upstream unreachable (`503` for a refused connection) or timed out (`504`) | `502`/`503`/`504` | `{"error":"502 Bad Gateway","trace_id":"V9ZSZT2h6Ug"}` | `application/json` |
+| Request over a header limit | `500` | `{"error":"500 Internal Server Error","trace_id":"..."}` | `application/json` |
+| Every target failing its health check | `503` | `{"error":"503 Service Unavailable","trace_id":"..."}` | `application/json` |
+| Request body over the effective `max-body-size` | `413` | `{"error":"413 Payload Too Large","trace_id":"..."}` | `application/json` |
+| No route matches | `404` | `{"error":"404 Not Found","trace_id":"..."}` | `application/json` |
+| Upstream answers with `4xx`/`5xx` | upstream's | upstream's, unchanged | upstream's, unchanged |
+| Static file not found | `404` | `404 Not Found` | `text/plain` |
+| Request over `max-in-flight-requests` | `503` | `{"error":"503 Service Unavailable","trace_id":"..."}`, with `Retry-After: 1` | `application/json` |
+| Rate-limit filter | `429` | `Rate limit exceeded`, with `X-RateLimit-*` and `Retry-After` | `text/plain; charset=utf-8` |
+| Inference token limit or token budget | `429` | `Token rate limit exceeded` or `Token budget exhausted` | `text/plain; charset=utf-8` |
+| Geo block | the filter's status | the filter's block message, or `Access denied` | `text/plain` |
+| Prompt-injection block | the guardrail's status | `{"error":"prompt_injection_blocked","message":"..."}` | `application/json` |
+| WebSocket upgrade on a route without `websocket #true` | `403` | `WebSocket not enabled for this route` | `text/plain` |
+| Route without a usable upstream | `500` | `Internal Server Error` | `text/plain` |
+| Agent block with its own body (never replaced by a page) | agent's | agent's | `text/plain` |
+| Agent block without a body, on request headers | agent's | `Blocked by agent` | `text/plain` |
+| Agent block without a body, on the request body | agent's | `{"error":"403 Forbidden","trace_id":"..."}` (the agent's status) | `application/json` |
+| Request schema validation | `400` | see [Validation Error Responses](#validation-error-responses) | `application/json; charset=utf-8` |
+
+Errors the proxy generates itself have the same JSON shape on every route type:
+`error` (status code and the status's standard reason phrase) and `trace_id`,
+which is also sent as the `X-Correlation-Id` response header. There is no
+`status` or `request_id` field. From 26.10_7 the refusals in the table carry
+`X-Correlation-Id` too (all but an agent's own body sent on request headers),
+and the proxy closes the connection after each of them.
+
+When the **upstream** returns `4xx`/`5xx`, the response is passed through as
+the upstream sent it: status, headers (including `Content-Type`) and body.
+
+**Before 26.10_5:** an upstream error kept its body but had `Content-Type`
+replaced (`text/html; charset=utf-8` on `web` and `static` routes,
+`application/json` on `api`, `builtin` and `inference` routes); proxy errors
+other than 400, 500, 502, 503 and 504 were labelled "Internal Server Error"
+(for example `"404 Internal Server Error"`); the no-route 404 had an empty
+`trace_id` and `X-Correlation-Id`; a body over the global limit got `500`; and
+failing health checks did not take targets out of rotation, so requests still
+went to them.
 
 ## Complete Examples
 
@@ -1123,7 +1251,7 @@ routes {
         priority 999
         matches {
             path "/metrics"
-            header name="X-Admin-Token"
+            header "X-Admin-Token"
         }
         service-type "builtin"
         builtin-handler "metrics"
@@ -1134,7 +1262,6 @@ routes {
         priority 200
         matches {
             path-prefix "/api/v2/"
-            method "GET" "POST" "PUT" "DELETE" "PATCH"
         }
         upstream "api-v2"
         filters "auth" "rate-limit"

@@ -1,7 +1,7 @@
 +++
 title = "Request Lifecycle"
 weight = 5
-updated = 2026-02-19
+updated = 2026-10-19
 +++
 
 This page details the complete lifecycle of an HTTP request through Zentinel, from client connection to response delivery.
@@ -470,10 +470,13 @@ The request is sent to the selected upstream:
 Original Request          Modified Request (to upstream)
 ┌──────────────────┐      ┌───────────────────────────────┐
 │ POST /api/users  │      │ POST /api/users HTTP/1.1      │
-│ Host: api.ex.com │  ──▶ │ Host: api.example.com         │
-│ Auth: Bearer ... │      │ X-Correlation-Id: abc-123     │
-└──────────────────┘      │ X-Forwarded-For: 192.168.1.1  │
+│ Host: api.ex.com │  ──▶ │ Host: api.ex.com              │
+│ Auth: Bearer ... │      │ Auth: Bearer ...              │
+└──────────────────┘      │ X-Correlation-Id: abc-123     │
+                          │ X-Trace-Id: abc-123           │
+                          │ X-Forwarded-For: 203.0.113.9  │
                           │ X-Forwarded-Proto: https      │
+                          │ X-Forwarded-Host: api.ex.com  │
                           │ X-Forwarded-By: Zentinel      │
                           │ X-User-Id: user-789           │ ◀── From agent
                           │ Content-Type: application/json│
@@ -487,10 +490,25 @@ Original Request          Modified Request (to upstream)
 | Header | Value | Purpose |
 |--------|-------|---------|
 | `X-Correlation-Id` | Trace ID | Distributed tracing |
-| `X-Forwarded-For` | Client IP | Original client address |
-| `X-Forwarded-Proto` | `http`/`https` | Original protocol |
-| `X-Forwarded-Host` | Original host | Original Host header |
+| `X-Trace-Id` | Trace ID | Same value as `X-Correlation-Id` |
+| `X-Forwarded-For` | Client address | Client IP for the backend (from 26.10_5) |
+| `X-Forwarded-Proto` | `http` or `https` | Scheme the client used (from 26.10_5) |
+| `X-Forwarded-Host` | Request host | Host the client asked for (from 26.10_5) |
 | `X-Forwarded-By` | `Zentinel` | Proxy identification |
+
+By default the client's `Host` header is passed through unchanged.
+
+The `X-Forwarded-*` values come from the connection unless the peer is listed in
+the listener's [`trusted-proxies`](/configuration/listeners/#trusted-proxies):
+from an untrusted peer, client-sent `X-Forwarded-*` headers are replaced and
+client-sent `Forwarded` and `X-Real-IP` headers are removed; from a trusted
+peer, the peer is appended to `X-Forwarded-For` and the other headers are kept.
+The client IP that rate limiting, geo filters, agents and access logs use
+follows the same rule. Route `request-headers` policies run afterwards and can
+override any of these headers.
+
+Before 26.10_5, Zentinel sent no `X-Forwarded-*` headers and passed client-sent
+ones through unchanged.
 
 ### Retry Logic
 
@@ -525,6 +543,8 @@ Attempt 3: Server A (back to healthy server)
 ```kdl
 routes {
     route "api" {
+        matches { path-prefix "/api/" }
+        upstream "backend"
         retry-policy {
             max-attempts 3
             retryable-status-codes 502 503 504

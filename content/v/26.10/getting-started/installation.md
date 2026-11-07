@@ -1,7 +1,7 @@
 +++
 title = "Installation"
 weight = 1
-updated = 2026-05-03
+updated = 2026-10-19
 +++
 
 Zentinel can be installed via the install script, from pre-built binaries, built from source, or run as an OCI container.
@@ -108,8 +108,11 @@ curl -LO "https://github.com/zentinelproxy/zentinel/releases/download/${VERSION}
 shasum -a 256 -c "zentinel-${VERSION}-${PLATFORM}.tar.gz.sha256"
 
 tar xzf "zentinel-${VERSION}-${PLATFORM}.tar.gz"
+chmod +x zentinel
 sudo mv zentinel /usr/local/bin/
 ```
+
+Archives before 26.10_4 stored the binaries without the executable bit ([#519](https://github.com/zentinelproxy/zentinel/issues/519)); the `chmod` is harmless on newer ones. It also contains `zentinel-gateway`, the Kubernetes Gateway API controller, and `zentinel-echo-agent`, a minimal agent that adds `X-Echo-*` headers, useful for trying agents out. Neither is needed to run the proxy.
 
 {% callout(type="note") %}
 Releases before the project was renamed ship archives named `sentinel-*` rather
@@ -119,7 +122,7 @@ matters if you pin an old version by hand.
 
 ## Build from Source
 
-Building from source requires Rust 1.95 or later.
+Building from source requires Rust 1.96 or later.
 
 ### Prerequisites
 
@@ -127,7 +130,7 @@ Building from source requires Rust 1.95 or later.
 # Install Rust via rustup
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
-# Ensure you have Rust 1.95+
+# Ensure you have Rust 1.96+
 rustup update stable
 ```
 
@@ -212,17 +215,18 @@ podman-compose up -d
 
 ## Configuration File Location
 
-By default, Zentinel looks for configuration in these locations:
+Zentinel reads its configuration from:
 
-1. Path specified with `-c` or `--config` flag
-2. `./zentinel.kdl` (current directory)
-3. `/etc/zentinel/zentinel.kdl`
+1. the file given with `-c` / `--config`, or else
+2. the file named by the `ZENTINEL_CONFIG` environment variable.
+
+With neither, it starts with a **built-in default configuration**: a status page on port 8080 and metrics on port 9090. It does not look for `zentinel.kdl` in the current directory or in `/etc/zentinel/`, so always pass `-c` (the systemd unit below does).
 
 ### Create a Basic Config
 
 ```bash
-mkdir -p /etc/zentinel
-cat > /etc/zentinel/zentinel.kdl << 'EOF'
+sudo mkdir -p /etc/zentinel
+sudo tee /etc/zentinel/zentinel.kdl > /dev/null << 'EOF'
 system {
     worker-threads 0
 }
@@ -256,28 +260,42 @@ EOF
 ### Basic Usage
 
 ```bash
-# Run with default config location
-zentinel
-
-# Run with specific config file
+# Run with a configuration file
 zentinel -c /path/to/zentinel.kdl
 
-# Validate config without running
-zentinel -c zentinel.kdl --test
+# Check a configuration without running it
+zentinel test -c zentinel.kdl   # fails on anything that stops the proxy starting; warns about ignored settings
+zentinel test --strict -c zentinel.kdl   # also fails on ignored settings (for CI)
+zentinel lint -c zentinel.kdl   # ignored settings plus best-practice advice
 
-# Run with verbose logging
-zentinel -c zentinel.kdl --log-level debug
+# Run with debug logging
+zentinel -c zentinel.kdl --verbose
 ```
 
-### Command Line Options
+A misspelled optional setting is not an error, so `test` passes and the proxy uses the default. From 26.10_5 `test` prints a warning for it and `test --strict` fails; before 26.10_5 only `lint` reported it. See [Quick Start](../quick-start/#4-check-the-configuration).
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `run` | Run the proxy (the default when no command is given) |
+| `test` | Validate the configuration file, print settings that are being ignored, and exit |
+| `test --strict` | As `test`, but exit `1` if any setting is being ignored (from 26.10_5) |
+| `lint` | Report ignored settings and best-practice issues |
+| `validate` | Validate the configuration with connectivity checks (upstreams, agents, certificates) |
+| `bundle` | Install, check and update the bundled agents |
+
+### Options
 
 | Option | Description |
 |--------|-------------|
-| `-c, --config <FILE>` | Path to configuration file |
-| `-t, --test` | Test configuration and exit |
-| `--log-level <LEVEL>` | Log level (trace, debug, info, warn, error) |
-| `--version` | Print version information |
-| `--help` | Print help |
+| `-c, --config <FILE>` | Configuration file path (also `ZENTINEL_CONFIG`) |
+| `-t, --test` | Test the configuration and exit (same as `test`) |
+| `--verbose` | Debug-level logging. For finer control, set `RUST_LOG` |
+| `-d, --daemon` | Run in the background (same as `system { daemon #true }` from 26.10_5) |
+| `-u, --upgrade` | Take over listening sockets from a running instance (zero-downtime upgrade) |
+| `-V, --version` | Print version information |
+| `-h, --help` | Print help |
 
 ## Systemd Service
 

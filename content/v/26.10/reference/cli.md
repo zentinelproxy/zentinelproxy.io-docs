@@ -1,7 +1,7 @@
 +++
 title = "CLI Reference"
 weight = 1
-updated = 2026-02-19
+updated = 2026-10-19
 +++
 
 Complete command-line interface reference for Zentinel.
@@ -50,10 +50,19 @@ zentinel -t -c zentinel.kdl
 
 **Options:**
 - `-c, --config <FILE>` - Configuration file to test
+- `--strict` - Fail if any setting is being ignored (from 26.10_5). Only on the
+  `test` subcommand, not on `-t` / `--test`
+
+From 26.10_5, `test` also prints every setting that is being ignored: unknown
+or misplaced keys, settings run together on one line, values that fall back to
+a default (an unknown `load-balancing` algorithm, health-check `type`,
+`priority` or `builtin-handler`), and settings that are accepted but not
+applied, such as `system { max-connections }`. These are the same findings as
+`lint`'s ignored-settings check, without its best-practice advice.
 
 **Exit codes:**
-- `0` - Configuration is valid
-- `1` - Configuration error
+- `0` - Configuration is valid, including when ignored settings are printed
+- `1` - Configuration error, or (with `--strict`) at least one ignored setting
 
 **Output:**
 ```
@@ -63,6 +72,128 @@ INFO   - 2 listener(s)
 INFO   - 5 route(s)
 INFO   - 3 upstream(s)
 zentinel: configuration file zentinel.kdl test is successful
+```
+
+With an ignored setting:
+
+```
+  ⚠  'interval-sec' is not a setting in the 'health-check' block and is being ignored. Did you mean 'interval-secs'?
+zentinel: configuration file zentinel.kdl test is successful
+```
+
+### validate
+
+Validate the configuration, then run checks that need the outside world:
+upstream connectivity, TLS certificates and agent connectivity. Each check can
+be skipped.
+
+```bash
+zentinel validate --config zentinel.kdl
+
+# Configuration only, no network, agent or certificate checks (CI)
+zentinel validate --config zentinel.kdl --skip-network --skip-agents --skip-certs
+```
+
+**Options:**
+- `-c, --config <FILE>` - Configuration file to validate (embedded default if omitted)
+- `--skip-network` - Skip upstream connectivity checks
+- `--skip-agents` - Skip agent connectivity checks
+- `--skip-certs` - Skip TLS certificate validation
+
+**Exit codes:**
+- `0` - Configuration valid and every check that ran passed (warnings are printed but do not fail)
+- `1` - Configuration error, or at least one check failed
+
+**Output:**
+```
+✓ Configuration schema valid
+Checking upstream connectivity...
+Validating TLS certificates...
+Checking agent connectivity...
+✓ All validation checks passed
+```
+
+### lint
+
+Validate the configuration and report best-practice warnings. When the
+configuration comes from a file, `lint` also reports **unknown keys**: settings
+that parse but are read by nothing (misspelled keys, keys in the wrong block,
+two settings run together on one line).
+
+```bash
+zentinel lint --config zentinel.kdl
+```
+
+**Options:**
+- `-c, --config <FILE>` - Configuration file to lint (embedded default if omitted)
+
+**Exit codes:**
+- `0` - Configuration is valid, **including when warnings are reported**; lint
+  warnings are recommendations. To fail a CI job on ignored settings, use
+  `zentinel test --strict` (from 26.10_5); for best-practice warnings, check
+  the output for `⚠` lines.
+- `1` - Configuration error
+
+**Output:**
+```
+✓ No best practice issues found
+```
+
+or
+
+```
+⚠  Configuration has 1 best practice warnings:
+
+  ⚠  <warning message>
+```
+
+### bundle
+
+Install and manage the bundled agents (WAF, rate limiting, and others) that are
+versioned together with Zentinel. See [Bundle](../../deployment/bundle/) for
+the workflow.
+
+```
+zentinel bundle <COMMAND>
+```
+
+| Command | Description |
+|---------|-------------|
+| `install [AGENT]` | Install all bundled agents, or only `AGENT` |
+| `status` | Show status of installed agents |
+| `list` | List the agents available in the bundle |
+| `uninstall [AGENT]` | Uninstall all bundled agents, or only `AGENT` |
+| `update` | Check for updates to bundled agents |
+
+**`bundle install` options:**
+- `-n, --dry-run` - Preview what would be installed without making changes
+- `-f, --force` - Reinstall even if already installed
+- `--systemd` - Also install systemd service files
+- `--prefix <PREFIX>` - Custom installation prefix (`<PREFIX>/bin`, `<PREFIX>/etc/zentinel/agents`, `<PREFIX>/lib/systemd/system`)
+- `--skip-verify` - Skip checksum verification
+
+Without `--prefix`, agents install system-wide (`/usr/local/bin`,
+`/etc/zentinel/agents`, `/etc/systemd/system`) when running as root or when all
+of those directories are writable, and otherwise per user (`~/.local/bin`,
+`~/.config/zentinel/agents`, `~/.config/systemd/user`).
+
+**`bundle status` / `bundle list` options:**
+- `-v, --verbose` - Show detailed output
+
+**`bundle uninstall` options:**
+- `-n, --dry-run` - Preview what would be uninstalled
+
+**`bundle update` options:**
+- `--apply` - Perform the update (without it, `update` only reports available updates)
+
+```bash
+zentinel bundle list
+zentinel bundle install --dry-run
+sudo zentinel bundle install --systemd
+zentinel bundle install waf
+zentinel bundle status --verbose
+zentinel bundle update --apply
+zentinel bundle uninstall waf
 ```
 
 ## Examples
@@ -117,15 +248,20 @@ RUST_LOG=debug zentinel --config zentinel.kdl
 zentinel --version
 ```
 
-Output:
+Output (26.10_3 release binary):
 ```
-zentinel 0.1.0 (release 2025.01, commit abc1234)
+zentinel 0.6.45 (release 26.10_3, commit 07c2f6d)
 ```
 
 Version string includes:
-- Semantic version (Cargo.toml)
+- Semantic version of the crate
 - CalVer release tag
-- Git commit hash
+- Git commit hash (short)
+
+Up to and including 26.10_3, the semantic version printed by release binaries
+is one patch below the crate published for that release (26.10_3 is `0.6.46`
+on crates.io). Releases after 26.10_3 print the published version; see
+[Versioning](../../appendix/versioning/#version-mapping).
 
 ## Configuration Resolution
 

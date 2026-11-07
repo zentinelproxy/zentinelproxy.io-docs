@@ -241,6 +241,8 @@ backend zentinel_backend
 ```kdl
 upstreams {
     upstream "backend" {
+        target "10.0.1.10:8080"
+        target "10.0.1.11:8080"
         health-check {
             type "http" {
                 path "/health"
@@ -263,6 +265,7 @@ For non-HTTP services:
 ```kdl
 upstreams {
     upstream "database" {
+        target "10.0.2.10:5432"
         health-check {
             type "tcp"
             interval-secs 5
@@ -279,6 +282,7 @@ upstreams {
 ```kdl
 upstreams {
     upstream "grpc-service" {
+        target "10.0.3.10:50051"
         health-check {
             type "grpc" {
                 service "grpc.health.v1.Health"

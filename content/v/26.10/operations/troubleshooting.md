@@ -1,7 +1,7 @@
 +++
 title = "Troubleshooting"
 weight = 1
-updated = 2026-02-19
+updated = 2026-10-20
 +++
 
 Guide to diagnosing and resolving common Zentinel issues.
@@ -30,9 +30,16 @@ tail -f /var/log/zentinel/error.log
 # Validate configuration
 zentinel --test --config zentinel.kdl
 
+# Find settings that are being ignored (misspelled or misplaced keys)
+zentinel lint --config zentinel.kdl
+
 # Test with verbose output
 zentinel --test --verbose --config zentinel.kdl
 ```
+
+If a setting seems to have no effect, run `zentinel test` or `lint` first. KDL accepts any name, so a typo in an optional setting is not an error: the proxy runs on the default and the check passes, but from 26.10_5 both `zentinel test` and `lint` print "is being ignored" for it (`zentinel test --strict` fails). Before 26.10_5 only `lint` reported it. `-t` / `--test` prints the warnings too but has no `--strict`.
+
+If neither reports anything and the setting still does nothing, check [Known Limitations](/reference/known-limitations/). It lists settings the current release accepts but does not apply, and behaviour that differs from what the configuration suggests, with workarounds.
 
 ### Check Connectivity
 
@@ -145,33 +152,37 @@ dig upstream.internal
 
 **Diagnosis:**
 ```bash
-# Check circuit breaker status
+# Check circuit breaker and target health
 curl http://localhost:9090/admin/upstreams
 
-# Check connection limits
-curl http://localhost:9090/metrics | grep connections
+# Look for health-check failures in the log
+journalctl -u zentinel | grep -i health
 ```
 
 **Common causes:**
 1. Circuit breaker open
-2. All upstreams unhealthy
-3. Connection limit reached
-4. Rate limit exceeded
+2. Every target of the upstream is failing its health check. From 26.10_5, failing targets are taken out of rotation, and when none is left Zentinel answers 503 instead of trying them. Check the health-check `path`, `expected-status` and `host` against what the backend returns.
+
+3. From 26.10_6, the request was over `limits { max-in-flight-requests }`, globally or in its namespace. That `503` carries `Retry-After: 1`, and the proxy logs `Request refused: max-in-flight-requests reached` at `WARN`. See [Limits](/configuration/limits/#concurrency-limits).
+
+Rate limits answer with their `status-code` (default `429`). Connections over `max-total-connections` or `max-connections-per-client` are closed before a request is read, so they show up as resets, not as `503`.
 
 **Solutions:**
 ```kdl
-// Increase connection limits
-limits {
-    max-total-connections 20000
-    max-connections-per-client 200
-}
-
-// Adjust circuit breaker
-routes {
-    route "api" {
+// Adjust the upstream circuit breaker and health check
+upstreams {
+    upstream "backend" {
+        target "10.0.1.10:8080"
         circuit-breaker {
             failure-threshold 10    // More tolerant
             timeout-seconds 60      // Longer recovery
+        }
+        health-check {
+            type "http" {
+                path "/health"
+                expected-status 200
+            }
+            unhealthy-threshold 5   // More tolerant
         }
     }
 }
@@ -195,6 +206,8 @@ grep timeout zentinel.kdl
 // Increase timeouts for slow endpoints
 routes {
     route "slow-api" {
+        matches { path-prefix "/reports/" }
+        upstream "backend"
         policies {
             timeout-secs 120
         }
@@ -203,6 +216,7 @@ routes {
 
 upstreams {
     upstream "backend" {
+        target "10.0.1.10:8080"
         timeouts {
             request-secs 120
             read-secs 60
@@ -221,7 +235,7 @@ upstreams {
 
 2. **Host header mismatch** - Your backend checks the `Host` header and redirects to a canonical domain (e.g., `www.example.com`), but Zentinel forwards a different `Host` value.
 
-3. **`X-Forwarded-Proto` not set** - The backend checks the protocol and issues an HTTPS redirect because it doesn't know the client already connected over HTTPS.
+3. **`X-Forwarded-Proto` says `http`** - The backend checks the protocol and issues an HTTPS redirect because it doesn't know the client already connected over HTTPS. This happens when TLS ends at a load balancer in front of Zentinel, or on releases before 26.10_5.
 
 **Solution for cause 1 (most common):**
 
@@ -263,7 +277,17 @@ routes {
 
 **Solution for cause 3:**
 
-Forward the original protocol:
+From 26.10_5, Zentinel sets `X-Forwarded-Proto` to `https` for requests that arrived on a TLS listener and to `http` otherwise. If TLS ends at a load balancer that forwards plain HTTP to Zentinel, list the load balancer in the listener's [`trusted-proxies`](/configuration/listeners/#trusted-proxies) so its `X-Forwarded-Proto: https` is kept instead of replaced:
+
+```fragment,kdl
+listener "public" {
+    address "0.0.0.0:8080"
+    protocol "http"
+    trusted-proxies "10.0.0.0/8"
+}
+```
+
+Before 26.10_5, Zentinel did not send `X-Forwarded-Proto` at all. On those releases, or to force a value, set it on the route:
 
 ```kdl
 routes {
@@ -376,15 +400,15 @@ cat /proc/$(pgrep zentinel)/status | grep Vm
 
 **Solutions:**
 ```kdl
-// Reduce buffer sizes
+// Cap request bodies (bodies may be buffered for agent inspection)
 limits {
-    max-body-buffer-bytes 524288      // 512KB
-    max-body-inspection-bytes 524288
+    max-body-size 1048576   // 1MB
 }
 
 // Reduce connection pool
 upstreams {
     upstream "backend" {
+        target "10.0.1.10:8080"
         connection-pool {
             max-connections 50
             max-idle 10
@@ -392,10 +416,9 @@ upstreams {
     }
 }
 
-// Set memory limit
-limits {
-    max-memory-percent 70.0
-}
+// There is no memory cap setting: max-memory-percent and max-memory-bytes
+// are not read. Cap memory with the service manager instead
+// (systemd MemoryMax=, a container memory limit).
 ```
 
 #### High CPU Usage
@@ -425,16 +448,6 @@ system {
 
 // Reduce logging
 // Set RUST_LOG=warn in environment
-
-// Disable unnecessary features
-routes {
-    route "api" {
-        policies {
-            buffer-requests #false
-            buffer-responses #false
-        }
-    }
-}
 
 upstreams {
     upstream "backend" {
@@ -533,6 +546,7 @@ curl -v http://upstream:8080/health
 ```kdl
 upstreams {
     upstream "backend" {
+        target "10.0.1.10:8080"
         health-check {
             type "http" {
                 path "/health"           // Verify path
@@ -590,6 +604,7 @@ curl -s http://localhost:9090/metrics | grep agent_timeout
 ```kdl
 agents {
     agent "auth" {
+        unix-socket "/var/run/zentinel/auth.sock"
         timeout-ms 200               // Increase timeout
         circuit-breaker {
             failure-threshold 10     // More tolerant

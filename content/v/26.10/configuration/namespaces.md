@@ -1,10 +1,19 @@
 +++
 title = "Namespaces & Services"
 weight = 11
-updated = 2026-02-19
+updated = 2026-10-20
 +++
 
 Namespaces and services provide hierarchical organization for Zentinel configuration, enabling multi-tenant deployments with runtime isolation.
+
+{% callout(type="info", title="Served end to end from 26.10_7") %}
+Before 26.10_7 namespaces were only partly wired: a namespace's routes were
+served only on a top-level listener with `namespace "<id>"`, a route that used
+a namespace-local upstream got `500 "Upstream pool not found"`, service routes
+were never served, and the `listeners`/`listener` blocks inside namespaces and
+services were never bound. From 26.10_7 all of this works as described on this
+page.
+{% end %}
 
 ## Overview
 
@@ -39,14 +48,32 @@ namespace "api" {
 
 ## Namespace with Limits
 
-Each namespace can have its own limits for isolation:
+A namespace's `limits` block is applied to requests on the namespace's routes,
+and from 26.10_7 a service's `limits` block to requests on the service's
+routes, within the namespace's. Both take the same six keys as the global
+block:
+
+- body and header limits: the smallest of the global, the namespace, the
+  service and the route's `policies { max-body-size }` applies; a key a scope
+  does not set leaves the enclosing value in force;
+- `max-in-flight-requests`: the namespace has its own counter inside the
+  global limit, and a service its own inside the namespace's;
+- `max-total-connections` and `max-connections-per-client`: counted only for
+  the connections on the scope's own listeners, in addition to the global
+  limits.
+
+Before 26.10_7 a service's `limits` block was reported as ignored; before
+26.10_6 neither was applied. There is no `max-requests-per-second-*` key: to
+limit request rates, use a [`rate-limit` filter](../filters/#rate-limiting) or
+a route's `policies { rate-limit }` (see [Rate Limiting](#rate-limiting)). See
+[Limits: Namespace Limits](../limits/#namespace-limits).
+
+A namespace can declare its own `limits` block:
 
 ```kdl
 namespace "public-api" {
     limits {
-        max-body-size-bytes 1048576  // 1MB
-        max-requests-per-second-global 1000
-        max-requests-per-second-per-client 50
+        max-body-size 1048576  // 1MB
     }
 
     upstreams {
@@ -67,9 +94,7 @@ namespace "public-api" {
 
 namespace "internal-api" {
     limits {
-        max-body-size-bytes 104857600  // 100MB
-        max-requests-per-second-global 10000
-        // No per-client limit for internal services
+        max-body-size 104857600  // 100MB
     }
 
     upstreams {
@@ -96,7 +121,7 @@ Services provide finer-grained isolation within a namespace:
 ```kdl
 namespace "payments" {
     limits {
-        max-body-size-bytes 10485760  // 10MB default
+        max-body-size 10485760  // 10MB default
     }
 
     // Shared upstream for the namespace
@@ -107,9 +132,6 @@ namespace "payments" {
     }
 
     service "checkout" {
-        limits {
-            max-requests-per-second-global 500
-        }
 
         listener {
             address "0.0.0.0:8443"
@@ -138,9 +160,6 @@ namespace "payments" {
     }
 
     service "refunds" {
-        limits {
-            max-requests-per-second-global 100  // Lower limit for refunds
-        }
 
         upstreams {
             upstream "refunds-backend" {
@@ -160,14 +179,48 @@ namespace "payments" {
 }
 ```
 
+## Which Listener Serves a Route
+
+A listener belongs to a scope: the global one, a namespace (a listener in the
+namespace's `listeners` block, or a top-level listener with
+`namespace "<id>"`), or a service (the service's `listener` block). From
+26.10_7:
+
+- A route is served on the listeners of the nearest scope that has one: its
+  own, then its parent's, then the global listeners that are not bound to a
+  namespace. A namespace or service without a listener is therefore served on
+  the global listeners.
+- A scope with a listener of its own is served only there, not on the global
+  listeners. A service route of such a service gets `404` on the global
+  listener.
+- A listener bound to a namespace or service never serves global routes.
+- All routes served on one listener are matched together, by priority and then
+  specificity, as in one `routes` block.
+
+Listeners declared inside a namespace or service are bound under qualified ids:
+`ns:id` for a namespace's `listener "id"`, and `ns:svc:id` for a service's
+`listener` block (`ns:svc:service-listener` when the block sets no `id`). A listener that cannot be bound (an invalid
+address, an address another listener or the metrics server already uses, or an
+id that collides) is reported by `zentinel test` as "is being ignored", and
+`test --strict` fails on it. Its scope's routes are then not served at all,
+not moved to the global listeners. A port that is valid but cannot be opened
+when the proxy starts (a privileged port, for example) stops startup.
+
+Scoped routes appear in logs and metrics under their qualified ids:
+`ns:route` for a namespace's route, `ns:svc:route` for a service's.
+
 ## Scope Resolution
 
-When a route references an upstream, Zentinel resolves it in order:
+When a route references an upstream, filter or agent, Zentinel resolves it in
+order:
 
 1. **Service scope** - Resources in the same service
 2. **Namespace scope** - Resources in the parent namespace
 3. **Exported resources** - Resources exported from other namespaces
 4. **Global scope** - Root-level resources
+
+A qualified reference (`ns:name`, `ns:svc:name`) is used as written and names
+that resource directly; see [Qualified References](#qualified-references).
 
 ### Resolution Example
 
@@ -270,7 +323,9 @@ namespace "api" {
 
 ### Export Configuration
 
-```kdl
+Inside a `namespace` block:
+
+```fragment,kdl
 exports {
     upstreams "upstream-1" "upstream-2"
     agents "auth-agent"
@@ -284,29 +339,63 @@ Each namespace/service has isolated:
 
 ### Rate Limiting
 
+There is no rate-limit setting on a namespace or service itself. Write a
+`rate-limit` filter (or a route's `policies { rate-limit }`) inside the scope
+and attach it to the scope's routes. From 26.10_7 the filter and its routes
+are keyed by their qualified ids, so a filter is counted separately from a
+same-named filter in another scope. Buckets are kept per route: a filter
+attached to several routes gives each route its own buckets, so a limit hit in
+`api:public:public` does not affect `api:partner:partner`, and there is no
+single bucket for a whole namespace:
+
 ```kdl
 namespace "api" {
-    limits {
-        max-requests-per-second-global 5000
+    filters {
+        filter "public-limit" {
+            type "rate-limit"
+            max-rps 50
+            burst 50
+            key "client-ip"
+        }
+        filter "partner-limit" {
+            type "rate-limit"
+            max-rps 200
+            burst 200
+            key "header:X-Partner-Id"
+        }
+    }
+
+    upstreams {
+        upstream "backend" {
+            target "127.0.0.1:3000"
+        }
     }
 
     service "public" {
-        limits {
-            max-requests-per-second-global 1000
-            max-requests-per-second-per-client 50
+        routes {
+            route "public" {
+                matches {
+                    path-prefix "/public/"
+                }
+                upstream "backend"
+                filters "public-limit"
+            }
         }
     }
 
     service "partner" {
-        limits {
-            max-requests-per-second-global 2000
-            max-requests-per-second-per-client 200
+        routes {
+            route "partner" {
+                matches {
+                    path-prefix "/partner/"
+                }
+                upstream "backend"
+                filters "partner-limit"
+            }
         }
     }
 }
 ```
-
-Rate limits are enforced independently per scope. A rate limit hit in `api:public` does not affect `api:partner`.
 
 ### Circuit Breakers
 
@@ -316,6 +405,7 @@ Circuit breakers are isolated per scope. An upstream failure in one namespace do
 namespace "critical" {
     upstreams {
         upstream "backend" {
+            target "10.0.5.1:8080"
             health-check {
                 type "http" { path "/health" }
             }
@@ -331,6 +421,7 @@ namespace "critical" {
 namespace "best-effort" {
     upstreams {
         upstream "backend" {
+            target "10.0.6.1:8080"
             circuit-breaker {
                 failure-threshold 10  // More tolerant
                 timeout-seconds 10
@@ -342,18 +433,26 @@ namespace "best-effort" {
 
 ### Metrics
 
-Scoped metrics include `namespace` and `service` labels:
+Scoped routes and upstreams appear in the ordinary metrics under their
+qualified ids, so a namespace or service can be selected by prefix:
 
 ```
-zentinel_scoped_requests_total{namespace="api", service="users", route="list", status="200"}
-zentinel_scoped_request_duration_seconds{namespace="api", service="users", route="list"}
-zentinel_scoped_rate_limit_hits_total{namespace="api", service="public", route="main"}
-zentinel_scoped_circuit_breaker_state{namespace="payments", service="checkout", upstream="backend"}
+zentinel_requests_total{route="api:users:list", method="GET", status="200"}
+zentinel_request_duration_seconds_bucket{route="payments:checkout:process", method="POST", le="0.1"}
 ```
+
+```promql
+sum(rate(zentinel_requests_total{route=~"payments:.*"}[5m])) by (route)
+```
+
+The `zentinel_scoped_*` metrics (with `namespace` and `service` labels) are
+not emitted.
 
 ### Access Logs
 
-Access logs include scope information in JSON format:
+From 26.10_7 the access log's `namespace` and `service` fields are filled from
+the route the request matched (empty for a global route), and `route_id` and
+`upstream` are the qualified ids:
 
 ```json
 {
@@ -364,8 +463,8 @@ Access logs include scope information in JSON format:
   "status": 200,
   "namespace": "payments",
   "service": "checkout",
-  "route_id": "process",
-  "upstream": "checkout-backend"
+  "route_id": "payments:checkout:process",
+  "upstream": "payments:checkout:checkout-backend"
 }
 ```
 
@@ -387,9 +486,11 @@ upstreams {
 
 routes {
     route "api" {
+        matches { path-prefix "/api/" }
         upstream "api-backend"
     }
     route "web" {
+        matches { path-prefix "/" }
         upstream "web-backend"
     }
 }
@@ -414,6 +515,7 @@ namespace "api" {
 
     routes {
         route "main" {
+            matches { path-prefix "/api/" }
             upstream "backend"
             // Can still access global: upstream "shared-auth"
         }
@@ -429,6 +531,7 @@ namespace "web" {
 
     routes {
         route "main" {
+            matches { path-prefix "/" }
             upstream "backend"
         }
     }
@@ -463,8 +566,7 @@ upstreams {
 // API namespace
 namespace "api" {
     limits {
-        max-body-size-bytes 10485760
-        max-requests-per-second-global 10000
+        max-body-size 10485760
     }
 
     upstreams {
@@ -491,9 +593,6 @@ namespace "api" {
     }
 
     service "users" {
-        limits {
-            max-requests-per-second-per-client 100
-        }
 
         upstreams {
             upstream "users-backend" {
@@ -570,8 +669,13 @@ Zentinel validates namespace configuration:
 - No circular dependencies in exports
 - Reserved character (`:`) not used in resource IDs
 
+From 26.10_7, `zentinel test` also reports as "is being ignored" a scoped
+listener that cannot be bound, and a scoped resource whose qualified id is
+already the id of a top-level one (a global route named `api:main` next to
+route `main` of namespace `api`):
+
 ```bash
-zentinel --config zentinel.kdl --validate
+zentinel test --strict -c zentinel.kdl
 ```
 
 ## Best Practices
@@ -608,7 +712,7 @@ namespace "users" {
 
 Use services when you need:
 - Dedicated listeners with separate TLS certificates
-- Independent rate limits for subcomponents
+- Separate rate-limit filters for subcomponents
 - Fine-grained circuit breaker isolation
 - Separate metrics dashboards
 
@@ -638,6 +742,6 @@ namespace "infrastructure" {
 
 ## Next Steps
 
-- [Limits](../limits/) - Configure per-scope limits
+- [Limits](../limits/) - Request size limits
 - [Upstreams](../upstreams/) - Backend pool configuration
 - [Routes](../routes/) - Request matching and routing

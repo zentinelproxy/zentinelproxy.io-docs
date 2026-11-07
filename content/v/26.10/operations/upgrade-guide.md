@@ -1,411 +1,139 @@
 +++
 title = "Upgrade Guide"
-weight = 7
-updated = 2026-02-19
+weight = 10
+updated = 2026-10-26
 +++
 
-Procedures for upgrading and migrating Zentinel deployments.
+How to move a Zentinel deployment to a newer release, and which releases change behaviour you may depend on.
 
-## Version Management
+## How versions work
 
-### Version Numbering
+Zentinel releases use calendar versioning: `YY.MM_N`, for example `26.10_3` is the third release of October 2026. The release number is what you install, pin and report. Each release also has a crate version (SemVer, for example `0.6.46`), which matters only if you depend on the Rust crates. See [Versioning](/appendix/versioning/) for the full scheme and release history.
 
-Zentinel follows semantic versioning: `MAJOR.MINOR.PATCH`
+A CalVer number says when a release was cut, not how risky it is. A `_N` release can contain a breaking change: 26.08_2 changed the listener TLS schema. Read the [changes table](#breaking-and-behaviour-changing-releases) below for every release between your version and the target, not only the newest one.
 
-| Version Change | Meaning | Upgrade Approach |
-|----------------|---------|------------------|
-| Patch (x.y.Z) | Bug fixes, no breaking changes | Rolling upgrade, minimal risk |
-| Minor (x.Y.z) | New features, backward compatible | Rolling upgrade, test new features |
-| Major (X.y.z) | Breaking changes possible | Staged rollout, careful testing |
-
-### Compatibility Matrix
-
-| Component | Compatible Versions | Notes |
-|-----------|---------------------|-------|
-| Config format | Same major version | Config migration may be needed |
-| Agent protocol | Same major version | Agents must be upgraded together |
-| Metrics format | All versions | Metric names stable |
-
-### Version Checking
+To see what is running:
 
 ```bash
-# Check current version
 zentinel --version
-
-# Check version in running instance
-curl -s localhost:9090/admin/version
-
-# Compare with latest release
-curl -s https://api.github.com/repos/zentinelproxy/zentinel/releases/latest | \
-    jq -r '.tag_name'
+# zentinel 0.6.45 (release 26.10_3, commit 07c2f6d)
 ```
 
-## Pre-Upgrade Checklist
+Use the `release` field. The crate version printed by the binary can be one lower than the version published to crates.io for the same release (see the note at the top of the [changelog](https://github.com/zentinelproxy/zentinel/blob/main/CHANGELOG.md)).
 
-### Before Any Upgrade
+## Upgrade procedure
 
-- [ ] Read release notes for all versions between current and target
-- [ ] Identify breaking changes
-- [ ] Backup current binary, configuration, and certificates
-- [ ] Test new version in staging environment
-- [ ] Verify configuration compatibility
-- [ ] Test rollback procedure
-- [ ] Ensure on-call coverage during upgrade
+### 1. Read the changes
 
-### Backup Procedure
+Check the [table below](#breaking-and-behaviour-changing-releases) and the [Changelog](/appendix/changelog/) for every release after the one you run. Entries marked as fixes can still change behaviour: several 26.08 and 26.09 releases made settings take effect that had been parsed and ignored.
+
+### 2. Validate your configuration with the new binary
+
+Download the new release next to the current one and check your existing configuration with it before you replace anything:
 
 ```bash
-#!/bin/bash
-BACKUP_DIR="/var/backups/zentinel/$(date +%Y%m%d-%H%M%S)"
-mkdir -p "$BACKUP_DIR"
+VERSION=26.10_3
+curl -fsSLO "https://github.com/zentinelproxy/zentinel/releases/download/${VERSION}/zentinel-${VERSION}-linux-amd64.tar.gz"
+curl -fsSLO "https://github.com/zentinelproxy/zentinel/releases/download/${VERSION}/zentinel-${VERSION}-linux-amd64.tar.gz.sha256"
+sha256sum -c "zentinel-${VERSION}-linux-amd64.tar.gz.sha256"
+mkdir "zentinel-${VERSION}" && tar -xzf "zentinel-${VERSION}-linux-amd64.tar.gz" -C "zentinel-${VERSION}"
 
-# Backup binary
-cp /usr/local/bin/zentinel "$BACKUP_DIR/"
+# Parse and validate offline
+"./zentinel-${VERSION}/zentinel" test -c /etc/zentinel/zentinel.kdl
 
-# Backup configuration
-cp -r /etc/zentinel "$BACKUP_DIR/config"
+# Also check that upstreams, agents and certificates are reachable from this host
+"./zentinel-${VERSION}/zentinel" validate -c /etc/zentinel/zentinel.kdl
 
-# Save current version
-zentinel --version > "$BACKUP_DIR/version.txt"
-
-# Save metrics snapshot
-curl -s localhost:9090/metrics > "$BACKUP_DIR/metrics.txt"
-
-echo "Backup complete: $BACKUP_DIR"
+# Report settings that parse but have no effect
+"./zentinel-${VERSION}/zentinel" lint -c /etc/zentinel/zentinel.kdl
 ```
 
-## Upgrade Procedures
-
-### Patch Upgrade (x.y.Z)
-
-**Risk Level**: Low
-**Downtime**: Zero (with rolling upgrade)
+Release archives are also signed; see [Supply Chain Security](../supply-chain/) to verify signatures and provenance. Container users run the same checks inside the new image:
 
 ```bash
-#!/bin/bash
-NEW_VERSION="$1"
-
-# Download new version
-curl -L -o /tmp/zentinel-new \
-    "https://github.com/zentinelproxy/zentinel/releases/download/v${NEW_VERSION}/zentinel-linux-amd64"
-chmod +x /tmp/zentinel-new
-
-# Verify download and validate config
-/tmp/zentinel-new --version
-/tmp/zentinel-new --validate --config /etc/zentinel/config.kdl
-
-# Create backup
-./backup-zentinel.sh
-
-# Replace binary
-mv /tmp/zentinel-new /usr/local/bin/zentinel
-
-# Graceful restart
-systemctl restart zentinel
-
-# Verify
-sleep 5
-curl -sf localhost:8080/health && echo "Upgrade successful!"
+docker run --rm -v /etc/zentinel:/etc/zentinel:ro \
+  ghcr.io/zentinelproxy/zentinel:26.10_3 test -c /etc/zentinel/zentinel.kdl
 ```
 
-### Minor Upgrade (x.Y.z)
-
-**Risk Level**: Medium
-**Downtime**: Zero (with rolling upgrade)
-
-```bash
-#!/bin/bash
-NEW_VERSION="$1"
-
-# Pre-flight checks
-AVAILABLE_SPACE=$(df -P /usr/local/bin | tail -1 | awk '{print $4}')
-if [ "$AVAILABLE_SPACE" -lt 100000 ]; then
-    echo "ERROR: Insufficient disk space"
-    exit 1
-fi
-
-# Download and verify checksum
-curl -L -o /tmp/zentinel-new \
-    "https://github.com/zentinelproxy/zentinel/releases/download/v${NEW_VERSION}/zentinel-linux-amd64"
-curl -L -o /tmp/zentinel-new.sha256 \
-    "https://github.com/zentinelproxy/zentinel/releases/download/v${NEW_VERSION}/zentinel-linux-amd64.sha256"
-
-cd /tmp && sha256sum -c zentinel-new.sha256
-chmod +x /tmp/zentinel-new
-
-# Test new binary
-/tmp/zentinel-new --version
-/tmp/zentinel-new --validate --config /etc/zentinel/config.kdl
-
-# Create backup
-./backup-zentinel.sh
-
-# Graceful shutdown and replace
-kill -TERM $(cat /var/run/zentinel.pid)
-sleep 5
-mv /tmp/zentinel-new /usr/local/bin/zentinel
-systemctl start zentinel
-
-# Verify
-sleep 5
-curl -sf localhost:8080/health || { ./rollback-zentinel.sh; exit 1; }
-echo "Upgrade successful!"
-```
-
-### Major Upgrade (X.y.z)
-
-**Risk Level**: High
-**Approach**: Blue-Green or Canary
-
-#### Blue-Green Upgrade
-
-```
-Phase 1: Deploy new version alongside old
-┌─────────────────────────────────────────────────┐
-│              Load Balancer                      │
-│                     │                           │
-│        ┌────────────┴────────────┐              │
-│        ▼ (100%)                  ▼ (0%)         │
-│  ┌───────────┐            ┌───────────┐         │
-│  │Blue (v1.x)│            │Green(v2.x)│         │
-│  │  Active   │            │  Standby  │         │
-│  └───────────┘            └───────────┘         │
-└─────────────────────────────────────────────────┘
-
-Phase 2: Shift traffic to new version
-┌─────────────────────────────────────────────────┐
-│              Load Balancer                      │
-│                     │                           │
-│        ┌────────────┴────────────┐              │
-│        ▼ (0%)                    ▼ (100%)       │
-│  ┌───────────┐            ┌───────────┐         │
-│  │Blue (v1.x)│            │Green(v2.x)│         │
-│  │  Standby  │            │  Active   │         │
-│  └───────────┘            └───────────┘         │
-└─────────────────────────────────────────────────┘
-```
-
-**Steps**:
-1. Deploy new version to green environment
-2. Test with synthetic traffic
-3. Shift 10% traffic to green, monitor for 5 minutes
-4. If error rate acceptable, shift 50%, monitor 10 minutes
-5. Complete shift to 100%
-6. Retain blue for rollback
-
-#### Canary Upgrade
-
-**Steps**:
-1. Deploy to single canary instance
-2. Enable canary routing at 5%
-3. Monitor for 30 minutes
-4. Gradual rollout: 10% → 25% → 50% → 75% → 100%
-5. Validate at each stage before proceeding
-
-## Rollback Procedures
-
-### Quick Rollback
-
-```bash
-#!/bin/bash
-BACKUP_DIR=$(ls -td /var/backups/zentinel/*/ | head -1)
-
-if [ -z "$BACKUP_DIR" ]; then
-    echo "ERROR: No backup found!"
-    exit 1
-fi
-
-echo "Rolling back from $BACKUP_DIR"
-
-# Stop current version
-systemctl stop zentinel
-
-# Restore binary
-cp "$BACKUP_DIR/zentinel" /usr/local/bin/zentinel
-chmod +x /usr/local/bin/zentinel
-
-# Restore configuration
-cp -r "$BACKUP_DIR/config/"* /etc/zentinel/
-
-# Start
-systemctl start zentinel
-
-# Verify
-sleep 5
-curl -sf localhost:8080/health && echo "Rollback successful!"
-```
-
-### Blue-Green Rollback
-
-```bash
-# Shift all traffic back to blue
-curl -X POST "$LB_API/backends/blue/weight" -d '{"weight": 100}'
-curl -X POST "$LB_API/backends/green/weight" -d '{"weight": 0}'
-```
-
-## Configuration Migration
-
-### Common Migration Patterns
-
-**Deprecated Directive Replacement**:
-```kdl
-// Old (v1.x)
-upstream "backend" {
-    timeout-secs 30  // DEPRECATED
-}
-
-// New (v2.x)
-upstream "backend" {
-    timeouts {
-        connect-secs 5
-        request-secs 30
-    }
-}
-```
-
-**Restructured Configuration**:
-```kdl
-// Old (v1.x) - flat structure
-route "api" {
-    path-prefix "/api/"
-    upstream "backend"
-    timeout-secs 30
-}
-
-// New (v2.x) - nested structure
-routes {
-    route "api" {
-        matches {
-            path-prefix "/api/"
-        }
-        upstream "backend"
-        policies {
-            timeouts {
-                request-secs 30
-            }
-        }
-    }
-}
-```
-
-### Migration Tool
-
-```bash
-# Check for configuration issues
-zentinel config check /etc/zentinel/config.kdl
-
-# Migrate configuration to new format
-zentinel config migrate /etc/zentinel/config.kdl -o config.kdl.new
-
-# Show migration diff
-diff /etc/zentinel/config.kdl config.kdl.new
-
-# Validate migrated configuration
-zentinel --validate --config config.kdl.new
-```
-
-## Post-Upgrade Validation
-
-### Immediate Validation (First 5 Minutes)
-
-```bash
-#!/bin/bash
-ERRORS=0
-
-# Process running
-echo -n "Process running: "
-pgrep -f zentinel > /dev/null && echo "OK" || { echo "FAIL"; ((ERRORS++)); }
-
-# Health endpoint
-echo -n "Health endpoint: "
-curl -sf localhost:8080/health > /dev/null && echo "OK" || { echo "FAIL"; ((ERRORS++)); }
-
-# Metrics endpoint
-echo -n "Metrics endpoint: "
-curl -sf localhost:9090/metrics > /dev/null && echo "OK" || { echo "FAIL"; ((ERRORS++)); }
-
-# Version correct
-echo -n "Version: "
-zentinel --version
-
-# Configuration loaded
-echo -n "Config loaded: "
-ROUTES=$(curl -s localhost:9090/admin/routes | jq length)
-[ "$ROUTES" -gt 0 ] && echo "OK ($ROUTES routes)" || { echo "FAIL"; ((ERRORS++)); }
-
-if [ $ERRORS -eq 0 ]; then
-    echo "Validation PASSED"
-else
-    echo "Validation FAILED ($ERRORS errors)"
-    exit 1
-fi
-```
-
-### Extended Validation (First Hour)
-
-```bash
-#!/bin/bash
-DURATION=3600
-INTERVAL=60
-
-echo "Monitoring for $((DURATION/60)) minutes..."
-
-START=$(date +%s)
-while [ $(($(date +%s) - START)) -lt $DURATION ]; do
-    ERROR_RATE=$(curl -s localhost:9090/metrics | \
-        grep 'requests_total.*status="5' | \
-        awk '{sum+=$2} END {print sum}')
-
-    P99_LATENCY=$(curl -s localhost:9090/metrics | \
-        grep 'request_duration.*quantile="0.99"' | \
-        awk '{print $2}')
-
-    echo "$(date): errors=$ERROR_RATE p99=${P99_LATENCY}s"
-
-    sleep $INTERVAL
-done
-```
-
-## Quick Reference
-
-### Upgrade Commands
-
-```bash
-# Validate config before upgrade
-zentinel --validate --config /etc/zentinel/config.kdl
-
-# Create backup
-./backup-zentinel.sh
-
-# Perform upgrade
-./patch-upgrade.sh 2.1.5      # Patch
-./minor-upgrade.sh 2.2.0      # Minor
-./blue-green-upgrade.sh 3.0.0 # Major
-
-# Rollback if needed
-./rollback-zentinel.sh
-```
-
-### Health Check Endpoints
-
-| Endpoint | Purpose | Expected |
-|----------|---------|----------|
-| `/health` | Liveness | 200 OK |
-| `/ready` | Readiness | 200 OK |
-| `/admin/version` | Version | JSON |
-| `/metrics` | Prometheus | Text |
-
-### Upgrade Timing
-
-| Type | Downtime | Window |
-|------|----------|--------|
-| Patch | Zero | Anytime |
-| Minor | Zero | Business hours |
-| Major | Minutes | Maintenance window |
-
-## See Also
-
-- [Migration Guide](../migration/) - Migrating from other proxies
-- [Troubleshooting](../troubleshooting/) - Diagnosing upgrade issues
-- [Configuration Reference](../../reference/config-schema/) - Config options
-- [Changelog](../../appendix/changelog/) - Version history
+Fix anything `test` rejects before going further. New `lint` warnings after an upgrade usually mean a setting was already being ignored, not that it broke.
+
+### 3. Roll out instance by instance
+
+Configuration changes alone do not need a new process: `SIGHUP` (or `systemctl reload zentinel`) reloads the configuration file and certificates, and a configuration that fails to load is rejected while the running one stays in place. Listeners are the exception: they are bound at startup, so changes to listeners need a restart.
+
+A new binary needs a restart. On `SIGTERM`, Zentinel stops accepting connections and drains in-flight requests for up to `graceful-shutdown-timeout-secs` (default 30) before exiting. To upgrade without dropping traffic, run more than one instance behind a load balancer and replace them one at a time:
+
+1. Take one instance out of the load balancer, or let its readiness check fail.
+2. Stop it, replace the binary or image, and start it.
+3. Check its logs and [metrics](/reference/metrics/) (error rate, upstream health, agent errors) under real traffic.
+4. Continue with the next instance.
+
+For Kubernetes, change the image tag and let the Deployment's rolling update do this; see [Rolling Updates](/deployment/rolling-updates/). For a single host with systemd, see [systemd Deployment](/deployment/systemd/).
+
+Upgrade agents separately from the proxy. The proxy and agents talk the [v2 agent protocol](/agents/v2/), and a proxy upgrade does not require new agent versions unless the release notes say so.
+
+### 4. Roll back if needed
+
+Keep the previous binary or image tag and a copy of the configuration you ran with it. Rolling back is the same procedure in reverse: replace the binary, restart instance by instance.
+
+If you changed the configuration for the new release (for example the 26.08_2 TLS schema), the old binary will not load the new configuration. Roll back the configuration together with the binary.
+
+### Building from source
+
+Source builds need the Rust version pinned in the repository's `rust-toolchain.toml`: **Rust 1.96** since 26.10_3 (1.95 before). Prebuilt binaries and container images are not affected. See [Building from Source](/development/building/).
+
+## Breaking and behaviour-changing releases
+
+Releases not listed here are dependency, security or documentation updates with no configuration or behaviour change you need to act on. Newest first.
+
+| Release | Type | What changes | What to do |
+|---------|------|--------------|------------|
+| **26.10_11** | **Breaking** | Configurations that used to load and silently do nothing now fail: an `https` or `h2` listener without `tls` (it bound nothing); an upstream without `tls` with `http-version { min-version 2 }` (it was served over HTTP/1.1); a `compress` filter listing `deflate` or an unknown algorithm, or with a `level` outside 1-9 | Run `zentinel test --strict` before upgrading. Add `tls`, or use `protocol "h2c"` / `h2c #true` for cleartext HTTP/2; replace `deflate` with `gzip` |
+| **26.10_11** | Behaviour | **OCSP stapling happens, and it is on by default**: the proxy contacts each certificate's OCSP responder over HTTP from startup and at least hourly. `cert-file` must contain the issuer for a staple. A failing responder never fails a handshake | Allow egress to your CA's OCSP responder, or set `ocsp-stapling #false`. Watch `zentinel_tls_ocsp_fetch_total{result="failure"}` |
+| **26.10_11** | Behaviour | **The `compress` filter works**: before, it broke every response it applied to. `algorithms` (in order of preference), `content-types` and `level` are applied; Brotli is not produced, and the default is `gzip` alone (was gzip, br) | Check `algorithms` and `content-types` against what you want compressed; add `zstd` for a stronger coding |
+| **26.10_11** | Behaviour | **WebSocket frames reach agents**, and only the agents of the route's filters, under the filter's `timeout-ms` and `failure-mode` (fail-closed closes with 1011). Before, no frame reached any agent and the agent-level `failure-mode` decided every frame. The agent-level `failure-mode` is deprecated and has no effect | Set `failure-mode` on agent filters (`zentinel test` names them); expect frame-inspecting agents to start acting. gRPC agents cannot inspect frames |
+| **26.10_11** | Behaviour | An agent filter's `timeout-ms` applies on every event path (it applied to request headers only); response-phase `Redirect` and `Challenge` are acted on; a body refused by an agent no longer counts against the upstream's circuit breaker; a reload rebuilds each route's error pages, schema validator and static files, and warns when `observability` or `cache` changed | Check filters whose `timeout-ms` is shorter than their body or response inspection needs |
+| **26.10_8** | Behaviour | **An agent's `config { }` block is delivered, on every connection** (first, pooled, reconnect). Before, it never reached the agent. An agent that rejects its config or does not answer is not used and its filters follow their `failure-mode`. gRPC agents need a build against `zentinel-agent-protocol` 0.6.51 | Check that every `config { }` block says what you mean: fields it leaves out can replace an agent's flags with defaults (ai-gateway, waf, modsec, graphql-security, denylist), and agents that reset state on configure now do so per connection. Use waf and modsec **0.4.1** (idempotent, merging). The auth agent refuses configs that enable SAML, mTLS or token exchange. See [Agent-Specific Configuration](/configuration/agents/#agent-specific-configuration) |
+| **26.10_8** | Behaviour | **Agent decisions are enforced in every phase.** Challenge fails closed (`401` with `WWW-Authenticate` from a `www-authenticate` parameter, else `403`; a `body` parameter is the response body), Redirect redirects (it answered `500`), response-phase blocks are enforced, a filter that names an agent that is not loaded fails instead of passing. The filter's `failure-mode` (else the route's, default `closed`) now decides on every path; the `agent` block's value applies only to WebSocket frames | Agents that used to be passed by now decide: review routes whose agents return Challenge or Redirect, and set `failure-mode` on every agent filter. A body agent on a route at the default now refuses on body and response failures where it used to pass them when the agent itself was `"open"`. See [Failure Mode](/configuration/agents/#failure-mode) |
+| **26.10_8** | Behaviour | Request bodies go to every agent subscribed to `request_body`, with or without a `waf` block; in buffer and hybrid mode the body is held back from the upstream until the agents allow it; `request-body-mode "stream"`/`"hybrid:N"` are honoured. A body that cannot be decompressed follows the body agents' `failure-mode` (`400`); a request-headers dispatch failure answers `503` instead of `500` | Set `inspect-request-body #false` to keep bodies from agents. The upstream still sees the request line and headers before the body decision ([#608](https://github.com/zentinelproxy/zentinel/issues/608)). See [Body Streaming Modes](/configuration/agents/#body-streaming-modes) |
+| **26.10_8** | Behaviour | New `connect-timeout-ms` (default 5000): startup waits at most the longest connect timeout plus 5 s and no longer blocks on a silent agent. Daemon mode (`-d`) works: signals, agents, health checks and metrics run in the daemon; a `user` without a `group` switches to that user's primary group; a broken config exits 1 in the foreground | Nothing to change unless you relied on startup blocking until every agent answered. Daemon deployments now honour `SIGHUP` and `SIGTERM` |
+| **26.10_8** | Behaviour | A configured audit log that cannot be opened stops startup; each log file is opened on its own; **a config without an `error-log` block no longer writes `/var/log/zentinel/error.log`** (entries still go to stdout). A reload with an invalid `path-regex` is rejected and rollbacks are applied. `zentinel bundle install` pins rebuilt, smoke-tested agents, starts them on the socket it writes into `agents.kdl`, and no longer writes per-agent YAML files; `ratelimit` left the bundle | Add `error-log {}` to keep the file. Rerun `zentinel bundle install` and include the generated `agents.kdl` (see [Bundle Installation](/deployment/bundle/)); delete the old YAML files it points out |
+| **26.10_7** | Behaviour | Namespaces and services are served end to end. A namespace or service without a listener of its own is now served on the global listeners (before, never); listeners inside namespaces and services are bound; routes using a namespace's own upstream work; service `limits` apply. Scoped route ids in logs and metrics are qualified (`ns:route`, `ns:svc:route`). A scoped route with an invalid `path-regex` is left out and reported instead of stopping startup | Check that no namespace is now exposed on a public listener by accident: give it a listener of its own (or a top-level listener with `namespace "..."`) to keep it off the global ones. A privileged port or a failing ACME issuance on a scoped listener can now stop startup. Update dashboards and alerts that match scoped route ids. See [Which listener serves a route](/configuration/namespaces/#which-listener-serves-a-route) |
+| **26.10_7** | Behaviour | A route's `error-pages` also replace the proxy's own refusals on that route (rate limits, `max-in-flight-requests`, geo, prompt injection, WebSocket not enabled, no usable upstream, agent blocks without a body), keeping `Retry-After` and `X-RateLimit-*`. An agent block that carries its own body in the request-body phase now sends that body as `text/plain` instead of the generic JSON | Review pages for `429`, `503` and `403`: clients that parsed the old plain-text or JSON refusal bodies get the page. See [Which errors a page replaces](/configuration/routes/#which-errors-a-page-replaces) |
+| **26.10_7** | Behaviour | Agent filter `inspect-body #false` and `max-body-bytes` are applied (a body over `max-body-bytes` gets `413` from a fail-closed agent). The top-level `cache` block reads `max-size-bytes` and `lock-timeout-secs` (before, dropped and the defaults used). An include diamond loads. Auto-reload reloads once per edit, sees included files outside the watched directory, and no longer reloads on a save without changes | Check agent filters that set these keys, and `cache` blocks that used the `-bytes`/`-secs` spellings: their values now take effect |
+| **26.10_7** | Behaviour | A host-name target falls back across its resolved addresses: one that refuses a connection is skipped for 30 s and the request is retried on another, which uses one `retry-policy` attempt. DNS answers are cached and refreshed in the background | Nothing to change. The retry goes back through target selection, so with several targets it can land on another one. See [Host-name Targets](/configuration/upstreams/#host-name-targets) |
+| **26.10_6** | Behaviour | `limits { max-in-flight-requests max-total-connections max-connections-per-client }` are enforced; before they were parsed and ignored. Unset means unlimited (the documented defaults never applied) and `0` means unlimited. Over `max-in-flight-requests` a request gets `503` with `Retry-After: 1`; over a connection limit the connection is closed. The starter configuration older installs keep at `/etc/zentinel/zentinel.kdl` sets `max-connections-per-client 100`, counted per TCP peer. Namespace `limits` are applied to the namespace's routes | **Behind a load balancer or NAT:** list it in the listener's [`trusted-proxies`](/configuration/listeners/#trusted-proxies), which exempts it from `max-connections-per-client` (the proxy logs an `INFO` note at startup when a per-client limit is set without `trusted-proxies`), or remove the line. Check `max-total-connections` and `max-in-flight-requests` against peak load. See [Limits](/configuration/limits/#concurrency-limits) |
+| **26.10_6** | Behaviour | Route `error-pages` blocks are read: a page replaces the upstream's and the proxy's response for its status. Agent filter `timeout-ms` applies (it can only shorten the agent's); `phase` on an agent filter is reported as ignored | Review `error-pages` blocks that were ignored until now; check agent filters whose `timeout-ms` is shorter than the agent's |
+| **26.10_6** | Behaviour | Rate limiters are rebuilt on reload. Redis and memcached backends are used and run the same token bucket as the local limiter, but only in binaries built with `--features distributed-rate-limit`; the release binaries still limit per instance and log a warning | Builds with the feature: expect limits to be shared across instances, so per-instance values set to compensate are now too strict |
+| **26.10_6** | Behaviour | Host-name targets are health-checked (every resolved address, every probe cycle); with a check, the proxy dials the first healthy address. An early `SIGHUP` no longer stops a starting proxy | Check health-check paths on host-name targets, which were never probed before |
+| **26.10_6** | Tooling | `-c <dir>` and `ZENTINEL_CONFIG=<dir>` load a directory. `test --strict` and `lint` check every file read, included ones too, so a typo in an included file now fails `--strict` | Run `zentinel test --strict` before upgrading |
+| **26.10_5** | Behaviour | Zentinel sends `X-Forwarded-For`, `-Proto` and `-Host`, replacing client-sent ones, and drops client-sent `Forwarded` and `X-Real-IP`, unless the peer is in the listener's new `trusted-proxies`. The client IP for rate limits, geo filters, `ip_hash`, agents and logs follows the same rule | **Behind a load balancer:** list it in [`trusted-proxies`](/configuration/listeners/#trusted-proxies), or backends see its address and `client-ip` rate limits count it as one client |
+| **26.10_5** | Behaviour | Failing health checks take targets out of rotation; with all failing, requests get `503`. Health checks follow reloads, and discovery-backed upstreams are probed. The HTTP check honours `expected-status` and `timeout-secs` and sends `Host` | Check health-check `path`, `expected-status` and `host` against what each backend answers before upgrading |
+| **26.10_5** | Behaviour | Rate limiting: `burst` is the token-bucket size (default `10`, so `max-rps 100` without `burst` admits 10 at once); `rate-limits { default-rps }` applies to routes without a limit; `global { key }` and `header:<name>` keys work; `client-ip` buckets are per client (they were shared) | Set `burst` where clients send in bursts; expect `429`s from `default-rps` |
+| **26.10_5** | Behaviour | Upstream error responses pass through unchanged; route `policies { max-body-size }` is enforced (the smaller of route and global applies); an over-limit body gets `413` (was `500`) | Raise the global `max-body-size` if a route needs a larger limit than it |
+| **26.10_5** | Tooling | `zentinel test` prints "is being ignored" warnings, and `test --strict` fails on them. `method "GET" "POST"` matches both; `system { daemon #true }` daemonizes; `system { max-connections }` is reported as not applied; a `${` in a listener address is rejected. In directory configurations an unknown agent `failure-mode` is a load error | Run `zentinel test --strict` with the new binary; under systemd or in containers, make sure `daemon` is not set |
+| **26.10_3** | Build | Building from source needs Rust 1.96 | Update the toolchain for source builds |
+| **26.10_2** | Behaviour | ACME renewal follows the CA's ARI renewal window when the CA offers one, so certificates can renew earlier than `renew-before-days` (never later) | Nothing, unless you monitor renewal timing |
+| **26.09_6** | Behaviour | Pingora 0.9.0: hop-by-hop request headers (`Connection`, `Keep-Alive`, `TE`, `Upgrade`, `Proxy-Authorization`, …) are no longer forwarded; only WebSocket upgrades pass, other `Upgrade` requests such as `h2c` do not; requests that nominate `Host` or forwarding headers in `Connection`, or carry ambiguous authorities, are rejected | Check upstreams that relied on `Proxy-Authorization` or non-WebSocket upgrades |
+| **26.09_4** | Behaviour | An agent that was unreachable at startup, or restarted later, is reconnected. Before, traffic for it was passed through uninspected (with `failure-mode "open"`) until the proxy restarted. Multiplexed MCP tool calls now use the route's retry policy, connection pool and upstream TLS | Expect agents to start acting on traffic they were silently skipping |
+| **26.09_2** | Behaviour | `health-check` blocks probe upstreams. They never sent a probe before. Probe results took targets out of rotation only from 26.10_5 | Check that health-check paths and expected statuses are right |
+| **26.08_13** | Behaviour | `discovery "dns-srv"` resolves SRV records with their ports and weights (before: the bare domain on port 80) | Check which backends are selected after the upgrade |
+| **26.08_11** | Behaviour | Upstream `discovery` blocks resolve and route. Before, such upstreams routed nowhere | Remove static `target` workarounds next to `discovery`, or both are used |
+| **26.08_10** | Behaviour | `tracing { enabled #false }` disables tracing. Before, tracing ran whenever the block was present | Check configurations that set it, and anything that consumes their spans |
+| **26.08_7 – 26.08_9** | Tooling | `zentinel lint` reports keys that parse and are ignored, across all configuration blocks | Nothing at runtime; clean up reported keys |
+| **26.08_6** | Behaviour | Listener `namespace` and per-listener timeouts are applied on wildcard binds (`0.0.0.0`, `[::]`). Before, such listeners served the global route set | Check wildcard listeners that set `namespace` |
+| **26.08_5** | **Breaking** | Route `buffer-requests` and `buffer-responses` are removed; they never had an effect and are now reported as unknown keys. MCP and A2A route policy is enforced (it was ignored in 26.08_4) | Remove the two keys; review MCP/A2A allow and deny lists |
+| **26.08_4** | **Breaking** | Settings that were parsed and discarded take effect: `upstream.timeouts`, `connection-pool { idle-timeout-secs }`, route `policies` (`failure-mode`, `timeout-secs`, `rate-limit`), distributed rate-limit fallback and TTL, WAF rule exclusions. `retry-policy.max-attempts` now bounds request retries. Host matching is case-insensitive. `client-auth` without `ca-file`, and listeners with `protocol "h3"`, refuse to start | Review timeouts and route policies; remove `h3` listeners; add `ca-file` to mTLS listeners |
+| **26.08_3** | Behaviour | Listener TLS settings are applied: per-SNI certificates, `client-auth`, `min-version` / `max-version`, `cipher-suite`, `session-resumption`. Before, they only produced startup warnings | Check that listeners with `client-auth` should require client certificates |
+| **26.08_2** | **Breaking** | Listener TLS schema: repeated `sni { }` blocks replace `additional-certs`, repeated `cipher-suite "NAME"` replaces `cipher-suites { }`; unknown keys inside `tls` and `sni` are rejected. `retry-policy` accepts only `max-attempts`. Route match conditions without a valid value, and invalid `shadow` percentages, are errors | Rewrite `tls` blocks ([migration example](/appendix/changelog/#26-08-2)); remove other `retry-policy` keys |
+| **26.06_1** | Behaviour | With `observability { metrics { enabled } }`, metrics are served by a dedicated listener on the metrics `address` (default `0.0.0.0:9090`) | Make sure the port is free and reachable only where intended |
+| **26.05_4** | Config | Shipped and embedded configurations use `system { }`. The old `server { }` block is still accepted with a deprecation warning | Rename `server` to `system` |
+| **26.02_18** | **Breaking** | Agent protocol v1 is removed; `protocol-version` is a no-op | Use v2 agents ([migration](/agents/v2/migration/)) |
+
+## See also
+
+- [Changelog](/appendix/changelog/)
+- [Versioning](/appendix/versioning/)
+- [Rolling Updates](/deployment/rolling-updates/)
+- [Supply Chain Security](../supply-chain/)
+- [Troubleshooting](../troubleshooting/)

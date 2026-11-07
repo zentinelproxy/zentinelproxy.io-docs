@@ -1,7 +1,7 @@
 +++
 title = "Simple Proxy"
 weight = 1
-updated = 2026-02-19
+updated = 2026-10-19
 +++
 
 A minimal reverse proxy configuration that forwards all traffic to a single backend server. This is the simplest Zentinel setup and a good starting point.
@@ -110,16 +110,25 @@ curl -i http://localhost:8080/
 
 ### Check Headers
 
-Zentinel adds standard proxy headers:
+The response carries the request's trace ID:
 
 ```bash
-curl -i http://localhost:8080/ | grep -i x-
+curl -i http://localhost:8080/ | grep -i x-correlation-id
 ```
 
-Expected headers on the backend:
-- `X-Forwarded-For` - Client IP
-- `X-Forwarded-Proto` - Original protocol
-- `X-Request-Id` - Unique request identifier
+On the way to the backend, Zentinel keeps the client's `Host` header and adds:
+- `X-Correlation-Id` and `X-Trace-Id` - the request's trace ID (taken from an incoming `X-Request-Id` or `X-Correlation-Id` if the client sent one, generated otherwise)
+- `X-Forwarded-For` - the client's address
+- `X-Forwarded-Proto` - `http` here (`https` on a TLS listener)
+- `X-Forwarded-Host` - the host the client requested
+- `X-Forwarded-By: Zentinel`
+
+From 26.10_5 the `X-Forwarded-*` headers are set by Zentinel, and any the
+client sent are replaced; client-sent `Forwarded` and `X-Real-IP` headers are
+removed. If Zentinel runs behind a load balancer and the backend should see the
+original client, list the load balancer in the listener's
+[`trusted-proxies`](/configuration/listeners/#trusted-proxies). Releases before
+26.10_5 send no `X-Forwarded-*` headers.
 
 ### Metrics
 
@@ -199,7 +208,7 @@ upstreams {
         target "127.0.0.1:3001" weight=1
         target "127.0.0.1:3002" weight=1
 
-        load-balancing "round-robin"
+        load-balancing "round_robin"
     }
 }
 ```

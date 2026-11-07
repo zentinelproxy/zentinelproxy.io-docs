@@ -1,7 +1,7 @@
 +++
 title = "Versioning"
 weight = 2
-updated = 2026-10-10
+updated = 2026-10-20
 +++
 
 How Zentinel versions work, mapping between release and crate versions, and changelogs.
@@ -70,7 +70,17 @@ This table maps CalVer release versions to the crate version actually **publishe
 
 | Release (CalVer) | Crate Version (SemVer) | Protocol | Release Date | Status |
 |---------|---------------|----------|--------------|--------|
-| **26.10_1** | `0.6.44` | `2` | 2026-10-10 | Current |
+| **26.10_11** | `0.6.54` | `2` | 2026-10-31 | Current — OCSP stapling works; `compress` filter fixed (gzip/zstd, `algorithms` applied); WebSocket frames reach the route's agents, agent-level `failure-mode` deprecated; `request-body-mode "inspect-first"`; h2c; read the upgrade notes |
+| **26.10_10** | `0.6.53` | `2` | 2026-10-30 | Previous — shutdown timeouts above 300 s get their full drain; systemd unit `TimeoutStopSec=40`; `bundle install` writes an `agents.kdl` that `--strict` accepts; read the upgrade notes |
+| **26.10_9** | `0.6.52` | `2` | 2026-10-28 | Previous — reload loads changed agents; SIGTERM/SIGINT drain; SIGUSR1 reopens logs; tokio 1.54 fix for `cargo install`; read the upgrade notes |
+| **26.10_8** | `0.6.51` | `2` | 2026-10-22 | Previous — agents get their `config { }` block and are acted on in every phase; every bundled agent rebuilt and smoke-tested; read the upgrade notes |
+| **26.10_7** | `0.6.50` | `2` | 2026-10-20 | Previous — namespaces and services served end to end; error pages for refusals; host-name fallback; read the upgrade notes |
+| **26.10_6** | `0.6.49` | `2` | 2026-10-20 | Previous — connection and in-flight limits enforced; error pages; directory configs; read the upgrade notes |
+| **26.10_5** | `0.6.48` | `2` | 2026-10-19 | Previous — health checks steer routing; per-client rate limits; forwarded headers with `trusted-proxies` (read the upgrade notes) |
+| **26.10_4** | `0.6.47` | `2` | 2026-10-19 | Previous — agents reconnect after a restart; API schema validation fixed |
+| **26.10_3** | `0.6.46` | `2` | 2026-10-18 | Previous — security and dependency maintenance; minimum Rust 1.96 |
+| **26.10_2** | `0.6.45` | `2` | 2026-10-11 | Previous — ACME Renewal Information (RFC 9773) |
+| **26.10_1** | `0.6.44` | `2` | 2026-10-10 | Previous |
 | **26.09_6** | `0.6.43` | `2` | 2026-09-15 | Previous — Pingora 0.9.0; last of the 26.09 series |
 | **26.09_1** | `0.6.38` | `2` | 2026-09-01 | Previous |
 | **26.08_14** | `0.6.37` | `2` | 2026-08-29 | Previous — last of the 26.08 series |
@@ -95,16 +105,23 @@ This table maps CalVer release versions to the crate version actually **publishe
 
 ```bash
 zentinel --version
-# zentinel 26.10_1 (0.6.44)
+# zentinel 0.6.54 (release 26.10_11, commit 582ae61)
 ```
 
-The CalVer release version is shown first, with the crate SemVer in parentheses.
+The binary prints the crate SemVer, then the CalVer release and the commit.
+Up to and including 26.10_3, release binaries were built from the tagged tree
+and printed the SemVer one patch below the crate published for that release
+(26.10_3 prints `0.6.45`; crates.io has `0.6.46`). Since 26.10_4,
+the build applies the published version first
+([zentinel#513](https://github.com/zentinelproxy/zentinel/pull/513)), so the
+binary and crates.io agree. Applying it changes the tree, which is why release
+binaries show `-dirty` after the commit.
 
 **From Docker:**
 
 ```bash
-docker inspect ghcr.io/zentinelproxy/zentinel:26.10_1 --format '{{ index .Config.Labels "org.opencontainers.image.version" }}'
-# 26.10_1
+docker inspect ghcr.io/zentinelproxy/zentinel:26.10_3 --format '{{ index .Config.Labels "org.opencontainers.image.version" }}'
+# 26.10_3
 ```
 
 **From the documentation URL:**
@@ -395,8 +412,8 @@ No breaking changes. Direct upgrade supported.
 
 **New features to consider:**
 
-- [Traffic Mirroring](/configuration/routes/#shadow) for canary deployments
-- [Schema Validation](/configuration/routes/#schema-validation) for API routes
+- [Traffic Mirroring](/configuration/routes/#traffic-mirroring-shadow-traffic) for canary deployments
+- [Schema Validation](/configuration/routes/#api-schema-validation) for API routes
 
 ---
 

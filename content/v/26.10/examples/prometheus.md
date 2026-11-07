@@ -1,7 +1,7 @@
 +++
 title = "Observability"
 weight = 6
-updated = 2026-02-19
+updated = 2026-10-18
 +++
 
 Complete observability setup with Prometheus metrics, Grafana dashboards, and Jaeger distributed tracing.
@@ -85,7 +85,8 @@ observability {
         format "json"
         access-log {
             enabled #true
-            fields "method" "path" "status" "latency" "upstream" "client_ip"
+            format "json"
+            include-trace-id #true
         }
     }
 
@@ -93,8 +94,7 @@ observability {
     tracing {
         enabled #true
         service-name "zentinel"
-        sample-rate 1.0  // Sample all requests (reduce in production)
-        propagation "w3c"  // W3C Trace Context
+        sampling-rate 1.0  // Sample all requests (reduce in production)
         backend "otlp" {
             endpoint "http://jaeger:4317"
         }

@@ -1,17 +1,26 @@
 +++
 title = "Namespaces"
 weight = 17
-updated = 2026-02-19
+updated = 2026-10-20
 +++
 
 Organize resources using namespaces for multi-tenant or microservice architectures. This example shows hierarchical configuration with namespace-scoped resources, service definitions, and cross-namespace exports.
+
+{% callout(type="info", title="From 26.10_7") %}
+This example is served as written from 26.10_7. Before, its namespace and
+service routes were never matched (none of the namespaces has a listener
+bound to it), and routes using a namespace's own upstream got `500`. It is the
+same configuration as
+[`config/examples/namespaces.kdl`](https://github.com/zentinelproxy/zentinel/blob/main/config/examples/namespaces.kdl)
+in the Zentinel repository.
+{% end %}
 
 ## Use Case
 
 - Multi-tenant deployments with isolated configurations
 - Microservice architectures with service-specific settings
 - Shared platform services across namespaces
-- Hierarchical limit and policy inheritance
+- Hierarchical policy inheritance
 - Cross-namespace resource sharing via exports
 
 ## Architecture
@@ -46,16 +55,28 @@ Organize resources using namespaces for multi-tenant or microservice architectur
 Create `zentinel.kdl`:
 
 ```kdl
-// Namespaces and Hierarchical Configuration
-// Multi-tenant architecture with scoped resources
+// Example: Namespaces and Hierarchical Configuration
+//
+// This example demonstrates how to organize resources using namespaces
+// for multi-tenant or microservice architectures with:
+// - Namespace-scoped resources (routes, upstreams, agents, filters)
+// - Service definitions within namespaces
+// - Resource exports for sharing across namespaces
+// - Hierarchical scope resolution (service → namespace → exports → global)
+//
+// None of these namespaces or services has a listener of its own, so all of
+// their routes are served on the global listeners below, matched together
+// with the global routes by priority. A namespace or service that declares a
+// listener (or a top-level listener with `namespace "..."`) is served only
+// there. Scoped routes and upstreams appear in logs and metrics under their
+// qualified ids, e.g. `platform:users-api`, `platform:user-service`.
 
 system {
     worker-threads 4
-    max-connections 20000
 }
 
 // =============================================================================
-// Global listeners (shared across all namespaces)
+// Global listeners (serve the global routes and every namespace's routes)
 // =============================================================================
 listeners {
     listener "http" {
@@ -85,7 +106,7 @@ upstreams {
         target "auth.internal:8080" weight=1
         target "auth.internal:8081" weight=1
 
-        load-balancing "round-robin"
+        load-balancing "round_robin"
 
         health-check {
             type "http" {
@@ -94,6 +115,13 @@ upstreams {
             }
             interval-secs 10
         }
+    }
+
+    // Shared logging/analytics service
+    upstream "analytics" {
+        target "analytics.internal:8080" weight=1
+
+        load-balancing "round_robin"
     }
 }
 
@@ -120,10 +148,9 @@ filters {
 agents {
     agent "waf-agent" {
         type "waf"
-        unix-socket path="/var/run/zentinel/waf.sock"
+        grpc address="http://localhost:50051"
         events "request_headers" "request_body"
         timeout-ms 200
-        failure-mode "closed"
     }
 }
 
@@ -133,7 +160,7 @@ agents {
 namespace "platform" {
     // Namespace-level limits
     limits {
-        max-body-size-bytes 10485760  // 10MB
+        max-body-size 10485760  // 10MB
         max-connections-per-client 50
     }
 
@@ -143,7 +170,7 @@ namespace "platform" {
             target "users.platform.internal:8080" weight=1
             target "users.platform.internal:8081" weight=1
 
-            load-balancing "least-connections"
+            load-balancing "least_connections"
 
             health-check {
                 type "http" {
@@ -156,7 +183,7 @@ namespace "platform" {
         upstream "notification-service" {
             target "notifications.platform.internal:8080" weight=1
 
-            load-balancing "round-robin"
+            load-balancing "round_robin"
         }
     }
 
@@ -174,10 +201,9 @@ namespace "platform" {
     agents {
         agent "auth-agent" {
             type "auth"
-            unix-socket path="/var/run/zentinel/platform-auth.sock"
+            grpc address="http://localhost:50052"
             events "request_headers"
             timeout-ms 100
-            failure-mode "closed"
         }
     }
 
@@ -192,6 +218,7 @@ namespace "platform" {
             }
 
             upstream "user-service"
+
             filters "platform-auth" "global-rate-limit"
 
             policies {
@@ -209,6 +236,7 @@ namespace "platform" {
             }
 
             upstream "notification-service"
+
             filters "platform-auth"
 
             policies {
@@ -219,16 +247,20 @@ namespace "platform" {
 
     // Export resources for use by other namespaces
     exports {
+        // Allow other namespaces to use user-service
         upstreams "user-service"
+        // Allow other namespaces to use platform auth
         filters "platform-auth"
         agents "auth-agent"
     }
 
     // Service within the platform namespace
+    // User management service
     service "user-management" {
-        // Service-specific limits override namespace limits
+        // A service's limits apply to its routes, within the
+        // namespace's (the smallest value wins).
         limits {
-            max-body-size-bytes 5242880  // 5MB
+            max-in-flight-requests 500
         }
 
         routes {
@@ -241,6 +273,7 @@ namespace "platform" {
                     method "GET" "POST" "PUT" "DELETE"
                 }
 
+                // Reference namespace upstream
                 upstream "user-service"
 
                 policies {
@@ -272,8 +305,18 @@ namespace "platform" {
 // =============================================================================
 namespace "storefront" {
     limits {
-        max-body-size-bytes 52428800  // 50MB for product images
+        max-body-size 52428800  // 50MB for product images
         max-connections-per-client 100
+    }
+
+    // Namespace-scoped filters
+    filters {
+        filter "waf-agent" {
+            type "agent"
+            agent "waf-agent"
+            timeout-ms 200
+            failure-mode "closed"
+        }
     }
 
     upstreams {
@@ -281,19 +324,19 @@ namespace "storefront" {
             target "catalog.storefront.internal:8080" weight=1
             target "catalog.storefront.internal:8081" weight=1
 
-            load-balancing "round-robin"
+            load-balancing "round_robin"
         }
 
         upstream "cart-service" {
             target "cart.storefront.internal:8080" weight=1
 
-            load-balancing "ip-hash"  // Session affinity
+            load-balancing "ip_hash"  // Session affinity
         }
 
         upstream "checkout-service" {
             target "checkout.storefront.internal:8080" weight=1
 
-            load-balancing "round-robin"
+            load-balancing "round_robin"
         }
     }
 
@@ -329,6 +372,7 @@ namespace "storefront" {
             }
 
             upstream "cart-service"
+
             filters "platform:platform-auth"
 
             policies {
@@ -380,7 +424,7 @@ namespace "storefront" {
 // =============================================================================
 namespace "analytics" {
     limits {
-        max-body-size-bytes 104857600  // 100MB for data ingestion
+        max-body-size 104857600  // 100MB for data ingestion
     }
 
     upstreams {
@@ -389,7 +433,7 @@ namespace "analytics" {
             target "ingest.analytics.internal:8081" weight=1
             target "ingest.analytics.internal:8082" weight=1
 
-            load-balancing "least-connections"
+            load-balancing "least_connections"
 
             connection-pool {
                 max-connections 200
@@ -400,7 +444,7 @@ namespace "analytics" {
         upstream "query" {
             target "query.analytics.internal:8080" weight=1
 
-            load-balancing "round-robin"
+            load-balancing "round_robin"
 
             timeouts {
                 request-secs 300  // Long timeout for queries
@@ -454,7 +498,7 @@ namespace "analytics" {
 }
 
 // =============================================================================
-// Global routes (match after namespace routes)
+// Global routes (matched with the namespace routes above, by priority)
 // =============================================================================
 routes {
     route "health" {
@@ -512,19 +556,35 @@ observability {
 
 ## Key Concepts
 
+### Which Listener Serves a Route
+
+None of the namespaces or services above has a listener of its own, so all of
+their routes are served on the two global listeners, matched together with the
+global routes by priority, then specificity. A namespace or service that
+declares a listener (or a top-level listener with `namespace "..."`) is served
+only there, and such a listener never serves global routes. See
+[Which listener serves a route](/configuration/namespaces/#which-listener-serves-a-route).
+
+Scoped routes and upstreams appear in logs and metrics under their qualified
+ids, for example `platform:users-api`, `platform:user-management:user-crud` and
+`platform:user-service`.
+
 ### Scope Resolution
 
 Resources are resolved in this order:
 1. **Service scope** - Check current service first
 2. **Namespace scope** - Check containing namespace
-3. **Global scope** - Check global definitions
+3. **Exported resources** - Check what other namespaces export
+4. **Global scope** - Check global definitions
+
+A qualified reference such as `platform:platform-auth` is used as written.
 
 ### Cross-Namespace References
 
 Reference exported resources using `namespace:resource` syntax:
 
-```kdl
-// In storefront namespace
+```fragment,kdl
+// In a storefront route
 filters "platform:platform-auth"  // Use auth from platform namespace
 ```
 
@@ -532,7 +592,8 @@ filters "platform:platform-auth"  // Use auth from platform namespace
 
 Namespaces explicitly declare which resources other namespaces can use:
 
-```kdl
+```fragment,kdl
+// inside namespace "platform" { }
 exports {
     upstreams "user-service"
     filters "platform-auth"
@@ -542,10 +603,15 @@ exports {
 
 ### Limit Inheritance
 
-Limits cascade down with overrides:
-- Global limits apply to all
-- Namespace limits override global for that namespace
-- Service limits override namespace for that service
+A namespace's `limits` apply to requests on its routes, together with the
+global block, and from 26.10_7 a service's `limits` (here
+`user-management`'s `max-in-flight-requests 500`) apply within the
+namespace's: the smallest body and header limits win, and
+`max-in-flight-requests` has its own counter in each scope. The connection
+keys (`max-connections-per-client` above) count only connections on a scope's
+own listeners, so in this example, where the namespaces are served on the
+global listeners, they do not apply. See
+[Limits: Namespace Limits](/configuration/limits/#namespace-limits).
 
 ## Setup
 
@@ -558,11 +624,11 @@ zentinel -c zentinel.kdl
 ### 2. Verify Configuration
 
 ```bash
-# Validate config
-zentinel validate -c zentinel.kdl
+# Validate config, including scoped listeners that cannot be bound
+zentinel test --strict -c zentinel.kdl
 
-# Show resolved routes
-zentinel routes -c zentinel.kdl
+# Also check that upstreams and agents are reachable
+zentinel validate -c zentinel.kdl
 ```
 
 ## Testing
@@ -612,6 +678,10 @@ curl -H "Host: analytics.internal" \
 
 ### Namespace-Specific Rate Limits
 
+A namespace has no rate-limit setting of its own. Define a `rate-limit` filter
+in the namespace and attach it to its routes; it is counted separately from
+filters of the same name in other scopes, with buckets per route:
+
 ```kdl
 namespace "premium-tenant" {
     filters {
@@ -622,20 +692,46 @@ namespace "premium-tenant" {
             key "client-ip"
         }
     }
+
+    upstreams {
+        upstream "backend" {
+            target "127.0.0.1:3000"
+        }
+    }
+
+    routes {
+        route "api" {
+            matches {
+                path-prefix "/premium/"
+            }
+            upstream "backend"
+            filters "tenant-rate-limit"
+        }
+    }
 }
 ```
 
 ### Service-Level Circuit Breakers
 
-```kdl
+Circuit breakers belong to upstreams, not routes:
+
+```fragment,kdl
+// inside namespace "..." { }
 service "critical-api" {
-    routes {
-        route "main" {
+    upstreams {
+        upstream "main" {
+            target "10.0.5.10:8080"
             circuit-breaker {
                 failure-threshold 3
                 success-threshold 2
                 timeout-seconds 30
             }
+        }
+    }
+    routes {
+        route "main" {
+            matches { path-prefix "/critical/" }
+            upstream "main"
         }
     }
 }

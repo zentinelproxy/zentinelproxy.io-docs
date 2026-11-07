@@ -1,7 +1,7 @@
 +++
 title = "Agents"
 weight = 9
-updated = 2026-02-27
+updated = 2026-10-26
 +++
 
 Agents are external processes that extend Zentinel's functionality. They handle security policies, authentication, rate limiting, and custom business logic. The `agents` block configures how Zentinel connects to and communicates with these agents.
@@ -14,14 +14,12 @@ agents {
         unix-socket "/var/run/zentinel/waf.sock"
         events "request_headers" "request_body"
         timeout-ms 200
-        failure-mode "closed"
     }
 
     agent "auth-agent" type="auth" {
         grpc "http://localhost:50051"
         events "request_headers"
         timeout-ms 100
-        failure-mode "closed"
         circuit-breaker {
             failure-threshold 5
             timeout-seconds 30
@@ -67,7 +65,8 @@ agent "remote-agent" type="waf" {
 
 With TLS:
 
-```kdl
+<!-- fragment,kdl: zentinel lint (26.10_3) wrongly reports ca-cert/client-cert/client-key/tls-insecure directly under grpc/http as ignored; parse_agent_tls in crates/config/src/kdl/mod.rs reads exactly this form. -->
+```fragment,kdl
 agent "secure-agent" type="auth" {
     grpc "https://auth-service:50051" {
         ca-cert "/etc/zentinel/ca.crt"
@@ -94,7 +93,8 @@ agent "http-agent" type="custom" {
 
 #### HTTPS with TLS
 
-```kdl
+<!-- fragment,kdl: zentinel lint (26.10_3) wrongly reports ca-cert/client-cert/client-key/tls-insecure directly under grpc/http as ignored; parse_agent_tls in crates/config/src/kdl/mod.rs reads exactly this form. -->
+```fragment,kdl
 agent "secure-http-agent" type="auth" {
     http "https://auth-service:8443/agent" {
         ca-cert "/etc/zentinel/certs/ca.crt"
@@ -106,7 +106,8 @@ agent "secure-http-agent" type="auth" {
 
 #### HTTPS with mTLS
 
-```kdl
+<!-- fragment,kdl: zentinel lint (26.10_3) wrongly reports ca-cert/client-cert/client-key/tls-insecure directly under grpc/http as ignored; parse_agent_tls in crates/config/src/kdl/mod.rs reads exactly this form. -->
+```fragment,kdl
 agent "mtls-agent" type="waf" {
     http "https://waf-service:8443/agent" {
         ca-cert "/etc/zentinel/certs/ca.crt"
@@ -219,7 +220,6 @@ agent "image-optimizer" type="custom" {
     unix-socket "/var/run/zentinel/image-opt.sock"
     events "request_headers" "response_headers" "response_body"
     timeout-ms 5000
-    failure-mode "open"
 }
 ```
 
@@ -268,22 +268,53 @@ When response body processing is active, the proxy automatically sets `Connectio
 
 ### Failure Mode
 
-Configure behavior when the agent is unavailable:
+What happens when a call to an agent fails or times out is decided per route,
+on the **filter** that calls the agent:
 
 ```kdl
-agent "auth-agent" type="auth" {
-    failure-mode "closed"   // Block requests if agent fails
+agents {
+    agent "auth-agent" type="auth" {
+        unix-socket "/var/run/zentinel/auth.sock"
+    }
+    agent "analytics-agent" type="custom" {
+        unix-socket "/var/run/zentinel/analytics.sock"
+    }
 }
 
-agent "analytics-agent" type="custom" {
-    failure-mode "open"     // Allow requests if agent fails
+filters {
+    filter "auth" {
+        type "agent"
+        agent "auth-agent"
+        failure-mode "closed"   // Refuse requests if the agent fails
+    }
+    filter "analytics" {
+        type "agent"
+        agent "analytics-agent"
+        failure-mode "open"     // Let requests through if the agent fails
+    }
 }
 ```
 
 | Mode | Behavior |
 |------|----------|
-| `closed` | Block requests when agent unavailable (security-first) |
-| `open` | Allow requests through when agent unavailable (availability-first) |
+| `closed` | Refuse the request (or close the WebSocket with 1011) when the agent is unavailable (security-first) |
+| `open` | Let the request (or frame) through when the agent is unavailable (availability-first) |
+
+The rule is the same on every path (request headers, request bodies,
+response headers and bodies, WebSocket frames, and dispatch failures): the
+filter's `failure-mode`, else the route's `policies { failure-mode }`, else
+`closed`. See [Your First Agent](/getting-started/first-agent/#6-stop-the-agent).
+
+{% callout(type="warning") %}
+**`failure-mode` on an `agent` block is deprecated and has no effect** from
+26.10_11. Up to 26.10_10 it still decided WebSocket frames (and, up to
+26.10_7, bodies and responses too); WebSocket frames now follow the filter
+rule above. `zentinel test`, `lint` and the startup log report the key
+wherever it is set, naming the filters and routes where the value belongs. The
+key still parses and will be removed in a later release. **If you relied on an
+agent's `failure-mode "open"` for WebSocket frames, set `failure-mode "open"`
+on its filter.**
+{% end %}
 
 ### Circuit Breaker
 
@@ -291,6 +322,7 @@ Prevent cascading failures with circuit breakers:
 
 ```kdl
 agent "waf-agent" type="waf" {
+    unix-socket "/var/run/zentinel/waf.sock"
     circuit-breaker {
         failure-threshold 5         // Open after 5 failures
         success-threshold 2         // Close after 2 successes
@@ -316,10 +348,22 @@ Circuit breaker states:
 
 ```kdl
 agent "waf-agent" type="waf" {
-    timeout-ms 200         // Total call timeout
-    chunk-timeout-ms 5000  // Per-chunk timeout (streaming)
+    unix-socket "/var/run/zentinel/waf.sock"
+    timeout-ms 200           // Total call timeout
+    chunk-timeout-ms 5000    // Per-chunk timeout (streaming)
+    connect-timeout-ms 5000  // Connect + handshake, per connection (from 26.10_8)
 }
 ```
+
+`connect-timeout-ms` (default 5000, from 26.10_8) bounds the connect and the
+handshake of every connection to the agent, including the config delivery.
+Startup waits at most the longest `connect-timeout-ms` plus 5 seconds for the
+agents, in parallel; an agent that has not answered by then is not used, its
+filters follow their `failure-mode`, and the pool keeps reconnecting in the
+background and uses the agent once it answers. Before 26.10_8 an agent that
+accepted the connection but never answered the handshake kept the proxy from
+starting, whatever its `failure-mode`. Reconnect retries and their backoff are
+not configurable.
 
 ## Body Processing
 
@@ -327,6 +371,7 @@ agent "waf-agent" type="waf" {
 
 ```kdl
 agent "waf-agent" type="waf" {
+    unix-socket "/var/run/zentinel/waf.sock"
     max-request-body-bytes 10485760   // 10MB
     max-response-body-bytes 5242880   // 5MB
 }
@@ -339,18 +384,21 @@ Control how bodies are sent to agents:
 ```kdl
 // Buffer entire body (default)
 agent "waf-agent" type="waf" {
+    unix-socket "/var/run/zentinel/waf.sock"
     request-body-mode "buffer"
     response-body-mode "buffer"
 }
 
 // Stream chunks as they arrive
 agent "streaming-agent" type="custom" {
+    unix-socket "/var/run/zentinel/streaming.sock"
     request-body-mode "stream"
     chunk-timeout-ms 5000
 }
 
 // Hybrid: buffer small, stream large
 agent "hybrid-agent" type="custom" {
+    unix-socket "/var/run/zentinel/hybrid.sock"
     request-body-mode "hybrid:65536"   // Buffer up to 64KB
 }
 ```
@@ -360,6 +408,58 @@ agent "hybrid-agent" type="custom" {
 | `buffer` | Collect entire body before sending (default) |
 | `stream` | Send chunks as they arrive |
 | `hybrid:<bytes>` | Buffer up to threshold, then stream |
+| `inspect-first` | Request bodies only, from 26.10_11. Read the whole body and decide on it **before the upstream is contacted** (see below) |
+
+From 26.10_8 the mode is applied; before, every request body was buffered
+whole whatever the mode said. When a route's body agents disagree, the most
+conservative mode applies: `inspect-first` over `buffer` over `hybrid`
+(largest threshold) over `stream`, so no agent gets less of the body at once
+than it asked for. In
+buffer mode, and for the buffered part of hybrid mode, the body is **held back
+from the upstream until the agents have allowed it**; a refused body never
+reaches the upstream. The upstream still sees the request line and headers
+before the body decision, and request-header changes an agent makes on the
+body cannot be applied for the same reason: they are dropped, with a warning
+logged once per agent. Decisions on streamed chunks (Block, Challenge,
+Redirect) are answered as on a buffered body.
+
+A request an agent refuses on its body abandons the upstream request that was
+already started. From 26.10_11 that abort is not counted against the upstream:
+it does not reach the target's circuit breaker, passive health or
+load-balancer accounting, so refused uploads cannot take a healthy backend out
+of rotation. Genuine upstream failures still count.
+
+#### `inspect-first` {#inspect-first}
+
+```kdl
+agents {
+    agent "upload-scanner" type="custom" {
+        unix-socket "/var/run/zentinel/scanner.sock"
+        events "request_headers" "request_body"
+        request-body-mode "inspect-first"
+    }
+}
+```
+
+With `request-body-mode "inspect-first"` (from 26.10_11) the proxy reads the
+request body in full and the route's body agents decide on it **before an
+upstream is selected**:
+
+- a refused request never reaches the upstream, not even its request line and
+  headers;
+- request-header changes the agents ask for in the body phase are applied.
+
+The cost is why it is opt-in: the whole body is held in memory, bounded by the
+route's body-size limit (a larger body gets `413`) rather than the agent's
+inspection limit, and the upstream request starts only after the full upload.
+One agent asking for `inspect-first` sets the route's mode. It is a request
+mode only: `response-body-mode "inspect-first"` is a configuration error.
+
+Request bodies go to every route agent subscribed to `request_body`, with or
+without a top-level `waf` block (before 26.10_8 they were sent only with
+`waf { body-inspection { inspect-request-body } }`). Set `inspect-request-body
+#false` there to keep bodies from agents, or narrow one filter with
+`inspect-body #false` (see [Filters](/configuration/filters/)).
 
 ## WAF Body Inspection
 
@@ -367,17 +467,21 @@ For WAF agents that need to inspect request bodies, Zentinel provides a dedicate
 
 ### WAF Configuration Block
 
-Configure body inspection globally via the `waf` block:
+Configure body inspection globally via the `waf` block. Only `body-inspection`
+is used from that block, and the block must set `mode "off"`: any other mode
+fails validation because no WAF engine runs in the proxy itself (see
+[WAF](../waf/)).
 
 ```kdl
 waf {
+    mode "off"   // required; inspection is done by the agents
     body-inspection {
         inspect-request-body #true
         inspect-response-body #false
-        max-body-inspection-bytes 1048576   // 1MB
+        max-inspection-bytes 1048576   // 1MB
         content-types "application/json" "application/x-www-form-urlencoded" "text/xml"
         decompress #true
-        max-decompression-ratio 100.0
+        max-decompression-ratio 100
     }
 }
 ```
@@ -386,19 +490,19 @@ waf {
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `inspect-request-body` | `false` | Enable request body inspection |
+| `inspect-request-body` | `true` | Enable request body inspection (without a `waf` block, bodies are not inspected) |
 | `inspect-response-body` | `false` | Enable response body inspection |
-| `max-body-inspection-bytes` | `1048576` | Max bytes to buffer for inspection |
+| `max-inspection-bytes` | `1048576` | Max bytes to buffer for inspection |
 | `content-types` | See below | Content types eligible for inspection |
 | `decompress` | `false` | Decompress bodies before inspection |
-| `max-decompression-ratio` | `100.0` | Max compression ratio (zip bomb protection) |
+| `max-decompression-ratio` | `100` | Max compression ratio (zip bomb protection; an integer) |
 
 Default content types for inspection:
-- `application/json`
 - `application/x-www-form-urlencoded`
-- `text/xml`
+- `multipart/form-data`
+- `application/json`
 - `application/xml`
-- `text/plain`
+- `text/xml`
 
 ### Body Decompression
 
@@ -419,9 +523,10 @@ When `decompress` is enabled, Zentinel automatically decompresses request bodies
 
 ```kdl
 waf {
+    mode "off"
     body-inspection {
         decompress #true
-        max-decompression-ratio 50.0    // Stricter limit for sensitive routes
+        max-decompression-ratio 50    // Stricter limit
     }
 }
 ```
@@ -450,12 +555,13 @@ Result labels: `success`, `ratio_exceeded`, `size_exceeded`, `invalid_data`, `io
 
 ```kdl
 waf {
+    mode "off"   // body inspection only; the agent does the WAF work
     body-inspection {
         inspect-request-body #true
-        max-body-inspection-bytes 1048576
+        max-inspection-bytes 1048576
         content-types "application/json" "application/xml" "text/plain"
         decompress #true
-        max-decompression-ratio 100.0
+        max-decompression-ratio 100
     }
 }
 
@@ -464,7 +570,6 @@ agents {
         unix-socket "/var/run/zentinel/modsec.sock"
         events "request_headers" "request_body"
         timeout-ms 200
-        failure-mode "closed"
         request-body-mode "buffer"
         circuit-breaker {
             failure-threshold 10
@@ -492,7 +597,6 @@ filters {
     filter "waf-filter" {
         type "agent"
         agent "modsecurity"
-        phase "request"
         failure-mode "closed"
     }
 }
@@ -513,7 +617,29 @@ agent "waf-agent" type="waf" {
 }
 ```
 
-The configuration is passed to the agent when it connects.
+From 26.10_8 the block is delivered on **every connection** the proxy opens
+to the agent: the first one, each pooled connection, and every reconnect. Over
+a Unix socket it travels in the handshake, followed by a Configure event; over
+gRPC as a ConfigureEvent followed by a Ping. The reply confirms the agent
+handled it. An agent that rejects its config, or does not answer it, is not
+used: the connection fails with an `ERROR` log and is retried, and meanwhile
+its filters' `failure-mode` applies (`closed` answers `503`).
+
+Because the same block arrives again on every reconnect, an agent's configure
+handler has to be **idempotent**: applying it twice must leave the agent as
+applying it once does, and a partial block should merge with the agent's
+defaults rather than replace everything (the waf and modsec agents do this
+from 0.4.1; modsec 0.4.0 loaded zero rules from a partial block and reported
+success). Agents that reset state on configure do so per connection.
+
+Before 26.10_8 the block never reached the agent, whatever the agent's README
+said. Agents that ignored it start receiving it when you upgrade, so check
+that each `config { }` block says what you mean: fields it leaves out can
+replace the agent's command-line flags with defaults (ai-gateway, waf, modsec,
+graphql-security, denylist). Agents built on a released Rust SDK get the block
+over a Unix socket as soon as the proxy is upgraded; gRPC agents need a build
+against `zentinel-agent-protocol` 0.6.51 or later (older gRPC servers dropped
+the Configure event). Reverse connections get no config.
 
 ## Attaching Agents to Routes
 
@@ -523,6 +649,8 @@ Reference agents in route configuration:
 routes {
     // Via filters
     route "api" {
+        matches { path-prefix "/api/" }
+        upstream "backend"
         filters "waf-filter"   // Filter referencing agent
     }
 }
@@ -531,12 +659,17 @@ filters {
     filter "waf-filter" {
         type "agent"
         agent "waf-agent"
-        phase "request"
         timeout-ms 200
         failure-mode "closed"
     }
 }
 ```
+
+A filter's `timeout-ms` applies to its `request_headers` call and can only
+shorten the agent's `timeout-ms`; the shorter of the two is used. `phase` is
+not read on an agent filter (the agent's `events` decide what it receives) and
+is reported as ignored. Both from 26.10_6; before, the filter's `timeout-ms`
+was not read either. See [Filters: Agent Filter](../filters/#agent-filter).
 
 ## Complete Examples
 
@@ -548,7 +681,6 @@ agents {
         unix-socket "/var/run/zentinel/modsec.sock"
         events "request_headers" "request_body"
         timeout-ms 200
-        failure-mode "closed"
         max-request-body-bytes 1048576    // 1MB for inspection
         request-body-mode "buffer"
         circuit-breaker {
@@ -571,7 +703,6 @@ agents {
         grpc "http://auth-service:50051"
         events "request_headers"
         timeout-ms 50
-        failure-mode "closed"
         circuit-breaker {
             failure-threshold 5
             timeout-seconds 30
@@ -592,7 +723,6 @@ agents {
         grpc "http://ratelimit-service:50051"
         events "request_headers"
         timeout-ms 20
-        failure-mode "open"    // Allow through if service down
         circuit-breaker {
             failure-threshold 3
             timeout-seconds 15
@@ -609,7 +739,6 @@ agents {
         unix-socket "/var/run/zentinel/image-opt.sock"
         events "request_headers" "response_headers" "response_body"
         timeout-ms 5000
-        failure-mode "open"
         response-body-mode "buffer"
         max-response-body-bytes 10485760    // 10MB
     }
@@ -643,7 +772,6 @@ agents {
         http "http://analytics:8080/log"
         events "log"           // Only receive completion events
         timeout-ms 1000
-        failure-mode "open"    // Don't block requests for logging
     }
 }
 ```
@@ -659,13 +787,14 @@ Secure gRPC connections to agents with TLS and mutual TLS (mTLS).
 | `ca-cert` | Path to CA certificate for verifying the agent's server certificate |
 | `client-cert` | Path to client certificate for mTLS authentication |
 | `client-key` | Path to client private key for mTLS authentication |
-| `insecure-skip-verify` | Skip certificate verification (development only) |
+| `tls-insecure` | Skip certificate verification (development only) |
 
 ### Server TLS (One-Way)
 
 Verify the agent's identity using TLS:
 
-```kdl
+<!-- fragment,kdl: zentinel lint (26.10_3) wrongly reports ca-cert/client-cert/client-key/tls-insecure directly under grpc/http as ignored; parse_agent_tls in crates/config/src/kdl/mod.rs reads exactly this form. -->
+```fragment,kdl
 agent "secure-agent" type="auth" {
     grpc "https://auth-service.internal:50051" {
         ca-cert "/etc/zentinel/certs/ca.crt"
@@ -684,7 +813,8 @@ This configuration:
 
 For bidirectional authentication where both Zentinel and the agent verify each other:
 
-```kdl
+<!-- fragment,kdl: zentinel lint (26.10_3) wrongly reports ca-cert/client-cert/client-key/tls-insecure directly under grpc/http as ignored; parse_agent_tls in crates/config/src/kdl/mod.rs reads exactly this form. -->
+```fragment,kdl
 agent "secure-waf" type="waf" {
     grpc "https://waf-service.internal:50051" {
         ca-cert "/etc/zentinel/certs/ca.crt"
@@ -720,10 +850,11 @@ This works well for agents using certificates from public CAs (Let's Encrypt, Di
 
 **Warning:** Only use this for local development. Never use in production.
 
-```kdl
+<!-- fragment,kdl: zentinel lint (26.10_3) wrongly reports ca-cert/client-cert/client-key/tls-insecure directly under grpc/http as ignored; parse_agent_tls in crates/config/src/kdl/mod.rs reads exactly this form. -->
+```fragment,kdl
 agent "dev-agent" type="custom" {
     grpc "https://localhost:50051" {
-        insecure-skip-verify
+        tls-insecure
     }
     events "request_headers"
 }
@@ -769,7 +900,8 @@ chown zentinel:zentinel /etc/zentinel/certs/*
 
 ### Complete Secure Agent Example
 
-```kdl
+<!-- fragment,kdl: zentinel lint (26.10_3) wrongly reports ca-cert/client-cert/client-key/tls-insecure directly under grpc/http as ignored; parse_agent_tls in crates/config/src/kdl/mod.rs reads exactly this form. -->
+```fragment,kdl
 agents {
     // WAF with mTLS - highest security
     agent "modsecurity" type="waf" {
@@ -802,7 +934,6 @@ agents {
         grpc "http://ratelimit.internal:50051"
         events "request_headers"
         timeout-ms 20
-        failure-mode "open"
     }
 }
 ```
@@ -851,24 +982,26 @@ Zentinel validates agent configuration at startup:
 
 | Transport | Validation |
 |-----------|------------|
-| Unix Socket | Path exists and is a socket file |
+| Unix Socket | The socket's parent directory exists (the socket itself is not checked) |
 | gRPC | Valid URL format (http/https with host) |
 | HTTP | Valid URL format |
 
 Example validation errors:
 
 ```
-Error: Agent 'auth' socket path '/var/run/zentinel/auth.sock' does not exist
-Error: Agent 'waf' path '/tmp/not-a-socket' exists but is not a socket
-Error: Agent 'remote' gRPC address 'invalid-url' is not a valid URL
+Agent 'auth' unix socket path parent directory doesn't exist: "/var/run/zentinel/auth.sock"
 ```
+
+A socket that does not exist yet, or a gRPC agent that is not running, passes
+`zentinel test`; use `zentinel validate` (below) to check that agents are
+reachable.
 
 ### Pre-flight Checks
 
 Run validation before deployment:
 
 ```bash
-zentinel --config zentinel.kdl --validate
+zentinel validate --config zentinel.kdl
 ```
 
 This checks:
