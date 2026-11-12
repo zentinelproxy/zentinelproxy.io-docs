@@ -70,7 +70,8 @@ This table maps CalVer release versions to the crate version actually **publishe
 
 | Release (CalVer) | Crate Version (SemVer) | Protocol | Release Date | Status |
 |---------|---------------|----------|--------------|--------|
-| **26.11_1** | `0.6.55` | `2` | 2026-11-07 | Current — security and dependency maintenance (`rustls-webpki` distrusted-intermediate fix); minimum Rust 1.99 |
+| **26.11_2** | `0.6.56` | `2` | 2026-11-12 | Current — Pingora fork rebased on upstream Pingora 0.9.1; no behaviour or configuration change |
+| **26.11_1** | `0.6.55` | `2` | 2026-11-07 | Previous — security and dependency maintenance (`rustls-webpki` distrusted-intermediate fix); minimum Rust 1.99 |
 | **26.10_11** | `0.6.54` | `2` | 2026-10-31 | Previous — last of the 26.10 series; OCSP stapling works; `compress` filter fixed (gzip/zstd, `algorithms` applied); WebSocket frames reach the route's agents, agent-level `failure-mode` deprecated; `request-body-mode "inspect-first"`; h2c; read the upgrade notes |
 | **26.10_10** | `0.6.53` | `2` | 2026-10-30 | Previous — shutdown timeouts above 300 s get their full drain; systemd unit `TimeoutStopSec=40`; `bundle install` writes an `agents.kdl` that `--strict` accepts; read the upgrade notes |
 | **26.10_9** | `0.6.52` | `2` | 2026-10-28 | Previous — reload loads changed agents; SIGTERM/SIGINT drain; SIGUSR1 reopens logs; tokio 1.54 fix for `cargo install`; read the upgrade notes |
@@ -106,7 +107,7 @@ This table maps CalVer release versions to the crate version actually **publishe
 
 ```bash
 zentinel --version
-# zentinel 0.6.55 (release 26.11_1, commit b3a8659)
+# zentinel 0.6.56 (release 26.11_2, commit ea8ccf0)
 ```
 
 The binary prints the crate SemVer, then the CalVer release and the commit.

@@ -402,17 +402,17 @@ Zentinel uses these Pingora crates:
 ```toml
 [workspace.dependencies]
 pingora = { package = "zentinel-pingora", version = "0.9.0", features = ["proxy", "lb", "rustls"] }
-pingora-core = { package = "zentinel-pingora-core", version = "0.9.0", features = ["rustls"] }
-pingora-proxy = { package = "zentinel-pingora-proxy", version = "0.9.0" }
-pingora-load-balancing = { package = "zentinel-pingora-load-balancing", version = "0.9.0" }
-pingora-cache = { package = "zentinel-pingora-cache", version = "0.9.0" }
-pingora-http = "0.9.0"
-pingora-timeout = "0.9.0"
-pingora-limits = "0.9.0"
-pingora-memory-cache = "0.9.0"
+pingora-core = { package = "zentinel-pingora-core", version = "0.9.3", features = ["rustls"] }
+pingora-http = "0.9.1"
+pingora-proxy = { package = "zentinel-pingora-proxy", version = "0.9.1" }
+pingora-load-balancing = { package = "zentinel-pingora-load-balancing", version = "0.9.1" }
+pingora-timeout = "0.9.1"
+pingora-limits = "0.9.1"
+pingora-cache = { package = "zentinel-pingora-cache", version = "0.9.1" }
+pingora-memory-cache = "0.9.1"
 ```
 
-> **Note:** Zentinel builds against a fork, [`zentinelproxy/pingora`](https://github.com/zentinelproxy/pingora), that tracks upstream Pingora 0.9.0 with two additions: `TlsSettings::with_server_config`, so a listener can take a complete rustls `ServerConfig` (per-SNI certificates, mTLS, protocol versions and cipher suites), and a `should_retry_response` hook, so a `retry-policy` can retry on an upstream status code rather than only on transport errors. The five crates the patches touch, or that depend on them, are published as `zentinel-pingora-*`; everything else resolves from upstream crates.io. The fork's `NOTICE` file lists the modified files.
+> **Note:** Zentinel builds against a fork, [`zentinelproxy/pingora`](https://github.com/zentinelproxy/pingora), that tracks upstream Pingora 0.9.1 with three additions: `TlsSettings::with_server_config`, so a listener can take a complete rustls `ServerConfig` (per-SNI certificates, mTLS, protocol versions and cipher suites); a `should_retry_response` hook, so a `retry-policy` can retry on an upstream status code rather than only on transport errors; and `Session::enable_retry_buffering_with_limit`, which sizes the retry buffer per request instead of upstream's fixed 64 KiB, so a request body Zentinel has already read in full still reaches the upstream. The five crates the patches touch, or that depend on them, are published as `zentinel-pingora-*`; everything else resolves from upstream crates.io. The fork's `NOTICE` file lists the modified files.
 
 ## Next Steps
 
